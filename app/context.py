@@ -31,7 +31,7 @@ def get_sender_username(message: Message) -> str | None:
     return normalize_username(message.from_user.username)
 
 
-def get_inventory_admin(
+def get_topic_admin(
     chat_id: int,
     thread_id: int,
 ) -> str | None:
@@ -46,6 +46,17 @@ def get_inventory_admin(
         return None
 
     return normalize_username(admin)
+
+
+def get_inventory_admin(
+    chat_id: int,
+    thread_id: int,
+) -> str | None:
+    """
+    Оставлено для совместимости со старым кодом.
+    Администратор инвентаря = администратор темы.
+    """
+    return get_topic_admin(chat_id, thread_id)
 
 
 def get_character_name(
@@ -86,9 +97,10 @@ def get_topic_characters(
     }
 
 
-def can_manage_inventory(message: Message) -> bool:
+def can_manage_topic(message: Message) -> bool:
     thread_id = get_thread_id(message)
-    required_admin = get_inventory_admin(
+
+    required_admin = get_topic_admin(
         message.chat.id,
         thread_id,
     )
@@ -104,8 +116,38 @@ def can_manage_inventory(message: Message) -> bool:
     return sender_username == required_admin
 
 
+def can_manage_inventory(message: Message) -> bool:
+    return can_manage_topic(message)
+
+
+async def check_topic_admin_permission(message: Message) -> bool:
+    thread_id = get_thread_id(message)
+
+    required_admin = get_topic_admin(
+        message.chat.id,
+        thread_id,
+    )
+
+    if required_admin is None:
+        await message.answer(
+            "⛔ Для этой темы не назначен администратор.\n\n"
+            "Используй /chatid, чтобы узнать ID темы."
+        )
+        return False
+
+    if can_manage_topic(message):
+        return True
+
+    await message.answer(
+        "⛔ У тебя нет прав на изменение данных этой темы.\n"
+        f"Администратор этой темы: {required_admin}"
+    )
+    return False
+
+
 async def check_inventory_permission(message: Message) -> bool:
     thread_id = get_thread_id(message)
+
     required_admin = get_inventory_admin(
         message.chat.id,
         thread_id,

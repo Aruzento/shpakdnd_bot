@@ -20,6 +20,26 @@ def create_inventory_table(conn: sqlite3.Connection):
     )
 
 
+def create_character_profiles_table(conn: sqlite3.Connection):
+    """
+    Данные листа персонажа хранятся отдельно для каждой пары
+    chat_id + thread_id + username.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS character_profiles (
+            chat_id INTEGER NOT NULL,
+            thread_id INTEGER NOT NULL DEFAULT 0,
+            username TEXT NOT NULL,
+            level INTEGER NOT NULL,
+            class_name TEXT NOT NULL,
+            race TEXT NOT NULL,
+            PRIMARY KEY (chat_id, thread_id, username)
+        )
+        """
+    )
+
+
 def migrate_inventory_table(conn: sqlite3.Connection):
     """Переводит старый inventory в актуальный формат без потери вещей."""
     legacy_table = "inventory_legacy_migration"
@@ -210,5 +230,7 @@ def init_db():
             )
             """
         )
+
+        create_character_profiles_table(conn)
 
         conn.commit()
