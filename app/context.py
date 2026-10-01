@@ -1,5 +1,6 @@
 from aiogram.types import Message
 
+from app.config import GLOBAL_ADMIN_USERNAME
 from app.topics import TOPIC_SETTINGS
 
 
@@ -118,6 +119,29 @@ def can_manage_topic(message: Message) -> bool:
 
 def can_manage_inventory(message: Message) -> bool:
     return can_manage_topic(message)
+
+
+def is_global_admin(message: Message) -> bool:
+    sender_username = get_sender_username(message)
+
+    if sender_username is None:
+        return False
+
+    return sender_username == normalize_username(
+        GLOBAL_ADMIN_USERNAME
+    )
+
+
+async def check_global_admin_permission(
+    message: Message,
+) -> bool:
+    if is_global_admin(message):
+        return True
+
+    await message.answer(
+        "⛔ Эта команда доступна только глобальному администратору."
+    )
+    return False
 
 
 async def check_topic_admin_permission(message: Message) -> bool:

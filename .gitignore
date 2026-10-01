@@ -1,5 +1,6 @@
 .env
 timers.db
+shpakdnd.db
 __pycache__/
 *.pyc
 .venv/

@@ -1,7 +1,27 @@
 import sqlite3
 
-from app.config import DB_PATH
+from app.config import DB_PATH, LEGACY_DB_PATH
 from app.context import normalize_username
+
+
+def migrate_database_file():
+    """
+    Один раз переименовывает старую базу timers.db в shpakdnd.db.
+
+    Если shpakdnd.db уже существует, ничего не перезаписывает.
+    """
+    if DB_PATH.exists():
+        return
+
+    if not LEGACY_DB_PATH.exists():
+        return
+
+    LEGACY_DB_PATH.replace(DB_PATH)
+
+    print(
+        f"База данных переименована: "
+        f"{LEGACY_DB_PATH.name} -> {DB_PATH.name}"
+    )
 
 
 def create_inventory_table(conn: sqlite3.Connection):
@@ -168,6 +188,8 @@ def migrate_inventory_table(conn: sqlite3.Connection):
 
 
 def init_db():
+    migrate_database_file()
+
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """

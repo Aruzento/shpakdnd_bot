@@ -7,7 +7,11 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
-DB_PATH = BASE_DIR / "timers.db"
+
+DB_PATH = BASE_DIR / "shpakdnd.db"
+LEGACY_DB_PATH = BASE_DIR / "timers.db"
+
+GLOBAL_ADMIN_USERNAME = "@arukozento"
 
 load_dotenv(ENV_PATH)
 
