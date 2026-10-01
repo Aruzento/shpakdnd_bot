@@ -1,0 +1,17 @@
+[Unit]
+Description=Shpak DnD Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shpakbot
+WorkingDirectory=/opt/shpakdnd-bot
+EnvironmentFile=/opt/shpakdnd-bot/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/shpakdnd-bot/.venv/bin/python /opt/shpakdnd-bot/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
