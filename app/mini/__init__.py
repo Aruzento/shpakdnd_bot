@@ -6,6 +6,13 @@ from app.mini.players import (
     touch_mini_player,
 )
 from app.mini.schema import init_mini_db
+from app.mini.wallet import (
+    InsufficientFundsError,
+    add_coins,
+    get_balance,
+    get_wallet_history,
+    spend_coins,
+)
 from app.mini.worlds import (
     get_mini_world,
     is_mini_world,
@@ -14,6 +21,11 @@ from app.mini.worlds import (
 __all__ = [
     "create_mini_player",
     "get_mini_player",
+    "get_balance",
+    "get_wallet_history",
+    "add_coins",
+    "spend_coins",
+    "InsufficientFundsError",
     "get_mini_world",
     "init_mini_db",
     "is_mini_world",

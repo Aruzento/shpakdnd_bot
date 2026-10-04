@@ -19,6 +19,7 @@ from app.mini.players import (
     get_mini_player,
     touch_mini_player,
 )
+from app.mini.wallet import get_wallet_history
 from app.mini.worlds import (
     get_launcher_message_id,
     get_mini_world,
@@ -92,11 +93,15 @@ def _player_menu(
                     callback_data=f"mini:character:{suffix}",
                 ),
                 InlineKeyboardButton(
-                    text="🏆 Рейтинг",
-                    callback_data=f"mini:rating:{suffix}",
+                    text="💰 Кошелёк",
+                    callback_data=f"mini:wallet:{suffix}",
                 ),
             ],
             [
+                InlineKeyboardButton(
+                    text="🏆 Рейтинг",
+                    callback_data=f"mini:rating:{suffix}",
+                ),
                 InlineKeyboardButton(
                     text="🔄 Обновить",
                     callback_data=f"mini:home:{suffix}",
@@ -181,6 +186,44 @@ def _format_home(
         f"🎴 Активный герой: {active_hero}\n"
         f"🪙 {world['currency_name']}: {player['coins']}\n\n"
         "Выбери раздел:"
+    )
+
+
+def _format_wallet_history(
+    history: list[dict],
+) -> str:
+    if not history:
+        return (
+            "История пока пустая.\n"
+            "Первые монеты можно будет получить в дейликах "
+            "и за боссов."
+        )
+
+    lines = []
+
+    for transaction in history:
+        amount = int(transaction["amount"])
+        sign = "+" if amount > 0 else ""
+        reason = transaction["reason"]
+
+        lines.append(
+            f"{sign}{amount} — {reason} "
+            f"→ {transaction['balance_after']}"
+        )
+
+    return "\n".join(lines)
+
+
+def _format_wallet(
+    world: dict,
+    player: dict,
+    history: list[dict],
+) -> str:
+    return (
+        "💰 Кошелёк\n\n"
+        f"🪙 {world['currency_name']}: {player['coins']}\n\n"
+        "Последние операции:\n"
+        f"{_format_wallet_history(history)}"
     )
 
 
@@ -724,6 +767,48 @@ async def home_callback(
             player,
         ),
         reply_markup=_player_menu(
+            callback.from_user.id,
+        ),
+    )
+
+
+@router.callback_query(
+    F.data.startswith("mini:wallet:")
+)
+async def wallet_callback(
+    callback: CallbackQuery,
+):
+    context = await _load_callback_context(
+        callback,
+    )
+
+    if context is None:
+        return
+
+    world, player = context
+
+    history = get_wallet_history(
+        player["id"],
+        limit=10,
+    )
+
+    # Перечитываем игрока: баланс мог измениться между открытием меню
+    # и нажатием на кнопку.
+    player = get_mini_player(
+        world["id"],
+        callback.from_user.id,
+    )
+
+    await callback.answer()
+
+    await _edit_private(
+        callback,
+        _format_wallet(
+            world,
+            player,
+            history,
+        ),
+        reply_markup=_back_menu(
             callback.from_user.id,
         ),
     )

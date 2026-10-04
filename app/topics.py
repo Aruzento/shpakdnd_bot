@@ -31,6 +31,12 @@ TOPIC_SETTINGS = {
                 "@romorosnya": "Зая",
             },
         },
+        2684: {
+	        "admin": "@arukozento",
+            "characters": {
+	        },
+
+        },
     },
     694384548: {
         0: {

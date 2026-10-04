@@ -112,6 +112,7 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                 reason TEXT NOT NULL,
                 reference_type TEXT NOT NULL DEFAULT '',
                 reference_id INTEGER,
+                operation_key TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (player_id)
                     REFERENCES mini_players(id)
@@ -341,6 +342,42 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
             """
             CREATE INDEX IF NOT EXISTS idx_mini_boss_actions_boss
             ON mini_boss_actions (boss_id, id)
+            """
+        )
+
+        wallet_columns = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(mini_wallet_transactions)"
+            ).fetchall()
+        }
+
+        if "operation_key" not in wallet_columns:
+            conn.execute(
+                """
+                ALTER TABLE mini_wallet_transactions
+                ADD COLUMN operation_key TEXT NOT NULL DEFAULT ''
+                """
+            )
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_mini_wallet_player_history
+            ON mini_wallet_transactions (
+                player_id,
+                id DESC
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mini_wallet_operation_key
+            ON mini_wallet_transactions (
+                player_id,
+                operation_key
+            )
+            WHERE operation_key <> ''
             """
         )
 
