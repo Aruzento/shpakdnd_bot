@@ -5,11 +5,6 @@ from app.context import normalize_username
 
 
 def migrate_database_file():
-    """
-    Один раз переименовывает старую базу timers.db в shpakdnd.db.
-
-    Если shpakdnd.db уже существует, ничего не перезаписывает.
-    """
     if DB_PATH.exists():
         return
 
@@ -41,10 +36,6 @@ def create_inventory_table(conn: sqlite3.Connection):
 
 
 def create_character_profiles_table(conn: sqlite3.Connection):
-    """
-    Данные листа персонажа хранятся отдельно для каждой пары
-    chat_id + thread_id + username.
-    """
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS character_profiles (
@@ -60,8 +51,21 @@ def create_character_profiles_table(conn: sqlite3.Connection):
     )
 
 
+def create_characters_table(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS characters (
+            chat_id INTEGER NOT NULL,
+            thread_id INTEGER NOT NULL DEFAULT 0,
+            username TEXT NOT NULL,
+            name TEXT NOT NULL,
+            PRIMARY KEY (chat_id, thread_id, username)
+        )
+        """
+    )
+
+
 def migrate_inventory_table(conn: sqlite3.Connection):
-    """Переводит старый inventory в актуальный формат без потери вещей."""
     legacy_table = "inventory_legacy_migration"
 
     conn.execute(f"DROP TABLE IF EXISTS {legacy_table}")
@@ -254,5 +258,6 @@ def init_db():
         )
 
         create_character_profiles_table(conn)
+        create_characters_table(conn)
 
         conn.commit()

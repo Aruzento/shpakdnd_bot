@@ -1,6 +1,8 @@
+import sqlite3
+
 from aiogram.types import Message
 
-from app.config import GLOBAL_ADMIN_USERNAME
+from app.config import DB_PATH, GLOBAL_ADMIN_USERNAME
 from app.topics import TOPIC_SETTINGS
 
 
@@ -53,10 +55,6 @@ def get_inventory_admin(
     chat_id: int,
     thread_id: int,
 ) -> str | None:
-    """
-    Оставлено для совместимости со старым кодом.
-    Администратор инвентаря = администратор темы.
-    """
     return get_topic_admin(chat_id, thread_id)
 
 
@@ -65,13 +63,37 @@ def get_character_name(
     thread_id: int,
     username: str,
 ) -> str | None:
+    """
+    Сначала ищет персонажа, созданного через /create, в БД.
+    Затем использует старую статическую конфигурацию как fallback.
+    """
+    username = normalize_username(username)
+
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute(
+            """
+            SELECT name
+            FROM characters
+            WHERE chat_id = ?
+              AND thread_id = ?
+              AND username = ?
+            """,
+            (
+                chat_id,
+                thread_id,
+                username,
+            ),
+        ).fetchone()
+
+    if row is not None:
+        return str(row[0])
+
     settings = get_topic_settings(chat_id, thread_id)
 
     if not settings:
         return None
 
     characters = settings.get("characters", {})
-    username = normalize_username(username)
 
     normalized_characters = {
         normalize_username(user): character_name
@@ -85,17 +107,42 @@ def get_topic_characters(
     chat_id: int,
     thread_id: int,
 ) -> dict[str, str]:
+    """
+    Старые персонажи из TOPIC_SETTINGS + созданные через /create.
+    """
     settings = get_topic_settings(chat_id, thread_id)
+    characters = {}
 
-    if not settings:
-        return {}
+    if settings:
+        characters.update(
+            {
+                normalize_username(user): character_name
+                for user, character_name
+                in settings.get("characters", {}).items()
+            }
+        )
 
-    characters = settings.get("characters", {})
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            """
+            SELECT username, name
+            FROM characters
+            WHERE chat_id = ?
+              AND thread_id = ?
+            ORDER BY rowid
+            """,
+            (
+                chat_id,
+                thread_id,
+            ),
+        ).fetchall()
 
-    return {
-        normalize_username(user): character_name
-        for user, character_name in characters.items()
-    }
+    for username, character_name in rows:
+        characters[
+            normalize_username(str(username))
+        ] = str(character_name)
+
+    return characters
 
 
 def can_manage_topic(message: Message) -> bool:

@@ -6,10 +6,12 @@ from app.context import (
     check_topic_admin_permission,
     get_character_name,
     get_thread_id,
+    get_topic_characters,
     normalize_username,
 )
 from app.db.characters import (
     get_character_profile,
+    level_up_all_characters,
     save_character_profile,
 )
 
@@ -163,4 +165,68 @@ async def charset_handler(message: Message):
         f"уровень: {level}\n"
         f"Класс: {class_name}\n"
         f"Раса: {race}"
+    )
+
+
+@router.message(Command("lvlup"))
+async def lvlup_handler(message: Message):
+    """
+    Повышает на 1 уровень всех персонажей текущего чата/темы.
+    Команда доступна только администратору этой темы.
+    """
+
+    if not await check_topic_admin_permission(message):
+        return
+
+    chat_id = message.chat.id
+    thread_id = get_thread_id(message)
+
+    characters = get_topic_characters(
+        chat_id,
+        thread_id,
+    )
+
+    if not characters:
+        await message.answer(
+            "❌ Для этой темы не настроены персонажи."
+        )
+        return
+
+    updated_levels, missing = level_up_all_characters(
+        chat_id,
+        thread_id,
+        list(characters.keys()),
+    )
+
+    if missing:
+        missing_lines = []
+
+        for username in missing:
+            character_name = characters.get(
+                username,
+                username,
+            )
+            missing_lines.append(
+                f"• {character_name} ({username})"
+            )
+
+        await message.answer(
+            "❌ Уровни не изменены.\n\n"
+            "Сначала заполни данные через /charset "
+            "для следующих персонажей:\n"
+            + "\n".join(missing_lines)
+        )
+        return
+
+    result_lines = []
+
+    for username, character_name in characters.items():
+        result_lines.append(
+            f"• {character_name}: "
+            f"{updated_levels[username]} уровень"
+        )
+
+    await message.answer(
+        "⬆️ Все персонажи получили +1 уровень!\n\n"
+        + "\n".join(result_lines)
     )
