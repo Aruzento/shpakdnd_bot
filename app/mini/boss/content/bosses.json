@@ -4,18 +4,76 @@
     {
       "code": "training_golem",
       "name": "Каменный голем",
-      "description": "Тяжёлый каменный страж пробудился у старых ворот. Медленный, но очень живучий — хороший первый противник для отряда.",
-      "max_hp": 300,
-      "min_players": 2,
-      "reward_coins": 60,
+      "description": "Тяжёлый каменный страж пробудился у старых ворот. Медленный, но очень живучий. Победите его и начните мини приключение!",
+      "max_hp": 150,
+      "min_players": 4,
+      "reward_coins": 300,
+      "reward_items": [],
+      "reward_shields": 3,
+      "reward_decay_percent": 10,
+      "image": "training_golem.png",
+      "active": true
+    },
+    {
+      "code": "graveyard_warden",
+      "name": "Смотритель старого кладбища",
+      "description": "Когда-то он охранял кладбищенские ворота. Теперь охраняет всё кладбище сразу — и очень не любит незваных гостей.",
+      "max_hp": 180,
+      "min_players": 3,
+      "reward_coins": 30,
+      "reward_items": [
+        {"code": "boss_coin_pouch", "quantity": 1}
+      ],
+      "reward_shields": 3,
+      "image": "graveyard_warden.png",
+      "active": true
+    },
+    {
+      "code": "swamp_hydra",
+      "name": "Болотная гидра",
+      "description": "Из трясины поднялось многоголовое чудовище. Чем дольше длится бой, тем больше кажется, что голов становится только больше.",
+      "max_hp": 260,
+      "min_players": 4,
+      "reward_coins": 36,
+      "reward_items": [
+        {"code": "boss_coin_pouch", "quantity": 1},
+        {"code": "boss_shard_casket", "quantity": 1}
+      ],
+      "reward_shields": 2,
+      "image": "swamp_hydra.png",
+      "active": true
+    },
+    {
+      "code": "iron_juggernaut",
+      "name": "Железный исполин",
+      "description": "Древняя боевая машина снова заработала. Магическое ядро раскалено, броня почти непробиваема, а команда отключения давно забыта.",
+      "max_hp": 360,
+      "min_players": 5,
+      "reward_coins": 42,
       "reward_items": [
         {"code": "boss_coin_pouch", "quantity": 1},
         {"code": "boss_shard_casket", "quantity": 1}
       ],
       "reward_shields": 3,
-      "reward_decay_percent": 10,
-      "image": "training_golem.png",
+      "image": "iron_juggernaut.png",
+      "active": true
+    },
+    {
+      "code": "crimson_vampire",
+      "name": "Багровый лорд",
+      "description": "Древний вампир покинул свой склеп ради новой охоты. Он слишком долго жил, слишком многое видел и совершенно не планирует умирать сегодня.",
+      "max_hp": 480,
+      "min_players": 5,
+      "reward_coins": 50,
+      "reward_items": [
+        {"code": "boss_coin_pouch", "quantity": 1},
+        {"code": "boss_shard_casket", "quantity": 1}
+      ],
+      "reward_shields": 2,
+      "image": "crimson_vampire.png",
       "active": true
     }
+
+
   ]
 }
