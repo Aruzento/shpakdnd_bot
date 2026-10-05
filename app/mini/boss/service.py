@@ -173,6 +173,20 @@ def set_signup_message(
         conn.commit()
 
 
+def set_turn_message(
+    boss_id: int,
+    message_id: int | None,
+    db_path: str | Path = DB_PATH,
+) -> None:
+    """Сохраняет ID текущего публичного сообщения хода боя."""
+    with connect_mini_db(db_path) as conn:
+        conn.execute(
+            "UPDATE mini_bosses SET turn_message_id = ? WHERE id = ?",
+            (int(message_id) if message_id is not None else None, int(boss_id)),
+        )
+        conn.commit()
+
+
 def list_participants(
     boss_id: int,
     db_path: str | Path = DB_PATH,

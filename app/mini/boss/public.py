@@ -1,10 +1,10 @@
 import json
 
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.mini.boss.catalog import list_boss_reward_items
-from app.mini.boss.service import list_participants
+from app.mini.boss.service import list_participants, set_turn_message
 
 
 STATUS_TEXT = {
@@ -76,6 +76,15 @@ def current_participant(boss: dict, participants: list[dict]) -> dict | None:
     return None
 
 
+def _participant_mention(row: dict | None) -> str:
+    if not row:
+        return "Игрок"
+    username = str(row.get("username") or "").strip()
+    if username:
+        return username
+    return str(row.get("character_name") or "Игрок").strip()
+
+
 def _reward_line(boss: dict) -> str:
     percent = max(0, min(100, int(boss.get("reward_percent", 100))))
     coins = int(boss.get("reward_coins", 0)) * percent // 100
@@ -87,6 +96,7 @@ def _reward_line(boss: dict) -> str:
 
 
 def format_public_boss(boss: dict, participants: list[dict]) -> str:
+    """Статичная карточка босса/регистрации. Текущий ход публикуется отдельно."""
     status = STATUS_TEXT.get(str(boss["status"]), str(boss["status"]))
     minimum = int(boss["min_players"])
     count = len(participants)
@@ -112,19 +122,13 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     elif boss["status"] == "ready":
         lines.extend(["", "Состав зафиксирован. Администратор может начать бой."])
     elif boss["status"] == "fighting":
-        current = current_participant(boss, participants)
-        lines.extend(["", f"🔄 Раунд: {boss['current_round']}"])
-        if current is not None:
-            who = str(current.get("username") or current.get("character_name") or "Игрок")
-            hero = str(current.get("hero_name") or "герой")
-            attack = int(current.get("battle_attack") or 0)
-            lines.extend(
-                [
-                    f"⚔️ Сейчас ход: {who}",
-                    f"🎴 {hero} • атака {attack}",
-                    f"⏳ На ход: {boss['skip_after_hours']} ч.",
-                ]
-            )
+        lines.extend(
+            [
+                "",
+                f"🔄 Раунд: {boss['current_round']}",
+                "⚔️ Актуальный ход публикуется отдельным сообщением внизу темы.",
+            ]
+        )
     elif boss["status"] == "defeated":
         lines.extend(
             [
@@ -148,6 +152,61 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     return "\n".join(lines)[:1024]
 
 
+def format_public_turn(
+    boss: dict,
+    participants: list[dict],
+    *,
+    notice: str = "",
+) -> str:
+    """Сообщение боя, которое всегда видно всей теме и движется вниз после хода."""
+    lines = []
+    notice = str(notice or "").strip()
+    if notice:
+        lines.extend([notice, ""])
+
+    lines.extend(
+        [
+            f"👹 {boss['name']}",
+            f"❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
+            f"🎁 Награда: {_reward_line(boss)}",
+            f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}",
+        ]
+    )
+
+    status = str(boss.get("status") or "")
+    if status == "fighting":
+        current = current_participant(boss, participants)
+        lines.extend(["", f"🔄 Раунд: {boss['current_round']}"])
+        if current is not None:
+            mention = _participant_mention(current)
+            hero = str(current.get("hero_name") or "герой")
+            attack = int(current.get("battle_attack") or 0)
+            lines.extend(
+                [
+                    f"⚔️ Ход: {mention}",
+                    f"🎴 {hero} • атака {attack}",
+                    f"⏳ На ход: {boss['skip_after_hours']} ч.",
+                ]
+            )
+        else:
+            lines.append("⚠️ Не удалось определить текущего игрока.")
+    elif status == "defeated":
+        lines.extend(["", "🏆 Босс повержен!", f"🎁 Итог: {_reward_line(boss)}"])
+    elif status == "failed":
+        shards = max(0, int(boss.get("reward_coins", 0)) // 10)
+        lines.extend(
+            [
+                "",
+                "💀 Бой проигран: награда уничтожена.",
+                f"🧩 Награда за участие: {shards} осколков.",
+            ]
+        )
+    else:
+        lines.extend(["", STATUS_TEXT.get(status, status)])
+
+    return "\n".join(lines)[:4096]
+
+
 def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
     rows = []
     if boss["status"] == "announced":
@@ -163,15 +222,6 @@ def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
                 ),
             ]
         )
-    elif boss["status"] == "fighting":
-        rows.append(
-            [
-                InlineKeyboardButton(
-                    text="⚔️ Ударить босса",
-                    callback_data=f"miniboss:hit:{world_id}:{boss['id']}",
-                )
-            ]
-        )
 
     rows.append(
         [
@@ -184,7 +234,29 @@ def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
+    if boss.get("status") != "fighting":
+        return None
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="⚔️ Ударить босса",
+                    callback_data=f"miniboss:hit:{world_id}:{boss['id']}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="👥 Участники",
+                    callback_data=f"miniboss:list:{world_id}:{boss['id']}",
+                )
+            ],
+        ]
+    )
+
+
 async def refresh_public_boss(bot, world: dict, boss: dict) -> bool:
+    """Обновляет старую статичную карточку регистрации/босса на её месте."""
     message_id = boss.get("signup_message_id")
     if not message_id:
         return False
@@ -217,3 +289,81 @@ async def refresh_public_boss(bot, world: dict, boss: dict) -> bool:
                 f"{type(error).__name__}: {error}"
             )
         return False
+
+
+async def replace_public_turn(
+    bot,
+    world: dict,
+    boss: dict,
+    *,
+    notice: str = "",
+) -> bool:
+    """
+    Публикует свежий публичный ход внизу темы и удаляет предыдущий.
+
+    Новое сообщение отправляется первым: даже если удаление старого не удалось,
+    игроки не останутся без актуального хода.
+    """
+    participants = list_participants(boss["id"])
+    text = format_public_turn(boss, participants, notice=notice)
+    markup = public_turn_menu(world["id"], boss)
+    old_message_id = boss.get("turn_message_id")
+
+    try:
+        sent = await bot.send_message(
+            chat_id=world["chat_id"],
+            message_thread_id=world["thread_id"] or None,
+            text=text,
+            reply_markup=markup,
+        )
+    except TelegramAPIError as error:
+        print(
+            "Boss: не удалось опубликовать публичный ход: "
+            f"{type(error).__name__}: {error}"
+        )
+        return False
+
+    set_turn_message(int(boss["id"]), int(sent.message_id))
+
+    if old_message_id and int(old_message_id) != int(sent.message_id):
+        try:
+            await bot.delete_message(
+                chat_id=world["chat_id"],
+                message_id=int(old_message_id),
+            )
+        except TelegramAPIError as error:
+            print(
+                "Boss: не удалось удалить предыдущий публичный ход: "
+                f"{type(error).__name__}: {error}"
+            )
+
+    boss["turn_message_id"] = int(sent.message_id)
+    return True
+
+
+async def ensure_public_turn(bot, world: dict, boss: dict) -> bool:
+    """Восстанавливает публичное сообщение текущего хода после рестарта бота."""
+    if boss.get("status") != "fighting":
+        return False
+
+    participants = list_participants(boss["id"])
+    text = format_public_turn(boss, participants)
+    markup = public_turn_menu(world["id"], boss)
+    message_id = boss.get("turn_message_id")
+
+    if message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=world["chat_id"],
+                message_id=int(message_id),
+                text=text,
+                reply_markup=markup,
+            )
+            return True
+        except TelegramBadRequest as error:
+            if "message is not modified" in str(error).lower():
+                return True
+        except TelegramAPIError:
+            pass
+
+    return await replace_public_turn(bot, world, boss)

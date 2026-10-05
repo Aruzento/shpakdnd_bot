@@ -24,10 +24,12 @@ from app.mini.boss.combat import (
     start_battle,
 )
 from app.mini.boss.public import (
+    ensure_public_turn,
     format_participants,
     format_public_boss,
     public_boss_menu,
     refresh_public_boss,
+    replace_public_turn,
 )
 from app.mini.boss.service import (
     BossError,
@@ -138,14 +140,6 @@ def _boss_private_menu(
                     callback_data=f"miniboss:join:{world_id}:{boss['id']}",
                 )
             ])
-
-    if boss["status"] == "fighting" and joined:
-        rows.append([
-            InlineKeyboardButton(
-                text="⚔️ Ударить босса",
-                callback_data=f"miniboss:hit:{world_id}:{boss['id']}",
-            )
-        ])
 
     rows.append([
         InlineKeyboardButton(
@@ -349,6 +343,21 @@ async def _show_boss_home(
             boss = timeout_result["state"]["boss"]
             if timeout_result["changed"]:
                 await refresh_public_boss(callback.bot, world, boss)
+                skipped = timeout_result.get("skipped") or []
+                labels = [
+                    str(row.get("username") or row.get("character_name") or "Игрок")
+                    for row in skipped
+                ]
+                notice = (
+                    "⏭ По таймеру пропущен ход: " + ", ".join(labels)
+                    if labels
+                    else "⏭ Просроченный ход пропущен."
+                )
+                await replace_public_turn(
+                    callback.bot, world, boss, notice=notice
+                )
+            else:
+                await ensure_public_turn(callback.bot, world, boss)
         except BossCombatError as error:
             print(f"Boss: ошибка проверки таймера хода: {error}")
 
@@ -805,12 +814,20 @@ async def boss_start_callback(callback: CallbackQuery):
 
     boss = state["boss"]
     await refresh_public_boss(callback.bot, world, boss)
-    player = _load_player(world["id"], callback)
+    await replace_public_turn(
+        callback.bot,
+        world,
+        boss,
+        notice="⚔️ Бой начался!",
+    )
     current = state.get("current")
-    who = (current or {}).get("username") or (current or {}).get("character_name") or "первого игрока"
+    who = (
+        (current or {}).get("username")
+        or (current or {}).get("character_name")
+        or "первого игрока"
+    )
     await callback.answer(f"Бой начался. Ход {who}")
-    if player is not None:
-        await _show_boss_home(callback, world, player)
+    await _delete_current_ephemeral(callback)
 
 
 @router.callback_query(F.data.startswith("miniboss:hit:"))
@@ -841,11 +858,11 @@ async def boss_hit_callback(callback: CallbackQuery):
         refreshed = get_boss(boss_id)
         if refreshed is not None:
             await refresh_public_boss(callback.bot, world, refreshed)
+            await ensure_public_turn(callback.bot, world, refreshed)
         await callback.answer(str(error), show_alert=True)
         return
 
     boss = result["state"]["boss"]
-    await refresh_public_boss(callback.bot, world, boss)
 
     passive_messages = [
         str(event.get("message", "")).strip()
@@ -853,6 +870,30 @@ async def boss_hit_callback(callback: CallbackQuery):
         if str(event.get("message", "")).strip()
     ]
     passive_text = " ".join(passive_messages)
+
+    attacker = (
+        _username_from_user(callback.from_user)
+        or str(player.get("username") or "").strip()
+        or str(player.get("character_name") or "Игрок").strip()
+    )
+    public_parts = [f"💥 {attacker} наносит {result.get('damage', 0)} урона."]
+    if passive_text:
+        public_parts.append(passive_text)
+
+    reward_event = result.get("reward_event")
+    if reward_event:
+        if reward_event.get("type") == "shield":
+            public_parts.append(
+                f"🛡 Босс разбил щит награды. Осталось: {reward_event['shields']}."
+            )
+        elif reward_event.get("type") == "reward_damage":
+            public_parts.append(
+                f"💎 Сохранность награды: {reward_event['reward_percent']}%."
+            )
+        elif reward_event.get("type") == "boss_skip":
+            public_parts.append("🎵 Босс пропустил атаку по награде.")
+
+    public_notice = " ".join(public_parts)
 
     if result.get("battle_ended"):
         if boss["status"] == "defeated":
@@ -873,20 +914,30 @@ async def boss_hit_callback(callback: CallbackQuery):
                 )[:200],
                 show_alert=True,
             )
-        return
+    else:
+        suffix = ""
+        if passive_text:
+            suffix += f" {passive_text}."
+        if reward_event:
+            if reward_event.get("type") == "shield":
+                suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
+            elif reward_event.get("type") == "reward_damage":
+                suffix += f" Награда: {reward_event['reward_percent']}%."
+            elif reward_event.get("type") == "boss_skip":
+                suffix += " 🎵 Босс пропускает атаку по награде."
+        await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
 
-    reward_event = result.get("reward_event")
-    suffix = ""
-    if passive_text:
-        suffix += f" {passive_text}."
-    if reward_event:
-        if reward_event.get("type") == "shield":
-            suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
-        elif reward_event.get("type") == "reward_damage":
-            suffix += f" Награда: {reward_event['reward_percent']}%."
-        elif reward_event.get("type") == "boss_skip":
-            suffix += " 🎵 Босс пропускает атаку по награде."
-    await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
+    # Если удар был сделан из старого личного ephemeral-меню, оно больше
+    # не должно висеть после хода. Публичная карточка следующего хода
+    # появится для всей темы ниже.
+    await _delete_current_ephemeral(callback)
+    await refresh_public_boss(callback.bot, world, boss)
+    await replace_public_turn(
+        callback.bot,
+        world,
+        boss,
+        notice=public_notice,
+    )
 
 
 @router.callback_query(F.data.startswith("miniboss:republish:"))
