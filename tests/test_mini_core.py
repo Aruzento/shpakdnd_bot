@@ -5,6 +5,7 @@ from pathlib import Path
 
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
+from app.mini.db import connect_mini_db
 from app.mini.players import create_mini_player
 from app.mini.schema import MINI_TABLES, init_mini_db
 from app.mini.wallet import (
@@ -108,7 +109,7 @@ class MiniCoreTests(unittest.TestCase):
     def test_all_mini_tables_are_created(self):
         import sqlite3
 
-        with sqlite3.connect(self.db) as conn:
+        with connect_mini_db(self.db) as conn:
             existing = {
                 row[0]
                 for row in conn.execute(

@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.mini.catalog import load_hero_catalog
 
 
@@ -150,7 +151,7 @@ def upgrade_hero(
     db_path: str | Path = DB_PATH,
 ) -> dict:
     """Тратит осколки конкретного героя и повышает его звёзды на 1."""
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
@@ -244,7 +245,7 @@ def sell_hero_shards(
     operation_key = str(operation_key or "").strip()
     wallet_operation_key = f"shardsell:{operation_key}" if operation_key else ""
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")

@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.mini.catalog import load_hero_catalog
 from app.mini.heroes import sync_hero_catalog
 
@@ -92,7 +93,7 @@ def get_gacha_state(
     settings = _settings()
     ticket_code = str(settings["ticket_item_code"])
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         player = conn.execute(
             "SELECT coins, active_hero_id FROM mini_players WHERE id = ?",
@@ -166,7 +167,7 @@ def perform_gacha_pull(
 
     hero_code = _choose_hero_code()
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")

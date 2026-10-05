@@ -1,5 +1,4 @@
 import os
-import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +15,7 @@ from app.mini.hero_upgrades import (
     upgrade_hero,
 )
 from app.mini.heroes import get_active_hero, get_player_hero, sync_hero_catalog
+from app.mini.db import connect_mini_db
 from app.mini.players import create_mini_player
 from app.mini.schema import init_mini_db
 from app.mini.wallet import get_balance, get_wallet_history
@@ -38,7 +38,7 @@ class MiniHeroUpgradeTests(unittest.TestCase):
         )
         sync_hero_catalog(self.db)
 
-        with sqlite3.connect(self.db) as conn:
+        with connect_mini_db(self.db) as conn:
             hero_id = int(conn.execute(
                 "SELECT id FROM mini_heroes WHERE code = 'Villager'"
             ).fetchone()[0])
@@ -63,7 +63,7 @@ class MiniHeroUpgradeTests(unittest.TestCase):
 
     def test_existing_database_gets_stars_column(self):
         old_db = Path(self.tempdir.name) / "old_schema.db"
-        with sqlite3.connect(old_db) as conn:
+        with connect_mini_db(old_db) as conn:
             conn.execute(
                 """
                 CREATE TABLE mini_player_heroes (
@@ -80,7 +80,7 @@ class MiniHeroUpgradeTests(unittest.TestCase):
 
         init_mini_db(old_db)
 
-        with sqlite3.connect(old_db) as conn:
+        with connect_mini_db(old_db) as conn:
             columns = {
                 row[1]
                 for row in conn.execute(
@@ -133,7 +133,7 @@ class MiniHeroUpgradeTests(unittest.TestCase):
             upgrade_hero(self.player["id"], self.hero_id, self.db)
 
     def test_upgrade_requires_enough_shards(self):
-        with sqlite3.connect(self.db) as conn:
+        with connect_mini_db(self.db) as conn:
             conn.execute(
                 "UPDATE mini_player_heroes SET shards = 9 WHERE player_id = ? AND hero_id = ?",
                 (self.player["id"], self.hero_id),

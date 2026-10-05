@@ -72,7 +72,7 @@ class MiniGachaTests(unittest.TestCase):
     def test_duplicate_adds_copy_and_shards(self):
         add_coins(self.player["id"], 100, "Тест", db_path=self.db)
 
-        with patch("app.mini.gacha._choose_hero_code", return_value="grimble_spark"):
+        with patch("app.mini.gacha._choose_hero_code", return_value="Villager"):
             first = perform_gacha_pull(
                 self.player["id"], "coins", self.db
             )
@@ -98,7 +98,7 @@ class MiniGachaTests(unittest.TestCase):
         state = get_gacha_state(self.player["id"], self.db)
         self.assertEqual(state["tickets"], 1)
 
-        with patch("app.mini.gacha._choose_hero_code", return_value="elira_moonleaf"):
+        with patch("app.mini.gacha._choose_hero_code", return_value="CityBlacksmith"):
             result = perform_gacha_pull(
                 self.player["id"], "ticket", self.db
             )
@@ -125,15 +125,15 @@ class MiniGachaTests(unittest.TestCase):
 
         with patch("app.mini.gacha._choose_hero_code", return_value="Villager"):
             first = perform_gacha_pull(self.player["id"], "coins", self.db)
-        with patch("app.mini.gacha._choose_hero_code", return_value="elira_moonleaf"):
+        with patch("app.mini.gacha._choose_hero_code", return_value="CityBlacksmith"):
             second = perform_gacha_pull(self.player["id"], "coins", self.db)
 
         hero = get_player_hero(self.player["id"], second["id"], self.db)
         selected = set_active_hero(self.player["id"], hero["id"], self.db)
-        self.assertEqual(selected["code"], "elira_moonleaf")
+        self.assertEqual(selected["code"], "CityBlacksmith")
         self.assertEqual(
             get_active_hero(self.player["id"], self.db)["code"],
-            "elira_moonleaf",
+            "CityBlacksmith",
         )
 
         with self.assertRaises(ValueError):

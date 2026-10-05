@@ -3,6 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.mini.catalog import load_shop_catalog
 
 
@@ -36,7 +37,7 @@ def sync_shop_catalog(
     catalog = load_shop_catalog()
     categories = _category_map(catalog)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
 
         catalog_codes = []
@@ -166,7 +167,7 @@ def get_shop_categories(
 ) -> list[dict]:
     catalog = sync_shop_catalog(world_id, db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         rows = conn.execute(
             """
             SELECT metadata_json, COUNT(*)
@@ -212,7 +213,7 @@ def get_offers_by_category(
 ) -> list[dict]:
     sync_shop_catalog(world_id, db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -239,7 +240,7 @@ def get_offer(
 ) -> dict | None:
     sync_shop_catalog(world_id, db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -258,7 +259,7 @@ def get_offer_purchase_count(
     offer_id: int,
     db_path: str | Path = DB_PATH,
 ) -> int:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         row = conn.execute(
             """
             SELECT COALESCE(SUM(quantity), 0)
@@ -278,7 +279,7 @@ def purchase_offer(
 ) -> dict:
     sync_shop_catalog(world_id, db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
@@ -437,7 +438,7 @@ def get_player_goods(
     player_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         inventory_rows = conn.execute(

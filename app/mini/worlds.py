@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.topics import TOPIC_SETTINGS
 
 
@@ -12,7 +13,7 @@ def register_mini_world(
     db_path: str | Path = DB_PATH,
 ) -> int:
     """Создаёт или включает Mini-мир для конкретного Telegram-чата/темы."""
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute(
             """
             INSERT INTO mini_worlds (
@@ -96,7 +97,7 @@ def get_mini_world(
     thread_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         row = conn.execute(
@@ -130,7 +131,7 @@ def get_mini_world_by_id(
     world_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         row = conn.execute(
@@ -195,7 +196,7 @@ def get_launcher_message_id(
     world_id: int,
     db_path: str | Path = DB_PATH,
 ) -> int | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         row = conn.execute(
             """
             SELECT launcher_message_id
@@ -216,7 +217,7 @@ def set_launcher_message_id(
     message_id: int | None,
     db_path: str | Path = DB_PATH,
 ) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute(
             """
             UPDATE mini_worlds

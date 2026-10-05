@@ -4,6 +4,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from app.config import DB_PATH, TIMEZONE
+from app.mini.db import connect_mini_db
 
 
 ENEMIES = (
@@ -188,7 +189,7 @@ def get_daily_claim(
 ) -> dict | None:
     day = _normalize_claim_date(claim_date)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         row = conn.execute(
@@ -240,7 +241,7 @@ def claim_daily(
     day = _normalize_claim_date(claim_date)
     character_name = " ".join(character_name.strip().split())
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")

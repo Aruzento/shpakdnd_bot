@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 
 
 def get_mini_player(
@@ -9,7 +10,7 @@ def get_mini_player(
     telegram_user_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         row = conn.execute(
@@ -53,7 +54,7 @@ def create_mini_player(
     if not character_name:
         raise ValueError("Имя персонажа не может быть пустым.")
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         existing = conn.execute(
             """
             SELECT id
@@ -112,7 +113,7 @@ def touch_mini_player(
     username: str,
     db_path: str | Path = DB_PATH,
 ) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute(
             """
             UPDATE mini_players

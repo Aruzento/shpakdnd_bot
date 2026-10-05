@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
@@ -24,7 +25,7 @@ MINI_TABLES = (
 
 def init_mini_db(db_path: str | Path = DB_PATH) -> None:
     """Создаёт отдельный набор таблиц D&D Mini, не трогая обычный D&D."""
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
 
         conn.execute(

@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 
 
 class InsufficientFundsError(ValueError):
@@ -12,7 +13,7 @@ def get_balance(
     player_id: int,
     db_path: str | Path = DB_PATH,
 ) -> int:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         row = conn.execute(
             """
             SELECT coins
@@ -35,7 +36,7 @@ def get_wallet_history(
 ) -> list[dict]:
     limit = max(1, min(int(limit), 50))
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
 
         rows = conn.execute(
@@ -93,7 +94,7 @@ def change_balance(
     if not reason:
         raise ValueError("Не указана причина изменения баланса.")
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
 

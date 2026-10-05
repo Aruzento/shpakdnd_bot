@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.mini.wallet import add_coins
 
 
@@ -19,7 +20,7 @@ def get_mini_player_by_username(
 ) -> dict | None:
     username = _normalize_username(username)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -76,7 +77,7 @@ def grant_mini_item(
 ) -> dict:
     item_id = int(item_id)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
@@ -176,7 +177,7 @@ def grant_mini_item(
 def list_mini_items(
     db_path: str | Path = DB_PATH,
 ) -> list[dict]:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """

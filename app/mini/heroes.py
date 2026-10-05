@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.db import connect_mini_db
 from app.mini.catalog import hero_image_path, load_hero_catalog
 from app.mini.hero_upgrades import calculate_attack, hero_upgrade_state
 
@@ -10,7 +11,7 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
     catalog = load_hero_catalog()
     heroes = catalog["heroes"]
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         catalog_codes = []
 
@@ -78,7 +79,7 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
 
 
 def get_hero_by_code(code: str, db_path: str | Path = DB_PATH) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -118,7 +119,7 @@ def get_hero_by_id(
     hero_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT * FROM mini_heroes WHERE id = ?",
@@ -134,7 +135,7 @@ def get_player_heroes(
     """Все полученные герои игрока, включая выключенных из текущей гачи."""
     sync_hero_catalog(db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -168,7 +169,7 @@ def get_player_hero(
     hero_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -193,7 +194,7 @@ def get_active_hero(
     player_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict | None:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
@@ -214,7 +215,7 @@ def set_active_hero(
     hero_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
 
@@ -249,7 +250,7 @@ def get_collection_summary(
 ) -> dict:
     sync_hero_catalog(db_path)
 
-    with sqlite3.connect(db_path) as conn:
+    with connect_mini_db(db_path) as conn:
         owned = int(conn.execute(
             "SELECT COUNT(*) FROM mini_player_heroes WHERE player_id = ?",
             (int(player_id),),
