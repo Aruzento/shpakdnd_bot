@@ -615,24 +615,12 @@ async def _load_extended_context(
 
 
 def _replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
-    """Параметры для нового ephemeral-сообщения вместо текущего."""
-    message = callback.message
-    if message is not None and message.ephemeral_message_id is not None:
-        return {
-            "reply_parameters": ReplyParameters(
-                ephemeral_message_id=message.ephemeral_message_id,
-            ),
-            "ephemeral_message_parameters": EphemeralMessageParameters(
-                receiver_user_id=callback.from_user.id,
-            ),
-        }
-
-    # Резерв для callback из публичного сообщения. Launcher использует
-    # отдельный helper и сюда обычно не попадает.
+    """Параметры нового ephemeral-сообщения по текущему callback."""
     return {
         "ephemeral_message_parameters": EphemeralMessageParameters(
             receiver_user_id=callback.from_user.id,
             callback_query_id=callback.id,
+            replace_callback_query_message=False,
         ),
     }
 
