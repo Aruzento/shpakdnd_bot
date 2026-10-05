@@ -18,6 +18,7 @@ CURRENT_HERO_PASSIVE_KEYS = {
     "hunters_mark",
     "leaping_thrust",
     "execution_protocol",
+    "mockery",
 }
 
 
@@ -175,6 +176,28 @@ class BossAbilityEngineTests(unittest.TestCase):
         )
         self.assertEqual(success["bonus_shards"], 30)
         self.assertEqual(fail["bonus_shards"], 0)
+
+
+    def test_mockery_every_third_hit_queues_boss_skip_without_damage_bonus(self):
+        second = resolve_attack(
+            "mockery",
+            base_damage=150,
+            hit_number=2,
+            boss_hp_before=500,
+            boss_max_hp=500,
+        )
+        third = resolve_attack(
+            "mockery",
+            base_damage=150,
+            hit_number=3,
+            boss_hp_before=500,
+            boss_max_hp=500,
+        )
+        self.assertEqual(second["damage"], 150)
+        self.assertEqual(second["boss_skip_turns"], 0)
+        self.assertEqual(third["damage"], 150)
+        self.assertEqual(third["boss_skip_turns"], 1)
+        self.assertTrue(third["events"])
 
     def test_unknown_passive_fails_safe(self):
         result = resolve_attack(

@@ -41,6 +41,7 @@ def resolve_attack(
     max_hp = max(1, int(boss_max_hp))
     roller = roller or _roll_success
     events: list[dict] = []
+    boss_skip_turns = 0
 
     for effect in ability["effects"]:
         if effect.get("trigger") != "attack":
@@ -79,6 +80,17 @@ def resolve_attack(
             else:
                 triggered = hp_percent <= threshold
 
+        elif effect_type == "every_n_boss_skip":
+            every = max(1, int(effect.get("every", 1)))
+            if hit_number % every == 0:
+                turns = max(1, int(effect.get("turns", 1)))
+                boss_skip_turns += turns
+                event = _event(effect)
+                event["turns"] = turns
+                events.append(event)
+            # Эта пассивка не меняет урон.
+            continue
+
         if triggered:
             damage = _multiply_damage(
                 damage,
@@ -92,6 +104,7 @@ def resolve_attack(
         "configured": bool(ability["configured"]),
         "base_damage": max(1, int(base_damage)),
         "damage": damage,
+        "boss_skip_turns": boss_skip_turns,
         "events": events,
     }
 

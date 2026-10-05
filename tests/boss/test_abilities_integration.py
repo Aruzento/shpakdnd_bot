@@ -1,7 +1,7 @@
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -137,6 +137,91 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             self.world_id, self.player1["telegram_user_id"], self.db
         )
         self.assertEqual(player["shards"], 30)
+
+    def test_mockery_every_third_hit_skips_next_boss_reward_attack(self):
+        with connect_mini_db(self.db) as conn:
+            hero_id = int(
+                conn.execute(
+                    """
+                    SELECT hero_id
+                    FROM mini_boss_participants
+                    WHERE boss_id = ? AND player_id = ?
+                    """,
+                    (self.boss["id"], self.player1["id"]),
+                ).fetchone()[0]
+            )
+            conn.execute(
+                "UPDATE mini_heroes SET passive_key = 'mockery' WHERE id = ?",
+                (hero_id,),
+            )
+            conn.execute(
+                """
+                UPDATE mini_bosses
+                SET max_hp = 1000, current_hp = 1000,
+                    reward_shields = 3, reward_shields_max = 3,
+                    reward_percent = 100
+                WHERE id = ?
+                """,
+                (self.boss["id"],),
+            )
+            conn.commit()
+
+        results = []
+        minute = 1
+        for _ in range(3):
+            results.append(
+                hit_boss(
+                    self.boss["id"],
+                    self.player1["id"],
+                    now=self.now + timedelta(minutes=minute),
+                    db_path=self.db,
+                )
+            )
+            minute += 1
+            results.append(
+                hit_boss(
+                    self.boss["id"],
+                    self.player2["id"],
+                    now=self.now + timedelta(minutes=minute),
+                    db_path=self.db,
+                )
+            )
+            minute += 1
+
+        third_lazar_hit = results[4]
+        end_of_third_round = results[5]
+        self.assertEqual(third_lazar_hit["boss_skip_turns"], 1)
+        self.assertEqual(
+            end_of_third_round["reward_event"]["type"],
+            "boss_skip",
+        )
+        self.assertEqual(
+            end_of_third_round["state"]["boss"]["reward_shields"],
+            1,
+        )
+
+        with connect_mini_db(self.db) as conn:
+            queued = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*) FROM mini_boss_actions
+                    WHERE boss_id = ? AND action_type = 'boss_skip_queued'
+                    """,
+                    (self.boss["id"],),
+                ).fetchone()[0]
+            )
+            consumed = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*) FROM mini_boss_actions
+                    WHERE boss_id = ? AND action_type = 'boss_skip_consumed'
+                    """,
+                    (self.boss["id"],),
+                ).fetchone()[0]
+            )
+        self.assertEqual(queued, 1)
+        self.assertEqual(consumed, 1)
+
 
 
 if __name__ == "__main__":

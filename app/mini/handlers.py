@@ -1445,33 +1445,41 @@ async def character_callback(callback: CallbackQuery):
     if active is None:
         hero_text = (
             "🎴 Активный герой: пока не выбран\n"
-            "Раса: —\n"
-            "Класс: —\n"
             "⚔️ Атака: —"
         )
     else:
         hero_text = (
             f"🎴 Активный герой: {active['name']}\n"
-            f"Раса: {active.get('race', '')}\n"
-            f"Класс: {active.get('class_name', '')}\n"
             f"⚔️ Атака: {active.get('attack', 1)}"
         )
         if active.get("passive_text"):
             hero_text += f"\nПассивка: {active['passive_text']}"
 
-    await callback.answer()
-    await _edit_private(
-        callback,
+    text = (
         "👤 Mini-персонаж\n\n"
         f"Имя: {player['character_name']}\n"
         f"Игрок: {username}\n"
         f"{hero_text}\n"
         f"🪙 Монеты: {player['coins']}\n"
-        f"🧩 Осколки: {player['shards']}\n\n"
-        "Уровень в D&D Mini фиксированный. "
-        "Раса и класс определяются активным героем.",
-        _back_menu(world["id"], callback.from_user.id),
+        f"🧩 Осколки: {player['shards']}"
     )
+    markup = _back_menu(world["id"], callback.from_user.id)
+
+    await callback.answer()
+    if active is not None:
+        await _send_hero_card(
+            callback,
+            world,
+            active,
+            text,
+            markup,
+        )
+    else:
+        await _edit_private(
+            callback,
+            text,
+            markup,
+        )
 
 
 async def _not_ready(callback: CallbackQuery, text: str):

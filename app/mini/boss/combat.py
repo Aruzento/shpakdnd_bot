@@ -334,6 +334,59 @@ def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetim
     return result
 
 
+def _consume_pending_boss_skip(
+    conn: sqlite3.Connection,
+    boss: sqlite3.Row,
+    when: datetime,
+) -> dict | None:
+    """Тратит один накопленный пропуск хода босса, если такой есть."""
+    consumed = int(
+        conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM mini_boss_actions
+            WHERE boss_id = ? AND action_type = 'boss_skip_consumed'
+            """,
+            (int(boss["id"]),),
+        ).fetchone()[0]
+    )
+    queued = conn.execute(
+        """
+        SELECT player_id
+        FROM mini_boss_actions
+        WHERE boss_id = ? AND action_type = 'boss_skip_queued'
+        ORDER BY id
+        LIMIT 1 OFFSET ?
+        """,
+        (int(boss["id"]), consumed),
+    ).fetchone()
+    if queued is None:
+        return None
+
+    source_player_id = int(queued["player_id"])
+    conn.execute(
+        """
+        INSERT INTO mini_boss_actions (
+            boss_id, player_id, round_number, action_type,
+            damage, boss_hp_after, created_at
+        ) VALUES (?, ?, ?, 'boss_skip_consumed', 0, ?, ?)
+        """,
+        (
+            int(boss["id"]),
+            source_player_id,
+            int(boss["current_round"]),
+            int(boss["current_hp"]),
+            _db_time(when),
+        ),
+    )
+    return {
+        "type": "boss_skip",
+        "source_player_id": source_player_id,
+        "shields": int(boss["reward_shields"]),
+        "reward_percent": int(boss["reward_percent"]),
+    }
+
+
 def _advance_after_turn(
     conn: sqlite3.Connection,
     boss: sqlite3.Row,
@@ -356,7 +409,9 @@ def _advance_after_turn(
         )
         return {"round_ended": False, "battle_ended": False}
 
-    reward_event = _boss_hits_reward(conn, boss, when)
+    reward_event = _consume_pending_boss_skip(conn, boss, when)
+    if reward_event is None:
+        reward_event = _boss_hits_reward(conn, boss, when)
     if reward_event.get("battle_ended"):
         return {
             "round_ended": True,
@@ -654,6 +709,7 @@ def hit_boss(
         )
         damage = int(attack_resolution["damage"])
         passive_events = list(attack_resolution["events"])
+        boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
         hp_after = max(0, int(boss["current_hp"]) - damage)
         conn.execute(
             """
@@ -683,6 +739,22 @@ def hit_boss(
                 _db_time(now),
             ),
         )
+        for _ in range(boss_skip_turns):
+            conn.execute(
+                """
+                INSERT INTO mini_boss_actions (
+                    boss_id, player_id, round_number, action_type,
+                    damage, boss_hp_after, created_at
+                ) VALUES (?, ?, ?, 'boss_skip_queued', 0, ?, ?)
+                """,
+                (
+                    int(boss_id),
+                    int(player_id),
+                    int(boss["current_round"]),
+                    hp_after,
+                    _db_time(now),
+                ),
+            )
 
         reward_event = None
         rewards = None
@@ -723,6 +795,7 @@ def hit_boss(
         "passive_key": passive_key,
         "passive_name": attack_resolution["passive_name"],
         "passive_events": passive_events,
+        "boss_skip_turns": boss_skip_turns,
         "bonus_shards": bonus_shards,
         "boss_hp_after": hp_after,
         "battle_ended": battle_ended,

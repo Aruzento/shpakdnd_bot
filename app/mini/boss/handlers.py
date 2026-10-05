@@ -884,6 +884,8 @@ async def boss_hit_callback(callback: CallbackQuery):
             suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
         elif reward_event.get("type") == "reward_damage":
             suffix += f" Награда: {reward_event['reward_percent']}%."
+        elif reward_event.get("type") == "boss_skip":
+            suffix += " 🎵 Босс пропускает атаку по награде."
     await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
 
 
