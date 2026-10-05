@@ -4,7 +4,9 @@ from aiogram.types import Message
 
 from app.context import (
     check_global_admin_permission,
+    check_topic_admin_permission,
     get_character_name,
+    get_thread_id,
     normalize_username,
 )
 from app.db.characters import save_character_profile
@@ -18,6 +20,14 @@ from app.services.inventory import (
     format_inventory_item,
     parse_inventory_item,
 )
+from app.mini.admin_grants import (
+    get_mini_player_by_username,
+    grant_mini_coins,
+    grant_mini_item,
+    list_mini_items,
+)
+from app.mini.shop import sync_shop_catalog
+from app.mini.worlds import get_mini_world
 from app.topics import TOPIC_SETTINGS
 
 
@@ -124,8 +134,127 @@ async def resolve_target(
     )
 
 
+def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
+    """
+    Mini-форматы:
+    /admadd @user -c 100
+    /admadd @user -c "100"
+    /admadd @user -i 3
+    """
+    if not message.text:
+        return None
+
+    parts = message.text.split(maxsplit=3)
+    if len(parts) != 4:
+        return None
+
+    username = parts[1].strip()
+    flag = parts[2].strip().lower()
+    value = parts[3].strip()
+
+    if not username.startswith("@") or flag not in {"-c", "-i"}:
+        return None
+
+    if (
+        len(value) >= 2
+        and value[0] == value[-1]
+        and value[0] in {'"', "'"}
+    ):
+        value = value[1:-1].strip()
+
+    return username, flag, value
+
+
+async def _handle_mini_admadd(message: Message) -> bool:
+    parsed = _parse_mini_admadd(message)
+    if parsed is None:
+        return False
+
+    chat_id = message.chat.id
+    thread_id = get_thread_id(message)
+    world = get_mini_world(chat_id, thread_id)
+
+    if world is None or not world["enabled"]:
+        await message.answer(
+            "❌ Этот формат /admadd работает только в теме D&D Mini."
+        )
+        return True
+
+    if not await check_topic_admin_permission(message):
+        return True
+
+    username, flag, raw_value = parsed
+    player = get_mini_player_by_username(
+        world["id"],
+        username,
+    )
+
+    if player is None:
+        await message.answer(
+            f"❌ Mini-игрок {normalize_username(username)} не найден в этой теме.\n"
+            "Игрок должен сначала создать Mini-персонажа."
+        )
+        return True
+
+    try:
+        value = int(raw_value)
+    except ValueError:
+        await message.answer(
+            "❌ Значение должно быть целым числом.\n\n"
+            "Примеры:\n"
+            "/admadd @user -c 100\n"
+            "/admadd @user -i 3"
+        )
+        return True
+
+    if flag == "-c":
+        if value <= 0:
+            await message.answer("❌ Количество монет должно быть больше 0.")
+            return True
+
+        admin_username = (
+            "@" + message.from_user.username.lower()
+            if message.from_user and message.from_user.username
+            else "@admin"
+        )
+
+        result = grant_mini_coins(
+            player["id"],
+            value,
+            admin_username,
+        )
+
+        await message.answer(
+            f"✅ {player['character_name']} ({player['username']}) получил "
+            f"{value} 🪙\n"
+            f"Баланс: {result['balance']} 🪙"
+        )
+        return True
+
+    sync_shop_catalog(world["id"])
+
+    try:
+        item = grant_mini_item(
+            player["id"],
+            value,
+        )
+    except ValueError as error:
+        await message.answer(f"❌ {error}")
+        return True
+
+    await message.answer(
+        f"✅ {player['character_name']} ({player['username']}) получил предмет:\n"
+        f"#{item['id']} — {item['name']}\n"
+        f"Теперь в инвентаре: {item['quantity']} шт."
+    )
+    return True
+
+
 @router.message(Command("admadd"))
 async def admadd_handler(message: Message):
+    if await _handle_mini_admadd(message):
+        return
+
     if not await check_global_admin_permission(message):
         return
 
@@ -205,6 +334,45 @@ async def admadd_handler(message: Message):
         f"🎒 {character_name} получил:\n\n"
         + "\n".join(added_lines)
     )
+
+
+@router.message(Command("admitems"))
+async def admitems_handler(message: Message):
+    chat_id = message.chat.id
+    thread_id = get_thread_id(message)
+    world = get_mini_world(chat_id, thread_id)
+
+    if world is None or not world["enabled"]:
+        await message.answer("❌ Команда /admitems работает только в теме D&D Mini.")
+        return
+
+    if not await check_topic_admin_permission(message):
+        return
+
+    sync_shop_catalog(world["id"])
+    items = list_mini_items()
+
+    if not items:
+        await message.answer("В базе Mini пока нет предметов.")
+        return
+
+    lines = ["🎒 Предметы Mini в базе:", ""]
+    for item in items:
+        status = "✅" if item["active"] else "⛔"
+        lines.append(
+            f"{status} #{item['id']} — {item['name']} "
+            f"[{item['code']}]"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Выдать предмет:",
+            "/admadd @user -i ID",
+        ]
+    )
+
+    await message.answer("\n".join(lines))
 
 
 @router.message(Command("admdel"))

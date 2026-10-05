@@ -291,7 +291,7 @@
       "rarity": "rare",
       "race": "человек",
       "class_name": "воин",
-      "attack": 7,
+      "attack": 40,
       "passive_key": "silver_edge",
       "passive_text": "Серебряное оружие накапливает силу. Каждый третий удар наносит двойной урон.",
       "description": "Сука. Как я тут очутился, вот же срань.",
@@ -304,7 +304,7 @@
       "rarity": "rare",
       "race": "человек",
       "class_name": "следопыт",
-      "attack": 7,
+      "attack": 32,
       "passive_key": "hunters_mark",
       "passive_text": "Первым выстрелом помечает цель. Все последующие атаки по ней наносят на 25% больше урона.",
       "description": "Пади щупальце мерзотное! Любой ценой, любой стрелой!",
@@ -317,11 +317,26 @@
       "rarity": "rare",
       "race": "жаболюд",
       "class_name": "воин",
-      "attack": 7,
+      "attack": 35,
       "passive_key": "leaping_thrust",
       "passive_text": "Каждый третий удар жаболюд совершает прыжок с копьём и атакует дважды.",
       "description": "Суки, мы не так договаривались! Почему меня призвали из лужи? Почему лужа жёлтая??",
       "image": "frog_man_spearman.png",
+      "active": true
+    },
+
+
+    {
+      "code": "Asrael",
+      "name": "Азраэль",
+      "rarity": "legendary",
+      "race": "тифлинг",
+      "class_name": "плут",
+      "attack": 150,
+      "passive_key": "execution_protocol",
+      "passive_text": "Ликвидация: наносит на 50% больше урона боссу, если у него осталось меньше 20% здоровья. Если этот персонаж наносит смертельный удар, есть 10% шанс дополнительно получить 30 осколков.",
+      "description": "Лутаемся? Лутаемся!",
+      "image": "Asrael.png",
       "active": true
     }
     

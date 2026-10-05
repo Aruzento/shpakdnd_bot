@@ -1,2 +1,0 @@
-Base: D&D Mini Step 6 Gacha artifact built from GitHub main 88e9246884820b3174151fc374d142a2b9155643.
-Step 7 also incorporates the user-provided heroes.json and adds star upgrades/shard sales.
