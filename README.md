@@ -1,111 +1,128 @@
 # shpakdnd_bot
 
-Telegram-бот для D&D на `aiogram`.
+Готовая сборка Telegram-бота для D&D-чата.
 
-Эта версия — тот же бот из текущего `main`, но монолитный `bot.py` разнесён по модулям без намеренного изменения пользовательской логики.
+## Что уже работает
 
-## Структура
+Обычные функции бота:
 
-```text
-bot.py                       # только запуск приложения
-app/
-├── config.py                # .env, БД, часовой пояс, кубики
-├── topics.py                # чаты, темы, админы, персонажи
-├── context.py               # работа с chat_id/thread_id и правами
-├── db/
-│   ├── schema.py            # создание/миграция SQLite
-│   ├── inventory.py         # запросы инвентаря
-│   └── timers.py            # сохранение таймеров
-├── services/
-│   ├── inventory.py         # парсинг и вывод предметов
-│   └── timers.py            # логика обратного отсчёта
-└── handlers/
-    ├── common.py            # /start, /chatid, /roll
-    ├── inventory.py         # /add, /del, /inv, /clean
-    └── timers.py            # /timer, /stop
+- `/timer`, `/stop`
+- `/roll`
+- `/add`, `/del`, `/inv`, `/clean`
+- `/char`, `/charset`, `/lvlup`
+- `/create`
+- глобальные `/admadd`, `/admdel`, `/admclean`, `/admcharset`
 
-tests/
-└── test_inventory_parser.py
+D&D Mini:
 
-deploy/                      # примеры systemd для VDS
+- отдельный Mini-мир в теме `2684` чата `-1003376315265`;
+- администратор Mini-темы — `@arukozento`;
+- публичный закреп-launcher через `/minipanel`;
+- кнопка `🎮 Открыть D&D Mini`;
+- персональное ephemeral-меню для каждого игрока;
+- Mini-персонаж;
+- отдельный кошелёк и история операций;
+- заготовленные таблицы под дейлики, магазин, гачу и боссов;
+- пропуск хода босса заложен на 4 часа;
+- Mini полностью отделён от обычных персонажей и инвентаря.
+
+## Главное исправление этой сборки
+
+Mini-тему больше не нужно отдельно регистрировать командой на сервере.
+
+В `app/topics.py` у темы стоит:
+
+```python
+"mini": True,
+"mini_name": "D&D Mini",
 ```
 
-## Данные
+При каждом старте бот сам создаёт/включает соответствующий `mini_worlds`.
 
-Рабочие данные по-прежнему лежат в корне проекта в `timers.db` и не коммитятся в Git.
+Callback-кнопки персонального меню теперь содержат `world_id`, поэтому после
+перехода в ephemeral-сообщение бот не зависит от того, передал ли Telegram
+`message_thread_id` в callback.
 
-Таблица `inventory` хранит:
+## Установка / обновление на сервере
 
-```text
-chat_id
-thread_id
-username
-name
-quantity
-description
-```
-
-При обнаружении старой структуры таблицы миграция выполняется автоматически при запуске.
-
-## Настройка
-
-Скопировать `.env.example` в `.env` и заполнить токен:
-
-```env
-BOT_TOKEN=...
-BOT_TIMEZONE=Europe/Moscow
-```
-
-Персонажи и администраторы тем настраиваются в:
-
-```text
-app/topics.py
-```
-
-## Запуск
+Перед заменой файлов сделай резервную копию базы:
 
 ```bash
-python -m venv .venv
+cd /opt/shpakdnd-bot
+cp shpakdnd.db shpakdnd.db.backup
 ```
 
-Windows:
+Распакуй содержимое архива в `/opt/shpakdnd-bot`, но НЕ удаляй:
 
-```powershell
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python bot.py
-```
+- `.env`
+- `shpakdnd.db`
 
-Linux:
+Установи зависимости:
 
 ```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-python bot.py
+cd /opt/shpakdnd-bot
+./.venv/bin/pip install -r requirements.txt
 ```
 
-## Проверка
-
-Проверка синтаксиса всего проекта:
+Проверь сборку без запуска polling:
 
 ```bash
-python -m compileall -q bot.py app tests
+sudo -u shpakbot ./.venv/bin/python check_bot.py
 ```
 
-Тест парсера инвентаря:
-
-```bash
-python -m unittest
-```
-
-## VDS
-
-Точка входа по-прежнему `bot.py`, поэтому существующий `systemd`-сервис с:
+Должна появиться строка примерно:
 
 ```text
-ExecStart=/opt/shpakdnd-bot/.venv/bin/python /opt/shpakdnd-bot/bot.py
+OK: D&D Mini: chat=-1003376315265 topic=2684 name=D&D Mini
 ```
 
-может остаться прежним.
+Потом:
 
-Важно: старый watcher, который следил только за `/opt/shpakdnd-bot/bot.py`, теперь недостаточен. После разнесения кода изменения чаще будут происходить внутри `app/`. В папке `deploy/` лежит обновлённый вариант watcher-а.
+```bash
+sudo -u shpakbot ./.venv/bin/python -m compileall -q bot.py app
+systemctl restart shpakdnd-bot
+systemctl status shpakdnd-bot --no-pager
+```
+
+Если сервис не запустился:
+
+```bash
+journalctl -u shpakdnd-bot -n 100 --no-pager
+```
+
+## Создание закрепа Mini
+
+После успешного запуска зайди в тему `2684` и один раз отправь:
+
+```text
+/minipanel
+```
+
+Бот создаст общую кнопку:
+
+```text
+🎲 D&D Mini
+[ 🎮 Открыть D&D Mini ]
+```
+
+Если у бота есть право закреплять сообщения, он закрепит её сам.
+
+После нажатия на кнопку каждый игрок получает своё ephemeral-меню. Другие
+участники его не видят.
+
+## Создание Mini-персонажа
+
+Нажать `🎮 Открыть D&D Mini` → `👤 Создать персонажа`.
+
+Имя пока вводится ephemeral-командой:
+
+```text
+/minicreate "Дед Максим"
+```
+
+Она зарегистрирована как приватная команда Telegram.
+
+## Важно
+
+В архиве нет `.env` и нет рабочей базы данных. Это специально: токен и
+существующие данные должны оставаться на сервере.

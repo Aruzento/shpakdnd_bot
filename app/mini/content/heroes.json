@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "settings": {
+    "pull_price": 30,
+    "ticket_item_code": "summon_ticket",
+    "rarity_weights": {
+      "common": 60,
+      "uncommon": 25,
+      "rare": 12,
+      "legendary": 3
+    },
+    "duplicate_shards": {
+      "common": 5,
+      "uncommon": 10,
+      "rare": 20,
+      "legendary": 50
+    }
+  },
+  "heroes": [
+    {
+      "code": "torvin_ironbeard",
+      "name": "Торвин Железнобород",
+      "rarity": "rare",
+      "race": "Дворф",
+      "class_name": "Варвар",
+      "attack": 8,
+      "passive_key": "stubborn",
+      "passive_text": "Первый промах по боссу можно будет перебросить после появления боевых пассивок.",
+      "description": "Дворф, который считает тактикой всё, что заканчивается ударом топора.",
+      "image": "_placeholder.png",
+      "active": true
+    },
+    {
+      "code": "elira_moonleaf",
+      "name": "Элира Лунный Лист",
+      "rarity": "uncommon",
+      "race": "Эльф",
+      "class_name": "Следопыт",
+      "attack": 6,
+      "passive_key": "keen_eye",
+      "passive_text": "Позже получит бонус к одному из ударов по боссу.",
+      "description": "Охотница, которая замечает следы раньше, чем остальные замечают лес.",
+      "image": "_placeholder.png",
+      "active": true
+    },
+    {
+      "code": "grimble_spark",
+      "name": "Гримбл Искра",
+      "rarity": "common",
+      "race": "Гном",
+      "class_name": "Волшебник",
+      "attack": 4,
+      "passive_key": "unstable_magic",
+      "passive_text": "Позже сможет иногда усиливать атаку случайным эффектом.",
+      "description": "Маг-экспериментатор. Большинство его заклинаний работает. Вопрос — как именно.",
+      "image": "_placeholder.png",
+      "active": true
+    }
+  ]
+}

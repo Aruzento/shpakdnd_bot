@@ -7,6 +7,7 @@ PathModified=/opt/shpakdnd-bot/app
 PathModified=/opt/shpakdnd-bot/app/db
 PathModified=/opt/shpakdnd-bot/app/services
 PathModified=/opt/shpakdnd-bot/app/handlers
+PathModified=/opt/shpakdnd-bot/app/mini
 Unit=shpakdnd-bot-update.service
 
 [Install]

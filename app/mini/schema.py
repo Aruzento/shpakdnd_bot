@@ -77,6 +77,7 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                 passive_key TEXT NOT NULL DEFAULT '',
                 passive_text TEXT NOT NULL DEFAULT '',
                 description TEXT NOT NULL DEFAULT '',
+                image_path TEXT NOT NULL DEFAULT '',
                 active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -380,6 +381,21 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
             WHERE operation_key <> ''
             """
         )
+
+        hero_columns = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(mini_heroes)"
+            ).fetchall()
+        }
+
+        if "image_path" not in hero_columns:
+            conn.execute(
+                """
+                ALTER TABLE mini_heroes
+                ADD COLUMN image_path TEXT NOT NULL DEFAULT ''
+                """
+            )
 
         world_columns = {
             row[1]

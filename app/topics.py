@@ -1,7 +1,7 @@
-# Конфигурация персонажей и администраторов по Telegram-темам.
+# Конфигурация персонажей, администраторов и специальных тем Telegram.
 #
 # Формат:
-# CHAT_ID -> TOPIC_ID -> admin / characters
+# CHAT_ID -> TOPIC_ID -> admin / characters / mini
 #
 # Для обычного чата без тем TOPIC_ID = 0.
 
@@ -32,10 +32,10 @@ TOPIC_SETTINGS = {
             },
         },
         2684: {
-	        "admin": "@arukozento",
-            "characters": {
-	        },
-
+            "admin": "@arukozento",
+            "characters": {},
+            "mini": True,
+            "mini_name": "D&D Mini",
         },
     },
     694384548: {

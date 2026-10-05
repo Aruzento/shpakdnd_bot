@@ -1,0 +1,7 @@
+GitHub repository: Aruzento/shpakdnd_bot
+Base branch: main
+Base commit reviewed: 7f90a8b3a0f3c3219c5c2026cc92031b3b639ea9
+Commit message: relounch 2
+Reviewed on: 2026-10-04
+
+This archive contains fixes made on top of that repository state.

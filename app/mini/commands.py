@@ -5,9 +5,8 @@ from aiogram.types import (
 )
 
 
-# /mini больше не показываем в меню команд:
-# основная точка входа — закреплённая кнопка.
-# /minipanel также не регистрируем, это одноразовая админ-команда.
+# Основной вход в Mini — кнопка в закрепе.
+# В меню команд оставляем только приватный ввод имени.
 MINI_COMMANDS = {
     "minicreate": BotCommand(
         command="minicreate",
@@ -24,25 +23,14 @@ REMOVED_MINI_COMMANDS = {
 
 
 async def configure_mini_commands(bot: Bot):
-    """
-    Убирает старый /mini из меню команд.
-    Оставляет только ephemeral /minicreate для приватного ввода имени.
-    """
     scope = BotCommandScopeAllGroupChats()
 
-    existing = await bot.get_my_commands(
-        scope=scope,
-    )
-
+    existing = await bot.get_my_commands(scope=scope)
     result = [
         command
         for command in existing
         if command.command not in REMOVED_MINI_COMMANDS
     ]
-
     result.extend(MINI_COMMANDS.values())
 
-    await bot.set_my_commands(
-        result,
-        scope=scope,
-    )
+    await bot.set_my_commands(result, scope=scope)
