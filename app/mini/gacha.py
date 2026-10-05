@@ -96,7 +96,7 @@ def get_gacha_state(
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         player = conn.execute(
-            "SELECT coins, active_hero_id FROM mini_players WHERE id = ?",
+            "SELECT coins, shards, active_hero_id FROM mini_players WHERE id = ?",
             (int(player_id),),
         ).fetchone()
         if player is None:
@@ -138,6 +138,7 @@ def get_gacha_state(
         "ticket_item_code": ticket_code,
         "tickets": tickets,
         "coins": int(player["coins"]),
+        "shards": int(player["shards"]),
         "owned": owned,
         "total": sum(rarity_counts.values()),
         "rarity_counts": rarity_counts,
@@ -174,7 +175,7 @@ def perform_gacha_pull(
 
         player = conn.execute(
             """
-            SELECT id, world_id, coins, active_hero_id
+            SELECT id, world_id, coins, shards, active_hero_id
             FROM mini_players
             WHERE id = ?
             """,
@@ -243,7 +244,7 @@ def perform_gacha_pull(
 
         owned = conn.execute(
             """
-            SELECT copies, shards
+            SELECT copies
             FROM mini_player_heroes
             WHERE player_id = ? AND hero_id = ?
             """,
@@ -252,38 +253,40 @@ def perform_gacha_pull(
 
         is_duplicate = owned is not None
         shards_awarded = 0
+        shards = int(player["shards"])
 
         if owned is None:
             copies = 1
-            shards = 0
             conn.execute(
                 """
                 INSERT INTO mini_player_heroes (
                     player_id,
                     hero_id,
-                    copies,
-                    shards
+                    copies
                 )
-                VALUES (?, ?, 1, 0)
+                VALUES (?, ?, 1)
                 """,
                 (int(player_id), int(hero["id"])),
             )
         else:
             shards_awarded = int(duplicate_shards.get(hero["rarity"], 0))
             copies = int(owned["copies"]) + 1
-            shards = int(owned["shards"]) + shards_awarded
+            shards += shards_awarded
             conn.execute(
                 """
                 UPDATE mini_player_heroes
-                SET copies = ?, shards = ?
+                SET copies = ?
                 WHERE player_id = ? AND hero_id = ?
                 """,
                 (
                     copies,
-                    shards,
                     int(player_id),
                     int(hero["id"]),
                 ),
+            )
+            conn.execute(
+                "UPDATE mini_players SET shards = ? WHERE id = ?",
+                (shards, int(player_id)),
             )
 
         auto_activated = player["active_hero_id"] is None

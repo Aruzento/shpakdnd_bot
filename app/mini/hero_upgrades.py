@@ -150,7 +150,7 @@ def upgrade_hero(
     hero_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    """Тратит осколки конкретного героя и повышает его звёзды на 1."""
+    """Тратит общие осколки игрока и повышает звёзды героя на 1."""
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
@@ -165,9 +165,10 @@ def upgrade_hero(
                 h.rarity,
                 h.attack AS base_attack,
                 ph.stars,
-                ph.shards
+                p.shards
             FROM mini_player_heroes ph
             JOIN mini_heroes h ON h.id = ph.hero_id
+            JOIN mini_players p ON p.id = ph.player_id
             WHERE ph.player_id = ? AND ph.hero_id = ?
             """,
             (int(player_id), int(hero_id)),
@@ -200,10 +201,14 @@ def upgrade_hero(
         conn.execute(
             """
             UPDATE mini_player_heroes
-            SET stars = ?, shards = ?
+            SET stars = ?
             WHERE player_id = ? AND hero_id = ?
             """,
-            (target_star, new_shards, int(player_id), int(hero_id)),
+            (target_star, int(player_id), int(hero_id)),
+        )
+        conn.execute(
+            "UPDATE mini_players SET shards = ? WHERE id = ?",
+            (new_shards, int(player_id)),
         )
         conn.commit()
 
@@ -232,7 +237,7 @@ def sell_hero_shards(
     operation_key: str = "",
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    """Продаёт осколки героя. Курс берётся из heroes.json."""
+    """Продаёт общие осколки игрока. hero_id нужен для совместимости UI."""
     quantity = int(quantity)
     if quantity <= 0:
         raise HeroShardSellError("Количество осколков должно быть больше нуля.")
@@ -260,11 +265,12 @@ def sell_hero_shards(
                 (int(player_id), wallet_operation_key),
             ).fetchone()
             if existing is not None:
-                hero_row = conn.execute(
+                row = conn.execute(
                     """
-                    SELECT ph.shards, h.name
+                    SELECT p.shards, h.name
                     FROM mini_player_heroes ph
                     JOIN mini_heroes h ON h.id = ph.hero_id
+                    JOIN mini_players p ON p.id = ph.player_id
                     WHERE ph.player_id = ? AND ph.hero_id = ?
                     """,
                     (int(player_id), int(hero_id)),
@@ -273,16 +279,16 @@ def sell_hero_shards(
                 return {
                     "applied": False,
                     "hero_id": int(hero_id),
-                    "name": str(hero_row["name"]) if hero_row else "Герой",
+                    "name": str(row["name"]) if row else "Герой",
                     "sold": int(existing["amount"]) // max(1, sell_price),
                     "coins_earned": int(existing["amount"]),
                     "balance": int(existing["balance_after"]),
-                    "shards": int(hero_row["shards"]) if hero_row else 0,
+                    "shards": int(row["shards"]) if row else 0,
                 }
 
         row = conn.execute(
             """
-            SELECT ph.shards, h.name, p.coins
+            SELECT p.shards, h.name, p.coins
             FROM mini_player_heroes ph
             JOIN mini_heroes h ON h.id = ph.hero_id
             JOIN mini_players p ON p.id = ph.player_id
@@ -307,16 +313,8 @@ def sell_hero_shards(
         new_balance = int(row["coins"]) + coins_earned
 
         conn.execute(
-            """
-            UPDATE mini_player_heroes
-            SET shards = ?
-            WHERE player_id = ? AND hero_id = ?
-            """,
-            (new_shards, int(player_id), int(hero_id)),
-        )
-        conn.execute(
-            "UPDATE mini_players SET coins = ? WHERE id = ?",
-            (new_balance, int(player_id)),
+            "UPDATE mini_players SET shards = ?, coins = ? WHERE id = ?",
+            (new_shards, new_balance, int(player_id)),
         )
         conn.execute(
             """
@@ -329,13 +327,13 @@ def sell_hero_shards(
                 reference_id,
                 operation_key
             )
-            VALUES (?, ?, ?, ?, 'hero_shards', ?, ?)
+            VALUES (?, ?, ?, ?, 'shared_shards', ?, ?)
             """,
             (
                 int(player_id),
                 coins_earned,
                 new_balance,
-                f"Продажа осколков: {row['name']}",
+                "Продажа общих осколков",
                 int(hero_id),
                 wallet_operation_key,
             ),
@@ -351,3 +349,4 @@ def sell_hero_shards(
         "balance": new_balance,
         "shards": new_shards,
     }
+

@@ -141,9 +141,9 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
                     ),
                 ),
                 InlineKeyboardButton(
-                    text="💰 Кошелёк",
+                    text="🎒 Инвентарь",
                     callback_data=_personal_callback(
-                        "wallet", world_id, user_id
+                        "inventory", world_id, user_id
                     ),
                 ),
             ],
@@ -203,9 +203,9 @@ def _daily_result_menu(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="💰 Кошелёк",
+                    text="🎒 Инвентарь",
                     callback_data=_personal_callback(
-                        "wallet", world_id, user_id
+                        "inventory", world_id, user_id
                     ),
                 ),
                 InlineKeyboardButton(
@@ -314,7 +314,8 @@ def _format_collection(world: dict, player: dict, summary: dict) -> str:
         f"Героев в коллекции: {summary['owned']}\n"
         f"Доступно в текущей гаче: {summary['total_active']}\n"
         f"⭐ Активный герой: {active_text}\n"
-        f"🪙 Баланс: {player['coins']} {world['currency_name']}\n\n"
+        f"🪙 Монеты: {player['coins']}\n"
+        f"🧩 Осколки: {player['shards']}\n\n"
         + (
             "Выбери героя, чтобы открыть его карточку."
             if summary["heroes"]
@@ -362,7 +363,8 @@ def _format_gacha(world: dict, state: dict) -> str:
         "✨ Призыв героев\n\n"
         f"🪙 Цена: {state['pull_price']}\n"
         f"🎟 Билеты: {state['tickets']}\n"
-        f"💰 Баланс: {state['coins']} {world['currency_name']}\n\n"
+        f"🪙 Монеты: {state['coins']}\n"
+        f"🧩 Осколки: {state['shards']}\n\n"
         "Текущие шансы редкостей:\n"
         f"⚪ Обычный — {chances.get('common', 0):g}%\n"
         f"🟢 Необычный — {chances.get('uncommon', 0):g}%\n"
@@ -394,7 +396,7 @@ def _hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
             if int(upgrade["stars"]) > 0
             else f"⚔️ Атака: {current_attack}"
         ),
-        f"🧩 Осколки: {upgrade['shards']}",
+        f"🧩 Общие осколки: {upgrade['shards']}",
         "",
         description or "Без описания.",
     ]
@@ -419,7 +421,7 @@ def _hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
                 f"♻️ Дубликат: +{pull_result['shards_awarded']} осколков"
             )
             lines.append(
-                f"Копий: {pull_result['copies']} • Осколки: {pull_result['shards']}"
+                f"Копий: {pull_result['copies']} • Общие осколки: {pull_result['shards']}"
             )
         else:
             lines.append("🎉 Новый герой добавлен в коллекцию!")
@@ -465,16 +467,6 @@ def _hero_card_menu(
                 ),
                 callback_data=(
                     f"mini:heroupgrade:{world_id}:{user_id}:{hero['id']}"
-                ),
-            )
-        ])
-
-    if int(upgrade["shards"]) > 0:
-        rows.append([
-            InlineKeyboardButton(
-                text=f"💱 Продать осколки · {upgrade['shards']}",
-                callback_data=(
-                    f"mini:heroshards:{world_id}:{user_id}:{hero['id']}"
                 ),
             )
         ])
@@ -740,7 +732,7 @@ def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 
     rows.append([
         InlineKeyboardButton(
-            text="🎒 Мои товары",
+            text="🎒 Инвентарь",
             callback_data=f"mini:goods:{world_id}:{user_id}",
         )
     ])
@@ -808,7 +800,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎒 Мои товары",
+                    text="🎒 Инвентарь",
                     callback_data=f"mini:goods:{world_id}:{user_id}",
                 ),
                 InlineKeyboardButton(
@@ -867,16 +859,23 @@ async def _shop_context(
     return world, player, tail
 
 
-def _format_goods(goods: dict) -> str:
-    lines = ["🎒 Мои товары", ""]
+def _format_inventory(world: dict, player: dict, goods: dict) -> str:
+    lines = [
+        "🎒 Инвентарь",
+        "",
+        "Валюты:",
+        f"🪙 Монеты: {player['coins']}",
+        f"🧩 Осколки: {player['shards']}",
+        "",
+    ]
 
     inventory = goods["inventory"]
     certificates = goods["certificates"]
 
     if inventory:
-        lines.append("Предметы:")
+        lines.append("Предметы Mini:")
         for item in inventory:
-            suffix = f" ×{item['quantity']}" if int(item['quantity']) > 1 else ""
+            suffix = f" ×{item['quantity']}" if int(item["quantity"]) > 1 else ""
             lines.append(f"• {item['name']}{suffix}")
         lines.append("")
 
@@ -889,10 +888,10 @@ def _format_goods(goods: dict) -> str:
         lines.append("")
 
     if not inventory and not certificates:
-        lines.append("Пока ничего нет.")
+        lines.append("Предметов пока нет.")
 
-    lines.append("Сертификаты позже можно будет погашать отдельной кнопкой мастера.")
-    return "\n".join(lines)
+    return "\n".join(lines).rstrip()
+
 
 def _format_home(world: dict, player: dict) -> str:
     active = get_active_hero(player["id"])
@@ -909,7 +908,8 @@ def _format_home(world: dict, player: dict) -> str:
         f"🎲 {world['name']}\n\n"
         f"👤 Персонаж: {player['character_name']}\n"
         f"🎴 Активный герой: {active_text}\n"
-        f"🪙 {world['currency_name']}: {player['coins']}\n\n"
+        f"🪙 Монеты: {player['coins']}\n"
+        f"🧩 Осколки: {player['shards']}\n\n"
         "Выбери раздел:"
     )
 
@@ -1380,21 +1380,55 @@ async def home_callback(callback: CallbackQuery):
     )
 
 
-@router.callback_query(F.data.startswith("mini:wallet:"))
-async def wallet_callback(callback: CallbackQuery):
+async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
+    goods = get_player_goods(player["id"])
+    await _edit_private(
+        callback,
+        _format_inventory(world, player, goods),
+        InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="🛒 Магазин",
+                        callback_data=_personal_callback(
+                            "shop", world["id"], callback.from_user.id
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="⬅️ Назад",
+                        callback_data=_personal_callback(
+                            "home", world["id"], callback.from_user.id
+                        ),
+                    )
+                ],
+            ]
+        ),
+    )
+
+
+@router.callback_query(F.data.startswith("mini:inventory:"))
+async def inventory_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
     if context is None:
         return
 
     world, player = context
-    history = get_wallet_history(player["id"], limit=10)
-
     await callback.answer()
-    await _edit_private(
-        callback,
-        _format_wallet(world, player, history),
-        _back_menu(world["id"], callback.from_user.id),
-    )
+    await _open_inventory(callback, world, player)
+
+
+@router.callback_query(F.data.startswith("mini:wallet:"))
+async def wallet_callback(callback: CallbackQuery):
+    """Совместимость со старыми кнопками «Кошелёк»."""
+    context = await _load_personal_context(callback)
+    if context is None:
+        return
+
+    world, player = context
+    await callback.answer()
+    await _open_inventory(callback, world, player)
 
 
 @router.callback_query(F.data.startswith("mini:character:"))
@@ -1431,7 +1465,8 @@ async def character_callback(callback: CallbackQuery):
         f"Имя: {player['character_name']}\n"
         f"Игрок: {username}\n"
         f"{hero_text}\n"
-        f"🪙 {world['currency_name']}: {player['coins']}\n\n"
+        f"🪙 Монеты: {player['coins']}\n"
+        f"🧩 Осколки: {player['shards']}\n\n"
         "Уровень в D&D Mini фиксированный. "
         "Раса и класс определяются активным героем.",
         _back_menu(world["id"], callback.from_user.id),
@@ -1670,9 +1705,9 @@ async def shop_buy_callback(callback: CallbackQuery):
         return
 
     delivery_text = (
-        "Предмет добавлен в твои товары."
+        "Предмет добавлен в инвентарь."
         if result["delivery"] == "inventory"
-        else "Сертификат сохранён в разделе «Мои товары»."
+        else "Сертификат сохранён в инвентаре."
     )
 
     await callback.answer("Покупка успешна")
@@ -1699,7 +1734,7 @@ async def goods_callback(callback: CallbackQuery):
     await callback.answer()
     await _edit_private(
         callback,
-        _format_goods(goods),
+        _format_inventory(world, player, goods),
         InlineKeyboardMarkup(
             inline_keyboard=[
                 [

@@ -82,6 +82,7 @@ class MiniCoreTests(unittest.TestCase):
         self.assertTrue(first["applied"])
         self.assertFalse(second["applied"])
         self.assertEqual(get_balance(player["id"], self.db), 25)
+        self.assertEqual(player["shards"], 0)
 
         spend_coins(
             player["id"],

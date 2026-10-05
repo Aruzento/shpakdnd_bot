@@ -142,7 +142,7 @@ def get_player_heroes(
             SELECT
                 h.*,
                 ph.copies,
-                ph.shards,
+                p.shards AS shards,
                 ph.stars,
                 ph.obtained_at,
                 CASE WHEN p.active_hero_id = h.id THEN 1 ELSE 0 END AS is_active
@@ -176,7 +176,7 @@ def get_player_hero(
             SELECT
                 h.*,
                 ph.copies,
-                ph.shards,
+                p.shards AS shards,
                 ph.stars,
                 ph.obtained_at,
                 CASE WHEN p.active_hero_id = h.id THEN 1 ELSE 0 END AS is_active
@@ -198,7 +198,7 @@ def get_active_hero(
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
-            SELECT h.*, ph.copies, ph.shards, ph.stars, 1 AS is_active
+            SELECT h.*, ph.copies, p.shards AS shards, ph.stars, 1 AS is_active
             FROM mini_players p
             JOIN mini_heroes h ON h.id = p.active_hero_id
             JOIN mini_player_heroes ph

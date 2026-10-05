@@ -54,6 +54,7 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                 username TEXT NOT NULL DEFAULT '',
                 character_name TEXT NOT NULL,
                 coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
+                shards INTEGER NOT NULL DEFAULT 0 CHECK (shards >= 0),
                 active_hero_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 last_seen_at TEXT,
@@ -398,6 +399,39 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                 ADD COLUMN stars INTEGER NOT NULL DEFAULT 0
                 """
             )
+
+        player_columns = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(mini_players)"
+            ).fetchall()
+        }
+
+        if "shards" not in player_columns:
+            legacy_shards = conn.execute(
+                """
+                SELECT player_id, COALESCE(SUM(shards), 0)
+                FROM mini_player_heroes
+                GROUP BY player_id
+                """
+            ).fetchall()
+
+            conn.execute(
+                """
+                ALTER TABLE mini_players
+                ADD COLUMN shards INTEGER NOT NULL DEFAULT 0
+                """
+            )
+
+            for player_id, total_shards in legacy_shards:
+                conn.execute(
+                    "UPDATE mini_players SET shards = ? WHERE id = ?",
+                    (int(total_shards), int(player_id)),
+                )
+
+            # Старое поле оставляем ради безопасной миграции,
+            # но после переноса больше не используем.
+            conn.execute("UPDATE mini_player_heroes SET shards = 0")
 
         hero_columns = {
             row[1]

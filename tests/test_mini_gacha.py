@@ -18,7 +18,7 @@ from app.mini.heroes import (
     set_active_hero,
     sync_hero_catalog,
 )
-from app.mini.players import create_mini_player
+from app.mini.players import create_mini_player, get_mini_player
 from app.mini.schema import init_mini_db
 from app.mini.shop import (
     get_offers_by_category,
@@ -85,6 +85,8 @@ class MiniGachaTests(unittest.TestCase):
         self.assertEqual(second["copies"], 2)
         self.assertEqual(second["shards_awarded"], 10)
         self.assertEqual(second["shards"], 10)
+        player = get_mini_player(self.world_id, 999001, self.db)
+        self.assertEqual(player["shards"], 10)
 
     def test_ticket_purchase_and_ticket_pull(self):
         add_coins(self.player["id"], 100, "Тест", db_path=self.db)

@@ -10,7 +10,6 @@ from app.mini.hero_upgrades import (
     HeroUpgradeMaxStars,
     calculate_attack,
     max_stars_for_rarity,
-    sell_hero_shards,
     upgrade_cost,
     upgrade_hero,
 )
@@ -18,7 +17,6 @@ from app.mini.heroes import get_active_hero, get_player_hero, sync_hero_catalog
 from app.mini.db import connect_mini_db
 from app.mini.players import create_mini_player
 from app.mini.schema import init_mini_db
-from app.mini.wallet import get_balance, get_wallet_history
 from app.mini.worlds import sync_configured_mini_worlds
 
 
@@ -46,12 +44,12 @@ class MiniHeroUpgradeTests(unittest.TestCase):
                 """
                 INSERT INTO mini_player_heroes (
                     player_id, hero_id, copies, shards, stars
-                ) VALUES (?, ?, 1, 200, 0)
+                ) VALUES (?, ?, 1, 0, 0)
                 """,
                 (self.player["id"], hero_id),
             )
             conn.execute(
-                "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+                "UPDATE mini_players SET active_hero_id = ?, shards = 200 WHERE id = ?",
                 (hero_id, self.player["id"]),
             )
             conn.commit()
@@ -135,41 +133,72 @@ class MiniHeroUpgradeTests(unittest.TestCase):
     def test_upgrade_requires_enough_shards(self):
         with connect_mini_db(self.db) as conn:
             conn.execute(
-                "UPDATE mini_player_heroes SET shards = 9 WHERE player_id = ? AND hero_id = ?",
-                (self.player["id"], self.hero_id),
+                "UPDATE mini_players SET shards = 9 WHERE id = ?",
+                (self.player["id"],),
             )
             conn.commit()
 
         with self.assertRaises(HeroUpgradeInsufficientShards):
             upgrade_hero(self.player["id"], self.hero_id, self.db)
 
-    def test_sell_shards_one_for_one(self):
-        result = sell_hero_shards(
-            self.player["id"],
-            self.hero_id,
-            25,
-            operation_key="test-sale-1",
-            db_path=self.db,
-        )
-        self.assertEqual(result["coins_earned"], 25)
-        self.assertEqual(result["shards"], 175)
-        self.assertEqual(get_balance(self.player["id"], self.db), 25)
+    def test_legacy_hero_shards_migrate_to_shared_balance(self):
+        legacy_db = Path(self.tempdir.name) / "legacy_shards.db"
+        with connect_mini_db(legacy_db) as conn:
+            conn.execute(
+                """
+                CREATE TABLE mini_players (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    world_id INTEGER NOT NULL,
+                    telegram_user_id INTEGER NOT NULL,
+                    username TEXT NOT NULL DEFAULT '',
+                    character_name TEXT NOT NULL,
+                    coins INTEGER NOT NULL DEFAULT 0,
+                    active_hero_id INTEGER,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_seen_at TEXT
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE mini_player_heroes (
+                    player_id INTEGER NOT NULL,
+                    hero_id INTEGER NOT NULL,
+                    copies INTEGER NOT NULL DEFAULT 1,
+                    shards INTEGER NOT NULL DEFAULT 0,
+                    stars INTEGER NOT NULL DEFAULT 0,
+                    obtained_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (player_id, hero_id)
+                )
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO mini_players (
+                    id, world_id, telegram_user_id, character_name
+                ) VALUES (1, 1, 1001, 'Legacy')
+                """
+            )
+            conn.execute(
+                "INSERT INTO mini_player_heroes (player_id, hero_id, shards) VALUES (1, 10, 15)"
+            )
+            conn.execute(
+                "INSERT INTO mini_player_heroes (player_id, hero_id, shards) VALUES (1, 11, 25)"
+            )
+            conn.commit()
 
-        history = get_wallet_history(self.player["id"], 10, self.db)
-        self.assertEqual(len(history), 1)
-        self.assertEqual(history[0]["amount"], 25)
-        self.assertEqual(history[0]["reference_type"], "hero_shards")
+        init_mini_db(legacy_db)
 
-        # Повтор одного и того же callback не продаёт второй раз.
-        repeat = sell_hero_shards(
-            self.player["id"],
-            self.hero_id,
-            25,
-            operation_key="test-sale-1",
-            db_path=self.db,
-        )
-        self.assertFalse(repeat["applied"])
-        self.assertEqual(get_balance(self.player["id"], self.db), 25)
+        with connect_mini_db(legacy_db) as conn:
+            shards = conn.execute(
+                "SELECT shards FROM mini_players WHERE id = 1"
+            ).fetchone()[0]
+            legacy_left = conn.execute(
+                "SELECT SUM(shards) FROM mini_player_heroes WHERE player_id = 1"
+            ).fetchone()[0]
+
+        self.assertEqual(shards, 40)
+        self.assertEqual(legacy_left, 0)
 
 
 if __name__ == "__main__":

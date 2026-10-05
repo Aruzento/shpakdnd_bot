@@ -22,6 +22,7 @@ def get_mini_player(
                 username,
                 character_name,
                 coins,
+                shards,
                 active_hero_id,
                 created_at,
                 last_seen_at
