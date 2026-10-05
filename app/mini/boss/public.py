@@ -129,7 +129,7 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
         lines.extend(
             [
                 "",
-                "🏆 Победа! Награда выдана каждому участнику.",
+                "🏆 Победа! Награда выдана тем, кто участвовал в бою или использовал фантомное участие.",
                 f"🎁 Итог: {_reward_line(boss)}",
             ]
         )
@@ -139,7 +139,7 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
             [
                 "",
                 "💥 Награда уничтожена — бой проигран.",
-                f"🧩 Каждый участник получает {shards} осколков.",
+                f"🧩 Участники с правом на награду получают {shards} осколков.",
             ]
         )
     elif boss["status"] == "cancelled":

@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -23,6 +24,12 @@ from app.mini.boss.service import (
 from app.mini.db import connect_mini_db
 from app.mini.heroes import sync_hero_catalog
 from app.mini.players import create_mini_player, get_mini_player
+from app.mini.items import (
+    EFFECT_BOSS_DAMAGE,
+    EFFECT_BOSS_PHANTOM,
+    get_effect_charges,
+    use_inventory_item,
+)
 from app.mini.schema import init_mini_db
 from app.mini.shop import get_player_goods
 from app.mini.worlds import sync_configured_mini_worlds
@@ -44,6 +51,31 @@ class MiniBossCombatTests(unittest.TestCase):
         self.boss = create_boss_event(
             self.world_id, "training_golem", 999, self.db
         )
+        # Боевая фикстура не зависит от баланса живого bosses.json.
+        with connect_mini_db(self.db) as conn:
+            conn.execute(
+                """
+                UPDATE mini_bosses
+                SET min_players = 2,
+                    reward_coins = 60,
+                    reward_items_json = ?,
+                    reward_shields = 3,
+                    reward_shields_max = 3,
+                    reward_decay_percent = 10
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(
+                        [
+                            {"code": "boss_coin_pouch", "quantity": 1},
+                            {"code": "boss_shard_casket", "quantity": 1},
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    self.boss["id"],
+                ),
+            )
+            conn.commit()
         register_player(self.boss["id"], self.player1["id"], self.db)
         register_player(self.boss["id"], self.player2["id"], self.db)
         close_registration(self.boss["id"], self.db)
@@ -75,6 +107,25 @@ class MiniBossCombatTests(unittest.TestCase):
             )
             conn.commit()
         return player
+
+    def _grant_item(self, player_id: int, code: str, quantity: int = 1) -> int:
+        with connect_mini_db(self.db) as conn:
+            row = conn.execute(
+                "SELECT id FROM mini_items WHERE code = ?", (code,)
+            ).fetchone()
+            self.assertIsNotNone(row, code)
+            item_id = int(row[0])
+            conn.execute(
+                """
+                INSERT INTO mini_inventory (player_id, item_id, quantity)
+                VALUES (?, ?, ?)
+                ON CONFLICT(player_id, item_id) DO UPDATE SET
+                    quantity = mini_inventory.quantity + excluded.quantity
+                """,
+                (player_id, item_id, quantity),
+            )
+            conn.commit()
+        return item_id
 
     def _start(self):
         return start_battle(
@@ -141,7 +192,7 @@ class MiniBossCombatTests(unittest.TestCase):
         self.assertEqual(result["state"]["boss"]["reward_shields"], 2)
         self.assertEqual(result["state"]["current"]["player_id"], self.player1["id"])
 
-    def test_victory_grants_coins_and_boss_items_to_every_participant(self):
+    def test_victory_rewards_only_players_who_hit_by_default(self):
         self._start()
         with connect_mini_db(self.db) as conn:
             conn.execute(
@@ -157,24 +208,49 @@ class MiniBossCombatTests(unittest.TestCase):
         self.assertTrue(result["battle_ended"])
         self.assertEqual(result["state"]["boss"]["status"], "defeated")
         self.assertEqual(result["rewards"]["coins_each"], 60)
+        self.assertEqual(result["rewards"]["players"], 1)
+        self.assertEqual(result["rewards"]["missed_players"], 1)
 
-        for original in (self.player1, self.player2):
-            player = get_mini_player(self.world_id, original["telegram_user_id"], self.db)
-            self.assertEqual(player["coins"], 60)
-            goods = get_player_goods(original["id"], self.db)
-            names = {item["name"]: item["quantity"] for item in goods["inventory"]}
-            self.assertEqual(names["Кошель с монетами"], 1)
-            self.assertEqual(names["Шкатулка с осколками"], 1)
+        fighter = get_mini_player(
+            self.world_id, self.player1["telegram_user_id"], self.db
+        )
+        self.assertEqual(fighter["coins"], 60)
+        goods = get_player_goods(self.player1["id"], self.db)
+        names = {item["name"]: item["quantity"] for item in goods["inventory"]}
+        self.assertEqual(names["Кошель с монетами"], 1)
+        self.assertEqual(names["Шкатулка с осколками"], 1)
 
-    def test_damaged_reward_scales_coins_but_keeps_item_reward(self):
+        spectator = get_mini_player(
+            self.world_id, self.player2["telegram_user_id"], self.db
+        )
+        self.assertEqual(spectator["coins"], 0)
+        self.assertEqual(get_player_goods(self.player2["id"], self.db)["inventory"], [])
+
+    def test_phantom_potion_rewards_registered_player_without_a_hit(self):
+        item_id = self._grant_item(
+            self.player2["id"], "phantom_participation_potion"
+        )
+        use_inventory_item(
+            self.player2["id"], item_id,
+            operation_key="phantom-before-battle", db_path=self.db,
+        )
+        self.assertEqual(
+            get_effect_charges(
+                self.player2["id"], EFFECT_BOSS_PHANTOM, self.db
+            ),
+            1,
+        )
+
         self._start()
+        self.assertEqual(
+            get_effect_charges(
+                self.player2["id"], EFFECT_BOSS_PHANTOM, self.db
+            ),
+            0,
+        )
         with connect_mini_db(self.db) as conn:
             conn.execute(
-                """
-                UPDATE mini_bosses
-                SET current_hp = 1, reward_shields = 0, reward_percent = 50
-                WHERE id = ?
-                """,
+                "UPDATE mini_bosses SET current_hp = 1 WHERE id = ?",
                 (self.boss["id"],),
             )
             conn.commit()
@@ -182,6 +258,64 @@ class MiniBossCombatTests(unittest.TestCase):
         result = hit_boss(
             self.boss["id"], self.player1["id"],
             now=self.start_time + timedelta(minutes=1), db_path=self.db,
+        )
+        self.assertEqual(result["rewards"]["players"], 2)
+        self.assertEqual(result["rewards"]["missed_players"], 0)
+        player2 = get_mini_player(
+            self.world_id, self.player2["telegram_user_id"], self.db
+        )
+        self.assertEqual(player2["coins"], 60)
+        self.assertEqual(
+            len(get_player_goods(self.player2["id"], self.db)["inventory"]), 2
+        )
+
+    def test_damage_potion_applies_after_other_damage_modifiers(self):
+        item_id = self._grant_item(self.player1["id"], "damage_potion")
+        use_inventory_item(
+            self.player1["id"], item_id,
+            operation_key="damage-before-battle", db_path=self.db,
+        )
+        self._start()
+        self.assertEqual(
+            get_effect_charges(
+                self.player1["id"], EFFECT_BOSS_DAMAGE, self.db
+            ),
+            0,
+        )
+        result = hit_boss(
+            self.boss["id"], self.player1["id"],
+            now=self.start_time + timedelta(minutes=1), db_path=self.db,
+        )
+        self.assertEqual(result["ability_damage"], 3)
+        self.assertEqual(result["damage_bonus_percent"], 10)
+        self.assertEqual(result["damage"], 4)
+        self.assertTrue(
+            any(
+                event.get("type") == "item_damage_boost"
+                for event in result["passive_events"]
+            )
+        )
+
+    def test_damaged_reward_scales_coins_but_keeps_item_reward(self):
+        self._start()
+        with connect_mini_db(self.db) as conn:
+            conn.execute(
+                """
+                UPDATE mini_bosses
+                SET current_hp = 4, reward_shields = 0, reward_percent = 50
+                WHERE id = ?
+                """,
+                (self.boss["id"],),
+            )
+            conn.commit()
+
+        hit_boss(
+            self.boss["id"], self.player1["id"],
+            now=self.start_time + timedelta(minutes=1), db_path=self.db,
+        )
+        result = hit_boss(
+            self.boss["id"], self.player2["id"],
+            now=self.start_time + timedelta(minutes=2), db_path=self.db,
         )
         self.assertEqual(result["rewards"]["coins_each"], 30)
         for original in (self.player1, self.player2):

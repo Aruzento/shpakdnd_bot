@@ -64,6 +64,8 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
                 hit_count INTEGER NOT NULL DEFAULT 0,
                 total_damage INTEGER NOT NULL DEFAULT 0,
                 skipped_turns INTEGER NOT NULL DEFAULT 0,
+                damage_bonus_percent INTEGER NOT NULL DEFAULT 0,
+                phantom_reward INTEGER NOT NULL DEFAULT 0,
                 reward_granted INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (boss_id, player_id),
                 UNIQUE (boss_id, queue_position),
@@ -130,6 +132,8 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
         participant_additions = {
             "hero_id": "INTEGER",
             "attack": "INTEGER NOT NULL DEFAULT 0",
+            "damage_bonus_percent": "INTEGER NOT NULL DEFAULT 0",
+            "phantom_reward": "INTEGER NOT NULL DEFAULT 0",
         }
         for name, sql_type in participant_additions.items():
             if name not in participant_columns:

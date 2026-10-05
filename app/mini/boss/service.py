@@ -192,6 +192,8 @@ def list_participants(
                 p.active_hero_id,
                 bp.hero_id AS battle_hero_id,
                 bp.attack AS battle_attack,
+                bp.damage_bonus_percent,
+                bp.phantom_reward,
                 h.name AS hero_name,
                 h.rarity AS hero_rarity
             FROM mini_boss_participants bp

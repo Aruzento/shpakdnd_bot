@@ -444,9 +444,12 @@ def get_player_goods(
         inventory_rows = conn.execute(
             """
             SELECT
+                i.id AS item_id,
                 i.code,
                 i.name,
+                i.category,
                 i.description,
+                i.effect_key,
                 inv.quantity
             FROM mini_inventory inv
             JOIN mini_items i ON i.id = inv.item_id
@@ -475,7 +478,18 @@ def get_player_goods(
             (int(player_id),),
         ).fetchall()
 
+        effect_rows = conn.execute(
+            """
+            SELECT effect_key, charges, updated_at
+            FROM mini_player_effects
+            WHERE player_id = ? AND charges > 0
+            ORDER BY updated_at, effect_key
+            """,
+            (int(player_id),),
+        ).fetchall()
+
     return {
         "inventory": [dict(row) for row in inventory_rows],
         "certificates": [dict(row) for row in certificate_rows],
+        "effects": [dict(row) for row in effect_rows],
     }

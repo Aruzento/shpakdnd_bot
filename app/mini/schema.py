@@ -14,6 +14,8 @@ MINI_TABLES = (
     "mini_daily_claims",
     "mini_items",
     "mini_inventory",
+    "mini_player_effects",
+    "mini_item_uses",
     "mini_shop_offers",
     "mini_purchases",
     "mini_gacha_pulls",
@@ -153,6 +155,49 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                     REFERENCES mini_items(id)
                     ON DELETE RESTRICT
             )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mini_player_effects (
+                player_id INTEGER NOT NULL,
+                effect_key TEXT NOT NULL,
+                charges INTEGER NOT NULL DEFAULT 0 CHECK (charges >= 0),
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (player_id, effect_key),
+                FOREIGN KEY (player_id)
+                    REFERENCES mini_players(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mini_item_uses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                effect_key TEXT NOT NULL DEFAULT '',
+                result_json TEXT NOT NULL DEFAULT '{}',
+                operation_key TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (player_id)
+                    REFERENCES mini_players(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (item_id)
+                    REFERENCES mini_items(id)
+                    ON DELETE RESTRICT
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mini_item_uses_operation
+            ON mini_item_uses (player_id, operation_key)
+            WHERE operation_key <> ''
             """
         )
 

@@ -5,7 +5,7 @@
       "code": "boss_coin_pouch",
       "name": "Кошель с монетами",
       "category": "boss_reward",
-      "description": "Тяжёлый кошель, полученный за победу над боссом. Эффект предмета будет добавлен позже.",
+      "description": "Тяжёлый кошель с 10–30 монетами.",
       "effect_key": "boss_coin_pouch",
       "stackable": true,
       "active": true
@@ -14,8 +14,35 @@
       "code": "boss_shard_casket",
       "name": "Шкатулка с осколками",
       "category": "boss_reward",
-      "description": "Запечатанная шкатулка с осколками. Эффект предмета будет добавлен позже.",
+      "description": "Запечатанная шкатулка с 10–30 осколками.",
       "effect_key": "boss_shard_casket",
+      "stackable": true,
+      "active": true
+    },
+    {
+      "code": "luck_potion",
+      "name": "Зелье удачи",
+      "category": "consumable",
+      "description": "Усиливает одну следующую крутку: вес легендарных героев +10%, редких +30%.",
+      "effect_key": "gacha_luck",
+      "stackable": true,
+      "active": true
+    },
+    {
+      "code": "damage_potion",
+      "name": "Зелье урона",
+      "category": "consumable",
+      "description": "На один следующий бой с боссом увеличивает итоговый урон после всех модификаторов на 10%.",
+      "effect_key": "boss_damage_boost",
+      "stackable": true,
+      "active": true
+    },
+    {
+      "code": "phantom_participation_potion",
+      "name": "Зелье фантомного участия",
+      "category": "consumable",
+      "description": "На один следующий бой сохраняет право на награду, даже если ты не нанесёшь ни одного удара.",
+      "effect_key": "boss_phantom_participation",
       "stackable": true,
       "active": true
     }

@@ -8,9 +8,11 @@ os.environ.setdefault("BOT_TOKEN", "test-token")
 
 from app.mini.gacha import (
     GachaInsufficientFunds,
+    _rarity_weight_units,
     get_gacha_state,
     perform_gacha_pull,
 )
+from app.mini.db import connect_mini_db
 from app.mini.heroes import (
     get_active_hero,
     get_collection_summary,
@@ -19,6 +21,8 @@ from app.mini.heroes import (
     sync_hero_catalog,
 )
 from app.mini.players import create_mini_player, get_mini_player
+from app.mini.boss.schema import init_boss_db
+from app.mini.items import EFFECT_GACHA_LUCK, get_effect_charges, use_inventory_item
 from app.mini.schema import init_mini_db
 from app.mini.shop import (
     get_offers_by_category,
@@ -34,6 +38,7 @@ class MiniGachaTests(unittest.TestCase):
         self.tempdir = tempfile.TemporaryDirectory()
         self.db = Path(self.tempdir.name) / "mini.db"
         init_mini_db(self.db)
+        init_boss_db(self.db)
         worlds = sync_configured_mini_worlds(self.db)
         self.world_id = worlds[0]["id"]
         self.player = create_mini_player(
@@ -120,6 +125,39 @@ class MiniGachaTests(unittest.TestCase):
         self.assertEqual(
             get_collection_summary(self.player["id"], self.db)["owned"],
             0,
+        )
+
+
+    def test_luck_potion_boosts_weights_and_is_consumed_by_one_pull(self):
+        self.assertEqual(_rarity_weight_units(1, "legendary", luck_active=True), 110)
+        self.assertEqual(_rarity_weight_units(5, "rare", luck_active=True), 650)
+        self.assertEqual(_rarity_weight_units(69, "common", luck_active=True), 6900)
+
+        with connect_mini_db(self.db) as conn:
+            item_id = int(conn.execute(
+                "SELECT id FROM mini_items WHERE code = 'luck_potion'"
+            ).fetchone()[0])
+            conn.execute(
+                "INSERT INTO mini_inventory (player_id, item_id, quantity) VALUES (?, ?, 1)",
+                (self.player["id"], item_id),
+            )
+            conn.commit()
+
+        use_inventory_item(
+            self.player["id"], item_id, operation_key="luck", db_path=self.db
+        )
+        self.assertEqual(
+            get_effect_charges(self.player["id"], EFFECT_GACHA_LUCK, self.db), 1
+        )
+        add_coins(self.player["id"], 100, "Тест", db_path=self.db)
+
+        with patch("app.mini.gacha._choose_hero_code", return_value="Villager") as choose:
+            result = perform_gacha_pull(self.player["id"], "coins", self.db)
+
+        self.assertTrue(result["luck_used"])
+        choose.assert_called_once_with(luck_active=True)
+        self.assertEqual(
+            get_effect_charges(self.player["id"], EFFECT_GACHA_LUCK, self.db), 0
         )
 
     def test_can_change_active_hero_only_if_owned(self):

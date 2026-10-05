@@ -10,6 +10,11 @@ from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
 from app.mini.db import connect_mini_db
 from app.mini.hero_upgrades import calculate_attack
+from app.mini.items import (
+    EFFECT_BOSS_DAMAGE,
+    EFFECT_BOSS_PHANTOM,
+    consume_effect_charge,
+)
 
 
 class BossCombatError(BossError):
@@ -135,6 +140,10 @@ def _participant_count(conn: sqlite3.Connection, boss_id: int) -> int:
     )
 
 
+def _reward_eligible(row: sqlite3.Row) -> bool:
+    return int(row["hit_count"] or 0) > 0 or bool(int(row["phantom_reward"] or 0))
+
+
 def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
     coins_each = int(boss["reward_coins"]) * reward_percent // 100
@@ -154,7 +163,7 @@ def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
 
     participants = conn.execute(
         """
-        SELECT bp.player_id, bp.reward_granted, p.coins
+        SELECT bp.player_id, bp.reward_granted, bp.hit_count, bp.phantom_reward, p.coins
         FROM mini_boss_participants bp
         JOIN mini_players p ON p.id = bp.player_id
         WHERE bp.boss_id = ?
@@ -164,10 +173,22 @@ def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
     ).fetchall()
 
     granted = 0
+    missed = 0
     for row in participants:
         if int(row["reward_granted"]):
             continue
         player_id = int(row["player_id"])
+        if not _reward_eligible(row):
+            conn.execute(
+                """
+                UPDATE mini_boss_participants
+                SET reward_granted = 1
+                WHERE boss_id = ? AND player_id = ?
+                """,
+                (int(boss["id"]), player_id),
+            )
+            missed += 1
+            continue
         current_coins = int(row["coins"])
         new_balance = current_coins + coins_each
 
@@ -222,6 +243,7 @@ def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
 
     return {
         "players": granted,
+        "missed_players": missed,
         "coins_each": coins_each,
         "items": items,
         "shards_each": 0,
@@ -232,7 +254,7 @@ def _grant_failure_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
     shards_each = max(0, int(boss["reward_coins"]) // 10)
     participants = conn.execute(
         """
-        SELECT bp.player_id, bp.reward_granted
+        SELECT bp.player_id, bp.reward_granted, bp.hit_count, bp.phantom_reward
         FROM mini_boss_participants bp
         WHERE bp.boss_id = ?
         ORDER BY bp.queue_position
@@ -241,10 +263,22 @@ def _grant_failure_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
     ).fetchall()
 
     granted = 0
+    missed = 0
     for row in participants:
         if int(row["reward_granted"]):
             continue
         player_id = int(row["player_id"])
+        if not _reward_eligible(row):
+            conn.execute(
+                """
+                UPDATE mini_boss_participants
+                SET reward_granted = 1
+                WHERE boss_id = ? AND player_id = ?
+                """,
+                (int(boss["id"]), player_id),
+            )
+            missed += 1
+            continue
         if shards_each > 0:
             conn.execute(
                 "UPDATE mini_players SET shards = shards + ? WHERE id = ?",
@@ -262,6 +296,7 @@ def _grant_failure_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
 
     return {
         "players": granted,
+        "missed_players": missed,
         "coins_each": 0,
         "items": [],
         "shards_each": shards_each,
@@ -491,16 +526,25 @@ def start_battle(
                     "У одного из участников больше нет выбранного героя. Открой регистрацию и проверь состав."
                 )
             attack = calculate_attack(int(row["base_attack"]), int(row["stars"]))
+            damage_potion = consume_effect_charge(
+                conn, int(row["player_id"]), EFFECT_BOSS_DAMAGE
+            )
+            phantom_potion = consume_effect_charge(
+                conn, int(row["player_id"]), EFFECT_BOSS_PHANTOM
+            )
             conn.execute(
                 """
                 UPDATE mini_boss_participants
                 SET hero_id = ?, attack = ?, hit_count = 0, total_damage = 0,
-                    skipped_turns = 0, reward_granted = 0
+                    skipped_turns = 0, reward_granted = 0,
+                    damage_bonus_percent = ?, phantom_reward = ?
                 WHERE boss_id = ? AND player_id = ?
                 """,
                 (
                     int(row["active_hero_id"]),
                     max(1, attack),
+                    10 if damage_potion else 0,
+                    1 if phantom_potion else 0,
                     int(boss_id),
                     int(row["player_id"]),
                 ),
@@ -707,9 +751,19 @@ def hit_boss(
             boss_hp_before=int(boss["current_hp"]),
             boss_max_hp=int(boss["max_hp"]),
         )
-        damage = int(attack_resolution["damage"])
+        ability_damage = int(attack_resolution["damage"])
+        damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
+        damage = ability_damage
         passive_events = list(attack_resolution["events"])
         boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
+        if damage_bonus_percent > 0:
+            damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
+            passive_events.append(
+                {
+                    "type": "item_damage_boost",
+                    "message": f"🧪 Зелье урона: +{damage_bonus_percent}% урона",
+                }
+            )
         hp_after = max(0, int(boss["current_hp"]) - damage)
         conn.execute(
             """
@@ -792,6 +846,8 @@ def hit_boss(
         "applied": True,
         "damage": damage,
         "base_damage": int(attack_resolution["base_damage"]),
+        "ability_damage": ability_damage,
+        "damage_bonus_percent": damage_bonus_percent,
         "passive_key": passive_key,
         "passive_name": attack_resolution["passive_name"],
         "passive_events": passive_events,

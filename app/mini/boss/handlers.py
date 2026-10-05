@@ -859,7 +859,7 @@ async def boss_hit_callback(callback: CallbackQuery):
             rewards = result.get("rewards") or {}
             message = (
                 f"🏆 Победа! Урон: {result.get('damage', 0)}. "
-                f"Награда: {rewards.get('coins_each', 0)} монет каждому."
+                f"Награда за участие: {rewards.get('coins_each', 0)} монет."
             )
             if passive_text:
                 message += f" {passive_text}"
@@ -868,7 +868,7 @@ async def boss_hit_callback(callback: CallbackQuery):
             rewards = result.get("rewards") or {}
             await callback.answer(
                 (
-                    f"💀 Бой проигран. Каждый получает "
+                    f"💀 Бой проигран. Награда за участие: "
                     f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)} осколков."
                 )[:200],
                 show_alert=True,

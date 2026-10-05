@@ -6,6 +6,7 @@ from app.config import DB_PATH
 from app.mini.db import connect_mini_db
 from app.mini.catalog import load_hero_catalog
 from app.mini.heroes import sync_hero_catalog
+from app.mini.items import EFFECT_GACHA_LUCK, consume_effect_charge
 
 
 class GachaError(ValueError):
@@ -28,7 +29,18 @@ def _settings() -> dict:
     return load_hero_catalog()["settings"]
 
 
-def _choose_hero_code() -> str:
+LUCK_RARITY_MULTIPLIERS = {
+    "rare": 130,
+    "legendary": 110,
+}
+
+
+def _rarity_weight_units(raw_weight: int, rarity: str, *, luck_active: bool) -> int:
+    multiplier = LUCK_RARITY_MULTIPLIERS.get(rarity, 100) if luck_active else 100
+    return max(0, int(raw_weight)) * int(multiplier)
+
+
+def _choose_hero_code(*, luck_active: bool = False) -> str:
     catalog = load_hero_catalog()
     settings = catalog["settings"]
 
@@ -42,7 +54,9 @@ def _choose_hero_code() -> str:
     total_weight = 0
     for rarity, raw_weight in settings["rarity_weights"].items():
         heroes = by_rarity.get(rarity, [])
-        weight = int(raw_weight)
+        weight = _rarity_weight_units(
+            int(raw_weight), rarity, luck_active=luck_active
+        )
         if not heroes or weight <= 0:
             continue
         choices.append((rarity, heroes, weight))
@@ -115,23 +129,39 @@ def get_gacha_state(
             GROUP BY rarity
             """
         ).fetchall()
+        luck_row = conn.execute(
+            """
+            SELECT charges
+            FROM mini_player_effects
+            WHERE player_id = ? AND effect_key = ?
+            """,
+            (int(player_id), EFFECT_GACHA_LUCK),
+        ).fetchone()
 
+    luck_charges = int(luck_row[0]) if luck_row else 0
+    luck_active = luck_charges > 0
     rarity_counts = {str(rarity): int(count) for rarity, count in rarity_rows}
     rarity_weights = {
         key: int(value)
         for key, value in settings["rarity_weights"].items()
     }
-    eligible_total = sum(
-        weight
+    weighted_units = {
+        rarity: _rarity_weight_units(
+            weight, rarity, luck_active=luck_active
+        )
         for rarity, weight in rarity_weights.items()
-        if weight > 0 and rarity_counts.get(rarity, 0) > 0
+    }
+    eligible_total = sum(
+        units
+        for rarity, units in weighted_units.items()
+        if units > 0 and rarity_counts.get(rarity, 0) > 0
     )
     rarity_chances = {}
-    for rarity, weight in rarity_weights.items():
+    for rarity, units in weighted_units.items():
         if eligible_total <= 0 or rarity_counts.get(rarity, 0) <= 0:
             rarity_chances[rarity] = 0.0
         else:
-            rarity_chances[rarity] = round(weight * 100 / eligible_total, 1)
+            rarity_chances[rarity] = round(units * 100 / eligible_total, 1)
 
     return {
         "pull_price": int(settings["pull_price"]),
@@ -144,6 +174,8 @@ def get_gacha_state(
         "rarity_counts": rarity_counts,
         "rarity_weights": rarity_weights,
         "rarity_chances": rarity_chances,
+        "luck_active": luck_active,
+        "luck_charges": luck_charges,
         "active_hero_id": player["active_hero_id"],
     }
 
@@ -166,8 +198,6 @@ def perform_gacha_pull(
         for key, value in settings["duplicate_shards"].items()
     }
 
-    hero_code = _choose_hero_code()
-
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
@@ -184,14 +214,6 @@ def perform_gacha_pull(
         if player is None:
             conn.rollback()
             raise GachaError("Mini-игрок не найден.")
-
-        hero = conn.execute(
-            "SELECT * FROM mini_heroes WHERE code = ? AND active = 1",
-            (hero_code,),
-        ).fetchone()
-        if hero is None:
-            conn.rollback()
-            raise GachaNoHeroes("Выбранный герой больше не активен. Повтори крутку.")
 
         balance = int(player["coins"])
         used_ticket = 0
@@ -241,6 +263,18 @@ def perform_gacha_pull(
                 "UPDATE mini_players SET coins = ? WHERE id = ?",
                 (balance, int(player_id)),
             )
+
+        luck_used = consume_effect_charge(
+            conn, int(player_id), EFFECT_GACHA_LUCK
+        )
+        hero_code = _choose_hero_code(luck_active=luck_used)
+        hero = conn.execute(
+            "SELECT * FROM mini_heroes WHERE code = ? AND active = 1",
+            (hero_code,),
+        ).fetchone()
+        if hero is None:
+            conn.rollback()
+            raise GachaNoHeroes("Выбранный герой больше не активен. Повтори крутку.")
 
         owned = conn.execute(
             """
@@ -359,6 +393,7 @@ def perform_gacha_pull(
         "balance": balance,
         "tickets": tickets_after,
         "pull_price": pull_price,
+        "luck_used": bool(luck_used),
         "auto_activated": auto_activated,
     })
     return result
