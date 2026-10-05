@@ -1570,11 +1570,6 @@ async def daily_callback(callback: CallbackQuery):
     )
 
 
-@router.callback_query(F.data.startswith("mini:boss:"))
-async def boss_callback(callback: CallbackQuery):
-    await _not_ready(callback, "👹 Боссы будут добавлены позже.")
-
-
 @router.callback_query(F.data.startswith("mini:shop:"))
 async def shop_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)

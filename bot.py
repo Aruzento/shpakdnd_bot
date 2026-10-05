@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from app.config import DB_PATH, TIMEZONE_NAME, TOKEN
 from app.db.schema import init_db
 from app.handlers import ROUTERS
+from app.mini.boss.schema import init_boss_db
 from app.mini.commands import configure_mini_commands
 from app.mini.heroes import sync_hero_catalog
 from app.mini.shop import sync_shop_catalog
@@ -16,6 +17,7 @@ from app.services.timers import restore_timers
 async def main():
     init_db()
     init_mini_db()
+    init_boss_db()
     mini_worlds = sync_configured_mini_worlds()
     hero_count = sync_hero_catalog()
 

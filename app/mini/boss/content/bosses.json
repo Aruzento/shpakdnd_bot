@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "bosses": [
+    {
+      "code": "training_golem",
+      "name": "Каменный голем",
+      "description": "Тяжёлый каменный страж пробудился у старых ворот. Медленный, но очень живучий — хороший первый противник для отряда.",
+      "max_hp": 300,
+      "min_players": 2,
+      "reward_coins": 60,
+      "image": "training_golem.png",
+      "active": true
+    }
+  ]
+}

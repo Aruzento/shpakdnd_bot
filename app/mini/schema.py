@@ -17,9 +17,6 @@ MINI_TABLES = (
     "mini_shop_offers",
     "mini_purchases",
     "mini_gacha_pulls",
-    "mini_bosses",
-    "mini_boss_participants",
-    "mini_boss_actions",
 )
 
 
@@ -253,99 +250,8 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
 
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS mini_bosses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                world_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                max_hp INTEGER NOT NULL CHECK (max_hp > 0),
-                current_hp INTEGER NOT NULL CHECK (current_hp >= 0),
-                min_players INTEGER NOT NULL DEFAULT 1 CHECK (min_players > 0),
-                status TEXT NOT NULL DEFAULT 'announced',
-                signup_opens_at TEXT,
-                signup_closes_at TEXT,
-                starts_at TEXT,
-                current_round INTEGER NOT NULL DEFAULT 1,
-                current_turn_position INTEGER NOT NULL DEFAULT 0,
-                turn_started_at TEXT,
-                skip_after_hours INTEGER NOT NULL DEFAULT 4,
-                reward_coins INTEGER NOT NULL DEFAULT 0,
-                reward_item_id INTEGER,
-                created_by_user_id INTEGER NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                ended_at TEXT,
-                FOREIGN KEY (world_id)
-                    REFERENCES mini_worlds(id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (reward_item_id)
-                    REFERENCES mini_items(id)
-                    ON DELETE SET NULL
-            )
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS mini_boss_participants (
-                boss_id INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
-                queue_position INTEGER NOT NULL,
-                joined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                hit_count INTEGER NOT NULL DEFAULT 0,
-                total_damage INTEGER NOT NULL DEFAULT 0,
-                skipped_turns INTEGER NOT NULL DEFAULT 0,
-                reward_granted INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY (boss_id, player_id),
-                UNIQUE (boss_id, queue_position),
-                FOREIGN KEY (boss_id)
-                    REFERENCES mini_bosses(id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (player_id)
-                    REFERENCES mini_players(id)
-                    ON DELETE CASCADE
-            )
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS mini_boss_actions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                boss_id INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
-                round_number INTEGER NOT NULL,
-                action_type TEXT NOT NULL,
-                damage INTEGER NOT NULL DEFAULT 0,
-                boss_hp_after INTEGER,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (boss_id)
-                    REFERENCES mini_bosses(id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (player_id)
-                    REFERENCES mini_players(id)
-                    ON DELETE CASCADE
-            )
-            """
-        )
-
-        conn.execute(
-            """
             CREATE INDEX IF NOT EXISTS idx_mini_players_world
             ON mini_players (world_id, telegram_user_id)
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_mini_bosses_world_status
-            ON mini_bosses (world_id, status)
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_mini_boss_actions_boss
-            ON mini_boss_actions (boss_id, id)
             """
         )
 
