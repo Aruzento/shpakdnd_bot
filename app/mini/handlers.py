@@ -45,6 +45,7 @@ from app.mini.players import (
     get_mini_player,
     touch_mini_player,
 )
+from app.mini.rules import RULES_TEXT
 from app.mini.shop import (
     ShopError,
     ShopInsufficientFunds,
@@ -149,9 +150,9 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="🏆 Рейтинг",
+                    text="📖 Правила",
                     callback_data=_personal_callback(
-                        "rating", world_id, user_id
+                        "rules", world_id, user_id
                     ),
                 ),
                 InlineKeyboardButton(
@@ -2196,6 +2197,18 @@ async def hero_active_callback(callback: CallbackQuery):
     )
 
 
+@router.callback_query(F.data.startswith("mini:rules:"))
 @router.callback_query(F.data.startswith("mini:rating:"))
-async def rating_callback(callback: CallbackQuery):
-    await _not_ready(callback, "🏆 Рейтинг будет добавлен позже.")
+async def rules_callback(callback: CallbackQuery):
+    # Старые уже открытые кнопки «Рейтинг» тоже ведут в правила.
+    context = await _load_personal_context(callback)
+    if context is None:
+        return
+
+    world, _ = context
+    await callback.answer()
+    await _edit_private(
+        callback,
+        RULES_TEXT,
+        _back_menu(world["id"], callback.from_user.id),
+    )
