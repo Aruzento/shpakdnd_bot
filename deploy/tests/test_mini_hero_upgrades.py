@@ -1,0 +1,176 @@
+import os
+import sqlite3
+import tempfile
+import unittest
+from pathlib import Path
+
+os.environ.setdefault("BOT_TOKEN", "test-token")
+
+from app.mini.hero_upgrades import (
+    HeroUpgradeInsufficientShards,
+    HeroUpgradeMaxStars,
+    calculate_attack,
+    max_stars_for_rarity,
+    sell_hero_shards,
+    upgrade_cost,
+    upgrade_hero,
+)
+from app.mini.heroes import get_active_hero, get_player_hero, sync_hero_catalog
+from app.mini.players import create_mini_player
+from app.mini.schema import init_mini_db
+from app.mini.wallet import get_balance, get_wallet_history
+from app.mini.worlds import sync_configured_mini_worlds
+
+
+class MiniHeroUpgradeTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.db = Path(self.tempdir.name) / "mini.db"
+        init_mini_db(self.db)
+        worlds = sync_configured_mini_worlds(self.db)
+        self.world_id = worlds[0]["id"]
+        self.player = create_mini_player(
+            self.world_id,
+            991001,
+            "@upgrade_tester",
+            "Кузнец звёзд",
+            self.db,
+        )
+        sync_hero_catalog(self.db)
+
+        with sqlite3.connect(self.db) as conn:
+            hero_id = int(conn.execute(
+                "SELECT id FROM mini_heroes WHERE code = 'Villager'"
+            ).fetchone()[0])
+            conn.execute(
+                """
+                INSERT INTO mini_player_heroes (
+                    player_id, hero_id, copies, shards, stars
+                ) VALUES (?, ?, 1, 200, 0)
+                """,
+                (self.player["id"], hero_id),
+            )
+            conn.execute(
+                "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+                (hero_id, self.player["id"]),
+            )
+            conn.commit()
+        self.hero_id = hero_id
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+
+    def test_existing_database_gets_stars_column(self):
+        old_db = Path(self.tempdir.name) / "old_schema.db"
+        with sqlite3.connect(old_db) as conn:
+            conn.execute(
+                """
+                CREATE TABLE mini_player_heroes (
+                    player_id INTEGER NOT NULL,
+                    hero_id INTEGER NOT NULL,
+                    copies INTEGER NOT NULL DEFAULT 1,
+                    shards INTEGER NOT NULL DEFAULT 0,
+                    obtained_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (player_id, hero_id)
+                )
+                """
+            )
+            conn.commit()
+
+        init_mini_db(old_db)
+
+        with sqlite3.connect(old_db) as conn:
+            columns = {
+                row[1]
+                for row in conn.execute(
+                    "PRAGMA table_info(mini_player_heroes)"
+                ).fetchall()
+            }
+        self.assertIn("stars", columns)
+
+    def test_attack_formula_matches_villager_example(self):
+        self.assertEqual(
+            [calculate_attack(3, stars) for stars in range(5)],
+            [3, 4, 6, 9, 13],
+        )
+
+    def test_cost_and_limits(self):
+        self.assertEqual(upgrade_cost("common", 1), 10)
+        self.assertEqual(upgrade_cost("common", 4), 40)
+        self.assertEqual(upgrade_cost("uncommon", 5), 100)
+        self.assertEqual(upgrade_cost("rare", 6), 240)
+        self.assertEqual(upgrade_cost("legendary", 7), 700)
+        self.assertEqual(max_stars_for_rarity("common"), 4)
+        self.assertEqual(max_stars_for_rarity("uncommon"), 5)
+        self.assertEqual(max_stars_for_rarity("rare"), 6)
+        self.assertIsNone(max_stars_for_rarity("legendary"))
+
+    def test_common_can_upgrade_to_four_stars(self):
+        attacks = []
+        costs = []
+        for _ in range(4):
+            result = upgrade_hero(
+                self.player["id"], self.hero_id, self.db
+            )
+            attacks.append(result["attack"])
+            costs.append(result["shards_spent"])
+
+        self.assertEqual(attacks, [4, 6, 9, 13])
+        self.assertEqual(costs, [10, 20, 30, 40])
+
+        hero = get_player_hero(
+            self.player["id"], self.hero_id, self.db
+        )
+        self.assertEqual(hero["stars"], 4)
+        self.assertEqual(hero["attack"], 13)
+        self.assertEqual(hero["shards"], 100)
+
+        active = get_active_hero(self.player["id"], self.db)
+        self.assertEqual(active["attack"], 13)
+
+        with self.assertRaises(HeroUpgradeMaxStars):
+            upgrade_hero(self.player["id"], self.hero_id, self.db)
+
+    def test_upgrade_requires_enough_shards(self):
+        with sqlite3.connect(self.db) as conn:
+            conn.execute(
+                "UPDATE mini_player_heroes SET shards = 9 WHERE player_id = ? AND hero_id = ?",
+                (self.player["id"], self.hero_id),
+            )
+            conn.commit()
+
+        with self.assertRaises(HeroUpgradeInsufficientShards):
+            upgrade_hero(self.player["id"], self.hero_id, self.db)
+
+    def test_sell_shards_one_for_one(self):
+        result = sell_hero_shards(
+            self.player["id"],
+            self.hero_id,
+            25,
+            operation_key="test-sale-1",
+            db_path=self.db,
+        )
+        self.assertEqual(result["coins_earned"], 25)
+        self.assertEqual(result["shards"], 175)
+        self.assertEqual(get_balance(self.player["id"], self.db), 25)
+
+        history = get_wallet_history(self.player["id"], 10, self.db)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["amount"], 25)
+        self.assertEqual(history[0]["reference_type"], "hero_shards")
+
+        # Повтор одного и того же callback не продаёт второй раз.
+        repeat = sell_hero_shards(
+            self.player["id"],
+            self.hero_id,
+            25,
+            operation_key="test-sale-1",
+            db_path=self.db,
+        )
+        self.assertFalse(repeat["applied"])
+        self.assertEqual(get_balance(self.player["id"], self.db), 25)
+
+
+if __name__ == "__main__":
+    unittest.main()

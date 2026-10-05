@@ -1,0 +1,89 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+os.environ.setdefault("BOT_TOKEN", "test-token")
+
+from app.mini.admin_grants import (
+    get_mini_player_by_username,
+    grant_mini_coins,
+    grant_mini_item,
+    list_mini_items,
+)
+from app.mini.players import create_mini_player
+from app.mini.schema import init_mini_db
+from app.mini.shop import sync_shop_catalog
+from app.mini.wallet import get_balance, get_wallet_history
+from app.mini.worlds import sync_configured_mini_worlds
+
+
+class MiniAdminGrantTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.db = Path(self.tempdir.name) / "mini.db"
+        init_mini_db(self.db)
+        worlds = sync_configured_mini_worlds(self.db)
+        self.world_id = worlds[0]["id"]
+        self.player = create_mini_player(
+            self.world_id,
+            999001,
+            "@grant_tester",
+            "Получатель",
+            self.db,
+        )
+        sync_shop_catalog(self.world_id, self.db)
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def test_find_player_by_username(self):
+        player = get_mini_player_by_username(
+            self.world_id,
+            "@GRANT_TESTER",
+            self.db,
+        )
+        self.assertIsNotNone(player)
+        self.assertEqual(player["id"], self.player["id"])
+
+    def test_admin_coin_grant_updates_wallet_history(self):
+        result = grant_mini_coins(
+            self.player["id"],
+            123,
+            "@arukozento",
+            self.db,
+        )
+        self.assertEqual(result["balance"], 123)
+        self.assertEqual(get_balance(self.player["id"], self.db), 123)
+        history = get_wallet_history(self.player["id"], 10, self.db)
+        self.assertEqual(history[0]["amount"], 123)
+        self.assertIn("Админ-выдача", history[0]["reason"])
+
+    def test_admin_item_grant(self):
+        items = list_mini_items(self.db)
+        self.assertGreaterEqual(len(items), 1)
+        item = items[0]
+        first = grant_mini_item(
+            self.player["id"],
+            item["id"],
+            self.db,
+        )
+        second = grant_mini_item(
+            self.player["id"],
+            item["id"],
+            self.db,
+        )
+        self.assertEqual(first["quantity"], 1)
+        self.assertEqual(second["quantity"], 2)
+
+    def test_invalid_item_rejected(self):
+        with self.assertRaises(ValueError):
+            grant_mini_item(
+                self.player["id"],
+                999999,
+                self.db,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

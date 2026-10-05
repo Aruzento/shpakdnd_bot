@@ -1,0 +1,6 @@
+[Unit]
+Description=Update Shpak DnD Bot after project change
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/update-shpakdnd-bot.sh
