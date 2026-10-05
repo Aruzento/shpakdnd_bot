@@ -299,18 +299,31 @@
       "active": true
     },
     {
-      "code": "witcher_isekai",
-      "name": "Ведьмак из другого мира",
+      "code": "rebel_archer",
+      "name": "Повстанец с луком",
       "rarity": "rare",
       "race": "человек",
-      "class_name": "воин",
+      "class_name": "следопыт",
       "attack": 7,
-      "passive_key": "silver_edge",
-      "passive_text": "Серебряное оружие накапливает силу. Каждый третий удар наносит двойной урон.",
-      "description": "Сука. Как я тут очутился, вот же срань.",
-      "image": "witcher_isekai.png",
+      "passive_key": "hunters_mark",
+      "passive_text": "Первым выстрелом помечает цель. Все последующие атаки по ней наносят на 25% больше урона.",
+      "description": "Пади щупальце мерзотное! Любой ценой, любой стрелой!",
+      "image": "rebel_archer.png",
       "active": true
     },
+    {
+      "code": "frog_man_spearman",
+      "name": "Жаболюд из лужи",
+      "rarity": "rare",
+      "race": "жаболюд",
+      "class_name": "воин",
+      "attack": 7,
+      "passive_key": "leaping_thrust",
+      "passive_text": "Каждый третий удар жаболюд совершает прыжок с копьём и атакует дважды.",
+      "description": "Суки, мы не так договаривались! Почему меня призвали из лужи? Почему лужа жёлтая??",
+      "image": "frog_man_spearman.png",
+      "active": true
+    }
     
   ]
 }
