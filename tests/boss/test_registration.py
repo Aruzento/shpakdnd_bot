@@ -125,6 +125,18 @@ class MiniBossRegistrationTests(unittest.TestCase):
         boss = create_boss_event(
             self.world_id, "training_golem", 999, self.db
         )
+
+        # Этот тест проверяет именно механику минимального количества игроков,
+        # а не текущий баланс training_golem из bosses.json.
+        # Фиксируем порог в тестовой БД, чтобы изменение каталога боссов
+        # не ломало unit-тест регистрации.
+        with connect_mini_db(self.db) as conn:
+            conn.execute(
+                "UPDATE mini_bosses SET min_players = 2 WHERE id = ?",
+                (boss["id"],),
+            )
+            conn.commit()
+
         register_player(boss["id"], self.player1["id"], self.db)
         with self.assertRaises(BossNotEnoughPlayers):
             close_registration(boss["id"], self.db)
