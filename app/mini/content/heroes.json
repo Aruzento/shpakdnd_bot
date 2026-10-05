@@ -164,6 +164,45 @@
       "image": "ElfLibrarian.png",
       "active": true
     },
+    {
+      "code": "KoboldTorchbearer",
+      "name": "Кобольд-факельщик",
+      "rarity": "common",
+      "race": "кобольд",
+      "class_name": "слуга",
+      "attack": 2,
+      "passive_key": "none",
+      "passive_text": "Нет особых способностей.",
+      "description": "Носит факел впереди отряда и первым узнаёт, где именно сегодня прячется опасность.",
+      "image": "KoboldTorchbearer.png",
+      "active": true
+    },
+    {
+      "code": "TieflingFortuneTeller",
+      "name": "Тифлинг-гадалка",
+      "rarity": "common",
+      "race": "тифлинг",
+      "class_name": "провидица",
+      "attack": 3,
+      "passive_key": "none",
+      "passive_text": "Нет особых способностей.",
+      "description": "Умеет предсказывать неприятности удивительно точно, особенно если они происходят прямо сейчас.",
+      "image": "TieflingFortuneTeller.png",
+      "active": true
+    },
+    {
+      "code": "GnomeMushroomCollector",
+      "name": "Гном-грибник",
+      "rarity": "common",
+      "race": "гном",
+      "class_name": "собиратель",
+      "attack": 4,
+      "passive_key": "none",
+      "passive_text": "Нет особых способностей.",
+      "description": "Обошёл половину пещер в округе и до сих пор уверен, что самый опасный монстр — это плохой гриб.",
+      "image": "GnomeMushroomCollector.png",
+      "active": true
+    },
     
     
     {
@@ -283,6 +322,33 @@
       "image": "halfling_smuggler.png",
       "active": true
     },
+    {
+      "code": "BugbearAmbusher",
+      "name": "Багбир-засадник",
+      "rarity": "uncommon",
+      "race": "багбир",
+      "class_name": "плут",
+      "attack": 9,
+      "passive_key": "strong_start",
+      "passive_text": "Любит нападать первым. Первый удар в бою наносит двойной урон",
+      "description": "Терпеливый охотник из тёмных лесов, который предпочитает, чтобы противник замечал его слишком поздно.",
+      "image": "BugbearAmbusher.png",
+      "active": true
+    },
+    {
+      "code": "TortleHarpooner",
+      "name": "Тортл-гарпунщик",
+      "rarity": "uncommon",
+      "race": "тартл",
+      "class_name": "воин",
+      "attack": 8,
+      "passive_key": "combat_training",
+      "passive_text": "Привык к долгой и тяжёлой охоте. Каждый третий удар наносит на 50% больше урона",
+      "description": "Спокойный, медлительный и очень меткий охотник, который умеет одним броском решить спор с морским чудовищем.",
+      "image": "TortleHarpooner.png",
+      "active": true
+    },
+
 
 
     {
@@ -337,6 +403,19 @@
       "passive_text": "Ликвидация: наносит на 50% больше урона боссу, если у него осталось меньше 20% здоровья. Если этот персонаж наносит смертельный удар, есть 10% шанс дополнительно получить 30 осколков.",
       "description": "Лутаемся? Лутаемся!",
       "image": "Asrael.png",
+      "active": true
+    },
+    {
+      "code": "Lasar",
+      "name": "Лазарь",
+      "rarity": "legendary",
+      "race": "полуэльф",
+      "class_name": "бард",
+      "attack": 150,
+      "passive_key": "mockery",
+      "passive_text": "Сокрушительная насмешка: каждый третий ход персонаж настолько унижает босса, что тот теряет самообладание и пропускает следующий ход.",
+      "description": "Дорогая леди, вы сегодня одна? Как насчет того, чтобы я составил вам компанию? Я могу быть очень полезен в бою, а после боя — ещё полезнее...",
+      "image": "Lasar.png",
       "active": true
     }
     
