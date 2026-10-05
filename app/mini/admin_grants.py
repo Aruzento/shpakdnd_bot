@@ -48,6 +48,33 @@ def get_mini_player_by_username(
     return dict(row) if row else None
 
 
+def list_mini_players(
+    world_id: int,
+    db_path: str | Path = DB_PATH,
+) -> list[dict]:
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                world_id,
+                telegram_user_id,
+                username,
+                character_name,
+                coins,
+                active_hero_id,
+                created_at,
+                last_seen_at
+            FROM mini_players
+            WHERE world_id = ?
+            ORDER BY id
+            """,
+            (int(world_id),),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def grant_mini_coins(
     player_id: int,
     amount: int,
@@ -72,10 +99,12 @@ def grant_mini_coins(
 
 def grant_mini_item(
     player_id: int,
-    item_id: int,
+    item_ref: int | str,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    item_id = int(item_id)
+    raw_item_ref = str(item_ref).strip()
+    if not raw_item_ref:
+        raise ValueError("Не указан предмет.")
 
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -95,26 +124,34 @@ def grant_mini_item(
             conn.rollback()
             raise ValueError("Mini-игрок не найден.")
 
-        item = conn.execute(
-            """
-            SELECT
-                id,
-                code,
-                name,
-                category,
-                description,
-                effect_key,
-                stackable,
-                active
-            FROM mini_items
-            WHERE id = ?
-            """,
-            (item_id,),
-        ).fetchone()
+        if raw_item_ref.isdigit():
+            item = conn.execute(
+                """
+                SELECT
+                    id, code, name, category, description,
+                    effect_key, stackable, active
+                FROM mini_items
+                WHERE id = ?
+                """,
+                (int(raw_item_ref),),
+            ).fetchone()
+        else:
+            item = conn.execute(
+                """
+                SELECT
+                    id, code, name, category, description,
+                    effect_key, stackable, active
+                FROM mini_items
+                WHERE LOWER(code) = LOWER(?)
+                """,
+                (raw_item_ref,),
+            ).fetchone()
 
         if item is None:
             conn.rollback()
-            raise ValueError(f"Предмет с ID {item_id} не найден.")
+            raise ValueError(f"Предмет «{raw_item_ref}» не найден.")
+
+        item_id = int(item["id"])
 
         existing = conn.execute(
             """
@@ -172,6 +209,83 @@ def grant_mini_item(
     result = dict(item)
     result["quantity"] = int(quantity)
     return result
+
+
+def grant_mini_coins_all(
+    world_id: int,
+    amount: int,
+    admin_username: str,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    players = list_mini_players(world_id, db_path)
+    if not players:
+        raise ValueError("В этом Mini-мире нет игроков.")
+
+    for player in players:
+        grant_mini_coins(
+            int(player["id"]),
+            int(amount),
+            admin_username,
+            db_path,
+        )
+
+    return {
+        "players": len(players),
+        "amount_each": int(amount),
+        "total": len(players) * int(amount),
+    }
+
+
+def grant_mini_item_all(
+    world_id: int,
+    item_ref: int | str,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    players = list_mini_players(world_id, db_path)
+    if not players:
+        raise ValueError("В этом Mini-мире нет игроков.")
+
+    granted = 0
+    skipped = 0
+    item = None
+    for player in players:
+        try:
+            item = grant_mini_item(
+                int(player["id"]),
+                item_ref,
+                db_path,
+            )
+            granted += 1
+        except ValueError as error:
+            if "не складывается" not in str(error):
+                raise
+            skipped += 1
+
+    if item is None:
+        # Все игроки уже имели нестакающийся предмет. Разрешим item_ref отдельно,
+        # чтобы команда всё равно вернула понятное имя предмета.
+        with connect_mini_db(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            raw_item_ref = str(item_ref).strip()
+            if raw_item_ref.isdigit():
+                row = conn.execute(
+                    "SELECT * FROM mini_items WHERE id = ?",
+                    (int(raw_item_ref),),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT * FROM mini_items WHERE LOWER(code) = LOWER(?)",
+                    (raw_item_ref,),
+                ).fetchone()
+            if row is None:
+                raise ValueError(f"Предмет «{raw_item_ref}» не найден.")
+            item = dict(row)
+
+    return {
+        "players": granted,
+        "skipped": skipped,
+        "item": item,
+    }
 
 
 def list_mini_items(

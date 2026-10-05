@@ -20,6 +20,7 @@ from app.mini.boss.combat import (
     BossNotParticipant,
     BossNotYourTurn,
     advance_expired_turns,
+    force_finish_battle,
     hit_boss,
     start_battle,
 )
@@ -28,6 +29,7 @@ from app.mini.boss.public import (
     format_participants,
     format_public_boss,
     public_boss_menu,
+    publish_admin_victory,
     refresh_public_boss,
     replace_public_turn,
 )
@@ -172,6 +174,16 @@ def _boss_private_menu(
                 text="🔓 Открыть регистрацию снова",
                 callback_data=(
                     f"miniboss:reopen:{world_id}:{user_id}:{boss['id']}"
+                ),
+            )
+        ])
+
+    if is_admin and boss["status"] == "fighting":
+        rows.append([
+            InlineKeyboardButton(
+                text="⚡ Завершить бой",
+                callback_data=(
+                    f"miniboss:forcefinish:{world_id}:{user_id}:{boss['id']}"
                 ),
             )
         ])
@@ -938,6 +950,38 @@ async def boss_hit_callback(callback: CallbackQuery):
         boss,
         notice=public_notice,
     )
+
+
+@router.callback_query(F.data.startswith("miniboss:forcefinish:"))
+async def boss_force_finish_callback(callback: CallbackQuery):
+    context = await _admin_action_context(callback, "forcefinish")
+    if context is None:
+        return
+    world, boss, _ = context
+
+    if boss["status"] != "fighting":
+        await callback.answer(
+            "Завершить можно только идущий бой.",
+            show_alert=True,
+        )
+        return
+
+    try:
+        result = force_finish_battle(boss["id"])
+    except BossCombatError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+
+    finished = result["state"]["boss"]
+    await refresh_public_boss(callback.bot, world, finished)
+    await publish_admin_victory(
+        callback.bot,
+        world,
+        finished,
+        old_turn_message_id=result.get("old_turn_message_id"),
+    )
+    await callback.answer("Бой завершён победой")
+    await _delete_current_ephemeral(callback)
 
 
 @router.callback_query(F.data.startswith("miniboss:republish:"))

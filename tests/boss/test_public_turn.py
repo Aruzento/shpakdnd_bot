@@ -6,8 +6,10 @@ from unittest.mock import patch
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
 from app.mini.boss.public import (
+    format_public_boss,
     format_public_turn,
     public_boss_menu,
+    publish_admin_victory,
     replace_public_turn,
 )
 
@@ -75,6 +77,44 @@ class PublicBossTurnTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertNotIn("⚔️ Ударить босса", labels)
         self.assertIn("👥 Участники", labels)
+
+    def test_admin_victory_card_says_everyone_was_rewarded(self):
+        boss = dict(self.boss)
+        boss.update(
+            {
+                "status": "defeated",
+                "battle_result": "admin_victory",
+                "current_hp": 0,
+                "min_players": 2,
+                "description": "Тест",
+            }
+        )
+        text = format_public_boss(boss, self.participants)
+        self.assertIn("Награда выдана всем зарегистрированным участникам", text)
+
+    @patch("app.mini.boss.public.set_turn_message")
+    async def test_admin_victory_replaces_turn_with_public_message(
+        self,
+        mocked_set_turn_message,
+    ):
+        bot = FakeBot()
+        world = {"id": 1, "chat_id": -1001, "thread_id": 2684}
+        boss = dict(self.boss)
+        boss["status"] = "defeated"
+
+        applied = await publish_admin_victory(
+            bot,
+            world,
+            boss,
+            old_turn_message_id=123,
+        )
+
+        self.assertTrue(applied)
+        self.assertEqual(len(bot.sent), 1)
+        self.assertIn("Сами боги услышали клич", bot.sent[0]["text"])
+        self.assertIn("Поздравляю, вы победили", bot.sent[0]["text"])
+        self.assertEqual(bot.deleted[0]["message_id"], 123)
+        mocked_set_turn_message.assert_called_once_with(7, None)
 
     @patch("app.mini.boss.public.set_turn_message")
     @patch("app.mini.boss.public.list_participants")

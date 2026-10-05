@@ -130,10 +130,17 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
             ]
         )
     elif boss["status"] == "defeated":
+        if str(boss.get("battle_result") or "") == "admin_victory":
+            victory_text = "🏆 Победа! Награда выдана всем зарегистрированным участникам."
+        else:
+            victory_text = (
+                "🏆 Победа! Награда выдана тем, кто участвовал в бою "
+                "или использовал фантомное участие."
+            )
         lines.extend(
             [
                 "",
-                "🏆 Победа! Награда выдана тем, кто участвовал в бою или использовал фантомное участие.",
+                victory_text,
                 f"🎁 Итог: {_reward_line(boss)}",
             ]
         )
@@ -338,6 +345,55 @@ async def replace_public_turn(
             )
 
     boss["turn_message_id"] = int(sent.message_id)
+    return True
+
+
+async def publish_admin_victory(
+    bot,
+    world: dict,
+    boss: dict,
+    *,
+    old_turn_message_id: int | None = None,
+) -> bool:
+    """Публикует аварийную победу и убирает старую карточку текущего хода."""
+    text = (
+        "⚡ Сами боги услышали клич, и раскат грома ударил по боссу. "
+        "Босс пал.\n\n"
+        "🏆 Поздравляю, вы победили!\n\n"
+        "🎁 Награда выдана всем, кто зарегистрировался на бой."
+    )
+
+    try:
+        await bot.send_message(
+            chat_id=world["chat_id"],
+            message_thread_id=world["thread_id"] or None,
+            text=text,
+        )
+    except TelegramAPIError as error:
+        print(
+            "Boss: не удалось опубликовать аварийную победу: "
+            f"{type(error).__name__}: {error}"
+        )
+        return False
+
+    message_id = old_turn_message_id
+    if message_id is None:
+        message_id = boss.get("turn_message_id")
+
+    if message_id:
+        try:
+            await bot.delete_message(
+                chat_id=world["chat_id"],
+                message_id=int(message_id),
+            )
+        except TelegramAPIError as error:
+            print(
+                "Boss: не удалось удалить ход после аварийной победы: "
+                f"{type(error).__name__}: {error}"
+            )
+
+    set_turn_message(int(boss["id"]), None)
+    boss["turn_message_id"] = None
     return True
 
 

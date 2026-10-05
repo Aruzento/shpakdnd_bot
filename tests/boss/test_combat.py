@@ -10,6 +10,7 @@ os.environ.setdefault("BOT_TOKEN", "test-token")
 from app.mini.boss.combat import (
     BossNotYourTurn,
     advance_expired_turns,
+    force_finish_battle,
     hit_boss,
     start_battle,
 )
@@ -322,6 +323,51 @@ class MiniBossCombatTests(unittest.TestCase):
             player = get_mini_player(self.world_id, original["telegram_user_id"], self.db)
             self.assertEqual(player["coins"], 30)
             self.assertEqual(len(get_player_goods(original["id"], self.db)["inventory"]), 2)
+
+    def test_admin_force_finish_rewards_every_registered_player(self):
+        self._start()
+        with connect_mini_db(self.db) as conn:
+            conn.execute(
+                """
+                UPDATE mini_bosses
+                SET reward_percent = 50
+                WHERE id = ?
+                """,
+                (self.boss["id"],),
+            )
+            conn.commit()
+
+        result = force_finish_battle(
+            self.boss["id"],
+            now=self.start_time + timedelta(minutes=1),
+            db_path=self.db,
+        )
+
+        self.assertTrue(result["battle_ended"])
+        self.assertEqual(result["state"]["boss"]["status"], "defeated")
+        self.assertEqual(
+            result["state"]["boss"]["battle_result"],
+            "admin_victory",
+        )
+        self.assertEqual(result["state"]["boss"]["current_hp"], 0)
+        self.assertEqual(result["rewards"]["players"], 2)
+        self.assertEqual(result["rewards"]["missed_players"], 0)
+        self.assertEqual(result["rewards"]["coins_each"], 30)
+
+        for original in (self.player1, self.player2):
+            player = get_mini_player(
+                self.world_id,
+                original["telegram_user_id"],
+                self.db,
+            )
+            self.assertEqual(player["coins"], 30)
+            goods = get_player_goods(original["id"], self.db)
+            names = {
+                item["name"]: item["quantity"]
+                for item in goods["inventory"]
+            }
+            self.assertEqual(names["Кошель с монетами"], 1)
+            self.assertEqual(names["Шкатулка с осколками"], 1)
 
     def test_reward_zero_loses_battle_and_grants_consolation_shards(self):
         self._start()

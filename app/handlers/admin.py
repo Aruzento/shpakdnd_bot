@@ -23,7 +23,9 @@ from app.services.inventory import (
 from app.mini.admin_grants import (
     get_mini_player_by_username,
     grant_mini_coins,
+    grant_mini_coins_all,
     grant_mini_item,
+    grant_mini_item_all,
     list_mini_items,
 )
 from app.mini.shop import sync_shop_catalog
@@ -138,8 +140,9 @@ def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
     """
     Mini-форматы:
     /admadd @user -c 100
-    /admadd @user -c "100"
-    /admadd @user -i 3
+    /admadd @user -i boss_coin_pouch
+    /admadd ALL -c 100
+    /admadd ALL -i boss_coin_pouch
     """
     if not message.text:
         return None
@@ -152,7 +155,8 @@ def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
     flag = parts[2].strip().lower()
     value = parts[3].strip()
 
-    if not username.startswith("@") or flag not in {"-c", "-i"}:
+    is_all = username.upper() == "ALL"
+    if (not username.startswith("@") and not is_all) or flag not in {"-c", "-i"}:
         return None
 
     if (
@@ -183,47 +187,65 @@ async def _handle_mini_admadd(message: Message) -> bool:
     if not await check_topic_admin_permission(message):
         return True
 
-    username, flag, raw_value = parsed
-    player = get_mini_player_by_username(
-        world["id"],
-        username,
+    target, flag, raw_value = parsed
+    is_all = target.upper() == "ALL"
+
+    admin_username = (
+        "@" + message.from_user.username.lower()
+        if message.from_user and message.from_user.username
+        else "@admin"
     )
 
-    if player is None:
-        await message.answer(
-            f"❌ Mini-игрок {normalize_username(username)} не найден в этой теме.\n"
-            "Игрок должен сначала создать Mini-персонажа."
-        )
-        return True
-
-    try:
-        value = int(raw_value)
-    except ValueError:
-        await message.answer(
-            "❌ Значение должно быть целым числом.\n\n"
-            "Примеры:\n"
-            "/admadd @user -c 100\n"
-            "/admadd @user -i 3"
-        )
-        return True
-
     if flag == "-c":
+        try:
+            value = int(raw_value)
+        except ValueError:
+            await message.answer(
+                "❌ Количество монет должно быть целым числом.\n\n"
+                "Примеры:\n"
+                "/admadd @user -c 100\n"
+                "/admadd ALL -c 100"
+            )
+            return True
+
         if value <= 0:
             await message.answer("❌ Количество монет должно быть больше 0.")
             return True
 
-        admin_username = (
-            "@" + message.from_user.username.lower()
-            if message.from_user and message.from_user.username
-            else "@admin"
+        if is_all:
+            try:
+                result = grant_mini_coins_all(
+                    world["id"],
+                    value,
+                    admin_username,
+                )
+            except ValueError as error:
+                await message.answer(f"❌ {error}")
+                return True
+
+            await message.answer(
+                f"✅ Все Mini-игроки получили по {value} 🪙\n"
+                f"Игроков: {result['players']}\n"
+                f"Выдано всего: {result['total']} 🪙"
+            )
+            return True
+
+        player = get_mini_player_by_username(
+            world["id"],
+            target,
         )
+        if player is None:
+            await message.answer(
+                f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
+                "Игрок должен сначала создать Mini-персонажа."
+            )
+            return True
 
         result = grant_mini_coins(
             player["id"],
             value,
             admin_username,
         )
-
         await message.answer(
             f"✅ {player['character_name']} ({player['username']}) получил "
             f"{value} 🪙\n"
@@ -231,12 +253,45 @@ async def _handle_mini_admadd(message: Message) -> bool:
         )
         return True
 
+    # -i принимает как стабильный code предмета, так и старый числовой ID.
     sync_shop_catalog(world["id"])
+
+    if is_all:
+        try:
+            result = grant_mini_item_all(
+                world["id"],
+                raw_value,
+            )
+        except ValueError as error:
+            await message.answer(f"❌ {error}")
+            return True
+
+        item = result["item"]
+        text = (
+            f"✅ Все Mini-игроки получили предмет:\n"
+            f"#{item['id']} — {item['name']} [{item['code']}]\n"
+            f"Получили: {result['players']}"
+        )
+        if result.get("skipped"):
+            text += f"\nПропущено (уже был нестакающийся предмет): {result['skipped']}"
+        await message.answer(text)
+        return True
+
+    player = get_mini_player_by_username(
+        world["id"],
+        target,
+    )
+    if player is None:
+        await message.answer(
+            f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
+            "Игрок должен сначала создать Mini-персонажа."
+        )
+        return True
 
     try:
         item = grant_mini_item(
             player["id"],
-            value,
+            raw_value,
         )
     except ValueError as error:
         await message.answer(f"❌ {error}")
@@ -244,7 +299,7 @@ async def _handle_mini_admadd(message: Message) -> bool:
 
     await message.answer(
         f"✅ {player['character_name']} ({player['username']}) получил предмет:\n"
-        f"#{item['id']} — {item['name']}\n"
+        f"#{item['id']} — {item['name']} [{item['code']}]\n"
         f"Теперь в инвентаре: {item['quantity']} шт."
     )
     return True
@@ -368,7 +423,8 @@ async def admitems_handler(message: Message):
         [
             "",
             "Выдать предмет:",
-            "/admadd @user -i ID",
+            "/admadd @user -i CODE",
+            "/admadd ALL -i CODE",
         ]
     )
 

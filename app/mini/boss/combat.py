@@ -144,7 +144,12 @@ def _reward_eligible(row: sqlite3.Row) -> bool:
     return int(row["hit_count"] or 0) > 0 or bool(int(row["phantom_reward"] or 0))
 
 
-def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
+def _grant_victory_rewards(
+    conn: sqlite3.Connection,
+    boss: sqlite3.Row,
+    *,
+    include_all_registered: bool = False,
+) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
     coins_each = int(boss["reward_coins"]) * reward_percent // 100
     items = _reward_items(boss["reward_items_json"])
@@ -178,7 +183,7 @@ def _grant_victory_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
         if int(row["reward_granted"]):
             continue
         player_id = int(row["player_id"])
-        if not _reward_eligible(row):
+        if not include_all_registered and not _reward_eligible(row):
             conn.execute(
                 """
                 UPDATE mini_boss_participants
@@ -310,6 +315,29 @@ def _finish_victory(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime)
         UPDATE mini_bosses
         SET status = 'defeated', battle_result = 'victory', ended_at = ?,
             current_hp = 0, turn_started_at = NULL
+        WHERE id = ?
+        """,
+        (_db_time(when), int(boss["id"])),
+    )
+    return rewards
+
+
+def _finish_admin_victory(
+    conn: sqlite3.Connection,
+    boss: sqlite3.Row,
+    when: datetime,
+) -> dict:
+    """Аварийно завершает бой победой и награждает всех зарегистрированных."""
+    rewards = _grant_victory_rewards(
+        conn,
+        boss,
+        include_all_registered=True,
+    )
+    conn.execute(
+        """
+        UPDATE mini_bosses
+        SET status = 'defeated', battle_result = 'admin_victory', ended_at = ?,
+            current_hp = 0, turn_started_at = NULL, turn_message_id = NULL
         WHERE id = ?
         """,
         (_db_time(when), int(boss["id"])),
@@ -602,6 +630,56 @@ def get_combat_state(
         "current_reward_coins": int(boss["reward_coins"])
         * max(0, min(100, int(boss.get("reward_percent", 100))))
         // 100,
+    }
+
+
+def force_finish_battle(
+    boss_id: int,
+    *,
+    now: datetime | None = None,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    """Админское аварийное завершение текущего боя победой.
+
+    Награда берётся из текущего состояния босса, включая уже уменьшенный
+    процент монет, но право на неё получают все зарегистрированные участники.
+    """
+    init_boss_db(db_path)
+    sync_boss_reward_items(db_path)
+    now = _coerce_utc(now)
+
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("BEGIN IMMEDIATE")
+
+        boss = conn.execute(
+            "SELECT * FROM mini_bosses WHERE id = ?",
+            (int(boss_id),),
+        ).fetchone()
+        if boss is None:
+            conn.rollback()
+            raise BossCombatError("Босс не найден.")
+        if boss["status"] != "fighting":
+            conn.rollback()
+            raise BossCombatError("Аварийно завершить можно только идущий бой.")
+
+        old_turn_message_id = boss["turn_message_id"]
+        boss = _hydrate_reward_snapshot(conn, boss)
+        rewards = _finish_admin_victory(conn, boss, now)
+        conn.commit()
+
+    state = get_combat_state(boss_id, db_path=db_path)
+    return {
+        "applied": True,
+        "battle_ended": True,
+        "old_turn_message_id": (
+            int(old_turn_message_id)
+            if old_turn_message_id is not None
+            else None
+        ),
+        "rewards": rewards,
+        "state": state,
     }
 
 
