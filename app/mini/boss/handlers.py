@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import (
@@ -53,6 +55,18 @@ from app.mini.worlds import get_mini_world_by_id
 
 
 router = Router(name="mini_boss")
+
+
+_BOSS_PUBLISH_LOCKS: dict[int, asyncio.Lock] = {}
+
+
+def _boss_publish_lock(boss_id: int) -> asyncio.Lock:
+    boss_id = int(boss_id)
+    lock = _BOSS_PUBLISH_LOCKS.get(boss_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _BOSS_PUBLISH_LOCKS[boss_id] = lock
+    return lock
 
 
 STATUS_TEXT = {
@@ -412,36 +426,74 @@ async def _refresh_public_boss(callback: CallbackQuery, world: dict, boss: dict)
     await refresh_public_boss(callback.bot, world, boss)
 
 
-async def _publish_boss(callback: CallbackQuery, world: dict, boss: dict):
-    participants = list_participants(boss["id"])
-    text = _format_public_boss(boss, participants)
-    markup = _public_boss_menu(world["id"], boss)
-    image = boss_image_path(boss.get("image_path", ""))
+async def _publish_boss(
+    callback: CallbackQuery,
+    world: dict,
+    boss: dict,
+    *,
+    replace_existing: bool = False,
+    expected_message_id: int | None = None,
+):
+    """Публикует одну карточку босса и защищается от двойных callback'ов."""
+    boss_id = int(boss["id"])
 
-    if image is not None:
-        try:
-            sent = await callback.bot.send_photo(
-                chat_id=world["chat_id"],
-                message_thread_id=world["thread_id"] or None,
-                photo=FSInputFile(image),
-                caption=text,
-                reply_markup=markup,
-            )
-            set_signup_message(boss["id"], sent.message_id, "photo")
+    async with _boss_publish_lock(boss_id):
+        fresh = get_boss(boss_id)
+        if fresh is None:
+            raise BossError("Босс больше не существует.")
+
+        current_message_id = fresh.get("signup_message_id")
+        if not replace_existing and current_message_id:
+            # Повторная доставка одного callback не должна создавать второй анонс.
             return
-        except TelegramAPIError as error:
-            print(
-                "Boss: картинка не отправлена, использую текст: "
-                f"{type(error).__name__}: {error}"
-            )
 
-    sent = await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
-        text=text,
-        reply_markup=markup,
-    )
-    set_signup_message(boss["id"], sent.message_id, "text")
+        if replace_existing:
+            expected = (
+                int(expected_message_id)
+                if expected_message_id is not None
+                else None
+            )
+            current = (
+                int(current_message_id)
+                if current_message_id is not None
+                else None
+            )
+            if current != expected:
+                # Другой callback уже успел перепубликовать карточку.
+                return
+
+        participants = list_participants(boss_id)
+        text = _format_public_boss(fresh, participants)
+        markup = _public_boss_menu(world["id"], fresh)
+        image = boss_image_path(fresh.get("image_path", ""))
+
+        if image is not None:
+            try:
+                sent = await callback.bot.send_photo(
+                    chat_id=world["chat_id"],
+                    message_thread_id=world["thread_id"] or None,
+                    photo=FSInputFile(image),
+                    caption=text,
+                    reply_markup=markup,
+                )
+                set_signup_message(boss_id, sent.message_id, "photo")
+                return
+            except TelegramBadRequest as error:
+                # Только явный BadRequest гарантирует, что фото не было принято.
+                # При сетевом/серверном TelegramAPIError нельзя посылать fallback:
+                # Telegram мог уже принять фото, что и давало редкие дубли.
+                print(
+                    "Boss: фото отклонено Telegram, использую текст: "
+                    f"{type(error).__name__}: {error}"
+                )
+
+        sent = await callback.bot.send_message(
+            chat_id=world["chat_id"],
+            message_thread_id=world["thread_id"] or None,
+            text=text,
+            reply_markup=markup,
+        )
+        set_signup_message(boss_id, sent.message_id, "text")
 
 
 async def _retire_old_public_boss(
@@ -846,11 +898,13 @@ async def boss_start_callback(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("miniboss:hit:"))
 async def boss_hit_callback(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
-    if len(parts) != 4:
+    if len(parts) not in {4, 6}:
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
     try:
         world_id, boss_id = int(parts[2]), int(parts[3])
+        expected_round = int(parts[4]) if len(parts) == 6 else None
+        expected_position = int(parts[5]) if len(parts) == 6 else None
     except ValueError:
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
@@ -863,6 +917,29 @@ async def boss_hit_callback(callback: CallbackQuery):
         return
     if player is None:
         await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
+        return
+
+    # Старые карточки (до turn-token) и дубли предыдущего хода не должны
+    # оставаться рабочими после обновления. Актуальную карточку восстановит
+    # ensure_public_turn. Это также обезвреживает уже висящие старые дубли.
+    if expected_round is None or expected_position is None:
+        await ensure_public_turn(callback.bot, world, boss)
+        await callback.answer(
+            "Эта кнопка хода устарела. Используй актуальное сообщение ниже.",
+            show_alert=True,
+        )
+        return
+
+    if (
+        boss.get("status") != "fighting"
+        or int(boss.get("current_round") or 0) != expected_round
+        or int(boss.get("current_turn_position") or 0) != expected_position
+    ):
+        await ensure_public_turn(callback.bot, world, boss)
+        await callback.answer(
+            "Этот ход уже завершён. Используй актуальное сообщение ниже.",
+            show_alert=True,
+        )
         return
 
     try:
@@ -1005,7 +1082,13 @@ async def boss_republish_callback(callback: CallbackQuery):
 
     old_message_id = boss.get("signup_message_id")
     try:
-        await _publish_boss(callback, world, boss)
+        await _publish_boss(
+            callback,
+            world,
+            boss,
+            replace_existing=True,
+            expected_message_id=old_message_id,
+        )
     except TelegramAPIError as error:
         await callback.answer(
             f"Не удалось повторить анонс: {error}",

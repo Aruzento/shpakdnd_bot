@@ -1,10 +1,37 @@
+import asyncio
 import json
 
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.mini.boss.catalog import list_boss_reward_items
-from app.mini.boss.service import list_participants, set_turn_message
+from app.mini.boss.service import get_boss, list_participants, set_turn_message
+
+
+_TURN_PUBLISH_LOCKS: dict[int, asyncio.Lock] = {}
+
+
+def _turn_publish_lock(boss_id: int) -> asyncio.Lock:
+    """Один publisher на босса внутри процесса, чтобы сообщения хода не гонялись."""
+    boss_id = int(boss_id)
+    lock = _TURN_PUBLISH_LOCKS.get(boss_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _TURN_PUBLISH_LOCKS[boss_id] = lock
+    return lock
+
+
+def _turn_state_key(boss: dict) -> tuple:
+    """Версия видимого состояния хода без привязки к Telegram message_id."""
+    return (
+        str(boss.get("status") or ""),
+        int(boss.get("current_round") or 0),
+        int(boss.get("current_turn_position") or 0),
+        int(boss.get("current_hp") or 0),
+        int(boss.get("reward_shields") or 0),
+        int(boss.get("reward_percent") or 0),
+        str(boss.get("battle_result") or ""),
+    )
 
 
 STATUS_TEXT = {
@@ -269,7 +296,11 @@ def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
             [
                 InlineKeyboardButton(
                     text="⚔️ Ударить босса",
-                    callback_data=f"miniboss:hit:{world_id}:{boss['id']}",
+                    callback_data=(
+                        f"miniboss:hit:{world_id}:{boss['id']}:"
+                        f"{boss.get('current_round', 0)}:"
+                        f"{boss.get('current_turn_position', 0)}"
+                    ),
                 )
             ],
             [
@@ -318,19 +349,14 @@ async def refresh_public_boss(bot, world: dict, boss: dict) -> bool:
         return False
 
 
-async def replace_public_turn(
+async def _send_public_turn_locked(
     bot,
     world: dict,
     boss: dict,
     *,
     notice: str = "",
 ) -> bool:
-    """
-    Публикует свежий публичный ход внизу темы и удаляет предыдущий.
-
-    Новое сообщение отправляется первым: даже если удаление старого не удалось,
-    игроки не останутся без актуального хода.
-    """
+    """Отправляет новый ход. Вызывается только под lock конкретного босса."""
     participants = list_participants(boss["id"])
     text = format_public_turn(boss, participants, notice=notice)
     markup = public_turn_menu(world["id"], boss)
@@ -366,6 +392,64 @@ async def replace_public_turn(
 
     boss["turn_message_id"] = int(sent.message_id)
     return True
+
+
+async def replace_public_turn(
+    bot,
+    world: dict,
+    boss: dict,
+    *,
+    notice: str = "",
+) -> bool:
+    """
+    Публикует свежий публичный ход и удаляет предыдущий.
+
+    Защищено от гонки: watcher, callback удара и открытие boss-меню могут
+    почти одновременно попросить обновление одного и того же хода. Раньше
+    каждый из них успевал отправить своё сообщение до записи turn_message_id.
+    Теперь publisher сериализован, а устаревший запрос не создаёт дубль.
+    """
+    boss_id = int(boss["id"])
+    expected_message_id = boss.get("turn_message_id")
+    expected_state = _turn_state_key(boss)
+
+    async with _turn_publish_lock(boss_id):
+        fresh = get_boss(boss_id)
+        if fresh is None:
+            return False
+
+        # Пока этот coroutine ждал lock, бой мог уже перейти ещё на один ход.
+        # Старое уведомление нельзя публиковать поверх более нового состояния.
+        if _turn_state_key(fresh) != expected_state:
+            fresh_message_id = fresh.get("turn_message_id")
+            boss["turn_message_id"] = (
+                int(fresh_message_id) if fresh_message_id is not None else None
+            )
+            return True
+
+        current_message_id = fresh.get("turn_message_id")
+        expected_normalized = (
+            int(expected_message_id) if expected_message_id is not None else None
+        )
+        current_normalized = (
+            int(current_message_id) if current_message_id is not None else None
+        )
+
+        # Если ID уже изменился после снимка, другой publisher успел
+        # сформировать этот переход. Не публикуем второе сообщение.
+        if current_normalized != expected_normalized:
+            boss["turn_message_id"] = current_normalized
+            return True
+
+        applied = await _send_public_turn_locked(
+            bot,
+            world,
+            fresh,
+            notice=notice,
+        )
+        if applied:
+            boss["turn_message_id"] = fresh.get("turn_message_id")
+        return applied
 
 
 async def publish_admin_victory(
@@ -418,28 +502,40 @@ async def publish_admin_victory(
 
 
 async def ensure_public_turn(bot, world: dict, boss: dict) -> bool:
-    """Восстанавливает публичное сообщение текущего хода после рестарта бота."""
+    """Восстанавливает/проверяет единственное публичное сообщение текущего хода."""
     if boss.get("status") != "fighting":
         return False
 
-    participants = list_participants(boss["id"])
-    text = format_public_turn(boss, participants)
-    markup = public_turn_menu(world["id"], boss)
-    message_id = boss.get("turn_message_id")
+    boss_id = int(boss["id"])
+    async with _turn_publish_lock(boss_id):
+        fresh = get_boss(boss_id)
+        if fresh is None or fresh.get("status") != "fighting":
+            return False
 
-    if message_id:
-        try:
-            await bot.edit_message_text(
-                chat_id=world["chat_id"],
-                message_id=int(message_id),
-                text=text,
-                reply_markup=markup,
-            )
-            return True
-        except TelegramBadRequest as error:
-            if "message is not modified" in str(error).lower():
+        participants = list_participants(boss_id)
+        text = format_public_turn(fresh, participants)
+        markup = public_turn_menu(world["id"], fresh)
+        message_id = fresh.get("turn_message_id")
+
+        if message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=world["chat_id"],
+                    message_id=int(message_id),
+                    text=text,
+                    reply_markup=markup,
+                )
+                boss["turn_message_id"] = int(message_id)
                 return True
-        except TelegramAPIError:
-            pass
+            except TelegramBadRequest as error:
+                if "message is not modified" in str(error).lower():
+                    boss["turn_message_id"] = int(message_id)
+                    return True
+            except TelegramAPIError:
+                pass
 
-    return await replace_public_turn(bot, world, boss)
+        applied = await _send_public_turn_locked(bot, world, fresh)
+        if applied:
+            boss["turn_message_id"] = fresh.get("turn_message_id")
+        return applied
+
