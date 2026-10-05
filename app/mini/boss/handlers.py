@@ -185,6 +185,14 @@ def _boss_private_menu(
     if is_admin and boss["status"] in {"announced", "ready"}:
         rows.append([
             InlineKeyboardButton(
+                text="📣 Повторить анонс",
+                callback_data=(
+                    f"miniboss:republish:{world_id}:{user_id}:{boss['id']}"
+                ),
+            )
+        ])
+        rows.append([
+            InlineKeyboardButton(
                 text="❌ Отменить босса",
                 callback_data=(
                     f"miniboss:cancel:{world_id}:{user_id}:{boss['id']}"
@@ -412,6 +420,29 @@ async def _publish_boss(callback: CallbackQuery, world: dict, boss: dict):
         reply_markup=markup,
     )
     set_signup_message(boss["id"], sent.message_id, "text")
+
+
+async def _retire_old_public_boss(
+    callback: CallbackQuery,
+    world: dict,
+    old_message_id: int | None,
+) -> None:
+    """Убирает кнопки со старого анонса после успешной повторной публикации."""
+    if not old_message_id:
+        return
+    try:
+        await callback.bot.edit_message_reply_markup(
+            chat_id=world["chat_id"],
+            message_id=int(old_message_id),
+            reply_markup=None,
+        )
+    except TelegramAPIError as error:
+        text_error = str(error).lower()
+        if "message is not modified" not in text_error:
+            print(
+                "Boss: не удалось убрать кнопки со старого анонса: "
+                f"{type(error).__name__}: {error}"
+            )
 
 
 @router.callback_query(F.data.startswith("mini:boss:"))
@@ -854,6 +885,41 @@ async def boss_hit_callback(callback: CallbackQuery):
         elif reward_event.get("type") == "reward_damage":
             suffix += f" Награда: {reward_event['reward_percent']}%."
     await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
+
+
+@router.callback_query(F.data.startswith("miniboss:republish:"))
+async def boss_republish_callback(callback: CallbackQuery):
+    context = await _admin_action_context(callback, "republish")
+    if context is None:
+        return
+    world, boss, _ = context
+
+    if boss["status"] not in {"announced", "ready"}:
+        await callback.answer(
+            "Повторный анонс доступен только до начала боя.",
+            show_alert=True,
+        )
+        return
+
+    old_message_id = boss.get("signup_message_id")
+    try:
+        await _publish_boss(callback, world, boss)
+    except TelegramAPIError as error:
+        await callback.answer(
+            f"Не удалось повторить анонс: {error}",
+            show_alert=True,
+        )
+        return
+
+    refreshed = get_boss(boss["id"])
+    new_message_id = (refreshed or {}).get("signup_message_id")
+    if old_message_id and int(old_message_id) != int(new_message_id or 0):
+        await _retire_old_public_boss(callback, world, int(old_message_id))
+
+    player = _load_player(world["id"], callback)
+    await callback.answer("Анонс опубликован повторно")
+    if player is not None:
+        await _show_boss_home(callback, world, player)
 
 
 @router.callback_query(F.data.startswith("miniboss:cancel:"))
