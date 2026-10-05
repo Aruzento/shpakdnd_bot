@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.config import DB_PATH
+from app.mini.boss.abilities import resolve_attack, resolve_kill
 from app.mini.boss.catalog import get_boss_template, sync_boss_reward_items
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
@@ -619,8 +620,14 @@ def hit_boss(
 
         participant = conn.execute(
             """
-            SELECT * FROM mini_boss_participants
-            WHERE boss_id = ? AND player_id = ?
+            SELECT
+                bp.*,
+                h.passive_key,
+                h.passive_text,
+                h.name AS hero_name
+            FROM mini_boss_participants bp
+            LEFT JOIN mini_heroes h ON h.id = bp.hero_id
+            WHERE bp.boss_id = ? AND bp.player_id = ?
             """,
             (int(boss_id), int(player_id)),
         ).fetchone()
@@ -637,7 +644,16 @@ def hit_boss(
             conn.rollback()
             raise BossNotYourTurn(f"Сейчас ход {who}.")
 
-        damage = max(1, int(participant["attack"]))
+        passive_key = str(participant["passive_key"] or "none")
+        attack_resolution = resolve_attack(
+            passive_key,
+            base_damage=max(1, int(participant["attack"])),
+            hit_number=int(participant["hit_count"]) + 1,
+            boss_hp_before=int(boss["current_hp"]),
+            boss_max_hp=int(boss["max_hp"]),
+        )
+        damage = int(attack_resolution["damage"])
+        passive_events = list(attack_resolution["events"])
         hp_after = max(0, int(boss["current_hp"]) - damage)
         conn.execute(
             """
@@ -671,7 +687,17 @@ def hit_boss(
         reward_event = None
         rewards = None
         battle_ended = False
+        bonus_shards = 0
         if hp_after <= 0:
+            kill_resolution = resolve_kill(passive_key)
+            passive_events.extend(kill_resolution["events"])
+            bonus_shards = int(kill_resolution["bonus_shards"])
+            if bonus_shards > 0:
+                conn.execute(
+                    "UPDATE mini_players SET shards = shards + ? WHERE id = ?",
+                    (bonus_shards, int(player_id)),
+                )
+
             refreshed = conn.execute(
                 "SELECT * FROM mini_bosses WHERE id = ?", (int(boss_id),)
             ).fetchone()
@@ -693,6 +719,11 @@ def hit_boss(
     return {
         "applied": True,
         "damage": damage,
+        "base_damage": int(attack_resolution["base_damage"]),
+        "passive_key": passive_key,
+        "passive_name": attack_resolution["passive_name"],
+        "passive_events": passive_events,
+        "bonus_shards": bonus_shards,
         "boss_hp_after": hp_after,
         "battle_ended": battle_ended,
         "reward_event": reward_event,

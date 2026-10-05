@@ -816,31 +816,44 @@ async def boss_hit_callback(callback: CallbackQuery):
     boss = result["state"]["boss"]
     await refresh_public_boss(callback.bot, world, boss)
 
+    passive_messages = [
+        str(event.get("message", "")).strip()
+        for event in result.get("passive_events", [])
+        if str(event.get("message", "")).strip()
+    ]
+    passive_text = " ".join(passive_messages)
+
     if result.get("battle_ended"):
         if boss["status"] == "defeated":
             rewards = result.get("rewards") or {}
-            await callback.answer(
+            message = (
                 f"🏆 Победа! Урон: {result.get('damage', 0)}. "
-                f"Награда: {rewards.get('coins_each', 0)} монет каждому.",
-                show_alert=True,
+                f"Награда: {rewards.get('coins_each', 0)} монет каждому."
             )
+            if passive_text:
+                message += f" {passive_text}"
+            await callback.answer(message[:200], show_alert=True)
         else:
             rewards = result.get("rewards") or {}
             await callback.answer(
-                f"💀 Бой проигран. Каждый получает "
-                f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)} осколков.",
+                (
+                    f"💀 Бой проигран. Каждый получает "
+                    f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)} осколков."
+                )[:200],
                 show_alert=True,
             )
         return
 
     reward_event = result.get("reward_event")
     suffix = ""
+    if passive_text:
+        suffix += f" {passive_text}."
     if reward_event:
         if reward_event.get("type") == "shield":
-            suffix = f" Босс разбил щит: осталось {reward_event['shields']}."
+            suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
         elif reward_event.get("type") == "reward_damage":
-            suffix = f" Награда: {reward_event['reward_percent']}%."
-    await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}")
+            suffix += f" Награда: {reward_event['reward_percent']}%."
+    await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
 
 
 @router.callback_query(F.data.startswith("miniboss:cancel:"))

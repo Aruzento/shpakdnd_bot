@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "defaults": {
+    "chance_percent_for_unspecified_small_chance": 20
+  },
+  "abilities": {
+    "none": {
+      "name": "Без пассивки",
+      "description": "Нет особых способностей.",
+      "effects": []
+    },
+    "lucky_strike": {
+      "name": "Счастливый удар",
+      "description": "Иногда случайно наносит усиленный удар.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "chance_damage_multiplier",
+          "chance_percent": 20,
+          "multiplier_percent": 150,
+          "message": "🍀 Счастливый удар: +50% урона"
+        }
+      ]
+    },
+    "precise_strike": {
+      "name": "Точный удар",
+      "description": "С небольшим шансом наносит двойной урон.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "chance_damage_multiplier",
+          "chance_percent": 20,
+          "multiplier_percent": 200,
+          "message": "🎯 Точный удар: двойной урон"
+        }
+      ]
+    },
+    "combat_training": {
+      "name": "Боевая подготовка",
+      "description": "Каждый третий удар наносит на 50% больше урона.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_damage_multiplier",
+          "every": 3,
+          "multiplier_percent": 150,
+          "message": "⚔️ Боевая подготовка: третий удар +50%"
+        }
+      ]
+    },
+    "strong_start": {
+      "name": "Мощное начало",
+      "description": "Первый удар в бою наносит двойной урон.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "first_hit_damage_multiplier",
+          "multiplier_percent": 200,
+          "message": "💥 Мощное начало: первый удар ×2"
+        }
+      ]
+    },
+    "double_strike": {
+      "name": "Двойная атака",
+      "description": "Иногда атакует дважды.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "chance_damage_multiplier",
+          "chance_percent": 20,
+          "multiplier_percent": 200,
+          "message": "🏹 Двойная атака: второй удар"
+        }
+      ]
+    },
+    "silver_edge": {
+      "name": "Серебряное лезвие",
+      "description": "Каждый третий удар наносит двойной урон.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_damage_multiplier",
+          "every": 3,
+          "multiplier_percent": 200,
+          "message": "🗡 Серебряное лезвие: третий удар ×2"
+        }
+      ]
+    },
+    "hunters_mark": {
+      "name": "Метка охотника",
+      "description": "Первый выстрел помечает цель. Все последующие атаки наносят на 25% больше урона.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "after_first_damage_multiplier",
+          "multiplier_percent": 125,
+          "first_hit_message": "🏹 Метка охотника наложена",
+          "message": "🏹 Метка охотника: +25% урона"
+        }
+      ]
+    },
+    "leaping_thrust": {
+      "name": "Прыжок с копьём",
+      "description": "Каждый третий удар атакует дважды.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_damage_multiplier",
+          "every": 3,
+          "multiplier_percent": 200,
+          "message": "🐸 Прыжок с копьём: третий удар ×2"
+        }
+      ]
+    },
+    "execution_protocol": {
+      "name": "Ликвидация",
+      "description": "Ниже 20% HP босса наносит +50% урона. При смертельном ударе 10% шанс получить 30 осколков.",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "boss_hp_below_damage_multiplier",
+          "threshold_percent": 20,
+          "strict_below": true,
+          "multiplier_percent": 150,
+          "message": "🔴 Ликвидация: цель ниже 20% HP, +50% урона"
+        },
+        {
+          "trigger": "kill",
+          "type": "kill_chance_shards",
+          "chance_percent": 10,
+          "shards": 30,
+          "message": "💀 Ликвидация: +30 осколков"
+        }
+      ]
+    }
+  }
+}
