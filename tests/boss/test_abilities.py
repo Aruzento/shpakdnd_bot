@@ -4,7 +4,11 @@ import unittest
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
 from app.mini.boss.abilities.catalog import configured_ability_keys
-from app.mini.boss.abilities.engine import resolve_attack, resolve_kill
+from app.mini.boss.abilities.engine import (
+    resolve_attack,
+    resolve_boss_attack,
+    resolve_kill,
+)
 
 
 CURRENT_HERO_PASSIVE_KEYS = {
@@ -19,6 +23,7 @@ CURRENT_HERO_PASSIVE_KEYS = {
     "leaping_thrust",
     "execution_protocol",
     "mockery",
+    "emergency_salvage",
 }
 
 
@@ -198,6 +203,20 @@ class BossAbilityEngineTests(unittest.TestCase):
         self.assertEqual(third["damage"], 150)
         self.assertEqual(third["boss_skip_turns"], 1)
         self.assertTrue(third["events"])
+
+    def test_emergency_salvage_on_boss_attack(self):
+        success = resolve_boss_attack(
+            "emergency_salvage",
+            roller=lambda chance: True,
+        )
+        fail = resolve_boss_attack(
+            "emergency_salvage",
+            roller=lambda chance: False,
+        )
+        self.assertEqual(success["bonus_shards"], 2)
+        self.assertTrue(success["events"])
+        self.assertEqual(fail["bonus_shards"], 0)
+        self.assertEqual(fail["events"], [])
 
     def test_unknown_passive_fails_safe(self):
         result = resolve_attack(

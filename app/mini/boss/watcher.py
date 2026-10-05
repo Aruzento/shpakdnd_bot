@@ -6,6 +6,7 @@ from app.mini.boss.combat import (
     list_fighting_bosses,
 )
 from app.mini.boss.public import (
+    boss_attack_passive_lines,
     ensure_public_turn,
     refresh_public_boss,
     replace_public_turn,
@@ -20,8 +21,14 @@ def _timeout_notice(result: dict) -> str:
         for row in skipped
     ]
     if labels:
-        return "⏭ По таймеру пропущен ход: " + ", ".join(labels)
-    return "⏭ Просроченный ход пропущен."
+        parts = ["⏭ По таймеру пропущен ход: " + ", ".join(labels)]
+    else:
+        parts = ["⏭ Просроченный ход пропущен."]
+
+    for reward_event in result.get("reward_events", []) or []:
+        parts.extend(boss_attack_passive_lines(reward_event))
+
+    return " ".join(parts)
 
 
 async def boss_watch_loop(bot, *, interval_seconds: int = 60) -> None:

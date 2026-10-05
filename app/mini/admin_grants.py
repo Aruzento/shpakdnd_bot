@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
+from app.mini.heroes import sync_hero_catalog
 from app.mini.wallet import add_coins
 
 
@@ -287,6 +288,162 @@ def grant_mini_item_all(
         "item": item,
     }
 
+
+
+def grant_mini_hero(
+    player_id: int,
+    hero_code: str,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    """Выдаёт конкретного героя по стабильному code без создания дубликата."""
+    hero_code = str(hero_code or "").strip()
+    if not hero_code:
+        raise ValueError("Не указан code персонажа.")
+
+    sync_hero_catalog(db_path)
+
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("BEGIN IMMEDIATE")
+
+        player = conn.execute(
+            "SELECT id, active_hero_id FROM mini_players WHERE id = ?",
+            (int(player_id),),
+        ).fetchone()
+        if player is None:
+            conn.rollback()
+            raise ValueError("Mini-игрок не найден.")
+
+        hero = conn.execute(
+            "SELECT * FROM mini_heroes WHERE LOWER(code) = LOWER(?)",
+            (hero_code,),
+        ).fetchone()
+        if hero is None:
+            conn.rollback()
+            raise ValueError(f"Персонаж «{hero_code}» не найден.")
+
+        existing = conn.execute(
+            """
+            SELECT copies, stars
+            FROM mini_player_heroes
+            WHERE player_id = ? AND hero_id = ?
+            """,
+            (int(player_id), int(hero["id"])),
+        ).fetchone()
+
+        applied = existing is None
+        auto_activated = False
+        if applied:
+            conn.execute(
+                """
+                INSERT INTO mini_player_heroes (
+                    player_id, hero_id, copies, shards, stars
+                ) VALUES (?, ?, 1, 0, 0)
+                """,
+                (int(player_id), int(hero["id"])),
+            )
+            if player["active_hero_id"] is None:
+                conn.execute(
+                    "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+                    (int(hero["id"]), int(player_id)),
+                )
+                auto_activated = True
+
+        conn.commit()
+
+    result = dict(hero)
+    result.update(
+        {
+            "applied": applied,
+            "auto_activated": auto_activated,
+            "copies": 1 if applied else int(existing["copies"]),
+            "stars": 0 if applied else int(existing["stars"]),
+        }
+    )
+    return result
+
+
+def grant_mini_hero_all(
+    world_id: int,
+    hero_code: str,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    """Выдаёт героя всем Mini-игрокам мира. Повторная команда идемпотентна."""
+    hero_code = str(hero_code or "").strip()
+    if not hero_code:
+        raise ValueError("Не указан code персонажа.")
+
+    sync_hero_catalog(db_path)
+
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("BEGIN IMMEDIATE")
+
+        hero = conn.execute(
+            "SELECT * FROM mini_heroes WHERE LOWER(code) = LOWER(?)",
+            (hero_code,),
+        ).fetchone()
+        if hero is None:
+            conn.rollback()
+            raise ValueError(f"Персонаж «{hero_code}» не найден.")
+
+        players = conn.execute(
+            """
+            SELECT id, active_hero_id
+            FROM mini_players
+            WHERE world_id = ?
+            ORDER BY id
+            """,
+            (int(world_id),),
+        ).fetchall()
+        if not players:
+            conn.rollback()
+            raise ValueError("В этом Mini-мире нет игроков.")
+
+        granted = 0
+        skipped = 0
+        auto_activated = 0
+        for player in players:
+            existing = conn.execute(
+                """
+                SELECT 1
+                FROM mini_player_heroes
+                WHERE player_id = ? AND hero_id = ?
+                """,
+                (int(player["id"]), int(hero["id"])),
+            ).fetchone()
+            if existing is not None:
+                skipped += 1
+                continue
+
+            conn.execute(
+                """
+                INSERT INTO mini_player_heroes (
+                    player_id, hero_id, copies, shards, stars
+                ) VALUES (?, ?, 1, 0, 0)
+                """,
+                (int(player["id"]), int(hero["id"])),
+            )
+            granted += 1
+
+            if player["active_hero_id"] is None:
+                conn.execute(
+                    "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+                    (int(hero["id"]), int(player["id"])),
+                )
+                auto_activated += 1
+
+        conn.commit()
+
+    return {
+        "players": len(players),
+        "granted": granted,
+        "skipped": skipped,
+        "auto_activated": auto_activated,
+        "hero": dict(hero),
+    }
 
 def list_mini_items(
     db_path: str | Path = DB_PATH,

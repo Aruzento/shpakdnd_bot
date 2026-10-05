@@ -95,6 +95,26 @@ def _reward_line(boss: dict) -> str:
     return " + ".join(parts) if parts else "без предметной награды"
 
 
+
+def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
+    """Форматирует публичные сообщения пассивок, сработавших на атаке босса."""
+    if not reward_event:
+        return []
+
+    lines = []
+    for event in reward_event.get("passive_events", []) or []:
+        message = str(event.get("message") or "").strip()
+        if not message:
+            continue
+        who = str(
+            event.get("username")
+            or event.get("character_name")
+            or event.get("hero_name")
+            or "Игрок"
+        ).strip()
+        lines.append(f"{who}: {message}")
+    return lines
+
 def format_public_boss(boss: dict, participants: list[dict]) -> str:
     """Статичная карточка босса/регистрации. Текущий ход публикуется отдельно."""
     status = STATUS_TEXT.get(str(boss["status"]), str(boss["status"]))

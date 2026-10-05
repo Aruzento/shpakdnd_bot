@@ -4,7 +4,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.config import DB_PATH
-from app.mini.boss.abilities import resolve_attack, resolve_kill
+from app.mini.boss.abilities import (
+    resolve_attack,
+    resolve_boss_attack,
+    resolve_kill,
+)
 from app.mini.boss.catalog import get_boss_template, sync_boss_reward_items
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
@@ -359,10 +363,58 @@ def _finish_failure(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime)
     return rewards
 
 
+
+def _apply_boss_attack_passives(
+    conn: sqlite3.Connection,
+    boss: sqlite3.Row,
+) -> list[dict]:
+    """Применяет пассивки участников, срабатывающие на атаку босса."""
+    rows = conn.execute(
+        """
+        SELECT
+            bp.player_id,
+            p.username,
+            p.character_name,
+            h.name AS hero_name,
+            h.passive_key
+        FROM mini_boss_participants bp
+        JOIN mini_players p ON p.id = bp.player_id
+        LEFT JOIN mini_heroes h ON h.id = bp.hero_id
+        WHERE bp.boss_id = ?
+        ORDER BY bp.queue_position
+        """,
+        (int(boss["id"]),),
+    ).fetchall()
+
+    events: list[dict] = []
+    for row in rows:
+        resolution = resolve_boss_attack(str(row["passive_key"] or "none"))
+        bonus_shards = int(resolution.get("bonus_shards", 0))
+        if bonus_shards > 0:
+            conn.execute(
+                "UPDATE mini_players SET shards = shards + ? WHERE id = ?",
+                (bonus_shards, int(row["player_id"])),
+            )
+
+        for raw_event in resolution.get("events", []):
+            event = dict(raw_event)
+            event.update(
+                {
+                    "player_id": int(row["player_id"]),
+                    "username": str(row["username"] or ""),
+                    "character_name": str(row["character_name"] or ""),
+                    "hero_name": str(row["hero_name"] or ""),
+                }
+            )
+            events.append(event)
+
+    return events
+
 def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> dict:
     shields = int(boss["reward_shields"])
     reward_percent = int(boss["reward_percent"])
     decay = int(boss["reward_decay_percent"])
+    passive_events = _apply_boss_attack_passives(conn, boss)
 
     if shields > 0:
         new_shields = shields - 1
@@ -375,6 +427,7 @@ def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetim
             "old_shields": shields,
             "shields": new_shields,
             "reward_percent": reward_percent,
+            "passive_events": passive_events,
         }
 
     new_percent = max(0, reward_percent - decay)
@@ -387,6 +440,7 @@ def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetim
         "old_percent": reward_percent,
         "reward_percent": new_percent,
         "shields": 0,
+        "passive_events": passive_events,
     }
     if new_percent <= 0:
         refreshed = conn.execute(

@@ -26,6 +26,8 @@ from app.mini.admin_grants import (
     grant_mini_coins_all,
     grant_mini_item,
     grant_mini_item_all,
+    grant_mini_hero,
+    grant_mini_hero_all,
     list_mini_items,
 )
 from app.mini.shop import sync_shop_catalog
@@ -143,6 +145,8 @@ def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
     /admadd @user -i boss_coin_pouch
     /admadd ALL -c 100
     /admadd ALL -i boss_coin_pouch
+    /admadd @user -p panic_dungeon_engineer
+    /admadd ALL -p panic_dungeon_engineer
     """
     if not message.text:
         return None
@@ -156,7 +160,7 @@ def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
     value = parts[3].strip()
 
     is_all = username.upper() == "ALL"
-    if (not username.startswith("@") and not is_all) or flag not in {"-c", "-i"}:
+    if (not username.startswith("@") and not is_all) or flag not in {"-c", "-i", "-p"}:
         return None
 
     if (
@@ -251,6 +255,65 @@ async def _handle_mini_admadd(message: Message) -> bool:
             f"{value} 🪙\n"
             f"Баланс: {result['balance']} 🪙"
         )
+        return True
+
+    if flag == "-p":
+        if is_all:
+            try:
+                result = grant_mini_hero_all(
+                    world["id"],
+                    raw_value,
+                )
+            except ValueError as error:
+                await message.answer(f"❌ {error}")
+                return True
+
+            hero = result["hero"]
+            text = (
+                f"✅ Персонаж выдан Mini-игрокам:\n"
+                f"{hero['name']} [{hero['code']}]\n"
+                f"Получили: {result['granted']}"
+            )
+            if result.get("skipped"):
+                text += f"\nУже был у игроков: {result['skipped']}"
+            if result.get("auto_activated"):
+                text += f"\nАвтоматически выбран активным: {result['auto_activated']}"
+            await message.answer(text)
+            return True
+
+        player = get_mini_player_by_username(
+            world["id"],
+            target,
+        )
+        if player is None:
+            await message.answer(
+                f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
+                "Игрок должен сначала создать Mini-персонажа."
+            )
+            return True
+
+        try:
+            hero = grant_mini_hero(
+                player["id"],
+                raw_value,
+            )
+        except ValueError as error:
+            await message.answer(f"❌ {error}")
+            return True
+
+        if hero["applied"]:
+            text = (
+                f"✅ {player['character_name']} ({player['username']}) получил персонажа:\n"
+                f"{hero['name']} [{hero['code']}]"
+            )
+            if hero.get("auto_activated"):
+                text += "\nПерсонаж автоматически выбран активным."
+        else:
+            text = (
+                f"ℹ️ У {player['character_name']} ({player['username']}) уже есть "
+                f"{hero['name']} [{hero['code']}]. Повторно не выдавал."
+            )
+        await message.answer(text)
         return True
 
     # -i принимает как стабильный code предмета, так и старый числовой ID.

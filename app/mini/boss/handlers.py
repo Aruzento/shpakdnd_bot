@@ -25,6 +25,7 @@ from app.mini.boss.combat import (
     start_battle,
 )
 from app.mini.boss.public import (
+    boss_attack_passive_lines,
     ensure_public_turn,
     format_participants,
     format_public_boss,
@@ -904,6 +905,7 @@ async def boss_hit_callback(callback: CallbackQuery):
             )
         elif reward_event.get("type") == "boss_skip":
             public_parts.append("🎵 Босс пропустил атаку по награде.")
+        public_parts.extend(boss_attack_passive_lines(reward_event))
 
     public_notice = " ".join(public_parts)
 
@@ -937,6 +939,9 @@ async def boss_hit_callback(callback: CallbackQuery):
                 suffix += f" Награда: {reward_event['reward_percent']}%."
             elif reward_event.get("type") == "boss_skip":
                 suffix += " 🎵 Босс пропускает атаку по награде."
+            passive_lines = boss_attack_passive_lines(reward_event)
+            if passive_lines:
+                suffix += " " + " ".join(passive_lines)
         await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
 
     # Если удар был сделан из старого личного ephemeral-меню, оно больше

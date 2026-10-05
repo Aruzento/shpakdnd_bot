@@ -223,6 +223,67 @@ class BossAbilityIntegrationTests(unittest.TestCase):
         self.assertEqual(consumed, 1)
 
 
+    def test_emergency_salvage_triggers_on_real_boss_attack(self):
+        with connect_mini_db(self.db) as conn:
+            hero_id = int(
+                conn.execute(
+                    """
+                    SELECT hero_id
+                    FROM mini_boss_participants
+                    WHERE boss_id = ? AND player_id = ?
+                    """,
+                    (self.boss["id"], self.player2["id"]),
+                ).fetchone()[0]
+            )
+            conn.execute(
+                "UPDATE mini_heroes SET passive_key = 'emergency_salvage' WHERE id = ?",
+                (hero_id,),
+            )
+            conn.execute(
+                """
+                UPDATE mini_bosses
+                SET max_hp = 1000, current_hp = 1000,
+                    reward_shields = 3, reward_shields_max = 3,
+                    reward_percent = 100
+                WHERE id = ?
+                """,
+                (self.boss["id"],),
+            )
+            conn.commit()
+
+        hit_boss(
+            self.boss["id"],
+            self.player1["id"],
+            now=self.now + timedelta(minutes=1),
+            db_path=self.db,
+        )
+
+        with patch(
+            "app.mini.boss.abilities.engine._roll_success",
+            return_value=True,
+        ):
+            result = hit_boss(
+                self.boss["id"],
+                self.player2["id"],
+                now=self.now + timedelta(minutes=2),
+                db_path=self.db,
+            )
+
+        with connect_mini_db(self.db) as conn:
+            shards = int(
+                conn.execute(
+                    "SELECT shards FROM mini_players WHERE id = ?",
+                    (self.player2["id"],),
+                ).fetchone()[0]
+            )
+        self.assertEqual(shards, 2)
+        self.assertEqual(result["reward_event"]["type"], "shield")
+        events = result["reward_event"].get("passive_events") or []
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["player_id"], self.player2["id"])
+        self.assertEqual(events[0]["shards"], 2)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -109,6 +109,39 @@ def resolve_attack(
     }
 
 
+
+def resolve_boss_attack(
+    passive_key: str,
+    *,
+    roller: Roller | None = None,
+) -> dict:
+    """Применяет пассивки, срабатывающие при реальной атаке босса."""
+    ability = get_ability(passive_key)
+    roller = roller or _roll_success
+    events: list[dict] = []
+    bonus_shards = 0
+
+    for effect in ability["effects"]:
+        if effect.get("trigger") != "boss_attack":
+            continue
+
+        effect_type = str(effect.get("type", ""))
+        if effect_type == "chance_shards":
+            if roller(float(effect.get("chance_percent", 0))):
+                shards = max(0, int(effect.get("shards", 0)))
+                bonus_shards += shards
+                event = _event(effect)
+                event["shards"] = shards
+                events.append(event)
+
+    return {
+        "passive_key": ability["key"],
+        "passive_name": ability["name"],
+        "configured": bool(ability["configured"]),
+        "bonus_shards": bonus_shards,
+        "events": events,
+    }
+
 def resolve_kill(
     passive_key: str,
     *,

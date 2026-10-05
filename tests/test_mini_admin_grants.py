@@ -11,6 +11,8 @@ from app.mini.admin_grants import (
     grant_mini_coins_all,
     grant_mini_item,
     grant_mini_item_all,
+    grant_mini_hero,
+    grant_mini_hero_all,
     list_mini_items,
 )
 from app.mini.players import create_mini_player
@@ -137,6 +139,64 @@ class MiniAdminGrantTests(unittest.TestCase):
             [(int(row[0]), int(row[1])) for row in rows],
             [(self.player["id"], 1), (second["id"], 1)],
         )
+
+    def test_admin_hero_grant_by_code_is_idempotent(self):
+        first = grant_mini_hero(
+            self.player["id"],
+            "Villager",
+            self.db,
+        )
+        second = grant_mini_hero(
+            self.player["id"],
+            "Villager",
+            self.db,
+        )
+        self.assertTrue(first["applied"])
+        self.assertTrue(first["auto_activated"])
+        self.assertFalse(second["applied"])
+        self.assertFalse(second["auto_activated"])
+
+    def test_admin_hero_grant_all_players_by_code(self):
+        second = create_mini_player(
+            self.world_id,
+            999004,
+            "@grant_tester_four",
+            "Четвёртый",
+            self.db,
+        )
+        result = grant_mini_hero_all(
+            self.world_id,
+            "Villager",
+            self.db,
+        )
+        self.assertEqual(result["players"], 2)
+        self.assertEqual(result["granted"], 2)
+        self.assertEqual(result["skipped"], 0)
+        self.assertEqual(result["hero"]["code"], "Villager")
+
+        repeat = grant_mini_hero_all(
+            self.world_id,
+            "Villager",
+            self.db,
+        )
+        self.assertEqual(repeat["granted"], 0)
+        self.assertEqual(repeat["skipped"], 2)
+
+        from app.mini.db import connect_mini_db
+        with connect_mini_db(self.db) as conn:
+            count = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM mini_player_heroes ph
+                    JOIN mini_heroes h ON h.id = ph.hero_id
+                    WHERE h.code = 'Villager'
+                      AND ph.player_id IN (?, ?)
+                    """,
+                    (self.player["id"], second["id"]),
+                ).fetchone()[0]
+            )
+        self.assertEqual(count, 2)
 
     def test_invalid_item_rejected(self):
         with self.assertRaises(ValueError):
