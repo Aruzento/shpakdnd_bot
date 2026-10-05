@@ -12,7 +12,22 @@ from app.context import get_topic_admin, normalize_username
 from app.mini.boss.catalog import (
     boss_image_path,
     get_boss_template,
+    list_boss_reward_items,
     list_boss_templates,
+)
+from app.mini.boss.combat import (
+    BossCombatError,
+    BossNotParticipant,
+    BossNotYourTurn,
+    advance_expired_turns,
+    hit_boss,
+    start_battle,
+)
+from app.mini.boss.public import (
+    format_participants,
+    format_public_boss,
+    public_boss_menu,
+    refresh_public_boss,
 )
 from app.mini.boss.service import (
     BossError,
@@ -41,6 +56,7 @@ STATUS_TEXT = {
     "fighting": "🔴 Бой идёт",
     "cancelled": "⚫ Босс отменён",
     "defeated": "🏆 Босс побеждён",
+    "failed": "💀 Бой проигран",
 }
 
 
@@ -65,41 +81,16 @@ def _participant_label(row: dict) -> str:
     character = str(row.get("character_name") or "Игрок").strip()
     hero = str(row.get("hero_name") or "без героя").strip()
     who = username or character
-    return f"{row['queue_position']}. {who} — {hero}"
-
+    extra = ""
+    if int(row.get("battle_attack") or 0) > 0:
+        extra = f" • ⚔️ {int(row['battle_attack'])}"
+    return f"{row['queue_position']}. {who} — {hero}{extra}"
 
 def _format_participants(participants: list[dict]) -> str:
-    if not participants:
-        return "Пока никто не записался."
-    return "\n".join(_participant_label(row) for row in participants)
-
+    return format_participants(participants)
 
 def _format_public_boss(boss: dict, participants: list[dict]) -> str:
-    status = STATUS_TEXT.get(str(boss["status"]), str(boss["status"]))
-    minimum = int(boss["min_players"])
-    count = len(participants)
-    reward = int(boss.get("reward_coins", 0))
-
-    lines = [
-        f"👹 {boss['name']}",
-        "",
-        str(boss.get("description") or "Без описания."),
-        "",
-        f"❤️ HP: {boss['max_hp']}",
-        f"👥 Участники: {count} • минимум {minimum}",
-        f"🎁 Награда: {reward} 🪙",
-        f"{status}",
-    ]
-
-    if boss["status"] == "announced":
-        lines.extend(["", "Запишись на бой кнопкой ниже."])
-    elif boss["status"] == "ready":
-        lines.extend(["", "Состав зафиксирован. Следующий этап — запуск боя."])
-    elif boss["status"] == "cancelled":
-        lines.extend(["", "Регистрация отменена."])
-
-    return "\n".join(lines)[:1024]
-
+    return format_public_boss(boss, participants)
 
 def _format_private_boss(
     boss: dict,
@@ -114,30 +105,13 @@ def _format_private_boss(
             if joined
             else "\n\nТы пока не записан."
         )
+    elif boss["status"] == "fighting" and joined:
+        text += "\n\n⚔️ Ты участвуешь в этом бою."
     return text
 
 
 def _public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
-    rows = []
-    if boss["status"] == "announced":
-        rows.append([
-            InlineKeyboardButton(
-                text="⚔️ Записаться",
-                callback_data=f"miniboss:join:{world_id}:{boss['id']}",
-            ),
-            InlineKeyboardButton(
-                text="🚪 Выйти",
-                callback_data=f"miniboss:leave:{world_id}:{boss['id']}",
-            ),
-        ])
-    rows.append([
-        InlineKeyboardButton(
-            text="👥 Участники",
-            callback_data=f"miniboss:list:{world_id}:{boss['id']}",
-        )
-    ])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
+    return public_boss_menu(world_id, boss)
 
 def _boss_private_menu(
     world_id: int,
@@ -165,6 +139,14 @@ def _boss_private_menu(
                 )
             ])
 
+    if boss["status"] == "fighting" and joined:
+        rows.append([
+            InlineKeyboardButton(
+                text="⚔️ Ударить босса",
+                callback_data=f"miniboss:hit:{world_id}:{boss['id']}",
+            )
+        ])
+
     rows.append([
         InlineKeyboardButton(
             text="👥 Участники",
@@ -183,6 +165,14 @@ def _boss_private_menu(
         ])
 
     if is_admin and boss["status"] == "ready":
+        rows.append([
+            InlineKeyboardButton(
+                text="▶️ Начать бой",
+                callback_data=(
+                    f"miniboss:start:{world_id}:{user_id}:{boss['id']}"
+                ),
+            )
+        ])
         rows.append([
             InlineKeyboardButton(
                 text="🔓 Открыть регистрацию снова",
@@ -345,7 +335,16 @@ async def _show_boss_home(
     boss = get_active_boss(world["id"])
     admin = _is_admin(callback, world)
 
-    if boss is None:
+    if boss is not None and boss["status"] == "fighting":
+        try:
+            timeout_result = advance_expired_turns(boss["id"])
+            boss = timeout_result["state"]["boss"]
+            if timeout_result["changed"]:
+                await refresh_public_boss(callback.bot, world, boss)
+        except BossCombatError as error:
+            print(f"Boss: ошибка проверки таймера хода: {error}")
+
+    if boss is None or boss["status"] not in {"announced", "ready", "fighting"}:
         await _send_private(
             callback,
             world,
@@ -380,34 +379,7 @@ async def _show_boss_home(
 
 
 async def _refresh_public_boss(callback: CallbackQuery, world: dict, boss: dict):
-    message_id = boss.get("signup_message_id")
-    if not message_id:
-        return
-
-    participants = list_participants(boss["id"])
-    text = _format_public_boss(boss, participants)
-    markup = _public_boss_menu(world["id"], boss)
-
-    try:
-        if boss.get("signup_message_kind") == "photo":
-            await callback.bot.edit_message_caption(
-                chat_id=world["chat_id"],
-                message_id=int(message_id),
-                caption=text,
-                reply_markup=markup,
-            )
-        else:
-            await callback.bot.edit_message_text(
-                chat_id=world["chat_id"],
-                message_id=int(message_id),
-                text=text,
-                reply_markup=markup,
-            )
-    except TelegramBadRequest as error:
-        print(
-            "Boss: не удалось обновить публичную карточку: "
-            f"{type(error).__name__}: {error}"
-        )
+    await refresh_public_boss(callback.bot, world, boss)
 
 
 async def _publish_boss(callback: CallbackQuery, world: dict, boss: dict):
@@ -525,13 +497,27 @@ async def boss_preview_callback(callback: CallbackQuery):
         await callback.answer("Босс больше не доступен.", show_alert=True)
         return
 
+    item_names = {
+        item["code"]: item["name"]
+        for item in list_boss_reward_items(active_only=False)
+    }
+    reward_item_text = ", ".join(
+        (
+            f"{item_names.get(item['code'], item['code'])}"
+            + (f" ×{item.get('quantity', 1)}" if int(item.get('quantity', 1)) > 1 else "")
+        )
+        for item in template.get("reward_items", [])
+    )
     text = (
         f"👹 {template['name']}\n\n"
         f"{template.get('description', '')}\n\n"
         f"❤️ HP: {template['max_hp']}\n"
         f"👥 Минимум игроков: {template['min_players']}\n"
-        f"🎁 Награда: {template.get('reward_coins', 0)} 🪙\n\n"
-        "После объявления в теме появится публичная карточка регистрации."
+        f"🎁 Награда: {template.get('reward_coins', 0)} 🪙\n"
+        + (f"📦 Предметы: {reward_item_text}\n" if reward_item_text else "")
+        + f"🛡 Щиты награды: {template.get('reward_shields', 3)}\n"
+        + f"💥 После щитов: −{template.get('reward_decay_percent', 10)}% за раунд\n\n"
+        + "После объявления в теме появится публичная карточка регистрации."
     )
     await callback.answer()
     await _send_private(
@@ -772,6 +758,89 @@ async def boss_reopen_callback(callback: CallbackQuery):
     await callback.answer("Регистрация снова открыта")
     if player is not None:
         await _show_boss_home(callback, world, player)
+
+
+@router.callback_query(F.data.startswith("miniboss:start:"))
+async def boss_start_callback(callback: CallbackQuery):
+    context = await _admin_action_context(callback, "start")
+    if context is None:
+        return
+    world, boss, _ = context
+    try:
+        state = start_battle(boss["id"])
+    except BossCombatError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+
+    boss = state["boss"]
+    await refresh_public_boss(callback.bot, world, boss)
+    player = _load_player(world["id"], callback)
+    current = state.get("current")
+    who = (current or {}).get("username") or (current or {}).get("character_name") or "первого игрока"
+    await callback.answer(f"Бой начался. Ход {who}")
+    if player is not None:
+        await _show_boss_home(callback, world, player)
+
+
+@router.callback_query(F.data.startswith("miniboss:hit:"))
+async def boss_hit_callback(callback: CallbackQuery):
+    parts = (callback.data or "").split(":")
+    if len(parts) != 4:
+        await callback.answer("Некорректная кнопка.", show_alert=True)
+        return
+    try:
+        world_id, boss_id = int(parts[2]), int(parts[3])
+    except ValueError:
+        await callback.answer("Некорректная кнопка.", show_alert=True)
+        return
+
+    world = _load_world(world_id)
+    player = _load_player(world_id, callback)
+    boss = get_boss(boss_id)
+    if world is None or boss is None or int(boss["world_id"]) != world_id:
+        await callback.answer("Босс больше не актуален.", show_alert=True)
+        return
+    if player is None:
+        await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
+        return
+
+    try:
+        result = hit_boss(boss_id, player["id"])
+    except (BossNotYourTurn, BossNotParticipant, BossCombatError) as error:
+        refreshed = get_boss(boss_id)
+        if refreshed is not None:
+            await refresh_public_boss(callback.bot, world, refreshed)
+        await callback.answer(str(error), show_alert=True)
+        return
+
+    boss = result["state"]["boss"]
+    await refresh_public_boss(callback.bot, world, boss)
+
+    if result.get("battle_ended"):
+        if boss["status"] == "defeated":
+            rewards = result.get("rewards") or {}
+            await callback.answer(
+                f"🏆 Победа! Урон: {result.get('damage', 0)}. "
+                f"Награда: {rewards.get('coins_each', 0)} монет каждому.",
+                show_alert=True,
+            )
+        else:
+            rewards = result.get("rewards") or {}
+            await callback.answer(
+                f"💀 Бой проигран. Каждый получает "
+                f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)} осколков.",
+                show_alert=True,
+            )
+        return
+
+    reward_event = result.get("reward_event")
+    suffix = ""
+    if reward_event:
+        if reward_event.get("type") == "shield":
+            suffix = f" Босс разбил щит: осталось {reward_event['shields']}."
+        elif reward_event.get("type") == "reward_damage":
+            suffix = f" Награда: {reward_event['reward_percent']}%."
+    await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}")
 
 
 @router.callback_query(F.data.startswith("miniboss:cancel:"))

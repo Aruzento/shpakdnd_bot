@@ -4,6 +4,8 @@ from app.config import DB_PATH, TIMEZONE_NAME
 from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.catalog import validate_content
+from app.mini.boss.catalog import load_boss_catalog, load_boss_item_catalog
+from app.mini.boss.schema import init_boss_db
 from app.mini.heroes import sync_hero_catalog
 from app.mini.schema import init_mini_db
 from app.mini.shop import sync_shop_catalog
@@ -13,8 +15,11 @@ from app.mini.worlds import sync_configured_mini_worlds
 def main():
     init_db()
     init_mini_db()
+    init_boss_db()
     worlds = sync_configured_mini_worlds()
     content = validate_content()
+    boss_content = load_boss_catalog()
+    boss_items = load_boss_item_catalog()
     sync_hero_catalog()
     for world in worlds:
         sync_shop_catalog(world["id"])
@@ -28,6 +33,11 @@ def main():
         f"категорий={content['shop_categories']} "
         f"товаров={content['shop_products']} "
         f"героев={content['heroes']}"
+    )
+    print(
+        "OK: Boss-контент: "
+        f"боссов={len(boss_content['bosses'])} "
+        f"предметов={len(boss_items['items'])}"
     )
     if content["missing_hero_images"]:
         print(

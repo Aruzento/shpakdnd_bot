@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
+from app.mini.boss.catalog import sync_boss_reward_items
 
 
 BOSS_TABLES = (
@@ -107,11 +108,33 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             "image_path": "TEXT NOT NULL DEFAULT ''",
             "signup_message_id": "INTEGER",
             "signup_message_kind": "TEXT NOT NULL DEFAULT 'text'",
+            "reward_items_json": "TEXT NOT NULL DEFAULT '[]'",
+            "reward_shields": "INTEGER NOT NULL DEFAULT 3",
+            "reward_shields_max": "INTEGER NOT NULL DEFAULT 3",
+            "reward_percent": "INTEGER NOT NULL DEFAULT 100",
+            "reward_decay_percent": "INTEGER NOT NULL DEFAULT 10",
+            "battle_result": "TEXT NOT NULL DEFAULT ''",
         }
         for name, sql_type in additions.items():
             if name not in columns:
                 conn.execute(
                     f"ALTER TABLE mini_bosses ADD COLUMN {name} {sql_type}"
+                )
+
+        participant_columns = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(mini_boss_participants)"
+            ).fetchall()
+        }
+        participant_additions = {
+            "hero_id": "INTEGER",
+            "attack": "INTEGER NOT NULL DEFAULT 0",
+        }
+        for name, sql_type in participant_additions.items():
+            if name not in participant_columns:
+                conn.execute(
+                    f"ALTER TABLE mini_boss_participants ADD COLUMN {name} {sql_type}"
                 )
 
         conn.execute(
@@ -133,3 +156,5 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             """
         )
         conn.commit()
+
+    sync_boss_reward_items(db_path)

@@ -6,6 +6,7 @@ from app.config import DB_PATH, TIMEZONE_NAME, TOKEN
 from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.boss.schema import init_boss_db
+from app.mini.boss.watcher import boss_watch_loop
 from app.mini.commands import configure_mini_commands
 from app.mini.heroes import sync_hero_catalog
 from app.mini.shop import sync_shop_catalog
@@ -50,8 +51,16 @@ async def main():
 
     await restore_timers(bot)
 
+    boss_watch_task = asyncio.create_task(boss_watch_loop(bot))
     print("Бот запущен.")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        boss_watch_task.cancel()
+        try:
+            await boss_watch_task
+        except asyncio.CancelledError:
+            pass
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "bosses": [
     {
       "code": "training_golem",
@@ -8,6 +8,12 @@
       "max_hp": 300,
       "min_players": 2,
       "reward_coins": 60,
+      "reward_items": [
+        {"code": "boss_coin_pouch", "quantity": 1},
+        {"code": "boss_shard_casket", "quantity": 1}
+      ],
+      "reward_shields": 3,
+      "reward_decay_percent": 10,
       "image": "training_golem.png",
       "active": true
     }

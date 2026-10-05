@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -110,11 +111,16 @@ def create_boss_event(
                 signup_opens_at,
                 skip_after_hours,
                 reward_coins,
+                reward_items_json,
+                reward_shields,
+                reward_shields_max,
+                reward_percent,
+                reward_decay_percent,
                 created_by_user_id
             )
             SELECT
                 ?, ?, ?, ?, ?, ?, ?, ?, 'announced', CURRENT_TIMESTAMP,
-                boss_skip_hours, ?, ?
+                boss_skip_hours, ?, ?, ?, ?, 100, ?, ?
             FROM mini_worlds
             WHERE id = ?
             """,
@@ -128,6 +134,10 @@ def create_boss_event(
                 int(template["max_hp"]),
                 int(template["min_players"]),
                 int(template.get("reward_coins", 0)),
+                json.dumps(template.get("reward_items", []), ensure_ascii=False),
+                int(template.get("reward_shields", 3)),
+                int(template.get("reward_shields", 3)),
+                int(template.get("reward_decay_percent", 10)),
                 int(created_by_user_id),
                 int(world_id),
             ),
@@ -180,11 +190,13 @@ def list_participants(
                 p.username,
                 p.character_name,
                 p.active_hero_id,
+                bp.hero_id AS battle_hero_id,
+                bp.attack AS battle_attack,
                 h.name AS hero_name,
                 h.rarity AS hero_rarity
             FROM mini_boss_participants bp
             JOIN mini_players p ON p.id = bp.player_id
-            LEFT JOIN mini_heroes h ON h.id = p.active_hero_id
+            LEFT JOIN mini_heroes h ON h.id = COALESCE(bp.hero_id, p.active_hero_id)
             WHERE bp.boss_id = ?
             ORDER BY bp.queue_position, bp.joined_at, p.id
             """,

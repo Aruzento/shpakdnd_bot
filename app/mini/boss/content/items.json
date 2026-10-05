@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "code": "boss_coin_pouch",
+      "name": "Кошель с монетами",
+      "category": "boss_reward",
+      "description": "Тяжёлый кошель, полученный за победу над боссом. Эффект предмета будет добавлен позже.",
+      "effect_key": "boss_coin_pouch",
+      "stackable": true,
+      "active": true
+    },
+    {
+      "code": "boss_shard_casket",
+      "name": "Шкатулка с осколками",
+      "category": "boss_reward",
+      "description": "Запечатанная шкатулка с осколками. Эффект предмета будет добавлен позже.",
+      "effect_key": "boss_shard_casket",
+      "stackable": true,
+      "active": true
+    }
+  ]
+}
