@@ -436,10 +436,11 @@ def _hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
     return "\n".join(lines)[:1020]
 
 
-def _hero_share_caption(hero: dict) -> str:
-    description = _clip(hero.get("description", ""), 800)
+def _hero_share_caption(hero: dict, sharer: str) -> str:
+    description = _clip(hero.get("description", ""), 760)
+    sharer = (sharer or "Игрок").strip()
     return (
-        f"🎉 Смотри, что мне выпало: {hero['name']}!\n\n"
+        f"{sharer}: «Смотри, что мне выпало: {hero['name']}!»\n\n"
         f"{description or 'Без описания.'}"
     )[:1020]
 
@@ -613,22 +614,44 @@ async def _load_extended_context(
     return world, player, extra
 
 
+def _replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
+    """Параметры для нового ephemeral-сообщения вместо текущего."""
+    message = callback.message
+    if message is not None and message.ephemeral_message_id is not None:
+        return {
+            "reply_parameters": ReplyParameters(
+                ephemeral_message_id=message.ephemeral_message_id,
+            ),
+            "ephemeral_message_parameters": EphemeralMessageParameters(
+                receiver_user_id=callback.from_user.id,
+            ),
+        }
+
+    # Резерв для callback из публичного сообщения. Launcher использует
+    # отдельный helper и сюда обычно не попадает.
+    return {
+        "ephemeral_message_parameters": EphemeralMessageParameters(
+            receiver_user_id=callback.from_user.id,
+            callback_query_id=callback.id,
+        ),
+    }
+
+
 async def _send_private_text_from_callback(
     callback: CallbackQuery,
     world: dict,
     text: str,
     reply_markup: InlineKeyboardMarkup,
 ):
-    return await callback.bot.send_message(
+    sent = await callback.bot.send_message(
         chat_id=world["chat_id"],
         message_thread_id=world["thread_id"] or None,
         text=text,
         reply_markup=reply_markup,
-        ephemeral_message_parameters=EphemeralMessageParameters(
-            receiver_user_id=callback.from_user.id,
-            callback_query_id=callback.id,
-        ),
+        **_replacement_ephemeral_kwargs(callback),
     )
+    await _delete_current_ephemeral(callback)
+    return sent
 
 
 async def _send_hero_card(
@@ -641,17 +664,16 @@ async def _send_hero_card(
     image = get_hero_image(hero)
     if image is not None:
         try:
-            return await callback.bot.send_photo(
+            sent = await callback.bot.send_photo(
                 chat_id=world["chat_id"],
                 message_thread_id=world["thread_id"] or None,
                 photo=FSInputFile(image),
                 caption=caption,
                 reply_markup=reply_markup,
-                ephemeral_message_parameters=EphemeralMessageParameters(
-                    receiver_user_id=callback.from_user.id,
-                    callback_query_id=callback.id,
-                ),
+                **_replacement_ephemeral_kwargs(callback),
             )
+            await _delete_current_ephemeral(callback)
+            return sent
         except TelegramAPIError as error:
             print(
                 "Не удалось отправить картинку героя: "
@@ -670,8 +692,9 @@ async def _send_public_hero_share(
     callback: CallbackQuery,
     world: dict,
     hero: dict,
+    sharer: str,
 ):
-    caption = _hero_share_caption(hero)
+    caption = _hero_share_caption(hero, sharer)
     image = get_hero_image(hero)
 
     if image is not None:
@@ -705,7 +728,7 @@ async def _delete_current_ephemeral(callback: CallbackQuery) -> bool:
         await message.delete_ephemeral()
     except TelegramAPIError as error:
         print(
-            "Не удалось удалить прошлую карточку гачи: "
+            "Не удалось удалить предыдущее ephemeral-сообщение: "
             f"error={type(error).__name__}: {error}"
         )
         return False
@@ -1034,14 +1057,19 @@ async def _edit_private(
         return
 
     if callback.message.ephemeral_message_id is not None:
-        await callback.message.edit_ephemeral_text(
+        sent = await callback.bot.send_message(
+            chat_id=callback.message.chat.id,
+            message_thread_id=callback.message.message_thread_id or None,
             text=text,
             reply_markup=reply_markup,
+            **_replacement_ephemeral_kwargs(callback),
         )
-        return
+        await _delete_current_ephemeral(callback)
+        return sent
 
     # Резерв для старого публичного меню, если оно осталось после обновления.
-    await callback.message.edit_text(
+    # Публичный launcher здесь не удаляем.
+    return await callback.message.edit_text(
         text=text,
         reply_markup=reply_markup,
     )
@@ -1428,12 +1456,22 @@ async def _not_ready(callback: CallbackQuery, text: str):
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
 
-    _, _, owner_id = parsed
+    _, world_id, owner_id = parsed
     if callback.from_user.id != owner_id:
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return
 
-    await callback.answer(text, show_alert=True)
+    world = get_mini_world_by_id(world_id)
+    if not world or not world["enabled"]:
+        await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
+        return
+
+    await callback.answer()
+    await _edit_private(
+        callback,
+        text,
+        _back_menu(world_id, owner_id),
+    )
 
 
 @router.callback_query(F.data.startswith("mini:daily:"))
@@ -1793,7 +1831,6 @@ async def _handle_gacha_pull(
     callback: CallbackQuery,
     *,
     prefix: str,
-    delete_source_after_success: bool,
 ):
     context = await _load_extended_context(callback, prefix)
     if context is None:
@@ -1840,9 +1877,6 @@ async def _handle_gacha_pull(
         )
         return
 
-    if delete_source_after_success:
-        await _delete_current_ephemeral(callback)
-
     toast = (
         f"Новый герой: {hero['name']}"
         if not result["is_duplicate"]
@@ -1856,7 +1890,6 @@ async def gacha_pull_callback(callback: CallbackQuery):
     await _handle_gacha_pull(
         callback,
         prefix="gachapull",
-        delete_source_after_success=False,
     )
 
 
@@ -1865,7 +1898,6 @@ async def gacha_repeat_callback(callback: CallbackQuery):
     await _handle_gacha_pull(
         callback,
         prefix="gacharepeat",
-        delete_source_after_success=True,
     )
 
 
@@ -1887,8 +1919,15 @@ async def hero_share_callback(callback: CallbackQuery):
         await callback.answer("Этого героя нет в коллекции.", show_alert=True)
         return
 
+    sharer = (
+        _username_from_user(callback.from_user)
+        or player.get("username")
+        or player.get("character_name")
+        or "Игрок"
+    )
+
     try:
-        await _send_public_hero_share(callback, world, hero)
+        await _send_public_hero_share(callback, world, hero, sharer)
     except TelegramAPIError as error:
         print(
             "Ошибка публичной публикации героя: "
@@ -1899,6 +1938,26 @@ async def hero_share_callback(callback: CallbackQuery):
             show_alert=True,
         )
         return
+
+    # После публичной публикации оставляем игроку одну свежую личную
+    # карточку без повторной кнопки «Похвастаться». Старая карточка удалится.
+    try:
+        state = get_gacha_state(player["id"])
+        await _send_hero_card(
+            callback,
+            world,
+            hero,
+            _hero_caption(hero),
+            _hero_card_menu(
+                world["id"], callback.from_user.id, hero, state,
+                allow_share=False,
+            ),
+        )
+    except TelegramAPIError as error:
+        print(
+            "Не удалось обновить личную карточку после публикации: "
+            f"{type(error).__name__}: {error}"
+        )
 
     await callback.answer("Показал всем 🎉")
 
@@ -2075,22 +2134,47 @@ async def hero_active_callback(callback: CallbackQuery):
     if context is None:
         return
 
-    _, player, hero_id_text = context
+    world, player, hero_id_text = context
     try:
         hero_id = int(hero_id_text)
     except ValueError:
         await callback.answer("Некорректный герой.", show_alert=True)
         return
 
+
     try:
-        hero = set_active_hero(player["id"], hero_id)
+        set_active_hero(player["id"], hero_id)
     except ValueError as error:
         await callback.answer(str(error), show_alert=True)
         return
 
+
+    hero = get_player_hero(player["id"], hero_id)
+    state = get_gacha_state(player["id"])
+    if hero is not None:
+        try:
+            await _send_hero_card(
+                callback,
+                world,
+                hero,
+                _hero_caption(hero),
+                _hero_card_menu(
+                    world["id"], callback.from_user.id, hero, state
+                ),
+            )
+        except TelegramAPIError as error:
+            print(
+                "Ошибка карточки после выбора активного героя: "
+                f"{type(error).__name__}: {error}"
+            )
+            await callback.answer(
+                f"⭐ Активный герой: {hero['name']}",
+                show_alert=True,
+            )
+            return
+
     await callback.answer(
-        f"⭐ Активный герой: {hero['name']}",
-        show_alert=True,
+        f"⭐ Активный герой: {hero['name'] if hero else 'выбран'}"
     )
 
 
