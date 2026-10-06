@@ -95,9 +95,9 @@ class EventCallbackTests(unittest.IsolatedAsyncioTestCase):
                                     ephemeral_message_id=7, delete_ephemeral=AsyncMock()),
         )
         for target, fn in (
-            ("app.mini.handlers.get_mini_world_by_id", get_mini_world_by_id),
-            ("app.mini.handlers.get_mini_player", get_mini_player),
-            ("app.mini.handlers.touch_mini_player", touch_mini_player),
+            ("app.mini.ui.context.get_mini_world_by_id", get_mini_world_by_id),
+            ("app.mini.ui.context.get_mini_player", get_mini_player),
+            ("app.mini.ui.context.touch_mini_player", touch_mini_player),
             ("app.mini.events.handlers.get_mini_player", get_mini_player),
         ):
             mock_patch = patch(target, side_effect=partial(fn, db_path=self.db))
@@ -149,9 +149,9 @@ class EventCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.resources(), (20, 0))
 
     async def test_missing_character_and_disabled_world_are_rejected(self):
-        with patch("app.mini.handlers.get_mini_player", return_value=None):
+        with patch("app.mini.ui.context.get_mini_player", return_value=None):
             await ui.events_callback(self.callback)
-        with patch("app.mini.handlers.get_mini_world_by_id", return_value={"enabled": 0}):
+        with patch("app.mini.ui.context.get_mini_world_by_id", return_value={"enabled": 0}):
             await ui.events_callback(self.callback)
         self.callback.bot.send_message.assert_not_awaited()
 

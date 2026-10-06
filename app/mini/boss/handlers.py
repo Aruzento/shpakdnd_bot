@@ -1,14 +1,10 @@
+from app.mini.ui.context import load_world as _load_world, load_player as _load_player
+from app.mini.ui.transport import delete_current_ephemeral as _delete_current_ephemeral, send_private_text_from_callback as _send_private
 import asyncio
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import (
-    CallbackQuery,
-    EphemeralMessageParameters,
-    FSInputFile,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.context import get_topic_admin, normalize_username
 from app.mini.boss.catalog import (
@@ -53,8 +49,6 @@ from app.mini.boss.service import (
     select_battle_hero,
 )
 from app.mini.heroes import get_player_heroes
-from app.mini.players import get_mini_player, touch_mini_player
-from app.mini.worlds import get_mini_world_by_id
 
 
 router = Router(name="mini_boss")
@@ -307,64 +301,6 @@ def _preview_menu(
             ],
         ]
     )
-
-
-def _replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
-    return {
-        "ephemeral_message_parameters": EphemeralMessageParameters(
-            receiver_user_id=callback.from_user.id,
-            callback_query_id=callback.id,
-            replace_callback_query_message=False,
-        )
-    }
-
-
-async def _delete_current_ephemeral(callback: CallbackQuery) -> None:
-    if callback.message is None or callback.message.ephemeral_message_id is None:
-        return
-    try:
-        await callback.message.delete_ephemeral()
-    except TelegramAPIError as error:
-        print(
-            "Boss: не удалось удалить старое ephemeral-сообщение: "
-            f"{type(error).__name__}: {error}"
-        )
-
-
-async def _send_private(
-    callback: CallbackQuery,
-    world: dict,
-    text: str,
-    markup: InlineKeyboardMarkup,
-):
-    sent = await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
-        text=text,
-        reply_markup=markup,
-        **_replacement_ephemeral_kwargs(callback),
-    )
-    await _delete_current_ephemeral(callback)
-    return sent
-
-
-def _load_world(world_id: int) -> dict | None:
-    world = get_mini_world_by_id(world_id)
-    if not world or not world["enabled"]:
-        return None
-    return world
-
-
-def _load_player(world_id: int, callback: CallbackQuery) -> dict | None:
-    player = get_mini_player(world_id, callback.from_user.id)
-    if player is not None:
-        touch_mini_player(
-            world_id,
-            callback.from_user.id,
-            _username_from_user(callback.from_user),
-        )
-        player = get_mini_player(world_id, callback.from_user.id)
-    return player
 
 
 async def _show_boss_home(

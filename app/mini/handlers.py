@@ -1,3 +1,5 @@
+from app.mini.ui.context import username_from_user as _username_from_user, personal_callback as _personal_callback, parse_extended_callback as _parse_extended_callback, load_extended_context as _load_extended_context, parse_personal_callback as _parse_personal_callback, load_personal_context as _load_personal_context, parse_shop_callback as _parse_shop_callback, shop_context as _shop_context
+from app.mini.ui.transport import replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs, send_private_text_from_callback as _send_private_text_from_callback, delete_current_ephemeral as _delete_current_ephemeral, send_private_from_launcher as _send_private_from_launcher, edit_private as _edit_private
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
@@ -82,12 +84,6 @@ from app.mini.worlds import (
 router = Router(name="mini")
 
 
-def _username_from_user(user) -> str:
-    if user is None or not user.username:
-        return ""
-    return "@" + user.username.strip().lower()
-
-
 def _launcher_text(world: dict) -> str:
     return (
         f"🎲 {world['name']}\n"
@@ -109,10 +105,6 @@ def _launcher_menu(world_id: int) -> InlineKeyboardMarkup:
             ]
         ]
     )
-
-
-def _personal_callback(action: str, world_id: int, user_id: int) -> str:
-    return f"mini:{action}:{world_id}:{user_id}"
 
 
 def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
@@ -237,7 +229,6 @@ def _daily_result_menu(
             ]
         ]
     )
-
 
 
 RARITY_EMOJI = {
@@ -565,77 +556,6 @@ def _format_shard_sell(hero: dict, balance: int) -> str:
         "Проданные осколки исчезают навсегда."
     )
 
-def _parse_extended_callback(
-    callback: CallbackQuery,
-    prefix: str,
-) -> tuple[int, int, str] | None:
-    if not callback.data:
-        return None
-    parts = callback.data.split(":", maxsplit=4)
-    if len(parts) != 5 or parts[0] != "mini" or parts[1] != prefix:
-        return None
-    try:
-        return int(parts[2]), int(parts[3]), parts[4]
-    except ValueError:
-        return None
-
-
-async def _load_extended_context(
-    callback: CallbackQuery,
-    prefix: str,
-) -> tuple[dict, dict, str] | None:
-    parsed = _parse_extended_callback(callback, prefix)
-    if parsed is None:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
-        return None
-
-    world_id, owner_id, extra = parsed
-    if callback.from_user.id != owner_id:
-        await callback.answer("Это меню другого игрока.", show_alert=True)
-        return None
-
-    world = get_mini_world_by_id(world_id)
-    if not world or not world["enabled"]:
-        await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
-        return None
-
-    player = get_mini_player(world_id, owner_id)
-    if player is None:
-        await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
-        return None
-
-    touch_mini_player(world_id, owner_id, _username_from_user(callback.from_user))
-    player = get_mini_player(world_id, owner_id)
-    return world, player, extra
-
-
-def _replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
-    """Параметры нового ephemeral-сообщения по текущему callback."""
-    return {
-        "ephemeral_message_parameters": EphemeralMessageParameters(
-            receiver_user_id=callback.from_user.id,
-            callback_query_id=callback.id,
-            replace_callback_query_message=False,
-        ),
-    }
-
-
-async def _send_private_text_from_callback(
-    callback: CallbackQuery,
-    world: dict,
-    text: str,
-    reply_markup: InlineKeyboardMarkup,
-):
-    sent = await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
-        text=text,
-        reply_markup=reply_markup,
-        **_replacement_ephemeral_kwargs(callback),
-    )
-    await _delete_current_ephemeral(callback)
-    return sent
-
 
 async def _send_hero_card(
     callback: CallbackQuery,
@@ -700,23 +620,6 @@ async def _send_public_hero_share(
         message_thread_id=world["thread_id"] or None,
         text=caption,
     )
-
-
-async def _delete_current_ephemeral(callback: CallbackQuery) -> bool:
-    message = callback.message
-    if message is None or message.ephemeral_message_id is None:
-        return False
-
-    try:
-        await message.delete_ephemeral()
-    except TelegramAPIError as error:
-        print(
-            "Не удалось удалить предыдущее ephemeral-сообщение: "
-            f"error={type(error).__name__}: {error}"
-        )
-        return False
-
-    return True
 
 
 def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
@@ -819,47 +722,6 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
             ],
         ]
     )
-
-
-def _parse_shop_callback(
-    callback: CallbackQuery,
-    prefix: str,
-) -> tuple[int, int, str] | None:
-    if not callback.data:
-        return None
-    parts = callback.data.split(":", 4)
-    if len(parts) not in {4, 5} or parts[0] != "mini" or parts[1] != prefix:
-        return None
-    try:
-        world_id = int(parts[2])
-        owner_id = int(parts[3])
-    except ValueError:
-        return None
-    tail = parts[4] if len(parts) == 5 else ""
-    return world_id, owner_id, tail
-
-
-async def _shop_context(
-    callback: CallbackQuery,
-    prefix: str,
-) -> tuple[dict, dict, str] | None:
-    parsed = _parse_shop_callback(callback, prefix)
-    if parsed is None:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
-        return None
-    world_id, owner_id, tail = parsed
-    if callback.from_user.id != owner_id:
-        await callback.answer("Это меню другого игрока.", show_alert=True)
-        return None
-    world = get_mini_world_by_id(world_id)
-    if not world or not world["enabled"]:
-        await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
-        return None
-    player = get_mini_player(world_id, owner_id)
-    if player is None:
-        await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
-        return None
-    return world, player, tail
 
 
 def _format_inventory(world: dict, player: dict, goods: dict) -> str:
@@ -1093,22 +955,6 @@ def _parse_character_name(message: Message) -> str | None:
     return name or None
 
 
-def _parse_personal_callback(
-    callback: CallbackQuery,
-) -> tuple[str, int, int] | None:
-    if not callback.data:
-        return None
-
-    parts = callback.data.split(":")
-    if len(parts) != 4 or parts[0] != "mini":
-        return None
-
-    try:
-        return parts[1], int(parts[2]), int(parts[3])
-    except ValueError:
-        return None
-
-
 async def _send_private(
     message: Message,
     text: str,
@@ -1152,102 +998,6 @@ async def _send_private(
         return await message.bot.send_message(**kwargs)
     except TelegramBadRequest:
         return None
-
-
-async def _send_private_from_launcher(
-    callback: CallbackQuery,
-    world: dict,
-    text: str,
-    reply_markup: InlineKeyboardMarkup,
-):
-    """
-    Отправляет отдельное ephemeral-меню конкретному игроку.
-
-    Не используем replace_callback_query_message=True:
-    публичный закреп остаётся на месте, а личное меню приходит
-    отдельным приватным сообщением. Это надёжнее в forum topics
-    и на клиентах Telegram, где overlay ещё работает нестабильно.
-    """
-    return await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
-        text=text,
-        reply_markup=reply_markup,
-        ephemeral_message_parameters=EphemeralMessageParameters(
-            receiver_user_id=callback.from_user.id,
-            callback_query_id=callback.id,
-        ),
-    )
-
-
-async def _edit_private(
-    callback: CallbackQuery,
-    text: str,
-    reply_markup: InlineKeyboardMarkup,
-):
-    if callback.message is None:
-        return
-
-    if callback.message.ephemeral_message_id is not None:
-        sent = await callback.bot.send_message(
-            chat_id=callback.message.chat.id,
-            message_thread_id=callback.message.message_thread_id or None,
-            text=text,
-            reply_markup=reply_markup,
-            **_replacement_ephemeral_kwargs(callback),
-        )
-        await _delete_current_ephemeral(callback)
-        return sent
-
-    # Резерв для старого публичного меню, если оно осталось после обновления.
-    # Публичный launcher здесь не удаляем.
-    return await callback.message.edit_text(
-        text=text,
-        reply_markup=reply_markup,
-    )
-
-
-async def _load_personal_context(
-    callback: CallbackQuery,
-) -> tuple[dict, dict] | None:
-    parsed = _parse_personal_callback(callback)
-    if parsed is None:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
-        return None
-
-    _, world_id, owner_id = parsed
-
-    if callback.from_user.id != owner_id:
-        await callback.answer(
-            "Это меню другого игрока.",
-            show_alert=True,
-        )
-        return None
-
-    world = get_mini_world_by_id(world_id)
-    if not world or not world["enabled"]:
-        await callback.answer(
-            "D&D Mini сейчас недоступен.",
-            show_alert=True,
-        )
-        return None
-
-    player = get_mini_player(world_id, owner_id)
-    if player is None:
-        await callback.answer(
-            "Сначала создай Mini-персонажа.",
-            show_alert=True,
-        )
-        return None
-
-    touch_mini_player(
-        world_id,
-        owner_id,
-        _username_from_user(callback.from_user),
-    )
-
-    player = get_mini_player(world_id, owner_id)
-    return world, player
 
 
 @router.message(Command("minipanel"))

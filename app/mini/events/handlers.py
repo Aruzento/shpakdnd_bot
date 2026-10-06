@@ -1,13 +1,11 @@
+from app.mini.ui.context import load_extended_context, load_personal_context, personal_callback
+from app.mini.ui.transport import send_private_text_from_callback
 """Ephemeral UI for Mini events; no economic state lives in the router."""
 import secrets
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.mini.handlers import (
-    _load_extended_context, _load_personal_context,
-    _personal_callback, _send_private_text_from_callback,
-)
 from app.mini.players import get_mini_player
 from app.mini.wallet import InsufficientFundsError
 from app.mini.events.service import (
@@ -41,7 +39,7 @@ def _screen(world_id: int, user_id: int, player: dict, screen: str,
         rows = [[button("😇 Святоша, Демон, Житель", "rps")],
                 [button("🌀 Лабиринт интуиции", "lab")],
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data=
-                    _personal_callback("home", world_id, user_id))]]
+                    personal_callback("home", world_id, user_id))]]
     elif screen == "rps":
         text = ("😇 Святоша, Демон, Житель\n\nСвятоша побеждает Демона, "
                 "Демон — Жителя, а Житель — Святошу. Выбери ставку, затем "
@@ -128,7 +126,7 @@ async def _show(callback, world, player, *, screen="events", session=None, notic
         text, markup = _screen(world["id"], callback.from_user.id, player, screen, notice)
     # Unlike the legacy edit helper's public fallback, this ALWAYS sends an
     # ephemeral message and removes the preceding ephemeral if present.
-    await _send_private_text_from_callback(callback, world, text, markup)
+    await send_private_text_from_callback(callback, world, text, markup)
 
 
 async def _valid_location(callback, world) -> bool:
@@ -143,7 +141,7 @@ async def _valid_location(callback, world) -> bool:
 
 @router.callback_query(F.data.startswith("mini:events:"))
 async def events_callback(callback: CallbackQuery):
-    context = await _load_personal_context(callback)
+    context = await load_personal_context(callback)
     if context is None:
         return
     world, player = context
@@ -155,7 +153,7 @@ async def events_callback(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("mini:ev:"))
 async def event_game_callback(callback: CallbackQuery):
-    context = await _load_extended_context(callback, "ev")
+    context = await load_extended_context(callback, "ev")
     if context is None:
         return
     world, player, extra = context
