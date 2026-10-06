@@ -7,7 +7,9 @@ world/catalog sync; затем подключает 8 parent routers и запу
 Mini и Boss включают feature subrouters. `check_bot.py` выполняет startup
 проверки без polling. Обычные timers восстанавливаются через
 `app/services/timers.py`; Boss watcher восстанавливает public turn и таймауты.
-`deploy/` содержит прежние systemd unit/path и compile-before-restart script.
+`deploy/` содержит systemd unit/path и прежний compile-before-restart script.
+Path unit дополнен всеми вложенными module/catalog directories; тест проверяет
+их покрытие. Установка обновлённого unit выполняется при deploy на Linux.
 
 ```mermaid
 flowchart TD

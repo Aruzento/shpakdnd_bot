@@ -8,6 +8,17 @@ PathModified=/opt/shpakdnd-bot/app/db
 PathModified=/opt/shpakdnd-bot/app/services
 PathModified=/opt/shpakdnd-bot/app/handlers
 PathModified=/opt/shpakdnd-bot/app/mini
+PathModified=/opt/shpakdnd-bot/app/mini/ui
+PathModified=/opt/shpakdnd-bot/app/mini/combat
+PathModified=/opt/shpakdnd-bot/app/mini/combat/hero_abilities
+PathModified=/opt/shpakdnd-bot/app/mini/effects
+PathModified=/opt/shpakdnd-bot/app/mini/migrations
+PathModified=/opt/shpakdnd-bot/app/mini/events
+PathModified=/opt/shpakdnd-bot/app/mini/content
+PathModified=/opt/shpakdnd-bot/app/mini/boss
+PathModified=/opt/shpakdnd-bot/app/mini/boss/abilities
+PathModified=/opt/shpakdnd-bot/app/mini/boss/boss_abilities
+PathModified=/opt/shpakdnd-bot/app/mini/boss/content
 Unit=shpakdnd-bot-update.service
 
 [Install]

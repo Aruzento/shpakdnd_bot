@@ -42,3 +42,13 @@ assert "aiogram" not in sys.modules
         for node in ast.walk(tree):
             if isinstance(node,ast.Constant) and isinstance(node.value,str):
                 self.assertFalse(node.value.strip().upper().startswith(('UPDATE ', 'INSERT ', 'DELETE ')), node.value)
+
+    def test_deploy_watcher_covers_all_app_code_and_catalog_directories(self):
+        unit=(ROOT/'deploy/shpakdnd-bot-watch.path').read_text(encoding='utf-8')
+        watched={line.split('=',1)[1].removeprefix('/opt/shpakdnd-bot/')
+                 for line in unit.splitlines() if line.startswith('PathModified=')}
+        for path in (ROOT/'app').rglob('*'):
+            if path.is_file() and path.suffix in {'.py', '.json'}:
+                self.assertIn(path.parent.relative_to(ROOT).as_posix(),watched,str(path))
+        self.assertNotIn('shpakdnd.db',watched)
+        self.assertNotIn('.env',watched)

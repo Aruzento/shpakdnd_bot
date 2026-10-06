@@ -28,3 +28,18 @@ Active: active (waiting)
 ```bash
 journalctl -u shpakdnd-bot-update.service -n 50
 ```
+
+
+## V1.2.5: вложенные модули и каталоги
+
+Path unit явно перечисляет каталоги UI, combat/hero abilities, effects,
+migrations, events, Boss и JSON-контента. Наблюдение inotify за директорией
+не рекурсивно ([inotify(7)](https://www.man7.org/linux/man-pages/man7/inotify.7.html)).
+При добавлении новой feature-директории добавь соответствующий PathModified;
+`tests/test_architecture.py` проверяет покрытие всех app Python/JSON directories.
+DB, .env и __pycache__ не перечисляются в watch paths.
+
+При обновлении V1.2.5 повторно установи path unit и выполни daemon-reload/restart
+watcher по инструкции выше. Изменения этих unit-файлов сами по себе не изменяют
+установленный service на сервере. Runtime-проверку systemd выполняй на Linux;
+локально проверяется структура unit и её покрытие файлов проекта.

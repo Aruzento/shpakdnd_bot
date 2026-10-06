@@ -104,7 +104,10 @@ Startup сам регистрирует темы с `mini=True`. В Mini-тем�
 
 Проверены пустая БД, старые схемы, повторный запуск, rollback миграции и
 сохранность всех 19 Mini-таблиц на копии существующей БД. Полный regression suite
-содержит 347 тестов; исходные 321 сценарий сохранены.
+содержит 348 тестов; исходные 321 сценарий сохранены.
+
+Deploy watcher перечисляет новые вложенные module/catalog directories;
+при обновлении переустанови path unit по инструкции deploy.
 
 Инструкции: [deploy](deploy/README.md), [recovery](docs/operations/RECOVERY.md),
 [admin grants](docs/operations/README_ADMIN_GRANTS.md).
