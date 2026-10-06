@@ -3,7 +3,7 @@ import json
 import secrets
 
 from app.mini.boss.boss_abilities.catalog import get_ability, validate_config
-from app.mini.boss.matchups import modify_damage
+from app.mini.combat.matchups import modify_damage
 
 
 def _roll_success(chance_percent: int) -> bool:

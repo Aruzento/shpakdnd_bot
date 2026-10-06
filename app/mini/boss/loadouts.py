@@ -1,10 +1,6 @@
+from app.mini.combat.tags import LEGACY_HERO_TRAITS as LEGACY_TRAITS
 """Immutable battle loadouts, including safe pre-v2 defaults."""
 import json
-
-LEGACY_TRAITS = {
-    "faction": "commoners", "damage_type": "slashing", "class_tag": "none",
-    "attack_range": "melee", "special_trait": "none",
-}
 
 
 def decode_loadout(raw: str) -> dict:

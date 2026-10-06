@@ -1,6 +1,6 @@
 import json
 
-from app.mini.boss.matchups import FACTIONS
+from app.mini.combat.matchups import FACTIONS
 from app.mini.boss.boss_abilities.catalog import get_ability, validate_config
 from pathlib import Path
 

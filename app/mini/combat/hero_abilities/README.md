@@ -66,7 +66,7 @@
 Запусти:
 
 ```bash
-python -m app.mini.boss.abilities.validate
+python -m app.mini.combat.hero_abilities.validate
 ```
 
 Если в `heroes.json` появился `passive_key`, которого нет в `abilities.json`, команда покажет его и завершится с ошибкой.

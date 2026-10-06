@@ -109,8 +109,8 @@ def load_shop_catalog() -> dict:
 
 def load_hero_catalog() -> dict:
     # Local imports avoid the package's existing eager re-exports during startup.
-    from app.mini.boss.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
-    from app.mini.boss.abilities.catalog import configured_ability_keys
+    from app.mini.combat.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
+    from app.mini.combat.hero_abilities.catalog import configured_ability_keys
 
     data = _read_json(HEROES_PATH)
     settings = data.get("settings")

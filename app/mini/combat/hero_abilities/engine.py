@@ -2,7 +2,7 @@ import json
 import secrets
 from collections.abc import Callable
 
-from app.mini.boss.abilities.catalog import get_ability
+from app.mini.combat.hero_abilities.catalog import get_ability
 
 
 Roller = Callable[[float], bool]

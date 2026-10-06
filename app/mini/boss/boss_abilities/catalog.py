@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from app.mini.boss.matchups import FACTIONS
+from app.mini.combat.matchups import FACTIONS
 
 ABILITIES_JSON = Path(__file__).with_name("abilities.json")
 ABILITY_KEYS = frozenset((

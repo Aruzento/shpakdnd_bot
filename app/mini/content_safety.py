@@ -2,7 +2,7 @@
 import re
 
 from app.mini.boss.catalog import load_boss_catalog
-from app.mini.boss.matchups import faction_multiplier_percent
+from app.mini.combat.matchups import faction_multiplier_percent
 from app.mini.catalog import load_hero_catalog
 from app.mini.presentation import (
     CLASS_LABELS, DAMAGE_LABELS, FACTION_LABELS, RANGE_LABELS, TRAIT_LABELS,

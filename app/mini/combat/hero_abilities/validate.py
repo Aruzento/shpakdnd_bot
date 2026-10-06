@@ -1,4 +1,4 @@
-from app.mini.boss.abilities.catalog import configured_ability_keys
+from app.mini.combat.hero_abilities.catalog import configured_ability_keys
 from app.mini.catalog import load_hero_catalog
 
 

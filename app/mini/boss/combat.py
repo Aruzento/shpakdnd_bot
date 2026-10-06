@@ -5,15 +5,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.config import DB_PATH
-from app.mini.boss.abilities import (
+from app.mini.combat.hero_abilities import (
     resolve_attack,
     resolve_boss_attack,
     resolve_kill,
 )
-from app.mini.boss.abilities import engine as hero_abilities
+from app.mini.combat.hero_abilities import engine as hero_abilities
 from app.mini.boss.catalog import get_boss_template, sync_boss_reward_items
 from app.mini.boss.boss_abilities import engine as boss_abilities
-from app.mini.boss.matchups import faction_multiplier_percent, modify_damage
+from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 from app.mini.boss.loadouts import battle_loadout
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
