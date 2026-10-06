@@ -80,7 +80,7 @@ turn_notice_json keeps ability notices visible after watcher caption updates.
 Hero: faction, damage_type, class_tag, attack_range, special_trait.
 Boss: faction, ability_key, ability_text, features_json, ability_config_json,
 ability_state_json, turn_message_kind, turn_notice_json.
-Participant: hero_snapshot_json, forced_skip_turns, banished (hero_id and attack
+Participant: hero_snapshot_json, hero_state_json, forced_skip_turns, banished (hero_id and attack
 already existed).
 Action: event_json. New mini_boss_events journal with legacy_action_id for
 idempotent history migration.
@@ -112,7 +112,40 @@ open class/special/feature tags; release validation additionally requires labels
 RULES_TEXT explains separate battle selection and the faction cycle. slashing
 keeps its internal code and displays as Режущий.
 
-Nonblocking product warning: fallen_sun_champion has rapier + reward_shields=0.
-Its shield bypass gives no additional effect over an ordinary reward attack.
-check_bot.py reports WARN; boss HP, rewards, shields, faction and ability are
-deliberately preserved pending a product decision.
+check_bot.py reports a nonblocking WARN for rapier + reward_shields=0.
+The user assigned fallen_sun_champion 420 HP and 2 shields; this configuration
+now passes without that warning. Content balance remains user-owned.
+
+
+## New hero effects
+
+The six passives are configured in hero abilities.json, never by hero code.
+Runtime uses the additive participant hero_state_json column (default {}).
+Only a new ready battle resets it; migration/reinitialization preserves running
+snapshots, counters, HP, rewards, queue position and all existing runtime values.
+
+* rune_spark: 20% on an ordinary attack to remove an active magic_shield. The
+  removal attack deals zero HP damage; the class hook runs normally on non-proc.
+  A proc replaces the class removal, producing one event.
+* unstable_shell / infernal_guard: every fourth / third own ordinary hit creates
+  a reward guard charge, even when HP damage is zero. Real reward impacts first
+  run boss_attack hero passives, then consume one active participant's charge in
+  queue order. Critical impacts consume charges sequentially; rapier is absorbed
+  too. A mockery skip runs neither attack passives nor charge consumption.
+* holy_relic: each participant with hit_count > 0 rolls 15% for +3 shared shards
+  inside normal victory rewards. Banished contributors remain eligible, phantom
+  participation without hits does not. reward_granted makes the roll/grant
+  atomic and once per battle, including restarts. Failure/admin victory bypass it.
+* battle_echo: each third own ordinary hit stores 50% of actual HP removed,
+  minimum 1 for positive damage. The next actionable own turn consumes it before
+  input, without attack, faction, class, potion or kill hooks and without a hit
+  increment. Forced skips preserve it; banishment prevents it. Actual echo damage
+  increases total_damage. Echo death follows the shared boss-death/victory path.
+  The journal and turn_notice_json preserve its automatic public event.
+* blood_frenzy: ordinary hit numbers cycle through 100/115/130/145% at the passive
+  stage. Every fourth hit requests one extra attack unless the primary killed.
+  Extra starts from the attack snapshot, then faction, boss hook, potion; it
+  neither increments hits nor invokes hero attack/after-attack/kill hooks.
+
+Existing main-hit total_damage accounting remains unchanged. New automatic and
+extra hits record actual HP removed; echo is based on primary actual HP damage.

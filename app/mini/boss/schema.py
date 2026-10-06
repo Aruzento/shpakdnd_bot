@@ -145,6 +145,7 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             ).fetchall()
         }
         participant_additions = {
+            "hero_state_json": "TEXT NOT NULL DEFAULT '{}'",
             "hero_snapshot_json": "TEXT NOT NULL DEFAULT '{}'",
             "forced_skip_turns": "INTEGER NOT NULL DEFAULT 0",
             "banished": "INTEGER NOT NULL DEFAULT 0",

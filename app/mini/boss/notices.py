@@ -36,7 +36,9 @@ def reward_event_lines(event: dict) -> list[str]:
     lines = []
     for attack in attacks:
         kind = attack.get("type")
-        if kind == "shield":
+        if kind == "reward_guard":
+            lines.append(str(attack["guard_event"]["message"]))
+        elif kind == "shield":
             lines.append(f"🛡 Босс разбил щит награды. Осталось: {attack['shields']}.")
         elif kind == "reward_damage":
             lines.append(f"💎 Состояние награды: {attack['reward_percent']}%.")
@@ -55,6 +57,12 @@ def combat_event_lines(result: dict) -> list[str]:
     timeout = result.get("timeout_result")
     if timeout and timeout.get("changed"):
         lines.extend(timeout_event_lines(timeout))
+    lines.extend(filter(None, (boss_event_line(e, participants) for e in result.get("hero_events", []))))
+    # An automatic victory recovered before a manual hit is also included in
+    # timeout_result. Render its reward passives once, like its other events.
+    if not (timeout and timeout.get("changed") and result.get("rewards") == timeout.get("rewards")):
+        lines.extend(filter(None, (boss_event_line(e, participants)
+                                  for e in (result.get("rewards") or {}).get("passive_events", []))))
     lines.extend(filter(None, (boss_event_line(e, participants) for e in result.get("boss_events", []))))
     rewards = result.get("reward_events") or ([result["reward_event"]] if result.get("reward_event") else [])
     for reward in rewards:

@@ -13,7 +13,7 @@ CLASS_LABELS = {
     "none": "Без класса", "magical": "Магический класс",
     "technical": "Технический класс", "martial": "Боевой класс",
     "warrior": "Воин", "guardian": "Страж", "mage": "Маг",
-    "sneaky": "Плут", "healer": "Целитель", "beast": "Зверь",
+    "ranger": "Следопыт", "sneaky": "Плут", "healer": "Целитель", "beast": "Зверь",
 }
 RANGE_LABELS = {"melee": "Ближний бой", "ranged": "Дальний бой"}
 TRAIT_LABELS = {

@@ -203,6 +203,19 @@ class TurnMediaTests(unittest.IsolatedAsyncioTestCase):
         self.bot.edit_message_caption.assert_awaited_once()
         self.bot.edit_message_text.assert_not_awaited()
 
+    async def test_automatic_echo_notice_survives_recovery_without_duplicate_send(self):
+        self.boss["turn_notice_json"] = json.dumps({
+            "status": "fighting", "round": 2, "position": 1,
+            "text": "⚔️ Эхо боя Ренкай наносит 45 урона.",
+        })
+        await ensure_public_turn(self.bot, self.world, dict(self.boss))
+        await ensure_public_turn(self.bot, self.world, dict(self.boss))
+        self.bot.send_photo.assert_awaited_once()
+        self.bot.send_message.assert_not_awaited()
+        self.assertIn("Эхо боя Ренкай наносит 45", self.bot.send_photo.call_args.kwargs["caption"])
+        self.assertIn("Эхо боя Ренкай наносит 45", self.bot.edit_message_caption.call_args.kwargs["caption"])
+        self.assertIn("Эхо боя", json.loads(self.boss["turn_notice_json"])["text"])
+
     async def test_missing_photo_has_text_fallback(self):
         self.participants[0]["hero_image_path"] = "does-not-exist.png"
         self.assertTrue(await replace_public_turn(self.bot, self.world, dict(self.boss)))

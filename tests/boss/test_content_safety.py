@@ -149,8 +149,11 @@ class CombatContentSafetyTests(unittest.TestCase):
         before = copy.deepcopy(self.bosses)
         result = validate_combat_content(self.heroes, self.bosses)
         self.assertEqual(self.bosses, before)
-        self.assertTrue(any("fallen_sun_champion" in warning and "rapier + reward_shields=0" in warning
-                            for warning in result["warnings"]))
         boss = copy.deepcopy(next(b for b in self.bosses if b["code"] == "fallen_sun_champion"))
+        expected_warning = boss["ability_key"] == "rapier" and boss["reward_shields"] == 0
+        self.assertEqual(bool(result["warnings"]), expected_warning)
+        boss["reward_shields"] = 0
+        self.assertTrue(any("fallen_sun_champion" in warning and "rapier + reward_shields=0" in warning
+                            for warning in validate_combat_content(self.heroes, [boss])["warnings"]))
         boss["reward_shields"] = 1
         self.assertEqual(validate_combat_content(self.heroes, [boss])["warnings"], [])
