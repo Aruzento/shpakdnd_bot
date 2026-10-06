@@ -30,6 +30,7 @@ from app.mini.hero_upgrades import (
 )
 from app.mini.players import get_mini_player
 from app.mini.ui.navigation import clip
+from app.mini.presentation import rarity_emoji
 from app.mini.ui.hero_cards import (
     hero_caption,
     hero_card_menu,
@@ -40,7 +41,6 @@ from app.mini.ui.hero_cards import (
 
 router = Router(name="mini_heroes")
 
-RARITY_EMOJI = {"common":"⚪","uncommon":"🟢","rare":"🟣","legendary":"🟡"}
 COLLECTION_PAGE_SIZE = 6
 def _collection_menu(
     world_id: int,
@@ -62,7 +62,7 @@ def _collection_menu(
     ]]
 
     for hero in visible:
-        rarity = RARITY_EMOJI.get(hero.get("rarity"), "⚪")
+        rarity = rarity_emoji(hero.get("rarity"))
         active = " ✅" if int(hero.get("is_active", 0)) else ""
         copies = int(hero.get("copies", 1))
         copies_text = f" ×{copies}" if copies > 1 else ""

@@ -6,7 +6,7 @@ from app.mini.ui.transport import (
 )
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
-from app.mini.presentation import hero_heading, hero_trait_lines, TRAIT_DESCRIPTIONS
+from app.mini.presentation import hero_heading, hero_trait_lines, rarity_emoji, TRAIT_DESCRIPTIONS
 from app.mini.gacha import get_gacha_state
 from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
@@ -16,7 +16,7 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
     description = clip(hero.get("description", ""), 300)
     passive = clip(hero.get("passive_text", ""), 300)
     lines = [
-        hero_heading(hero),
+        f"{rarity_emoji(hero.get('rarity'))} {hero_heading(hero)}",
         *hero_trait_lines(hero),
         "",
         f"⚔️ Урон: {int(hero.get('attack', 1))}",

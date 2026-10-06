@@ -1,5 +1,15 @@
 """Shared Russian labels for Combat v2 cards; balance stays in catalogs."""
 
+RARITY_EMOJI = {
+    "common": "⚪", "uncommon": "🟢", "rare": "🟣", "legendary": "🟡",
+}
+
+
+def rarity_emoji(rarity: str | None) -> str:
+    """Shared rarity display; keep the collection's legacy white fallback."""
+    return RARITY_EMOJI.get(rarity, "⚪")
+
+
 FACTION_LABELS = {
     "commoners": "🧑 Простолюдины", "beasts": "🐾 Звери",
     "monsters": "👾 Монстры", "warriors": "⚔️ Воины",

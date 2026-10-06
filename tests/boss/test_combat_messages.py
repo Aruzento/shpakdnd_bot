@@ -74,7 +74,7 @@ class MessageFormatTests(unittest.TestCase):
 
     def test_character_template_and_gacha_result_are_preserved(self):
         text = _hero_caption(self.hero)
-        self.assertTrue(text.startswith("Ведьмак • ⚔️ Воины • ⭐ 2"))
+        self.assertTrue(text.startswith("⚪ Ведьмак • ⚔️ Воины • ⭐ 2"))
         self.assertIn("💫 Особый эффект: Каждый третий удар усилен.", text)
         self.assertLess(text.index("Описание героя."), text.index("💫 Особый эффект:"))
         result = {
