@@ -64,6 +64,71 @@ def get_wallet_history(
     return [dict(row) for row in rows]
 
 
+def _change_balance_in_transaction(
+    conn: sqlite3.Connection,
+    player_id: int,
+    amount: int,
+    reason: str,
+    reference_type: str = "",
+    reference_id: int | None = None,
+    operation_key: str = "",
+) -> dict:
+    """Change coins in the caller's BEGIN IMMEDIATE transaction; never commit.
+
+    The caller owns rollback as well, so related records remain atomic.
+    """
+    amount = int(amount)
+    reason = reason.strip()
+    reference_type = reference_type.strip()
+    operation_key = operation_key.strip()
+    if amount == 0:
+        raise ValueError("Изменение баланса не может быть равно 0.")
+    if not reason:
+        raise ValueError("Не указана причина изменения баланса.")
+
+    if operation_key:
+        existing = conn.execute(
+            "SELECT id, balance_after FROM mini_wallet_transactions "
+            "WHERE player_id = ? AND operation_key = ?",
+            (player_id, operation_key),
+        ).fetchone()
+        if existing is not None:
+            return {
+                "applied": False,
+                "transaction_id": int(existing[0]),
+                "balance": int(existing[1]),
+            }
+
+    row = conn.execute(
+        "SELECT coins FROM mini_players WHERE id = ?", (player_id,)
+    ).fetchone()
+    if row is None:
+        raise ValueError("Mini-игрок не найден.")
+    new_balance = int(row[0]) + amount
+    if new_balance < 0:
+        raise InsufficientFundsError("Недостаточно монет Mini.")
+
+    conn.execute(
+        "UPDATE mini_players SET coins = ? WHERE id = ?",
+        (new_balance, player_id),
+    )
+    cursor = conn.execute(
+        """
+        INSERT INTO mini_wallet_transactions (
+            player_id, amount, balance_after, reason,
+            reference_type, reference_id, operation_key
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (player_id, amount, new_balance, reason,
+         reference_type, reference_id, operation_key),
+    )
+    return {
+        "applied": True,
+        "transaction_id": int(cursor.lastrowid),
+        "balance": new_balance,
+    }
+
+
 def change_balance(
     player_id: int,
     amount: int,
@@ -73,120 +138,23 @@ def change_balance(
     operation_key: str = "",
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    """
-    Атомарно меняет баланс и записывает операцию в историю.
-
-    amount > 0  -> начисление
-    amount < 0  -> списание
-
-    operation_key нужен для защиты от повторной выдачи одной награды.
-    Если операция с тем же ключом для игрока уже была выполнена,
-    баланс повторно не меняется.
-    """
+    """Атомарно меняет баланс и историю; operation_key защищает от повтора."""
+    # Keep public validation before opening the database, as before.
     amount = int(amount)
     reason = reason.strip()
     reference_type = reference_type.strip()
     operation_key = operation_key.strip()
-
     if amount == 0:
         raise ValueError("Изменение баланса не может быть равно 0.")
-
     if not reason:
         raise ValueError("Не указана причина изменения баланса.")
-
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
-
-        if operation_key:
-            existing = conn.execute(
-                """
-                SELECT
-                    id,
-                    balance_after
-                FROM mini_wallet_transactions
-                WHERE player_id = ?
-                  AND operation_key = ?
-                """,
-                (
-                    player_id,
-                    operation_key,
-                ),
-            ).fetchone()
-
-            if existing is not None:
-                conn.commit()
-                return {
-                    "applied": False,
-                    "transaction_id": int(existing[0]),
-                    "balance": int(existing[1]),
-                }
-
-        row = conn.execute(
-            """
-            SELECT coins
-            FROM mini_players
-            WHERE id = ?
-            """,
-            (player_id,),
-        ).fetchone()
-
-        if row is None:
-            conn.rollback()
-            raise ValueError("Mini-игрок не найден.")
-
-        current_balance = int(row[0])
-        new_balance = current_balance + amount
-
-        if new_balance < 0:
-            conn.rollback()
-            raise InsufficientFundsError(
-                "Недостаточно монет Mini."
-            )
-
-        conn.execute(
-            """
-            UPDATE mini_players
-            SET coins = ?
-            WHERE id = ?
-            """,
-            (
-                new_balance,
-                player_id,
-            ),
+        return _change_balance_in_transaction(
+            conn, player_id, amount, reason,
+            reference_type, reference_id, operation_key,
         )
-
-        cursor = conn.execute(
-            """
-            INSERT INTO mini_wallet_transactions (
-                player_id,
-                amount,
-                balance_after,
-                reason,
-                reference_type,
-                reference_id,
-                operation_key
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                player_id,
-                amount,
-                new_balance,
-                reason,
-                reference_type,
-                reference_id,
-                operation_key,
-            ),
-        )
-
-        conn.commit()
-
-    return {
-        "applied": True,
-        "transaction_id": int(cursor.lastrowid),
-        "balance": new_balance,
-    }
 
 
 def add_coins(

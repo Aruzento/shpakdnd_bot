@@ -4,12 +4,14 @@ from app.handlers.common import router as common_router
 from app.handlers.inventory import router as inventory_router
 from app.handlers.timers import router as timers_router
 from app.mini.boss.handlers import router as mini_boss_router
+from app.mini.events.handlers import router as mini_events_router
 from app.mini.handlers import router as mini_router
 
 
 ROUTERS = [
     common_router,
     mini_boss_router,
+    mini_events_router,
     mini_router,
     characters_router,
     inventory_router,

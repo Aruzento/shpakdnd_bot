@@ -19,6 +19,8 @@ MINI_TABLES = (
     "mini_shop_offers",
     "mini_purchases",
     "mini_gacha_pulls",
+    "mini_event_sessions",
+    "mini_event_requests",
 )
 
 
@@ -119,6 +121,51 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (player_id)
                     REFERENCES mini_players(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mini_event_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id INTEGER NOT NULL,
+                game_type TEXT NOT NULL CHECK (game_type IN ('rps', 'labyrinth')),
+                stake INTEGER NOT NULL CHECK (
+                    (game_type = 'rps' AND stake IN (1, 5, 10)) OR
+                    (game_type = 'labyrinth' AND stake = 5)
+                ),
+                status TEXT NOT NULL DEFAULT 'active'
+                    CHECK (status IN ('active', 'resolved')),
+                step INTEGER NOT NULL DEFAULT 0 CHECK (step BETWEEN 0 AND 3),
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                start_key TEXT NOT NULL CHECK (start_key <> ''),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                resolved_at TEXT,
+                UNIQUE (player_id, start_key),
+                FOREIGN KEY (player_id) REFERENCES mini_players(id)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_mini_events_active_player
+            ON mini_event_sessions (player_id) WHERE status = 'active'
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mini_event_requests (
+                player_id INTEGER NOT NULL,
+                operation_key TEXT NOT NULL CHECK (operation_key <> ''),
+                session_id INTEGER NOT NULL,
+                PRIMARY KEY (player_id, operation_key),
+                FOREIGN KEY (player_id) REFERENCES mini_players(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (session_id) REFERENCES mini_event_sessions(id)
                     ON DELETE CASCADE
             )
             """

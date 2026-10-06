@@ -134,6 +134,13 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text="🎪 События",
+                    callback_data=_personal_callback("events", world_id, user_id),
+                    style="success",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
                     text="🛒 Магазин",
                     callback_data=_personal_callback(
                         "shop", world_id, user_id
