@@ -92,8 +92,8 @@
       "image": "iron_juggernaut.png",
       "active": true,
       "faction": "warriors",
-      "ability_key": "mechanism",
-      "ability_text": "Механизм: урон персонажей без технического класса уменьшается на 20% после пассивки и фракционного модификатора, до бонуса зелья урона.",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности. Конструкт восстанавливает здоровье, если в бою нет технического героя.",
       "features": [
         "construct",
         "armored"

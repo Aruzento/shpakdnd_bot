@@ -612,7 +612,7 @@ class CombatV2CatalogTests(unittest.TestCase):
             "training_golem": ("monsters", "magic_shield"),
             "graveyard_warden": ("dark", "banishment"),
             "swamp_hydra": ("monsters", "hydra_regeneration"),
-            "iron_juggernaut": ("warriors", "mechanism"),
+            "iron_juggernaut": ("warriors", "none"),
             "crimson_vampire": ("dark", "shapeshifter"),
             "wild_berserker": ("beasts", "critical_strike"),
             "fallen_sun_champion": ("dark", "rapier"),
@@ -640,8 +640,8 @@ class CombatV2CatalogTests(unittest.TestCase):
             broken = copy.deepcopy(data)
             del broken["heroes"][0][field]
             with patch("app.mini.catalog._read_json", return_value=broken):
-                with self.assertRaisesRegex(ValueError, field):
-                    load_hero_catalog()
+                from app.mini.combat.tags import LEGACY_HERO_TRAITS
+                self.assertEqual(load_hero_catalog()["heroes"][0][field], LEGACY_HERO_TRAITS[field])
 
     def test_open_string_tags_are_valid(self):
         data = load_hero_catalog()

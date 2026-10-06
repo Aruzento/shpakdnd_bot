@@ -112,6 +112,11 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             for row in conn.execute("PRAGMA table_info(mini_bosses)").fetchall()
         }
         additions = {
+            # Existing events keep v0 metadata semantics; only new events use v1.
+            "trait_rules_version": "INTEGER NOT NULL DEFAULT 0",
+            "feature_state_json": "TEXT NOT NULL DEFAULT '{}'",
+            "reward_temp_hp": "INTEGER NOT NULL DEFAULT 0",
+            "reward_corruption": "INTEGER NOT NULL DEFAULT 0",
             "turn_notice_json": "TEXT NOT NULL DEFAULT '{}'",
             "faction": "TEXT NOT NULL DEFAULT 'commoners'",
             "ability_key": "TEXT NOT NULL DEFAULT 'none'",

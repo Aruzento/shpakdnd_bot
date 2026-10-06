@@ -6,7 +6,8 @@ from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarku
 
 from app.mini.boss.catalog import list_boss_reward_items
 from app.mini.catalog import hero_image_path
-from app.mini.presentation import faction_label, tag_label, TRAIT_LABELS
+from app.mini.presentation import faction_label, tag_label, TRAIT_LABELS, FEATURE_DESCRIPTIONS
+from app.mini.combat import creatures
 from app.mini.boss.service import get_boss, list_participants, set_turn_message
 
 
@@ -33,6 +34,8 @@ def _turn_state_key(boss: dict) -> tuple:
         int(boss.get("reward_shields") or 0),
         int(boss.get("reward_percent") or 0),
         str(boss.get("battle_result") or ""),
+        int(boss.get("reward_temp_hp", 0)), int(boss.get("reward_corruption", 0)),
+        str(boss.get("feature_state_json") or "{}"),
     )
 
 
@@ -150,6 +153,9 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     coins = int(boss.get("reward_coins", 0)) * percent // 100
     features = json.loads(boss.get("features_json") or "[]")
     feature_text = ", ".join(tag_label(tag, TRAIT_LABELS) for tag in features) or "Нет."
+    feature_details = ("\n".join(FEATURE_DESCRIPTIONS[creatures.canonical_trait(tag)]
+                                    for tag in features if creatures.canonical_trait(tag) in FEATURE_DESCRIPTIONS)
+                       if creatures.rules_enabled(boss) else "")
     items = [
         item["name"] + (f" ×{item['quantity']}" if item["quantity"] > 1 else "")
         for item in reward_items(boss)
@@ -157,16 +163,22 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     lines = [
         f"👹 {boss['name']} • {faction_label(boss.get('faction', 'commoners'))}",
         "",
-        str(boss.get("description") or "Без описания.")[:300],
+        str(boss.get("description") or "Без описания.")[:120],
         "",
         f"❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
-        f"💫 Способность: {boss.get('ability_text') or 'Нет особой способности.'}",
+        f"💫 Способность: {str(boss.get('ability_text') or 'Нет особой способности.')[:200]}",
         "",
         f"‼️ Особенности: {feature_text}",
         "",
         f"🎁 Награда: {coins} монет • 🛡 Щиты: {boss.get('reward_shields', 3)}",
         f"🎁 Доп. награда: {', '.join(items) if items else 'Нет.'}",
     ]
+    if int(boss.get("reward_temp_hp", 0)) or int(boss.get("reward_corruption", 0)):
+        lines.append(
+            f"💎 Запас награды: {creatures.effective_reward_percent(boss)}%"
+            f" • Временный: +{int(boss.get('reward_temp_hp', 0))}%"
+            f" • Порча: {int(boss.get('reward_corruption', 0))}%"
+        )
     status = str(boss["status"])
     if status in ("announced", "ready"):
         lines.extend([
@@ -184,7 +196,18 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
                       f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
     elif status == "cancelled":
         lines.extend(["", "Босс отменён."])
-    return "\n".join(lines)[:1024]
+    text = "\n".join(lines)
+    if feature_details:
+        available = 1024 - len(text) - 2
+        # Include complete descriptions only; never truncate the reward fields.
+        details = []
+        for detail in feature_details.splitlines():
+            if len("\n".join(details + [detail])) > available:
+                break
+            details.append(detail)
+        if details:
+            text += "\n\n" + "\n".join(details)
+    return text[:1024]
 
 
 def format_public_turn(
@@ -202,6 +225,14 @@ def format_public_turn(
         f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}"
         f" • 💎 Состояние награды: {boss.get('reward_percent', 100)}%",
     ]
+    if int(boss.get("reward_temp_hp", 0)) or int(boss.get("reward_corruption", 0)):
+        lines.append(
+            f"💎 Реальная награда: {int(boss['reward_coins']) * int(boss['reward_percent']) // 100} монет"
+            f" • Временный запас: +{int(boss.get('reward_temp_hp', 0))}%"
+            f" • Порча: {int(boss.get('reward_corruption', 0))}%"
+            f" • Эффективный запас: {creatures.effective_reward_percent(boss)}%"
+            f" ({int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100} монет)"
+        )
     if status == "fighting":
         current = current_participant(boss, participants)
         if current is not None:

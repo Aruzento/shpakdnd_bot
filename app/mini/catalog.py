@@ -114,6 +114,7 @@ def load_shop_catalog() -> dict:
 def load_hero_catalog() -> dict:
     from app.mini.combat.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
     from app.mini.combat.hero_abilities.catalog import configured_ability_keys
+    from app.mini.combat.tags import LEGACY_HERO_TRAITS
 
     data = _read_json(HEROES_PATH)
     settings = data.get("settings")
@@ -197,6 +198,9 @@ def load_hero_catalog() -> dict:
         if not isinstance(hero, dict):
             raise ValueError("heroes.json: герой должен быть объектом.")
 
+        for field, default in LEGACY_HERO_TRAITS.items():
+            hero.setdefault(field, default)
+        hero.setdefault("passive_key", "none")
         code = str(hero.get("code", "")).strip()
         name = str(hero.get("name", "")).strip()
         rarity = str(hero.get("rarity", "")).strip()

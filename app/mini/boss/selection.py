@@ -4,8 +4,9 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 from app.mini.boss.service import BossError, get_boss, list_participants, select_battle_hero
 from app.mini.heroes import get_player_heroes
-from app.mini.boss.presentation import battle_hero_menu
+from app.mini.boss.presentation import battle_hero_menu, selection_details
 from app.mini.boss.ui import is_joined, show_boss_home
+from app.mini.boss.public import format_public_boss
 
 router = Router(name="mini_boss_selection")
 
@@ -45,7 +46,7 @@ async def boss_heroes_callback(callback: CallbackQuery):
     heroes = get_player_heroes(player["id"])
     await callback.answer()
     await _send_private(
-        callback, world, "🎴 Выбери героя на этот бой:",
+        callback, world, format_public_boss(boss, list_participants(boss["id"])) + "\n\n🎴 Выбери героя на этот бой:\n\n" + selection_details(heroes, page),
         battle_hero_menu(world["id"], callback.from_user.id, boss["id"], heroes, page),
     )
 

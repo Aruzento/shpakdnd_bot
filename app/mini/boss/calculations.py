@@ -2,6 +2,7 @@
 
 
 import json
+from app.mini.combat import creatures
 from app.mini.combat.hero_abilities import resolve_attack
 from app.mini.boss.boss_abilities import engine as boss_abilities
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
@@ -9,8 +10,9 @@ from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
 def calculate_hit(boss: dict, participant: dict, hero: dict) -> dict:
     passive_key = str(hero.get("passive_key", "none"))
+    reachable = creatures.can_reach(boss, hero)
     attack_resolution = resolve_attack(
-        passive_key,
+        passive_key if reachable else "none",
         base_damage=max(1, int(participant["attack"])),
         hit_number=int(participant["hit_count"]) + 1,
         boss_hp_before=int(boss["current_hp"]),
@@ -22,7 +24,11 @@ def calculate_hit(boss: dict, participant: dict, hero: dict) -> dict:
     damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
     faction_percent = faction_multiplier_percent(hero["faction"], boss["faction"])
     damage_after_faction = modify_damage(ability_damage, faction_percent)
-    if attack_resolution["remove_magic_shield"]:
+    if not reachable:
+        boss_resolution = {"damage": 0, "modifier_percent": 0, "boss_changes": {},
+                           "events": [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости. Атака ближнего боя не достигает босса."}]}
+        attack_resolution["extra_attacks"] = 0
+    elif attack_resolution["remove_magic_shield"]:
         shield_state = json.loads(boss["ability_state_json"] or "{}")
         shield_state["shield_active"] = False
         boss_resolution = {"damage": 0, "modifier_percent": 0, "events": [],
@@ -42,8 +48,12 @@ def calculate_hit(boss: dict, participant: dict, hero: dict) -> dict:
                 "message": f"🧪 Зелье урона: +{damage_bonus_percent}% урона",
             }
         )
+    hero_final_damage = damage
+    damage = creatures.feature_damage(boss, hero, hero_final_damage)
     hp_after = max(0, int(boss["current_hp"]) - damage)
     return {
+        "reachable": reachable,
+        "hero_final_damage": hero_final_damage,
         "passive_key": passive_key,
         "attack_resolution": attack_resolution,
         "ability_damage": ability_damage,

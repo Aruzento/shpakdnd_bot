@@ -89,7 +89,9 @@ def apply_boss_effects(
     actor_id: int | None = None,
 ) -> list[dict]:
     """Persist hook effects and their structured audit events atomically."""
-    allowed = {"faction", "ability_state_json", "current_hp", "reward_percent"}
+    allowed = {"faction", "ability_state_json", "current_hp", "reward_percent",
+               "feature_state_json", "reward_temp_hp", "reward_corruption",
+               "reward_shields", "reward_shields_max"}
     changes = resolution.get("boss_changes", {})
     if not set(changes).issubset(allowed):
         raise BossCombatError("Недопустимое изменение состояния способности босса.")
@@ -200,7 +202,8 @@ def mark_battle_started(conn, boss_id, now):
         UPDATE mini_bosses
         SET status = 'fighting', starts_at = ?, ended_at = NULL,
             current_round = 1, current_turn_position = 1, turn_started_at = ?,
-            current_hp = max_hp, reward_percent = 100, battle_result = ''
+            current_hp = max_hp, reward_percent = 100, battle_result = '',
+            feature_state_json = '{}', reward_temp_hp = 0, reward_corruption = 0
         WHERE id = ?
         """,
         (db_time(now), db_time(now), int(boss_id)),
@@ -312,3 +315,11 @@ def set_turn_started(conn, boss_id, started):
 
 def add_kill_shards(conn, player_id, amount):
     conn.execute("UPDATE mini_players SET shards = shards + ? WHERE id = ?", (amount, int(player_id)))
+
+
+def active_loadouts(conn, boss_id: int) -> list[dict]:
+    """Current participants: excludes banished, retains temporarily skipped."""
+    return [dict(row) for row in conn.execute(
+        "SELECT * FROM mini_boss_participants WHERE boss_id = ? AND banished = 0 ORDER BY queue_position",
+        (boss_id,),
+    ).fetchall()]

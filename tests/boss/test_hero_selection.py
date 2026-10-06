@@ -45,7 +45,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
         )
         self.world = {"id": 1, "chat_id": -1001, "thread_id": 42}
         self.player = {"id": 10}
-        self.boss = {"id": 3, "world_id": 1, "status": "announced"}
+        self.boss = {"id": 3, "world_id": 1, "status": "announced", "name": "Босс", "current_hp": 100, "max_hp": 100}
         patches = [
             patch("app.mini.boss.selection._load_world", return_value=self.world),
             patch("app.mini.boss.selection._load_player", return_value=self.player),

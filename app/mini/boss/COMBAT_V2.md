@@ -1,7 +1,7 @@
 # Combat System v2 backend
 
 The live hero and boss catalogs now include faction, class and ability assignments.
-The boss catalog uses magic_shield, banishment, hydra_regeneration, mechanism,
+The boss catalog uses magic_shield, banishment, hydra_regeneration, none,
 shapeshifter, critical_strike and rapier. Base attack, existing passive keys,
 boss HP, images and reward balance are unchanged.
 
@@ -9,8 +9,11 @@ Magic shield accepts the live class tag mage and the legacy tag magical.
 The technical tag remains exempt from mechanism damage reduction. The vampire
 shapeshifter rolls once at battle start, with target_faction beasts configured
 on its template; faction then stays fixed. Public notices and descriptions match
-these mechanics. Feature tags such as poisonous are metadata without extra
-damage/status effects. Mini cards use shared Russian labels.
+these mechanics. New events use executable creature features and hero traits.
+Existing persisted events keep version 0 metadata semantics.
+See [creature pipeline](../../../docs/architecture/CREATURE_TRAITS.md) for the
+complete order, temporary reward model and legacy mechanism content migration.
+Mini cards use shared Russian labels.
 
 ## Hero selection and snapshots
 
@@ -32,7 +35,7 @@ catalog synchronization share a SQLite write transaction.
 ## Damage and rounding
 
 Attack snapshot (already includes stars) -> hero passive -> faction percent ->
-boss damage hook -> external bonus. Faction/mechanism use floor integer division
+boss damage hook -> external bonus -> creature armor. Reachability precedes hero hooks. Faction/mechanism use floor integer division
 with a minimum of 1. Potion rounding retains the existing ceiling rule.
 Magic shield explicitly blocks HP damage to 0, including potion bonuses; a
 mage or legacy magical hero removes it but deals 0 with that attack.

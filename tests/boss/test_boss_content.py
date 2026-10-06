@@ -109,8 +109,10 @@ class LiveBossContentTests(unittest.TestCase):
         self.assertFalse(json.loads(removed["state"]["boss"]["ability_state_json"])["shield_active"])
         self.assertEqual(removed["boss_events"][0]["type"], "magic_shield_removed")
         ordinary = self.hit(0)
-        self.assertEqual(ordinary["damage"], 3)
-        self.assertEqual(ordinary["state"]["boss"]["current_hp"], hp - 3)
+        # New armored feature applies AFTER the existing final damage of 3.
+        self.assertEqual(ordinary["hero_final_damage"], 3)
+        self.assertEqual(ordinary["damage"], 2)
+        self.assertEqual(ordinary["state"]["boss"]["current_hp"], hp - 2)
 
     def test_actual_vampire_changes_to_beasts_once_on_proc(self):
         with patch("app.mini.boss.boss_abilities.engine._roll_success", return_value=True) as roller:
@@ -163,7 +165,7 @@ class LiveBossContentTests(unittest.TestCase):
         self.assertEqual(result["state"]["boss"]["ability_key"], "magic_shield")
         self.assertEqual(result["state"]["boss"]["faction"], "monsters")
 
-    def test_poisonous_feature_has_russian_display_without_new_status_effect(self):
+    def test_poisonous_feature_has_russian_display_before_battle(self):
         boss = next(b for b in load_boss_catalog()["bosses"] if b["code"] == "swamp_hydra")
         snapshot = create_boss_event(self.world, boss["code"], 999, self.db)
         self.assertIn("‼️ Особенности: Ядовитый", format_public_boss(snapshot, []))

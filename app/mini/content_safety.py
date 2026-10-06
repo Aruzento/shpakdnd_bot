@@ -1,4 +1,4 @@
-from app.mini.combat.tags import MAGIC_CLASSES, TECHNICAL_CLASS
+from app.mini.combat.tags import MAGIC_CLASSES, TECHNICAL_CLASS, CREATURE_TRAITS
 """Offline release checks; combat accepts open tags without UI dependencies."""
 import re
 
@@ -6,7 +6,7 @@ from app.mini.boss.catalog import load_boss_catalog
 from app.mini.combat.matchups import faction_multiplier_percent
 from app.mini.catalog import load_hero_catalog
 from app.mini.presentation import (
-    CLASS_LABELS, DAMAGE_LABELS, FACTION_LABELS, RANGE_LABELS, TRAIT_LABELS,
+    CLASS_LABELS, DAMAGE_LABELS, FACTION_LABELS, RANGE_LABELS, TRAIT_LABELS, FEATURE_DESCRIPTIONS,
 )
 
 
@@ -38,6 +38,9 @@ def validate_combat_content(
     if bosses is None:
         bosses = load_boss_catalog()["bosses"]
 
+    for tag in CREATURE_TRAITS - {"none"}:
+        if tag not in FEATURE_DESCRIPTIONS:
+            raise ValueError(f"Missing creature feature description: {tag}")
     for hero in heroes:
         for field, labels in (
             ("faction", FACTION_LABELS), ("damage_type", DAMAGE_LABELS),

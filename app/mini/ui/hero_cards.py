@@ -6,7 +6,7 @@ from app.mini.ui.transport import (
 )
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
-from app.mini.presentation import hero_heading, hero_trait_lines
+from app.mini.presentation import hero_heading, hero_trait_lines, TRAIT_DESCRIPTIONS
 from app.mini.gacha import get_gacha_state
 from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
@@ -20,9 +20,12 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
         *hero_trait_lines(hero),
         "",
         f"⚔️ Урон: {int(hero.get('attack', 1))}",
-        f"💫 Особый эффект: {passive or 'Нет особых способностей.'}",
         "",
         description or "Без описания.",
+        "",
+        f"💫 Особый эффект: {passive or 'Нет особых способностей.'}",
+        *([f"✨ Свойство: {TRAIT_DESCRIPTIONS[hero['special_trait']]}"]
+          if hero.get("special_trait") in TRAIT_DESCRIPTIONS else []),
     ]
 
     if pull_result is not None:

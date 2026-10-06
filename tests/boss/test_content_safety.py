@@ -66,7 +66,9 @@ class CombatContentSafetyTests(unittest.TestCase):
         validate_combat_content(heroes, [boss])
 
     def test_mechanism_requires_active_technical_counter(self):
-        boss = next(b for b in self.bosses if b["ability_key"] == "mechanism")
+        # Explicit synthetic legacy assignment; production construct now regenerates.
+        boss = copy.deepcopy(self.bosses[0])
+        boss.update(ability_key="mechanism", features=[])
         heroes = copy.deepcopy(self.heroes)
         for hero in heroes:
             if hero["class_tag"] == "technical":

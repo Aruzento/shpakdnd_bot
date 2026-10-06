@@ -4,6 +4,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from app.mini.boss.catalog import list_boss_templates
 from app.mini.boss.public import format_public_boss
+from app.mini.presentation import hero_heading, hero_trait_lines
 
 
 HERO_PAGE_SIZE = 8
@@ -221,3 +222,14 @@ def battle_hero_menu(world_id: int, user_id: int, boss_id: int, heroes: list[dic
     )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+
+
+def selection_details(heroes: list[dict], page: int) -> str:
+    pages = max(1, (len(heroes) + HERO_PAGE_SIZE - 1) // HERO_PAGE_SIZE)
+    page = max(0, min(page, pages - 1))
+    return "\n\n".join(
+        "\n".join([hero_heading(hero), *hero_trait_lines(hero),
+                   f"⚔️ Урон: {hero.get('attack', 1)}",
+                   f"💫 {str(hero.get('passive_text') or 'Нет особой способности.')[:120]}"])
+        for hero in heroes[page * HERO_PAGE_SIZE:(page + 1) * HERO_PAGE_SIZE]
+    )

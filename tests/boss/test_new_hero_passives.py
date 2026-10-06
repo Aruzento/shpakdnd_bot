@@ -154,11 +154,11 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         # grant sync may restore the first live hero; set both deterministic fixtures after grants.
         with connect_mini_db(self.db) as conn:
             for index, key in enumerate((passive, second)):
-                conn.execute("UPDATE mini_heroes SET attack = ?, passive_key = ?, faction = ?, class_tag = ? WHERE code = ?",
+                conn.execute("UPDATE mini_heroes SET attack = ?, passive_key = ?, faction = ?, class_tag = ?, special_trait = 'none' WHERE code = ?",
                              (attack, key, faction, class_tag, HERO_CODES[key]))
         self.boss = create_boss_event(self.world, "training_golem", 999, self.db)
         self.update("mini_bosses", min_players=2, max_hp=hp, current_hp=hp, ability_key=ability,
-                    faction="commoners", reward_items_json="[]", reward_coins=60,
+                    faction="commoners", features_json="[]", reward_items_json="[]", reward_coins=60,
                     reward_shields=100, reward_shields_max=100, ability_config_json="{}")
         for player in self.players:
             register_player(self.boss["id"], player["id"], self.db)

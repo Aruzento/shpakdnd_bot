@@ -224,7 +224,7 @@ def finish_victory(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) 
         """
         UPDATE mini_bosses
         SET status = 'defeated', battle_result = 'victory', ended_at = ?,
-            current_hp = 0, turn_started_at = NULL
+            current_hp = 0, turn_started_at = NULL, reward_corruption = 0, reward_temp_hp = 0
         WHERE id = ?
         """,
         (db_time(when), int(boss["id"])),
@@ -247,7 +247,7 @@ def finish_admin_victory(
         """
         UPDATE mini_bosses
         SET status = 'defeated', battle_result = 'admin_victory', ended_at = ?,
-            current_hp = 0, turn_started_at = NULL, turn_message_id = NULL
+            current_hp = 0, turn_started_at = NULL, turn_message_id = NULL, reward_corruption = 0, reward_temp_hp = 0
         WHERE id = ?
         """,
         (db_time(when), int(boss["id"])),

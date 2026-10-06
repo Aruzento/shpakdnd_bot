@@ -3,8 +3,9 @@ from app.mini.ui.transport import send_private_text_from_callback as _send_priva
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from app.mini.boss.catalog import get_boss_template, list_boss_reward_items, list_boss_templates
-from app.mini.boss.public import format_participants
+from app.mini.boss.catalog import get_boss_template, list_boss_templates
+from app.mini.boss.public import format_participants, format_public_boss
+import json
 from app.mini.boss.service import (
     BossError,
     BossNotEnoughPlayers,
@@ -113,28 +114,10 @@ async def boss_preview_callback(callback: CallbackQuery):
         await callback.answer("Босс больше не доступен.", show_alert=True)
         return
 
-    item_names = {
-        item["code"]: item["name"]
-        for item in list_boss_reward_items(active_only=False)
-    }
-    reward_item_text = ", ".join(
-        (
-            f"{item_names.get(item['code'], item['code'])}"
-            + (f" ×{item.get('quantity', 1)}" if int(item.get('quantity', 1)) > 1 else "")
-        )
-        for item in template.get("reward_items", [])
-    )
-    text = (
-        f"👹 {template['name']}\n\n"
-        f"{template.get('description', '')}\n\n"
-        f"❤️ HP: {template['max_hp']}\n"
-        f"👥 Минимум игроков: {template['min_players']}\n"
-        f"🎁 Награда: {template.get('reward_coins', 0)} 🪙\n"
-        + (f"📦 Предметы: {reward_item_text}\n" if reward_item_text else "")
-        + f"🛡 Щиты награды: {template.get('reward_shields', 3)}\n"
-        + f"💥 После щитов: −{template.get('reward_decay_percent', 10)}% за раунд\n\n"
-        + "После объявления в теме появится публичная карточка регистрации."
-    )
+    preview = dict(template, status="announced", current_hp=template["max_hp"],
+                   features_json=json.dumps(template["features"]),
+                   reward_items_json=json.dumps(template.get("reward_items", [])), trait_rules_version=1)
+    text = format_public_boss(preview, [])
     await callback.answer()
     await _send_private(
         callback,

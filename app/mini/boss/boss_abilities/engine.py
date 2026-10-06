@@ -132,7 +132,7 @@ _TURN_HOOKS = {
 }
 
 
-def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None) -> dict:
+def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None, attack_missed=False) -> dict:
     state = _state(boss)
     state["boss_turns"] = int(state.get("boss_turns", 0)) + 1
     config = _config(boss)
@@ -142,7 +142,7 @@ def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None
         "participant_changes": [], "events": [],
     }
     hook = _TURN_HOOKS.get(boss["ability_key"])
-    if hook:
+    if hook and not (attack_missed and boss["ability_key"] in {"critical_strike", "rapier"}):
         hook(boss, active, state, config, roller or _roll_success, chooser or _choose_participant, result)
     result["boss_changes"] = {"ability_state_json": json.dumps(state)}
     return result

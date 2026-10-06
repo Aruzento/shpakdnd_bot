@@ -9,6 +9,8 @@ from app.mini.boss.repository import (
     log_hero_event,
 )
 from app.mini.boss.rewards import finish_victory, finish_failure
+from app.mini.combat import creatures
+from app.mini.boss.repository import active_loadouts
 import json
 import sqlite3
 from datetime import datetime
@@ -72,7 +74,6 @@ def boss_hits_reward(
 ) -> dict:
     shields = int(boss["reward_shields"])
     reward_percent = int(boss["reward_percent"])
-    decay = int(boss["reward_decay_percent"])
     passive_events = apply_boss_attack_passives(conn, boss)
 
     guarded = consume_reward_guard(conn, boss, when)
@@ -82,76 +83,84 @@ def boss_hits_reward(
             "guard_event": guarded, "passive_events": passive_events,
         }
 
-    if shields > 0 and not ignore_shields:
-        new_shields = shields - 1
-        conn.execute(
-            "UPDATE mini_bosses SET reward_shields = ? WHERE id = ?",
-            (new_shields, int(boss["id"])),
-        )
-        return {
-            "type": "shield",
-            "old_shields": shields,
-            "shields": new_shields,
-            "reward_percent": reward_percent,
-            "passive_events": passive_events,
-        }
-
-    new_percent = max(0, reward_percent - decay)
-    conn.execute(
-        "UPDATE mini_bosses SET reward_percent = ? WHERE id = ?",
-        (new_percent, int(boss["id"])),
-    )
+    shield_hit = shields > 0 and not ignore_shields
+    new_shields = shields - 1 if shield_hit else shields
+    poisonous = "poisonous" in creatures.features(dict(boss))
+    changes = {"reward_shields": new_shields}
+    if not shield_hit or poisonous:
+        changes.update(creatures.reward_decay(dict(boss)))
+    apply_boss_effects(conn, boss, {"boss_changes": changes}, when)
+    fresh = refresh_boss(conn, int(boss["id"]))
     result = {
-        "type": "reward_damage",
-        "old_percent": reward_percent,
-        "reward_percent": new_percent,
-        "shields": shields,
-        "passive_events": passive_events,
+        "type": "shield" if shield_hit else "reward_damage",
+        "old_shields": shields, "shields": new_shields,
+        "old_percent": reward_percent, "reward_percent": int(fresh["reward_percent"]),
+        "reward_temp_hp": int(fresh["reward_temp_hp"]),
+        "effective_reward_percent": creatures.effective_reward_percent(dict(fresh)),
+        "poisonous": poisonous, "passive_events": passive_events,
     }
-    if new_percent <= 0:
-        refreshed = conn.execute(
-            "SELECT * FROM mini_bosses WHERE id = ?", (int(boss["id"]),)
-        ).fetchone()
-        result["failure_rewards"] = finish_failure(conn, refreshed, when)
+    if creatures.effective_reward_percent(dict(fresh)) <= 0:
+        result["failure_rewards"] = finish_failure(conn, fresh, when)
         result["battle_ended"] = True
     return result
 
 
 def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> dict:
-    """One boss turn: skip -> ability -> reward attack(s) -> after-turn hook."""
+    """Skip -> Holy attempt -> ability/attack -> hydra -> poison/death -> holy -> corruption."""
     skipped = consume_pending_boss_skip(conn, boss, when)
     if skipped is not None:
+        # A skipped boss turn has no attack attempt or end-of-turn passives.
         return skipped
-    participants = [
-        dict(row) for row in conn.execute(
-            "SELECT * FROM mini_boss_participants WHERE boss_id = ? ORDER BY queue_position",
-            (int(boss["id"]),),
-        ).fetchall()
-    ]
-    resolution = boss_abilities.boss_turn(dict(boss), participants)
-    events = apply_boss_effects(conn, boss, resolution, when)
-    attacks = []
-    for _ in range(resolution["reward_attacks"]):
-        fresh = refresh_boss(conn, int(boss["id"]))
-        if fresh["status"] != "fighting":
-            break
-        attack = boss_hits_reward(
-            conn, fresh, when, ignore_shields=resolution["ignore_shields"],
-        )
-        attacks.append(attack)
-        if attack.get("battle_ended"):
-            break
+    attempt = creatures.holy_attack_attempt(dict(boss))
+    events = apply_boss_effects(conn, boss, attempt, when)
     fresh = refresh_boss(conn, int(boss["id"]))
+    participants = active_loadouts(conn, int(boss["id"]))
+    # A miss suppresses damaging RNG/hook effects but retains turn cadence and
+    # independent abilities such as paralysis/banishment.
+    resolution = boss_abilities.boss_turn(
+        dict(fresh), participants, attack_missed=attempt["miss"])
+    events.extend(apply_boss_effects(conn, fresh, resolution, when))
+    attacks = []
+    if not attempt["miss"]:
+        for _ in range(resolution["reward_attacks"]):
+            fresh = refresh_boss(conn, int(boss["id"]))
+            if fresh["status"] != "fighting":
+                break
+            attack = boss_hits_reward(conn, fresh, when, ignore_shields=resolution["ignore_shields"])
+            attacks.append(attack)
+            if attack.get("battle_ended"):
+                break
+    else:
+        attacks.append({"type": "holy_miss", "passive_events": []})
+    fresh = refresh_boss(conn, int(boss["id"]))
+    death_rewards = None
     if fresh["status"] == "fighting":
-        after = boss_abilities.after_boss_turn(dict(fresh))
-        events.extend(apply_boss_effects(conn, fresh, after, when))
-    # Preserve the existing reward_event contract for ordinary turns.
-    result = dict(attacks[-1])
+        events.extend(apply_boss_effects(conn, fresh, boss_abilities.after_boss_turn(dict(fresh)), when))
+        fresh = refresh_boss(conn, int(boss["id"]))
+        events.extend(apply_boss_effects(conn, fresh, creatures.poison_tick(dict(fresh)), when))
+        fresh = refresh_boss(conn, int(boss["id"]))
+        if int(fresh["current_hp"]) <= 0:
+            death = finish_boss_death(conn, fresh, when)
+            events.extend(death["events"])
+            death_rewards = death["rewards"]
+        fresh = refresh_boss(conn, int(boss["id"]))
+        if fresh["status"] == "fighting":
+            # Banishment from this turn immediately affects feature counters.
+            participants = active_loadouts(conn, int(boss["id"]))
+            events.extend(apply_boss_effects(conn, fresh, creatures.holy_regeneration(dict(fresh), participants), when))
+            fresh = refresh_boss(conn, int(boss["id"]))
+            events.extend(apply_boss_effects(conn, fresh, creatures.demonic_corruption(dict(fresh)), when))
+            fresh = refresh_boss(conn, int(boss["id"]))
+            if creatures.effective_reward_percent(dict(fresh)) <= 0:
+                death_rewards = finish_failure(conn, fresh, when)
+    result = dict(attacks[-1]) if attacks else {"type": "boss_turn"}
     result["attacks"] = attacks
     result["boss_events"] = events
-    result["passive_events"] = [
-        event for attack in attacks for event in attack.get("passive_events", [])
-    ]
+    result["passive_events"] = [e for attack in attacks for e in attack.get("passive_events", [])]
+    fresh = refresh_boss(conn, int(boss["id"]))
+    if fresh["status"] != "fighting":
+        result["battle_ended"] = True
+        result["rewards"] = death_rewards or result.get("failure_rewards")
     return result
 
 
@@ -179,12 +188,16 @@ def consume_reward_guard(conn, boss, when) -> dict | None:
 
 
 def finish_boss_death(conn, boss, when, *, actor_id=None) -> dict:
+    resurrection = creatures.boss_death(dict(boss))
+    if resurrection["revived"]:
+        events = apply_boss_effects(conn, boss, resurrection, when, actor_id=actor_id)
+        return {"rewards": None, "events": events, "battle_ended": False}
     death = boss_abilities.boss_death(dict(boss))
     events = apply_boss_effects(conn, boss, death, when, actor_id=actor_id)
     fresh = refresh_boss(conn, int(boss["id"]))
     rewards = (finish_failure(conn, fresh, when) if death["destroyed_reward"]
                else finish_victory(conn, fresh, when))
-    return {"rewards": rewards, "events": events}
+    return {"rewards": rewards, "events": events, "battle_ended": True}
 
 
 def apply_turn_start(conn, boss, current, when) -> dict:
@@ -207,7 +220,7 @@ def apply_turn_start(conn, boss, current, when) -> dict:
     result["hero_events"].append(event)
     if int(fresh["current_hp"]) <= 0:
         death = finish_boss_death(conn, fresh, when, actor_id=int(current["player_id"]))
-        result.update(battle_ended=True, rewards=death["rewards"])
+        result.update(battle_ended=death["battle_ended"], rewards=death["rewards"])
         result["hero_events"].extend(death["events"])
         fresh = refresh_boss(conn, int(boss["id"]))
     # Recovery can display the automatic event even if the process stops before publishing.
@@ -215,7 +228,7 @@ def apply_turn_start(conn, boss, current, when) -> dict:
     matching = (notice.get("status") == fresh["status"] and notice.get("round") == int(fresh["current_round"])
                 and notice.get("position") == int(fresh["current_turn_position"]))
     text = (str(notice.get("text") or "") + "\n") if matching and notice.get("text") else ""
-    text += event["message"]
+    text += "\n".join(e["message"] for e in result["hero_events"] if e.get("message"))
     conn.execute("UPDATE mini_bosses SET turn_notice_json = ? WHERE id = ?", (
         json.dumps({"status": fresh["status"], "round": int(fresh["current_round"]),
                     "position": int(fresh["current_turn_position"]), "text": text}, ensure_ascii=False), int(boss["id"])))
@@ -225,12 +238,15 @@ def apply_turn_start(conn, boss, current, when) -> dict:
 def extra_attack(conn, boss, participant, hero, when, message: str) -> dict:
     faction = faction_multiplier_percent(hero["faction"], boss["faction"])
     after_faction = modify_damage(max(1, int(participant["attack"])), faction)
-    resolution = boss_abilities.modify_hero_damage(dict(boss), hero, after_faction)
+    resolution = (boss_abilities.modify_hero_damage(dict(boss), hero, after_faction)
+                  if creatures.can_reach(dict(boss), hero)
+                  else {"damage": 0, "events": [], "boss_changes": {}})
     events = apply_boss_effects(conn, boss, resolution, when, actor_id=int(participant["player_id"]))
     calculated = int(resolution["damage"])
     bonus = max(0, int(participant["damage_bonus_percent"]))
     if bonus and calculated > 0:
         calculated = max(1, (calculated * (100 + bonus) + 99) // 100)
+    calculated = creatures.feature_damage(dict(boss), hero, calculated)
     actual = min(int(boss["current_hp"]), calculated)
     conn.execute("UPDATE mini_bosses SET current_hp = current_hp - ? WHERE id = ?", (actual, int(boss["id"])))
     conn.execute("UPDATE mini_boss_participants SET total_damage = total_damage + ? WHERE boss_id = ? AND player_id = ?",
@@ -243,6 +259,9 @@ def extra_attack(conn, boss, participant, hero, when, message: str) -> dict:
         (int(boss["id"]), int(participant["player_id"]), int(boss["current_round"]), actual,
          int(boss["current_hp"]) - actual, db_time(when), json.dumps(event, ensure_ascii=False)),
     )
+    fresh = refresh_boss(conn, int(boss["id"]))
+    events.extend(apply_boss_effects(conn, fresh, creatures.on_hit(dict(fresh), hero, successful=actual > 0),
+                                   when, actor_id=int(participant["player_id"])))
     return {"damage": actual, "event": event, "boss_events": events}
 
 
@@ -281,11 +300,17 @@ def advance_after_turn(
             round_ended = True
             reward_event = boss_turn(conn, boss, when)
             reward_events.append(reward_event)
+            fresh = refresh_boss(conn, int(boss["id"]))
+            if fresh["status"] == "fighting":
+                reward_event.setdefault("boss_events", []).extend(apply_boss_effects(
+                    conn, fresh, creatures.end_round(dict(fresh), active_loadouts(conn, int(boss["id"]))), when))
+                boss = refresh_boss(conn, int(boss["id"]))
             if reward_event.get("battle_ended"):
                 return {
                     "round_ended": True, "battle_ended": True,
                     "reward_event": reward_event, "reward_events": reward_events,
                     "forced_skip_events": forced_events,
+                    "hero_events": hero_events, "rewards": reward_event.get("rewards") or reward_event.get("failure_rewards"),
                 }
             next_row = conn.execute(
                 """SELECT queue_position FROM mini_boss_participants

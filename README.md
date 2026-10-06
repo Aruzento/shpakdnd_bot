@@ -1,8 +1,10 @@
 # D&D Mini — V1.2.5
 
-Telegram-бот на aiogram 3 и SQLite. V1.2.5 — технический релиз: общие UI,
-combat, economy и effect contracts отделены от игровых features. Механики,
-награды, баланс, callback payloads и JSON-контент V1.2 сохранены.
+Telegram-бот на aiogram 3 и SQLite. V1.2.5 отделяет общие UI, combat, economy
+и effect contracts и расширяет Boss Combat v2 природными features и свойствами
+героев. Существующие события сохраняют прежние правила; новая механика включается
+для новых событий. Экономика, базовые характеристики, цены и награды сохранены.
+У Железного исполина прежний mechanism явно заменён природной регенерацией construct.
 
 ## Возможности
 
@@ -13,7 +15,9 @@ D&D Mini: персональные ephemeral-меню, персонаж, daily, 
 Боевые герои фиксируются при старте в immutable loadout; текущий ход,
 ability state, события и награды сохраняются в SQLite. Watcher восстанавливает
 публичный ход и пропускает просроченные ходы после перезапуска. Фракции,
-классовые исключения, 4-часовой таймер и reward shields работают как в V1.2.
+классовые исключения и 4-часовой таймер сохранены. Новые features и traits
+дают броню, досягаемость, регенерацию, resurrection, poison, временный запас
+награды и corruption; они сохраняются вместе с боем.
 
 Обычные D&D команды персонажей, инвентаря, бросков и таймеров остаются в `app/handlers/`,
 `app/db/` и `app/services/`. Mini использует отдельные таблицы с префиксом `mini_`.
@@ -30,7 +34,7 @@ app/mini/
   ui/                           shared context, callbacks, ephemeral transport
                                 inventory, shop, heroes, daily/rules subrouters
   events/                       Telegram handlers + transactional game service
-  combat/                       common tags, integer matchups, hero_abilities
+  combat/                       common tags, integer matchups, creatures, hero_abilities
   boss/
     handlers.py                 combat callbacks; parent Boss router
     registration.py             registration and admin callbacks
@@ -58,7 +62,9 @@ deploy/                         systemd deployment and watcher
 
 Подробности: [архитектура и расширение](docs/architecture/ARCHITECTURE.md),
 [независимый аудит V1.2.5](docs/architecture/V1.2.5_AUDIT.md),
-[Combat v2](app/mini/boss/COMBAT_V2.md).
+[Combat v2](app/mini/boss/COMBAT_V2.md),
+[аудит расширения](docs/architecture/V1.2.5_COMBAT_AUDIT.md),
+[порядок effects и persistent state](docs/architecture/CREATURE_TRAITS.md).
 
 ## Запуск и проверка
 

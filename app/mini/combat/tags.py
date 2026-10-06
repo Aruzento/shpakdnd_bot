@@ -20,3 +20,10 @@ LEGACY_HERO_TRAITS = {
 # Class semantics currently used by combat/content checks; other tags stay open.
 MAGIC_CLASSES = frozenset(("mage", "magical"))
 TECHNICAL_CLASS = "technical"
+
+
+# Registered executable traits. Open legacy metadata tags remain valid.
+CREATURE_TRAITS = frozenset(("none", "undead", "construct", "flying", "poisonous", "holy", "demonic", "armored"))
+CLASS_TAGS = frozenset(("none", "warrior", "guardian", "sneaky", "healer", "technical", "mage", "beast"))
+LEGACY_CLASS_TAGS = frozenset(("magical", "martial", "ranger"))
+LEGACY_TRAIT_ALIASES = {"demon": "demonic"}

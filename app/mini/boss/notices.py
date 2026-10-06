@@ -40,6 +40,8 @@ def reward_event_lines(event: dict) -> list[str]:
             lines.append(str(attack["guard_event"]["message"]))
         elif kind == "shield":
             lines.append(f"🛡 Босс разбил щит награды. Осталось: {attack['shields']}.")
+            if attack.get("poisonous"):
+                lines.append(f"☠️ Яд повредил награду через щит: {attack['effective_reward_percent']}% запаса.")
         elif kind == "reward_damage":
             lines.append(f"💎 Состояние награды: {attack['reward_percent']}%.")
         elif kind == "boss_skip":

@@ -20,10 +20,10 @@ class MiniReleaseRulesTests(unittest.TestCase):
             self.assertIn(multiplier, RULES_TEXT)
         self.assertIn("нейтральная с любой стороны", RULES_TEXT)
 
-    def test_rules_describe_class_exceptions_and_information_only_tags(self):
+    def test_rules_describe_class_exceptions_and_executable_traits(self):
         for text in ("mage", "magical", "0 урона HP", "Технический класс", "20%",
                      "после пассивки и фракции, до бонуса зелья", "Тип урона, дальность",
-                     "не дают универсальных модификаторов урона"):
+                     "влияют на новые бои", "Броня босса", "Нежить один раз воскресает", "Демоническая порча", "не увеличивает выплату"):
             self.assertIn(text, RULES_TEXT)
 
     def test_rules_keep_timer_shields_rewards_and_consolation(self):

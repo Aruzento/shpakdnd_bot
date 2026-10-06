@@ -101,8 +101,19 @@ def load_boss_catalog() -> dict:
         if not isinstance(raw, dict):
             raise BossCatalogError("Каждый босс должен быть JSON-объектом.")
         boss = dict(raw)
+        boss.setdefault("faction", "commoners")
+        boss.setdefault("ability_key", "none")
+        boss.setdefault("ability_text", "Нет особой способности.")
+        boss.setdefault("features", [])
         code = str(boss.get("code", "")).strip()
         name = str(boss.get("name", "")).strip()
+        # Explicit migration of the verified shipped legacy template.
+        # Persisted event snapshots are never rewritten by this catalog loader.
+        if (code == "iron_juggernaut" and boss.get("ability_key") == "mechanism"
+                and isinstance(boss.get("features"), list) and "construct" in boss["features"]):
+            boss["ability_key"] = "none"
+            boss["ability_config"] = {}
+            boss["ability_text"] = "Нет особой способности. Конструкт восстанавливает здоровье, если в бою нет технического героя."
         if not code or not name:
             raise BossCatalogError("У каждого босса обязательны code и name.")
         if code in seen:
@@ -136,6 +147,8 @@ def load_boss_catalog() -> dict:
             not is_open_tag(tag) for tag in boss["features"]
         ):
             raise BossCatalogError(f"Boss {code}: features must be a list of string tags.")
+        if boss["ability_key"] == "mechanism" and "construct" in boss["features"]:
+            raise BossCatalogError(f"Boss {code}: mechanism + construct requires explicit content migration.")
         boss["reward_items"] = _validate_reward_items(
             boss.get("reward_items", []), known_items, code
         )

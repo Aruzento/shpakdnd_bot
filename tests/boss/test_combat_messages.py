@@ -76,7 +76,7 @@ class MessageFormatTests(unittest.TestCase):
         text = _hero_caption(self.hero)
         self.assertTrue(text.startswith("Ведьмак • ⚔️ Воины • ⭐ 2"))
         self.assertIn("💫 Особый эффект: Каждый третий удар усилен.", text)
-        self.assertTrue(text.endswith("Описание героя."))
+        self.assertLess(text.index("Описание героя."), text.index("💫 Особый эффект:"))
         result = {
             "is_duplicate": False, "used_ticket": True, "balance": 10, "auto_activated": False,
         }
@@ -321,7 +321,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
             await character_callback(self.callback)
         caption = self.callback.bot.send_photo.call_args.kwargs["caption"]
         self.assertIn("Особый эффект", caption)
-        self.assertTrue(caption.endswith("Описание."))
+        self.assertLess(caption.index("Описание."), caption.index("💫 Особый эффект:"))
 
     async def test_home_without_hero_falls_back_to_private_text(self):
         with patch("app.mini.handlers.get_active_hero", return_value=None):

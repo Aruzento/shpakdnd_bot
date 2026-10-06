@@ -1,5 +1,6 @@
 from app.mini.boss.repository import (
     start_participants,
+    active_loadouts,
     save_start_loadout,
     mark_battle_started,
     participant_for_hit,
@@ -27,6 +28,7 @@ from app.mini.boss.repository import (
     save_hero_state,
 )
 from app.mini.boss.rewards import reward_items, hydrate_reward_snapshot, finish_admin_victory
+from app.mini.combat import creatures
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -90,6 +92,10 @@ def start_battle(
         mark_battle_started(conn, boss_id, now)
         fresh = refresh_boss(conn, int(boss_id))
         start_events = apply_boss_effects(conn, fresh, boss_abilities.battle_start(dict(fresh)), now)
+        fresh = refresh_boss(conn, int(boss_id))
+        # The snapshots just persisted, rather than the live catalog, drive bonuses.
+        start_events.extend(apply_boss_effects(
+            conn, fresh, creatures.battle_start(dict(fresh), active_loadouts(conn, boss_id)), now))
         conn.commit()
 
     state = get_combat_state(boss_id, db_path=db_path)
@@ -131,9 +137,9 @@ def get_combat_state(
         "participants": participants,
         "current": current,
         "reward_items": reward_items(boss.get("reward_items_json")),
-        "current_reward_coins": int(boss["reward_coins"])
-        * max(0, min(100, int(boss.get("reward_percent", 100))))
-        // 100,
+        "current_reward_coins": int(boss["reward_coins"]) * creatures.effective_reward_percent(boss) // 100,
+        "real_reward_coins": int(boss["reward_coins"]) * int(boss["reward_percent"]) // 100,
+        "effective_reward_percent": creatures.effective_reward_percent(boss),
     }
 
 
@@ -344,12 +350,18 @@ def hit_boss(
         boss_events = apply_boss_effects(conn, boss, boss_resolution, now, actor_id=int(player_id))
         record_primary_attack(conn, boss, player_id, damage, hp_after, now)
         after_attack = hero_abilities.resolve_after_attack(
-            passive_key, hit_number=int(participant["hit_count"]) + 1,
+            passive_key if calculation["reachable"] else "none", hit_number=int(participant["hit_count"]) + 1,
             actual_hp_damage=min(damage, int(boss["current_hp"])),
             state=hero_abilities.hero_state(participant["hero_state_json"]),
         )
+        if not calculation["reachable"]:
+            after_attack = {"state": hero_abilities.hero_state(participant["hero_state_json"]), "events": []}
         save_hero_state(conn, int(boss_id), int(player_id), after_attack["state"])
         passive_events.extend(after_attack["events"])
+        fresh = refresh_boss(conn, int(boss_id))
+        boss_events.extend(apply_boss_effects(
+            conn, fresh, creatures.on_hit(dict(fresh), hero, successful=damage > 0),
+            now, actor_id=int(player_id)))
         primary_killed = hp_after <= 0
         extra_damage = 0
         if not primary_killed:
@@ -372,18 +384,23 @@ def hit_boss(
         battle_ended = False
         bonus_shards = 0
         if hp_after <= 0:
-            kill_resolution = resolve_kill(passive_key) if primary_killed else {"events": [], "bonus_shards": 0}
-            passive_events.extend(kill_resolution["events"])
-            bonus_shards = int(kill_resolution["bonus_shards"])
-            if bonus_shards > 0:
-                add_kill_shards(conn, player_id, bonus_shards)
-
             refreshed = refresh_boss(conn, int(boss_id))
             death = finish_boss_death(conn, refreshed, now, actor_id=int(player_id))
             boss_events.extend(death["events"])
             rewards = death["rewards"]
-            battle_ended = True
-        else:
+            battle_ended = death["battle_ended"]
+            hp_after = int(refresh_boss(conn, int(boss_id))["current_hp"])
+            if battle_ended and primary_killed:
+                kill_resolution = resolve_kill(passive_key)
+                passive_events.extend(kill_resolution["events"])
+                bonus_shards = int(kill_resolution["bonus_shards"])
+                if bonus_shards > 0:
+                    add_kill_shards(conn, player_id, bonus_shards)
+        if not battle_ended:
+            refreshed = refresh_boss(conn, int(boss_id))
+            boss_events.extend(apply_boss_effects(
+                conn, refreshed, creatures.after_hero_turn(dict(refreshed), hero),
+                now, actor_id=int(player_id)))
             refreshed = refresh_boss(conn, int(boss_id))
             advance = advance_after_turn(conn, refreshed, now)
             reward_event = advance.get("reward_event")
@@ -405,6 +422,8 @@ def hit_boss(
         "hero_events": hero_events,
         "base_damage": int(attack_resolution["base_damage"]),
         "ability_damage": ability_damage,
+        "hero_final_damage": calculation["hero_final_damage"],
+        "reachable": calculation["reachable"],
         "faction_multiplier_percent": faction_percent,
         "damage_after_faction": damage_after_faction,
         "boss_modifier_percent": boss_modifier_percent,
@@ -418,7 +437,7 @@ def hit_boss(
         "passive_events": passive_events,
         "boss_skip_turns": boss_skip_turns,
         "bonus_shards": bonus_shards,
-        "boss_hp_after": hp_after,
+        "boss_hp_after": int(state["boss"]["current_hp"]),
         "battle_ended": battle_ended,
         "reward_event": reward_event,
         "rewards": rewards,
