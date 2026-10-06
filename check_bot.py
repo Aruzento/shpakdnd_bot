@@ -4,6 +4,7 @@ from app.config import DB_PATH, TIMEZONE_NAME
 from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.catalog import validate_content
+from app.mini.content_safety import validate_combat_content
 from app.mini.boss.catalog import load_boss_catalog, load_boss_item_catalog
 from app.mini.boss.boss_abilities.catalog import load_ability_catalog
 from app.mini.boss.schema import init_boss_db
@@ -22,6 +23,7 @@ def main():
     boss_abilities = load_ability_catalog()
     boss_content = load_boss_catalog()
     boss_items = load_boss_item_catalog()
+    combat_content = validate_combat_content(bosses=boss_content["bosses"])
     sync_hero_catalog()
     for world in worlds:
         sync_shop_catalog(world["id"])
@@ -42,6 +44,9 @@ def main():
         f"предметов={len(boss_items['items'])}"
     )
     print(f"OK: Combat v2: boss abilities={len(boss_abilities['abilities'])}")
+    print(f"OK: Combat content safety: active heroes={combat_content['active_heroes']} active bosses={combat_content['active_bosses']}")
+    for warning in combat_content["warnings"]:
+        print(f"WARN: {warning}")
     if content["missing_hero_images"]:
         print(
             "WARN: нет картинок у героев: "

@@ -68,7 +68,7 @@ class MessageFormatTests(unittest.TestCase):
     def test_home_template(self):
         text = _home_content({"coins": 45, "shards": 12}, self.hero)
         self.assertTrue(text.startswith("Ведьмак • ⚔️ Воины • ⭐ 2"))
-        for expected in ("Рубящий | Боевой класс", "Ближний бой | Бронированный",
+        for expected in ("Режущий | Боевой класс", "Ближний бой | Бронированный",
                          "⚔️ Урон: 80", "🪙 45 монет • 🧩 12 осколков"):
             self.assertIn(expected, text)
 

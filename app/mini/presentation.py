@@ -6,7 +6,7 @@ FACTION_LABELS = {
     "dark": "🌑 Тьма", "neutral": "⚖️ Нейтральная",
 }
 DAMAGE_LABELS = {
-    "slashing": "Рубящий", "piercing": "Колющий",
+    "slashing": "Режущий", "piercing": "Колющий",
     "bludgeoning": "Дробящий", "magic": "Магический",
 }
 CLASS_LABELS = {

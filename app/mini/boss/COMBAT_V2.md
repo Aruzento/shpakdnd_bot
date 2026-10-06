@@ -89,5 +89,30 @@ Initialization only adds missing columns with safe defaults. Runtime effects
 reset only at the start of a new ready battle. Existing fighting state, message
 IDs, participants, selected heroes, attacks, reward balances and logs survive.
 
-The next content stage can assign real traits/abilities without changing running
+Future content updates can change traits/abilities without changing running
 loadouts; new class, special or feature tags require no enum migration.
+
+
+## Release hardening and offline content checks
+
+panic_dungeon_engineer is an exclusive compensation hero with active=false.
+The flag controls ordinary gacha availability only: existing ownership and stars
+survive catalog sync, admin grants (individual and ALL) still accept its code,
+and the owned hero remains selectable/upgradable with emergency_salvage intact.
+No schema migration or runtime battle reset is required.
+
+app/mini/content_safety.py is called by check_bot.py, not by combat hooks.
+Active boss factions require an ACTIVE faction counter; neutral is exempt because
+it has no advantageous matchup. Active magic_shield requires an ACTIVE mage or
+legacy magical hero, and mechanism requires an ACTIVE technical hero. All current
+hero tags (including inactive owned heroes) and boss feature/faction tags must
+have readable Russian labels. Structural catalog validation still accepts new
+open class/special/feature tags; release validation additionally requires labels.
+
+RULES_TEXT explains separate battle selection and the faction cycle. slashing
+keeps its internal code and displays as Режущий.
+
+Nonblocking product warning: fallen_sun_champion has rapier + reward_shields=0.
+Its shield bypass gives no additional effect over an ordinary reward attack.
+check_bot.py reports WARN; boss HP, rewards, shields, faction and ability are
+deliberately preserved pending a product decision.
