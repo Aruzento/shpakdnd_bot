@@ -62,7 +62,11 @@ class MiniBossCombatTests(unittest.TestCase):
                     reward_items_json = ?,
                     reward_shields = 3,
                     reward_shields_max = 3,
-                    reward_decay_percent = 10
+                    reward_decay_percent = 10,
+                    faction = 'commoners',
+                    ability_key = 'none',
+                    features_json = '[]',
+                    ability_config_json = '{}'
                 WHERE id = ?
                 """,
                 (

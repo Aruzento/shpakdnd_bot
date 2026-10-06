@@ -146,14 +146,19 @@ class BossHookTests(unittest.TestCase):
             self.assertEqual(json.loads(boss["ability_state_json"])["shield_active"], active)
         self.assertEqual(engine.modify_hero_damage(boss, {"class_tag": "none"}, 20)["damage"], 20)
 
-    def test_magic_shield_requires_magical_tag_even_for_mage(self):
-        boss = self.boss("magic_shield", ability_state_json='{"shield_active": true}')
-        blocked = engine.modify_hero_damage(boss, {"class_tag": "mage"}, 20)
-        self.assertEqual(blocked["damage"], 0)
-        self.assertTrue(json.loads(blocked["boss_changes"]["ability_state_json"])["shield_active"])
-        removed = engine.modify_hero_damage(boss, {"class_tag": "magical"}, 20)
-        self.assertEqual(removed["damage"], 0)
-        self.assertFalse(json.loads(removed["boss_changes"]["ability_state_json"])["shield_active"])
+    def test_magic_shield_accepts_mage_and_legacy_magical_but_blocks_other_tags(self):
+        for tag in ("none", "technical", "warrior", "guardian", "sneaky", "healer", "beast"):
+            with self.subTest(tag=tag):
+                boss = self.boss("magic_shield", ability_state_json='{"shield_active": true}')
+                blocked = engine.modify_hero_damage(boss, {"class_tag": tag}, 20)
+                self.assertEqual(blocked["damage"], 0)
+                self.assertTrue(json.loads(blocked["boss_changes"]["ability_state_json"])["shield_active"])
+        for tag in ("mage", "magical"):
+            with self.subTest(tag=tag):
+                boss = self.boss("magic_shield", ability_state_json='{"shield_active": true}')
+                removed = engine.modify_hero_damage(boss, {"class_tag": tag}, 20)
+                self.assertEqual(removed["damage"], 0)
+                self.assertFalse(json.loads(removed["boss_changes"]["ability_state_json"])["shield_active"])
 
     def test_mechanism_technical_and_minimum(self):
         boss = self.boss("mechanism")
@@ -200,7 +205,10 @@ class CombatV2IntegrationTests(unittest.TestCase):
                     )
                 conn.execute("UPDATE mini_players SET active_hero_id = ? WHERE id = ?", (self.villager, player["id"]))
         self.boss = create_boss_event(self.world, "training_golem", 999, self.db)
-        self.update_boss(min_players=2, max_hp=1000, current_hp=1000, reward_coins=60)
+        # Synthetic ordinary boss keeps mechanics tests independent of live assignments.
+        self.update_boss(min_players=2, max_hp=1000, current_hp=1000, reward_coins=60,
+                         faction="commoners", ability_key="none", features_json="[]",
+                         ability_config_json="{}")
         for player in self.players:
             register_player(self.boss["id"], player["id"], self.db)
 
@@ -587,7 +595,7 @@ class CombatV2IntegrationTests(unittest.TestCase):
 
 
 class CombatV2CatalogTests(unittest.TestCase):
-    def test_current_hero_traits_are_valid_and_bosses_remain_placeholders(self):
+    def test_current_hero_and_boss_traits_are_valid(self):
         from app.mini.boss.matchups import FACTIONS
         heroes = load_hero_catalog()["heroes"]
         self.assertEqual(len({hero["code"] for hero in heroes}), len(heroes))
@@ -600,9 +608,22 @@ class CombatV2CatalogTests(unittest.TestCase):
                 self.assertTrue(hero["class_tag"])
                 self.assertIsInstance(hero["special_trait"], str)
                 self.assertTrue(hero["special_trait"])
-        for boss in load_boss_catalog()["bosses"]:
-            self.assertEqual((boss["faction"], boss["ability_key"], boss["ability_text"], boss["features"]),
-                             ("commoners", "none", "Нет особой способности.", []))
+        expected = {
+            "training_golem": ("monsters", "magic_shield"),
+            "graveyard_warden": ("dark", "banishment"),
+            "swamp_hydra": ("monsters", "hydra_regeneration"),
+            "iron_juggernaut": ("warriors", "mechanism"),
+            "crimson_vampire": ("dark", "shapeshifter"),
+            "wild_berserker": ("beasts", "critical_strike"),
+            "fallen_sun_champion": ("dark", "rapier"),
+        }
+        bosses = load_boss_catalog()["bosses"]
+        self.assertEqual({boss["code"] for boss in bosses}, set(expected))
+        for boss in bosses:
+            with self.subTest(boss=boss["code"]):
+                self.assertEqual((boss["faction"], boss["ability_key"]), expected[boss["code"]])
+                self.assertIsInstance(boss["features"], list)
+                self.assertTrue(boss["ability_text"])
 
     def test_hero_validation_rejects_missing_and_invalid_traits_and_passive(self):
         data = load_hero_catalog()

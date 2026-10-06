@@ -67,10 +67,12 @@ class BossAbilityIntegrationTests(unittest.TestCase):
         self.boss = create_boss_event(
             self.world_id, "training_golem", 999, self.db
         )
-        # Интеграционный тест не зависит от min_players живого bosses.json.
+        # Проверяем пассивки героя на обычном боссе независимо от живого каталога.
         with connect_mini_db(self.db) as conn:
             conn.execute(
-                "UPDATE mini_bosses SET min_players = 2 WHERE id = ?",
+                """UPDATE mini_bosses SET min_players = 2, faction = 'commoners',
+                   ability_key = 'none', features_json = '[]', ability_config_json = '{}'
+                   WHERE id = ?""",
                 (self.boss["id"],),
             )
             conn.commit()

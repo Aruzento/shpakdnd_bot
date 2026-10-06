@@ -13,10 +13,13 @@
       "reward_decay_percent": 10,
       "image": "training_golem.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "monsters",
+      "ability_key": "magic_shield",
+      "ability_text": "Магический щит: в начале боя защищён барьером. Маг снимает щит, но этот удар не наносит урон. Остальные классы не могут повредить босса, пока щит активен.",
+      "features": [
+        "construct",
+        "armored"
+      ]
     },
     {
       "code": "graveyard_warden",
@@ -26,15 +29,20 @@
       "min_players": 3,
       "reward_coins": 30,
       "reward_items": [
-        {"code": "boss_coin_pouch", "quantity": 1}
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        }
       ],
       "reward_shields": 3,
       "image": "graveyard_warden.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "dark",
+      "ability_key": "banishment",
+      "ability_text": "Изгнание: каждый 5-й ход босса с шансом 50% изгоняет случайного участника до конца боя. Последний активный участник не может быть изгнан.",
+      "features": [
+        "undead"
+      ]
     },
     {
       "code": "swamp_hydra",
@@ -44,16 +52,24 @@
       "min_players": 4,
       "reward_coins": 36,
       "reward_items": [
-        {"code": "boss_coin_pouch", "quantity": 1},
-        {"code": "boss_shard_casket", "quantity": 1}
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        },
+        {
+          "code": "boss_shard_casket",
+          "quantity": 1
+        }
       ],
       "reward_shields": 2,
       "image": "swamp_hydra.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "monsters",
+      "ability_key": "hydra_regeneration",
+      "ability_text": "Гидра: в конце каждого своего хода восстанавливает 10% максимального здоровья.",
+      "features": [
+        "poisonous"
+      ]
     },
     {
       "code": "iron_juggernaut",
@@ -63,16 +79,25 @@
       "min_players": 5,
       "reward_coins": 42,
       "reward_items": [
-        {"code": "boss_coin_pouch", "quantity": 1},
-        {"code": "boss_shard_casket", "quantity": 1}
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        },
+        {
+          "code": "boss_shard_casket",
+          "quantity": 1
+        }
       ],
       "reward_shields": 3,
       "image": "iron_juggernaut.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "warriors",
+      "ability_key": "mechanism",
+      "ability_text": "Механизм: урон персонажей без технического класса уменьшается на 20% после пассивки и фракционного модификатора, до бонуса зелья урона.",
+      "features": [
+        "construct",
+        "armored"
+      ]
     },
     {
       "code": "crimson_vampire",
@@ -82,16 +107,27 @@
       "min_players": 5,
       "reward_coins": 50,
       "reward_items": [
-        {"code": "boss_coin_pouch", "quantity": 1},
-        {"code": "boss_shard_casket", "quantity": 1}
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        },
+        {
+          "code": "boss_shard_casket",
+          "quantity": 1
+        }
       ],
       "reward_shields": 2,
       "image": "crimson_vampire.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "dark",
+      "ability_key": "shapeshifter",
+      "ability_text": "Перевёртыш: один раз в начале боя с шансом 50% меняет фракцию с Тьмы на Зверей. Выбранная фракция сохраняется до конца боя.",
+      "features": [
+        "undead"
+      ],
+      "ability_config": {
+        "target_faction": "beasts"
+      }
     },
     {
       "code": "wild_berserker",
@@ -101,15 +137,21 @@
       "min_players": 4,
       "reward_coins": 36,
       "reward_items": [
-        {"code": "boss_coin_pouch", "quantity": 1},
-        {"code": "boss_shard_casket", "quantity": 1}
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        },
+        {
+          "code": "boss_shard_casket",
+          "quantity": 1
+        }
       ],
       "reward_shields": 2,
       "image": "wild_berserker.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
+      "faction": "beasts",
+      "ability_key": "critical_strike",
+      "ability_text": "Критический удар: в свой ход с шансом 10% атакует награду дважды. Если первая атака уничтожила награду, вторая не выполняется.",
       "features": []
     },
     {
@@ -122,10 +164,13 @@
       "reward_shields": 0,
       "image": "fallen_sun_champion.png",
       "active": true,
-      "faction": "commoners",
-      "ability_key": "none",
-      "ability_text": "Нет особой способности.",
-      "features": []
+      "faction": "dark",
+      "ability_key": "rapier",
+      "ability_text": "Рапира: каждая атака босса с шансом 10% наносит урон напрямую награде, полностью игнорируя щиты.",
+      "features": [
+        "armored",
+        "holy"
+      ]
     }
   ]
 }

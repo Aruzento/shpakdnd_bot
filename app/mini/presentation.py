@@ -19,7 +19,7 @@ RANGE_LABELS = {"melee": "Ближний бой", "ranged": "Дальний бо
 TRAIT_LABELS = {
     "none": "Нет особого свойства", "undead": "Нежить", "construct": "Конструкт",
     "flying": "Летающий", "demon": "Демон", "armored": "Бронированный",
-    "holy": "Святой",
+    "holy": "Святой", "poisonous": "Ядовитый",
 }
 
 
