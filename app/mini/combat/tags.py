@@ -16,3 +16,7 @@ LEGACY_HERO_TRAITS = {
     "faction": "commoners", "damage_type": "slashing", "class_tag": "none",
     "attack_range": "melee", "special_trait": "none",
 }
+
+# Class semantics currently used by combat/content checks; other tags stay open.
+MAGIC_CLASSES = frozenset(("mage", "magical"))
+TECHNICAL_CLASS = "technical"

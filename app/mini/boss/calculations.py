@@ -2,13 +2,8 @@
 
 
 import json
-
-
 from app.mini.combat.hero_abilities import resolve_attack
-
-
 from app.mini.boss.boss_abilities import engine as boss_abilities
-
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
 

@@ -1,20 +1,10 @@
 from app.mini.wallet import change_balance_in_transaction
-
 import json
-
 import sqlite3
-
 from datetime import datetime
-
-
 from app.mini.combat.hero_abilities import engine as hero_abilities
-
 from app.mini.boss.catalog import get_boss_template
-
-
 from app.mini.boss.loadouts import battle_loadout
-
-
 from app.mini.boss.errors import BossCombatError
 from app.mini.boss.clock import utcnow, db_time
 from app.mini.boss.repository import log_hero_event

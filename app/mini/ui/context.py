@@ -9,10 +9,8 @@ def username_from_user(user) -> str:
     return "@" + user.username.strip().lower()
 
 
-
 def personal_callback(action: str, world_id: int, user_id: int) -> str:
     return f"mini:{action}:{world_id}:{user_id}"
-
 
 
 def parse_extended_callback(
@@ -28,7 +26,6 @@ def parse_extended_callback(
         return int(parts[2]), int(parts[3]), parts[4]
     except ValueError:
         return None
-
 
 
 async def load_extended_context(
@@ -60,7 +57,6 @@ async def load_extended_context(
     return world, player, extra
 
 
-
 def parse_personal_callback(
     callback: CallbackQuery,
 ) -> tuple[str, int, int] | None:
@@ -75,7 +71,6 @@ def parse_personal_callback(
         return parts[1], int(parts[2]), int(parts[3])
     except ValueError:
         return None
-
 
 
 async def load_personal_context(
@@ -121,7 +116,6 @@ async def load_personal_context(
     return world, player
 
 
-
 def parse_shop_callback(
     callback: CallbackQuery,
     prefix: str,
@@ -138,7 +132,6 @@ def parse_shop_callback(
         return None
     tail = parts[4] if len(parts) == 5 else ""
     return world_id, owner_id, tail
-
 
 
 async def shop_context(
@@ -162,7 +155,6 @@ async def shop_context(
         await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
         return None
     return world, player, tail
-
 
 
 def load_world(world_id: int) -> dict | None:

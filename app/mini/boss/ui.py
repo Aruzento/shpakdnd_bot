@@ -1,28 +1,26 @@
 from app.mini.ui.context import load_world as _load_world
-
 from app.mini.ui.transport import send_private_text_from_callback as _send_private
-
 import asyncio
-
-
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-
 from aiogram.types import CallbackQuery, FSInputFile
-
 from app.context import get_topic_admin
-
 from app.mini.boss.catalog import boss_image_path
-
 from app.mini.boss.combat import BossCombatError, advance_expired_turns
-
 from app.mini.boss.notices import timeout_event_lines
-
-from app.mini.boss.public import ensure_public_turn, format_public_boss, public_boss_menu, refresh_public_boss, replace_public_turn
-
-from app.mini.boss.service import BossError, get_active_boss, get_boss, list_participants, set_signup_message
-
-
-
+from app.mini.boss.public import (
+    ensure_public_turn,
+    format_public_boss,
+    public_boss_menu,
+    refresh_public_boss,
+    replace_public_turn,
+)
+from app.mini.boss.service import (
+    BossError,
+    get_active_boss,
+    get_boss,
+    list_participants,
+    set_signup_message,
+)
 from app.mini.ui.context import username_from_user
 from app.mini.boss.presentation import format_private_boss, boss_private_menu, no_boss_menu
 
@@ -37,17 +35,14 @@ def boss_publish_lock(boss_id: int) -> asyncio.Lock:
     return lock
 
 
-
 def is_admin(callback: CallbackQuery, world: dict) -> bool:
     required = get_topic_admin(int(world["chat_id"]), int(world["thread_id"]))
     current = username_from_user(callback.from_user)
     return bool(required and current and current == required)
 
 
-
 def is_joined(player_id: int, participants: list[dict]) -> bool:
     return any(int(row["player_id"]) == int(player_id) for row in participants)
-
 
 
 async def show_boss_home(
@@ -107,10 +102,8 @@ async def show_boss_home(
     )
 
 
-
 async def refresh_from_callback(callback: CallbackQuery, world: dict, boss: dict):
     await refresh_public_boss(callback.bot, world, boss)
-
 
 
 async def publish_boss(
@@ -183,7 +176,6 @@ async def publish_boss(
         set_signup_message(boss_id, sent.message_id, "text")
 
 
-
 async def retire_old_public_boss(
     callback: CallbackQuery,
     world: dict,
@@ -205,7 +197,6 @@ async def retire_old_public_boss(
                 "Boss: не удалось убрать кнопки со старого анонса: "
                 f"{type(error).__name__}: {error}"
             )
-
 
 
 async def admin_action_context(

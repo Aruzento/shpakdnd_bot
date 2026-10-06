@@ -1,3 +1,5 @@
+from app.mini.effects.registry import validate_effect_key
+from app.mini.combat.tags import is_open_tag
 import json
 
 from app.mini.combat.matchups import FACTIONS
@@ -38,6 +40,7 @@ def load_boss_item_catalog() -> dict:
             raise BossCatalogError("У каждого предмета обязательны code и name.")
         if code in seen:
             raise BossCatalogError(f"Повторяющийся code предмета босса: {code}")
+        validate_effect_key(item.get("effect_key", ""))
         seen.add(code)
     return data
 
@@ -130,7 +133,7 @@ def load_boss_catalog() -> dict:
         if not isinstance(boss.get("ability_text"), str):
             raise BossCatalogError(f"Boss {code}: ability_text must be a string.")
         if not isinstance(boss.get("features"), list) or any(
-            not isinstance(tag, str) or not tag.strip() for tag in boss["features"]
+            not is_open_tag(tag) for tag in boss["features"]
         ):
             raise BossCatalogError(f"Boss {code}: features must be a list of string tags.")
         boss["reward_items"] = _validate_reward_items(

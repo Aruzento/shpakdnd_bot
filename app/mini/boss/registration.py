@@ -1,27 +1,32 @@
 from app.mini.ui.context import load_world as _load_world, load_player as _load_player
-
 from app.mini.ui.transport import send_private_text_from_callback as _send_private
-
-
 from aiogram import F, Router
-
 from aiogram.exceptions import TelegramAPIError
-
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
-
 from app.mini.boss.catalog import get_boss_template, list_boss_reward_items, list_boss_templates
-
-
-
 from app.mini.boss.public import format_participants
-
-from app.mini.boss.service import BossError, BossNotEnoughPlayers, cancel_boss, close_registration, create_boss_event, get_active_boss, get_boss, list_participants, register_player, reopen_registration, unregister_player
-
-
-
+from app.mini.boss.service import (
+    BossError,
+    BossNotEnoughPlayers,
+    cancel_boss,
+    close_registration,
+    create_boss_event,
+    get_active_boss,
+    get_boss,
+    list_participants,
+    register_player,
+    reopen_registration,
+    unregister_player,
+)
 from app.mini.boss.presentation import template_menu, preview_menu
-from app.mini.boss.ui import is_admin, show_boss_home, refresh_from_callback, publish_boss, retire_old_public_boss, admin_action_context
+from app.mini.boss.ui import (
+    is_admin,
+    show_boss_home,
+    refresh_from_callback,
+    publish_boss,
+    retire_old_public_boss,
+    admin_action_context,
+)
 
 router = Router(name="mini_boss_registration")
 
@@ -49,7 +54,6 @@ async def boss_home_callback(callback: CallbackQuery):
 
     await callback.answer()
     await show_boss_home(callback, world, player)
-
 
 
 @router.callback_query(F.data.startswith("miniboss:create:"))
@@ -82,7 +86,6 @@ async def boss_create_callback(callback: CallbackQuery):
 
     await callback.answer()
     await _send_private(callback, world, text, template_menu(world_id, owner_id))
-
 
 
 @router.callback_query(F.data.startswith("miniboss:preview:"))
@@ -141,7 +144,6 @@ async def boss_preview_callback(callback: CallbackQuery):
     )
 
 
-
 @router.callback_query(F.data.startswith("miniboss:announce:"))
 async def boss_announce_callback(callback: CallbackQuery):
     parts = (callback.data or "").split(":", 4)
@@ -175,7 +177,6 @@ async def boss_announce_callback(callback: CallbackQuery):
     await callback.answer("Регистрация открыта")
     if boss is not None:
         await show_boss_home(callback, world, player)
-
 
 
 @router.callback_query(F.data.startswith("miniboss:join:"))
@@ -222,7 +223,6 @@ async def boss_join_callback(callback: CallbackQuery):
         )
 
 
-
 @router.callback_query(F.data.startswith("miniboss:leave:"))
 async def boss_leave_callback(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
@@ -261,7 +261,6 @@ async def boss_leave_callback(callback: CallbackQuery):
         await show_boss_home(callback, world, player)
     else:
         await callback.answer(message, show_alert=True)
-
 
 
 @router.callback_query(F.data.startswith("miniboss:list:"))
@@ -307,7 +306,6 @@ async def boss_list_callback(callback: CallbackQuery):
     await _send_private(callback, world, text, markup)
 
 
-
 @router.callback_query(F.data.startswith("miniboss:close:"))
 async def boss_close_callback(callback: CallbackQuery):
     context = await admin_action_context(callback, "close")
@@ -330,7 +328,6 @@ async def boss_close_callback(callback: CallbackQuery):
         await show_boss_home(callback, world, player)
 
 
-
 @router.callback_query(F.data.startswith("miniboss:reopen:"))
 async def boss_reopen_callback(callback: CallbackQuery):
     context = await admin_action_context(callback, "reopen")
@@ -348,7 +345,6 @@ async def boss_reopen_callback(callback: CallbackQuery):
     await callback.answer("Регистрация снова открыта")
     if player is not None:
         await show_boss_home(callback, world, player)
-
 
 
 @router.callback_query(F.data.startswith("miniboss:republish:"))
@@ -390,7 +386,6 @@ async def boss_republish_callback(callback: CallbackQuery):
     await callback.answer("Анонс опубликован повторно")
     if player is not None:
         await show_boss_home(callback, world, player)
-
 
 
 @router.callback_query(F.data.startswith("miniboss:cancel:"))

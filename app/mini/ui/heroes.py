@@ -1,17 +1,16 @@
-from app.mini.ui.context import username_from_user as _username_from_user, personal_callback as _personal_callback, load_extended_context as _load_extended_context, load_personal_context as _load_personal_context
-
-from app.mini.ui.transport import send_private_text_from_callback as _send_private_text_from_callback, edit_private as _edit_private
-
+from app.mini.ui.context import (
+    username_from_user as _username_from_user,
+    personal_callback as _personal_callback,
+    load_extended_context as _load_extended_context,
+    load_personal_context as _load_personal_context,
+)
+from app.mini.ui.transport import (
+    send_private_text_from_callback as _send_private_text_from_callback,
+    edit_private as _edit_private,
+)
 from aiogram import F, Router
-
 from aiogram.exceptions import TelegramAPIError
-
-
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
-
-
-
 from app.mini.gacha import (
     GachaError,
     GachaInsufficientFunds,
@@ -20,21 +19,24 @@ from app.mini.gacha import (
     get_gacha_state,
     perform_gacha_pull,
 )
-
 from app.mini.heroes import get_collection_summary, get_player_hero, set_active_hero
-
-from app.mini.hero_upgrades import HeroShardSellError, HeroUpgradeError, HeroUpgradeInsufficientShards, HeroUpgradeMaxStars, sell_hero_shards, upgrade_hero
-
+from app.mini.hero_upgrades import (
+    HeroShardSellError,
+    HeroUpgradeError,
+    HeroUpgradeInsufficientShards,
+    HeroUpgradeMaxStars,
+    sell_hero_shards,
+    upgrade_hero,
+)
 from app.mini.players import get_mini_player
-
-
-
-
-
-
-
 from app.mini.ui.navigation import clip
-from app.mini.ui.hero_cards import hero_caption, hero_card_menu, send_hero_card, send_public_hero_share, show_gacha_pull_result
+from app.mini.ui.hero_cards import (
+    hero_caption,
+    hero_card_menu,
+    send_hero_card,
+    send_public_hero_share,
+    show_gacha_pull_result,
+)
 
 router = Router(name="mini_heroes")
 
@@ -102,7 +104,6 @@ def _collection_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def _format_collection(world: dict, player: dict, summary: dict) -> str:
     active = summary.get("active_hero")
     active_text = active["name"] if active else "пока не выбран"
@@ -119,7 +120,6 @@ def _format_collection(world: dict, player: dict, summary: dict) -> str:
             else "У тебя пока нет героев. Сделай первый призыв."
         )
     )
-
 
 
 def _gacha_menu(
@@ -155,7 +155,6 @@ def _gacha_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def _format_gacha(world: dict, state: dict) -> str:
     chances = state["rarity_chances"]
     luck_line = (
@@ -178,7 +177,6 @@ def _format_gacha(world: dict, state: dict) -> str:
         f"Героев в коллекции: {state['owned']}\n"
         f"Доступно сейчас: {state['total']}"
     )
-
 
 
 def _shard_sell_menu(
@@ -220,7 +218,6 @@ def _shard_sell_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def _format_shard_sell(hero: dict, balance: int) -> str:
     shards = int(hero.get("shards", 0))
     return (
@@ -231,7 +228,6 @@ def _format_shard_sell(hero: dict, balance: int) -> str:
         "Курс: 1 осколок = 1 монета.\n"
         "Проданные осколки исчезают навсегда."
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:collection:"))
@@ -251,7 +247,6 @@ async def collection_callback(callback: CallbackQuery):
             world["id"], callback.from_user.id, summary, page=0
         ),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:collectionpage:"))
@@ -275,7 +270,6 @@ async def collection_page_callback(callback: CallbackQuery):
             world["id"], callback.from_user.id, summary, page=page
         ),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:collectionopen:"))
@@ -307,7 +301,6 @@ async def collection_open_callback(callback: CallbackQuery):
     await callback.answer("Коллекция открыта")
 
 
-
 @router.callback_query(F.data.startswith("mini:gacha:"))
 async def gacha_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
@@ -327,7 +320,6 @@ async def gacha_callback(callback: CallbackQuery):
         _format_gacha(world, state),
         _gacha_menu(world["id"], callback.from_user.id, state),
     )
-
 
 
 async def _handle_gacha_pull(
@@ -353,7 +345,6 @@ async def _handle_gacha_pull(
     await show_gacha_pull_result(callback, world, player, result)
 
 
-
 @router.callback_query(F.data.startswith("mini:gachapull:"))
 async def gacha_pull_callback(callback: CallbackQuery):
     await _handle_gacha_pull(
@@ -362,14 +353,12 @@ async def gacha_pull_callback(callback: CallbackQuery):
     )
 
 
-
 @router.callback_query(F.data.startswith("mini:gacharepeat:"))
 async def gacha_repeat_callback(callback: CallbackQuery):
     await _handle_gacha_pull(
         callback,
         prefix="gacharepeat",
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:heroshare:"))
@@ -433,7 +422,6 @@ async def hero_share_callback(callback: CallbackQuery):
     await callback.answer("Показал всем 🎉")
 
 
-
 @router.callback_query(F.data.startswith("mini:hero:"))
 async def hero_card_callback(callback: CallbackQuery):
     context = await _load_extended_context(callback, "hero")
@@ -469,7 +457,6 @@ async def hero_card_callback(callback: CallbackQuery):
         return
 
     await callback.answer(hero["name"])
-
 
 
 @router.callback_query(F.data.startswith("mini:heroupgrade:"))
@@ -519,7 +506,6 @@ async def hero_upgrade_callback(callback: CallbackQuery):
     )
 
 
-
 @router.callback_query(F.data.startswith("mini:heroshards:"))
 async def hero_shards_callback(callback: CallbackQuery):
     context = await _load_extended_context(callback, "heroshards")
@@ -545,7 +531,6 @@ async def hero_shards_callback(callback: CallbackQuery):
         _shard_sell_menu(world["id"], callback.from_user.id, hero),
     )
     await callback.answer()
-
 
 
 @router.callback_query(F.data.startswith("mini:shardsell:"))
@@ -601,7 +586,6 @@ async def shard_sell_callback(callback: CallbackQuery):
             _format_shard_sell(hero, int(player["coins"])),
             _shard_sell_menu(world["id"], callback.from_user.id, hero),
         )
-
 
 
 @router.callback_query(F.data.startswith("mini:heroactive:"))

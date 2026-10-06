@@ -2,13 +2,24 @@ from app.mini.ui.context import username_from_user
 from app.mini.boss.ui import admin_action_context as _admin_action_context
 from app.mini.ui.context import load_world as _load_world, load_player as _load_player
 from app.mini.ui.transport import delete_current_ephemeral as _delete_current_ephemeral
-
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
-
-from app.mini.boss.combat import BossCombatError, BossNotParticipant, BossNotYourTurn, force_finish_battle, hit_boss, start_battle
+from app.mini.boss.combat import (
+    BossCombatError,
+    BossNotParticipant,
+    BossNotYourTurn,
+    force_finish_battle,
+    hit_boss,
+    start_battle,
+)
 from app.mini.boss.notices import combat_event_lines, boss_event_line
-from app.mini.boss.public import boss_attack_passive_lines, ensure_public_turn, publish_admin_victory, refresh_public_boss, replace_public_turn
+from app.mini.boss.public import (
+    boss_attack_passive_lines,
+    ensure_public_turn,
+    publish_admin_victory,
+    refresh_public_boss,
+    replace_public_turn,
+)
 from app.mini.boss.service import get_boss
 
 
@@ -208,7 +219,6 @@ async def boss_force_finish_callback(callback: CallbackQuery):
     )
     await callback.answer("Бой завершён победой")
     await _delete_current_ephemeral(callback)
-
 
 
 from app.mini.boss import registration, selection

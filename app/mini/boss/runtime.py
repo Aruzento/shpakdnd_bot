@@ -1,27 +1,21 @@
 from app.mini.boss.errors import BossCombatError
-
 from app.mini.boss.clock import db_time
-
-from app.mini.boss.repository import current_participant, consume_pending_boss_skip, refresh_boss, apply_boss_effects, save_hero_state, log_hero_event
-
+from app.mini.boss.repository import (
+    current_participant,
+    consume_pending_boss_skip,
+    refresh_boss,
+    apply_boss_effects,
+    save_hero_state,
+    log_hero_event,
+)
 from app.mini.boss.rewards import finish_victory, finish_failure
-
 import json
-
 import sqlite3
-
 from datetime import datetime
-
-
 from app.mini.combat.hero_abilities import resolve_boss_attack
-
 from app.mini.combat.hero_abilities import engine as hero_abilities
-
-
 from app.mini.boss.boss_abilities import engine as boss_abilities
-
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
-
 from app.mini.boss.loadouts import battle_loadout
 
 

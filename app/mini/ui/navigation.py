@@ -1,22 +1,5 @@
 from app.mini.ui.context import personal_callback as _personal_callback
-
-
-
-
-
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def back_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
@@ -32,7 +15,6 @@ def back_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             ]
         ]
     )
-
 
 
 def clip(value: str, limit: int) -> str:

@@ -1,7 +1,16 @@
 from app.mini.ui.navigation import back_menu
 from app.mini.ui.hero_cards import hero_caption, send_hero_card
-from app.mini.ui.context import username_from_user as _username_from_user, personal_callback as _personal_callback, parse_personal_callback as _parse_personal_callback, load_personal_context as _load_personal_context
-from app.mini.ui.transport import send_private_text_from_callback as _send_private_text_from_callback, send_private_from_launcher as _send_private_from_launcher, edit_private as _edit_private
+from app.mini.ui.context import (
+    username_from_user as _username_from_user,
+    personal_callback as _personal_callback,
+    parse_personal_callback as _parse_personal_callback,
+    load_personal_context as _load_personal_context,
+)
+from app.mini.ui.transport import (
+    send_private_text_from_callback as _send_private_text_from_callback,
+    send_private_from_launcher as _send_private_from_launcher,
+    edit_private as _edit_private,
+)
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.filters import Command
@@ -14,15 +23,10 @@ from aiogram.types import (
     Message,
     ReplyParameters,
 )
-
 from app.context import check_topic_admin_permission, get_thread_id
 from app.mini.presentation import hero_heading, hero_trait_lines
 from app.mini.heroes import get_active_hero, get_hero_image
-from app.mini.players import (
-    create_mini_player,
-    get_mini_player,
-    touch_mini_player,
-)
+from app.mini.players import create_mini_player, get_mini_player, touch_mini_player
 from app.mini.worlds import (
     ensure_configured_mini_world,
     get_launcher_message_id,
@@ -528,7 +532,6 @@ async def character_callback(callback: CallbackQuery):
             text,
             markup,
         )
-
 
 
 from app.mini.ui.hero_cards import hero_caption as _hero_caption

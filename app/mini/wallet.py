@@ -78,7 +78,10 @@ def change_balance_in_transaction(
     """Change coins in the caller's BEGIN IMMEDIATE transaction; never commit.
 
     The caller owns rollback as well, so related records remain atomic.
+    allow_zero retains legacy zero-price shard-sale history; normal calls reject zero.
     """
+    if not conn.in_transaction:
+        raise ValueError("Wallet mutation requires an open transaction.")
     amount = int(amount)
     reason = reason.strip()
     reference_type = reference_type.strip()

@@ -1,28 +1,12 @@
-from app.mini.ui.context import personal_callback as _personal_callback, load_personal_context as _load_personal_context
-
+from app.mini.ui.context import (
+    personal_callback as _personal_callback,
+    load_personal_context as _load_personal_context,
+)
 from app.mini.ui.transport import edit_private as _edit_private
-
 from aiogram import F, Router
-
-
-
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
-
 from app.mini.daily import claim_daily
-
-
-
-
-
-
-
 from app.mini.rules import RULES_TEXT
-
-
-
-
-
 from app.mini.ui.navigation import back_menu
 
 router = Router(name="mini_activities")
@@ -49,7 +33,6 @@ def _daily_result_menu(
             ]
         ]
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:daily:"))
@@ -123,7 +106,6 @@ async def daily_callback(callback: CallbackQuery):
             callback.from_user.id,
         ),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:rules:"))

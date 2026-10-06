@@ -1,23 +1,16 @@
-from app.mini.ui.context import username_from_user as _username_from_user, personal_callback as _personal_callback, load_extended_context as _load_extended_context, load_personal_context as _load_personal_context, shop_context as _shop_context
-
+from app.mini.ui.context import (
+    username_from_user as _username_from_user,
+    personal_callback as _personal_callback,
+    load_extended_context as _load_extended_context,
+    load_personal_context as _load_personal_context,
+    shop_context as _shop_context,
+)
 from app.mini.ui.transport import edit_private as _edit_private
-
 from aiogram import F, Router
-
 from aiogram.exceptions import TelegramAPIError
-
-
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
 from app.context import get_topic_admin
-
-
-
 from app.mini.gacha import GachaError, GachaNoHeroes, GachaNoTicket, perform_gacha_pull
-
-
-
-
 from app.mini.items import (
     EFFECT_GACHA_TICKET,
     ItemUseError,
@@ -28,13 +21,7 @@ from app.mini.items import (
     mark_certificate_requested,
     use_inventory_item,
 )
-
-
 from app.mini.shop import get_player_goods
-
-
-
-
 from app.mini.ui.navigation import clip
 from app.mini.ui.hero_cards import show_gacha_pull_result
 
@@ -85,7 +72,6 @@ def _format_inventory(world: dict, player: dict, goods: dict) -> str:
     return "\n".join(lines).rstrip()
 
 
-
 def _inventory_menu(
     world_id: int,
     user_id: int,
@@ -112,7 +98,6 @@ def _inventory_menu(
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
 
 
 def _use_items_menu(
@@ -154,7 +139,6 @@ def _use_items_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def _use_item_confirm_menu(
     world_id: int,
     user_id: int,
@@ -181,7 +165,6 @@ def _use_item_confirm_menu(
     )
 
 
-
 def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -199,7 +182,6 @@ def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             ],
         ]
     )
-
 
 
 def _format_wallet_history(history: list[dict]) -> str:
@@ -220,7 +202,6 @@ def _format_wallet_history(history: list[dict]) -> str:
     return "\n".join(lines)
 
 
-
 def _format_wallet(world: dict, player: dict, history: list[dict]) -> str:
     return (
         "💰 Кошелёк\n\n"
@@ -230,7 +211,6 @@ def _format_wallet(world: dict, player: dict, history: list[dict]) -> str:
     )
 
 
-
 async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
     goods = get_player_goods(player["id"])
     await _edit_private(
@@ -238,7 +218,6 @@ async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
         _format_inventory(world, player, goods),
         _inventory_menu(world["id"], callback.from_user.id, goods),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:inventory:"))
@@ -252,7 +231,6 @@ async def inventory_callback(callback: CallbackQuery):
     await _open_inventory(callback, world, player)
 
 
-
 @router.callback_query(F.data.startswith("mini:wallet:"))
 async def wallet_callback(callback: CallbackQuery):
     """Совместимость со старыми кнопками «Кошелёк»."""
@@ -263,7 +241,6 @@ async def wallet_callback(callback: CallbackQuery):
     world, player = context
     await callback.answer()
     await _open_inventory(callback, world, player)
-
 
 
 @router.callback_query(F.data.startswith("mini:useitems:"))
@@ -286,7 +263,6 @@ async def use_items_callback(callback: CallbackQuery):
         text,
         _use_items_menu(world["id"], callback.from_user.id, goods),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:usepick:"))
@@ -338,7 +314,6 @@ async def use_item_pick_callback(callback: CallbackQuery):
             world["id"], callback.from_user.id, kind, value
         ),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:useconfirm:"))
@@ -475,7 +450,6 @@ async def use_item_confirm_callback(callback: CallbackQuery):
         text,
         _item_use_result_menu(world["id"], callback.from_user.id),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:goods:"))

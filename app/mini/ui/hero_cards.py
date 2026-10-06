@@ -1,29 +1,15 @@
 
-from app.mini.ui.transport import replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs, send_private_text_from_callback as _send_private_text_from_callback, delete_current_ephemeral as _delete_current_ephemeral
-
-
+from app.mini.ui.transport import (
+    replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs,
+    send_private_text_from_callback as _send_private_text_from_callback,
+    delete_current_ephemeral as _delete_current_ephemeral,
+)
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-
-
 from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
-
-
-
 from app.mini.presentation import hero_heading, hero_trait_lines
-
 from app.mini.gacha import get_gacha_state
-
 from app.mini.heroes import get_hero_image, get_player_hero
-
 from app.mini.hero_upgrades import hero_upgrade_state
-
-
-
-
-
-
-
-
 from app.mini.ui.navigation import clip
 
 def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
@@ -66,7 +52,6 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
     return "\n".join(lines)[:1020]
 
 
-
 def hero_share_caption(hero: dict, sharer: str) -> str:
     description = clip(hero.get("description", ""), 760)
     sharer = (sharer or "Игрок").strip()
@@ -74,7 +59,6 @@ def hero_share_caption(hero: dict, sharer: str) -> str:
         f"{sharer}: «Смотри, что мне выпало: {hero['name']}!»\n\n"
         f"{description or 'Без описания.'}"
     )[:1020]
-
 
 
 def hero_card_menu(
@@ -142,7 +126,6 @@ def hero_card_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 async def send_hero_card(
     callback: CallbackQuery,
     world: dict,
@@ -177,7 +160,6 @@ async def send_hero_card(
     )
 
 
-
 async def send_public_hero_share(
     callback: CallbackQuery,
     world: dict,
@@ -207,7 +189,6 @@ async def send_public_hero_share(
         message_thread_id=world["thread_id"] or None,
         text=caption,
     )
-
 
 
 async def show_gacha_pull_result(

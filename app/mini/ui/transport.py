@@ -13,7 +13,6 @@ def replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
     }
 
 
-
 async def send_private_text_from_callback(
     callback: CallbackQuery,
     world: dict,
@@ -31,7 +30,6 @@ async def send_private_text_from_callback(
     return sent
 
 
-
 async def delete_current_ephemeral(callback: CallbackQuery) -> bool:
     message = callback.message
     if message is None or message.ephemeral_message_id is None:
@@ -47,7 +45,6 @@ async def delete_current_ephemeral(callback: CallbackQuery) -> bool:
         return False
 
     return True
-
 
 
 async def send_private_from_launcher(
@@ -74,7 +71,6 @@ async def send_private_from_launcher(
             callback_query_id=callback.id,
         ),
     )
-
 
 
 async def edit_private(

@@ -1,3 +1,4 @@
+from app.mini.combat.tags import MAGIC_CLASSES, TECHNICAL_CLASS
 """Offline release checks; combat accepts open tags without UI dependencies."""
 import re
 
@@ -63,13 +64,13 @@ def validate_combat_content(
                 f"Combat content: boss {code}: faction={faction!r} has no ACTIVE hero with faction advantage."
             )
         if boss["ability_key"] == "magic_shield" and not any(
-            hero["class_tag"] in ("mage", "magical") for hero in active_heroes
+            hero["class_tag"] in MAGIC_CLASSES for hero in active_heroes
         ):
             raise ValueError(
                 f"Combat content: boss {code}: magic_shield has no ACTIVE mage/magical counter."
             )
         if boss["ability_key"] == "mechanism" and not any(
-            hero["class_tag"] == "technical" for hero in active_heroes
+            hero["class_tag"] == TECHNICAL_CLASS for hero in active_heroes
         ):
             raise ValueError(
                 f"Combat content: boss {code}: mechanism has no ACTIVE technical counter."

@@ -1,18 +1,9 @@
 
 
 
-
-
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
-
 from app.mini.boss.catalog import list_boss_templates
-
-
-
 from app.mini.boss.public import format_public_boss
-
-
 
 
 HERO_PAGE_SIZE = 8
@@ -33,7 +24,6 @@ def format_private_boss(
     elif boss["status"] == "fighting" and joined:
         text += "\n\n⚔️ Ты участвуешь в этом бою."
     return text
-
 
 
 def boss_private_menu(
@@ -142,7 +132,6 @@ def boss_private_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def no_boss_menu(
     world_id: int,
     user_id: int,
@@ -166,7 +155,6 @@ def no_boss_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def template_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     rows = []
     for boss in list_boss_templates():
@@ -185,7 +173,6 @@ def template_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
 
 
 def preview_menu(
@@ -211,7 +198,6 @@ def preview_menu(
             ],
         ]
     )
-
 
 
 def battle_hero_menu(world_id: int, user_id: int, boss_id: int, heroes: list[dict], page: int):

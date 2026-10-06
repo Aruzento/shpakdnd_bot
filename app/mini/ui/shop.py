@@ -1,26 +1,22 @@
-from app.mini.ui.context import personal_callback as _personal_callback, load_personal_context as _load_personal_context, shop_context as _shop_context
-
+from app.mini.ui.context import (
+    personal_callback as _personal_callback,
+    load_personal_context as _load_personal_context,
+    shop_context as _shop_context,
+)
 from app.mini.ui.transport import edit_private as _edit_private
-
 from aiogram import F, Router
-
-
-
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-
-
-
-
-
-
-
-
-
-
-from app.mini.shop import ShopError, ShopInsufficientFunds, ShopLimitReached, ShopOutOfStock, get_offer, get_offer_purchase_count, get_offers_by_category, get_shop_categories, purchase_offer
-
-
-
+from app.mini.shop import (
+    ShopError,
+    ShopInsufficientFunds,
+    ShopLimitReached,
+    ShopOutOfStock,
+    get_offer,
+    get_offer_purchase_count,
+    get_offers_by_category,
+    get_shop_categories,
+    purchase_offer,
+)
 
 
 router = Router(name="mini_shop")
@@ -54,7 +50,6 @@ def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-
 def _shop_category_menu(
     world_id: int,
     user_id: int,
@@ -77,7 +72,6 @@ def _shop_category_menu(
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
 
 
 def _shop_item_menu(
@@ -106,7 +100,6 @@ def _shop_item_menu(
     )
 
 
-
 def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -130,7 +123,6 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
     )
 
 
-
 @router.callback_query(F.data.startswith("mini:shop:"))
 async def shop_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
@@ -148,7 +140,6 @@ async def shop_callback(callback: CallbackQuery):
         "Выбери раздел. Каталог лежит в app/mini/content/shop.json.",
         _shop_main_menu(world["id"], callback.from_user.id),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:shopcat:"))
@@ -193,7 +184,6 @@ async def shop_category_callback(callback: CallbackQuery):
     )
 
 
-
 @router.callback_query(F.data.startswith("mini:shopitem:"))
 async def shop_item_callback(callback: CallbackQuery):
     context = await _shop_context(callback, "shopitem")
@@ -234,7 +224,6 @@ async def shop_item_callback(callback: CallbackQuery):
             int(offer["price"]),
         ),
     )
-
 
 
 @router.callback_query(F.data.startswith("mini:shopbuy:"))

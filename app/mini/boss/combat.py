@@ -1,14 +1,35 @@
-from app.mini.boss.repository import start_participants, save_start_loadout, mark_battle_started, participant_for_hit, record_primary_attack, save_attack_events, queue_boss_skips, record_timeout_skip, set_turn_started, add_kill_shards
+from app.mini.boss.repository import (
+    start_participants,
+    save_start_loadout,
+    mark_battle_started,
+    participant_for_hit,
+    record_primary_attack,
+    save_attack_events,
+    queue_boss_skips,
+    record_timeout_skip,
+    set_turn_started,
+    add_kill_shards,
+)
 from app.mini.boss.calculations import calculate_hit
-from app.mini.boss.runtime import finish_boss_death, apply_turn_start, extra_attack, consume_forced_skip, advance_after_turn
+from app.mini.boss.runtime import (
+    finish_boss_death,
+    apply_turn_start,
+    extra_attack,
+    consume_forced_skip,
+    advance_after_turn,
+)
 from app.mini.boss.errors import BossCombatError, BossNotYourTurn, BossNotParticipant
 from app.mini.boss.clock import coerce_utc, parse_db_time
-from app.mini.boss.repository import current_participant, refresh_boss, apply_boss_effects, save_hero_state
+from app.mini.boss.repository import (
+    current_participant,
+    refresh_boss,
+    apply_boss_effects,
+    save_hero_state,
+)
 from app.mini.boss.rewards import reward_items, hydrate_reward_snapshot, finish_admin_victory
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-
 from app.config import DB_PATH
 from app.mini.combat.hero_abilities import resolve_kill
 from app.mini.combat.hero_abilities import engine as hero_abilities
@@ -19,11 +40,7 @@ from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import get_boss, list_participants
 from app.mini.db import connect_mini_db
 from app.mini.hero_upgrades import calculate_attack
-from app.mini.items import (
-    EFFECT_BOSS_DAMAGE,
-    EFFECT_BOSS_PHANTOM,
-    consume_effect_charge,
-)
+from app.mini.items import EFFECT_BOSS_DAMAGE, EFFECT_BOSS_PHANTOM, consume_effect_charge
 
 
 def start_battle(

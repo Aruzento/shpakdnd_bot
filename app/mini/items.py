@@ -1,3 +1,5 @@
+from app.mini.effects.contracts import ItemEffectContext, ItemUseError
+from app.mini.effects.registry import EFFECT_GACHA_TICKET, EFFECT_GACHA_LUCK, EFFECT_BOSS_DAMAGE, EFFECT_BOSS_PHANTOM, EFFECT_COIN_POUCH, EFFECT_SHARD_CASKET, get_effect, effect_description, active_effect_title
 from app.mini.wallet import change_balance_in_transaction
 import json
 import secrets
@@ -9,55 +11,11 @@ from app.config import DB_PATH
 from app.mini.db import connect_mini_db
 
 
-class ItemUseError(ValueError):
-    pass
-
-
-EFFECT_GACHA_TICKET = "gacha_ticket"
-EFFECT_GACHA_LUCK = "gacha_luck"
-EFFECT_BOSS_DAMAGE = "boss_damage_boost"
-EFFECT_BOSS_PHANTOM = "boss_phantom_participation"
-EFFECT_COIN_POUCH = "boss_coin_pouch"
-EFFECT_SHARD_CASKET = "boss_shard_casket"
-
-
-EFFECT_LABELS = {
-    EFFECT_GACHA_TICKET: "Одна крутка героя без монет.",
-    EFFECT_GACHA_LUCK: (
-        "Следующая крутка получает усиленные веса редкостей: "
-        "легендарные +10%, редкие +30%."
-    ),
-    EFFECT_BOSS_DAMAGE: (
-        "Следующий бой с боссом: весь твой итоговый урон после пассивки героя +10%."
-    ),
-    EFFECT_BOSS_PHANTOM: (
-        "Следующий бой с боссом: получишь награду даже если не нанесёшь ни одного удара."
-    ),
-    EFFECT_COIN_POUCH: "Открывается и даёт от 10 до 30 монет.",
-    EFFECT_SHARD_CASKET: "Открывается и даёт от 10 до 30 осколков.",
-}
-
-
-ACTIVE_EFFECT_TITLES = {
-    EFFECT_GACHA_LUCK: "🍀 Удача — следующая крутка",
-    EFFECT_BOSS_DAMAGE: "🧪 Урон +10% — следующий бой",
-    EFFECT_BOSS_PHANTOM: "👻 Фантомное участие — следующий бой",
-}
-
-
 AmountPicker = Callable[[int, int], int]
 
 
 def _default_amount_picker(low: int, high: int) -> int:
     return int(low) + secrets.randbelow(int(high) - int(low) + 1)
-
-
-def effect_description(effect_key: str) -> str:
-    return EFFECT_LABELS.get(str(effect_key or ""), "Эффект предмета не настроен.")
-
-
-def active_effect_title(effect_key: str) -> str:
-    return ACTIVE_EFFECT_TITLES.get(str(effect_key or ""), str(effect_key or ""))
 
 
 def get_player_effects(
@@ -124,7 +82,7 @@ def consume_effect_charge(
     return True
 
 
-def _add_effect_charge(
+def add_effect_charge_in_transaction(
     conn: sqlite3.Connection,
     player_id: int,
     effect_key: str,
@@ -338,15 +296,8 @@ def use_inventory_item(
             conn.rollback()
             raise ItemUseError("Билет призыва используется через крутку героя.")
 
-        supported = {
-            EFFECT_COIN_POUCH,
-            EFFECT_SHARD_CASKET,
-            EFFECT_GACHA_LUCK,
-            EFFECT_BOSS_DAMAGE,
-            EFFECT_BOSS_PHANTOM,
-        }
-        if effect_key not in supported:
-            conn.rollback()
+        definition = get_effect(effect_key)
+        if definition is None or definition.handler is None:
             raise ItemUseError("У этого предмета пока нет используемого эффекта.")
 
         conn.execute(
@@ -371,35 +322,12 @@ def use_inventory_item(
             "repeated": False,
         }
 
-        if effect_key == EFFECT_COIN_POUCH:
-            amount = int(amount_picker(10, 30))
-            if amount < 10 or amount > 30:
-                conn.rollback()
-                raise ItemUseError("Некорректный результат открытия кошеля.")
-            new_balance = change_balance_in_transaction(
-                conn, int(player_id), amount, f"Использован предмет: {row['name']}",
-                "item", int(item_id),
-                f"item-use:{operation_key}:coins" if operation_key else "",
-            )["balance"]
-            result["amount"] = amount
-            result["coins"] = new_balance
-
-        elif effect_key == EFFECT_SHARD_CASKET:
-            amount = int(amount_picker(10, 30))
-            if amount < 10 or amount > 30:
-                conn.rollback()
-                raise ItemUseError("Некорректный результат открытия шкатулки.")
-            new_shards = int(row["shards"]) + amount
-            conn.execute(
-                "UPDATE mini_players SET shards = ? WHERE id = ?",
-                (new_shards, int(player_id)),
-            )
-            result["amount"] = amount
-            result["shards"] = new_shards
-
-        else:
-            charges = _add_effect_charge(conn, player_id, effect_key, 1)
-            result["charges"] = charges
+        definition.handler(ItemEffectContext(
+            conn=conn, player_id=player_id, item_id=item_id, row=row,
+            result=result, operation_key=operation_key, amount_picker=amount_picker,
+            add_charge=add_effect_charge_in_transaction,
+            change_balance=change_balance_in_transaction,
+        ))
 
         remaining = conn.execute(
             """

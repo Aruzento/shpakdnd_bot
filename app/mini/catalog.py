@@ -1,3 +1,5 @@
+from app.mini.effects.registry import validate_effect_key
+from app.mini.combat.tags import is_open_tag
 import json
 from pathlib import Path
 
@@ -102,13 +104,14 @@ def load_shop_catalog() -> dict:
                     f"shop.json: item товара {code} должен иметь code и name."
                 )
 
+        if delivery == "inventory":
+            validate_effect_key(product.get("item", {}).get("effect_key", ""))
         product_codes.add(code)
 
     return data
 
 
 def load_hero_catalog() -> dict:
-    # Local imports avoid the package's existing eager re-exports during startup.
     from app.mini.combat.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
     from app.mini.combat.hero_abilities.catalog import configured_ability_keys
 
@@ -231,7 +234,7 @@ def load_hero_catalog() -> dict:
             if not isinstance(value, str) or value not in allowed:
                 raise ValueError(f"heroes.json: hero {code}: invalid {field}: {value!r}.")
         for field in ("class_tag", "special_trait"):
-            if not isinstance(hero.get(field), str) or not hero[field].strip():
+            if not is_open_tag(hero.get(field)):
                 raise ValueError(f"heroes.json: hero {code}: {field} must be a nonempty string tag.")
         if not isinstance(hero.get("passive_key"), str) or hero["passive_key"] not in passive_keys:
             raise ValueError(f"heroes.json: hero {code}: unknown passive_key {hero.get('passive_key')!r}.")

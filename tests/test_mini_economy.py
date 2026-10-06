@@ -78,3 +78,15 @@ class EconomyTransactionTests(unittest.TestCase):
         with patch('app.mini.items.change_balance_in_transaction',side_effect=RuntimeError('fail')):
             with self.assertRaises(RuntimeError): use_inventory_item(self.player,item,operation_key='item-1',db_path=self.db)
         self.assertEqual(self.snapshot(),before)
+
+    def test_transaction_api_rejects_unstarted_and_autocommit_connections(self):
+        import sqlite3
+        before=self.snapshot()
+        for isolation in (None, "DEFERRED"):
+            conn=sqlite3.connect(self.db,isolation_level=isolation)
+            try:
+                with self.assertRaises(ValueError):
+                    change_balance_in_transaction(conn,self.player,5,"Unowned transaction")
+            finally:
+                conn.close()
+        self.assertEqual(self.snapshot(),before)

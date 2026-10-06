@@ -1,12 +1,7 @@
 from app.mini.boss.clock import db_time
-
 import json
-
 import sqlite3
-
 from datetime import datetime
-
-
 from app.mini.boss.errors import BossCombatError
 
 def current_participant(conn: sqlite3.Connection, boss: sqlite3.Row) -> sqlite3.Row | None:
