@@ -1,3 +1,4 @@
+from app.mini.boss.errors import BossError, BossRegistrationClosed, BossNotEnoughPlayers
 import json
 import sqlite3
 from pathlib import Path
@@ -9,18 +10,6 @@ from app.mini.db import connect_mini_db
 
 
 ACTIVE_STATUSES = ("announced", "ready", "fighting")
-
-
-class BossError(ValueError):
-    pass
-
-
-class BossRegistrationClosed(BossError):
-    pass
-
-
-class BossNotEnoughPlayers(BossError):
-    pass
 
 
 def _boss_row_to_dict(row: sqlite3.Row | None) -> dict | None:

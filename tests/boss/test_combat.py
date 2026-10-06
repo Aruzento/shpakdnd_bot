@@ -404,6 +404,30 @@ class MiniBossCombatTests(unittest.TestCase):
             self.assertEqual(player["coins"], 0)
             self.assertEqual(get_player_goods(original["id"], self.db)["inventory"], [])
 
+    def test_reward_wallet_failure_rolls_back_all_players_and_battle(self):
+        from unittest.mock import patch
+        from app.mini.boss import rewards
+        start_battle(self.boss["id"], now=self.start_time, db_path=self.db)
+        def snapshot():
+            with connect_mini_db(self.db) as conn:
+                tables=[r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'mini_%' ORDER BY name")]
+                return {t:conn.execute(f"SELECT * FROM {t} ORDER BY rowid").fetchall() for t in tables}
+        before=snapshot()
+        original=rewards.change_balance_in_transaction
+        count=0
+        def fail_after_second_payment(*args, **kwargs):
+            nonlocal count
+            result=original(*args, **kwargs)
+            count+=1
+            if count==2:
+                raise RuntimeError("Wallet failure")
+            return result
+        with patch.object(rewards, "change_balance_in_transaction", side_effect=fail_after_second_payment):
+            with self.assertRaises(RuntimeError):
+                force_finish_battle(self.boss["id"], now=self.start_time, db_path=self.db)
+        self.assertEqual(count,2)
+        self.assertEqual(snapshot(),before)
+
 
 if __name__ == "__main__":
     unittest.main()

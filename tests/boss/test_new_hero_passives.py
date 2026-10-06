@@ -420,7 +420,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         self.seed_runtime(0, pending_echo_damage=37)
         self.participant_update(0, damage_bonus_percent=999)
         with patch.object(engine, "resolve_attack", side_effect=AssertionError("No attack passive")), patch(
-            "app.mini.boss.combat.faction_multiplier_percent", side_effect=AssertionError("No faction recalculation")
+            "app.mini.boss.runtime.faction_multiplier_percent", side_effect=AssertionError("No faction recalculation")
         ), patch("app.mini.boss.boss_abilities.engine.modify_hero_damage", side_effect=AssertionError("No boss modifier")), patch(
             "app.mini.boss.combat.resolve_kill", side_effect=AssertionError("No kill hook")
         ):
@@ -498,7 +498,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
     def test_victory_relic_and_ordinary_hit_rollback_together_on_failure(self):
         self.start("holy_relic", hp=100)
         with patch.object(engine, "_roll_success", return_value=True), patch(
-            "app.mini.boss.combat._log_hero_event", side_effect=RuntimeError("Transaction failed")
+            "app.mini.boss.rewards.log_hero_event", side_effect=RuntimeError("Transaction failed")
         ):
             with self.assertRaisesRegex(RuntimeError, "Transaction failed"):
                 self.hit(0)
@@ -549,7 +549,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
     def test_frenzy_extra_does_not_call_attack_or_kill_passive_again(self):
         self.start("blood_frenzy", hp=240)
         self.participant_update(0, hit_count=3)
-        with patch("app.mini.boss.combat.resolve_attack", wraps=engine.resolve_attack) as attack, patch(
+        with patch("app.mini.boss.calculations.resolve_attack", wraps=engine.resolve_attack) as attack, patch(
             "app.mini.boss.combat.resolve_kill", side_effect=AssertionError("No extra kill hook")
         ):
             result = self.hit(0)

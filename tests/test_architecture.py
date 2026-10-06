@@ -36,3 +36,9 @@ assert "aiogram" not in sys.modules
                     sql=' '.join(node.value.upper().split())
                     self.assertIsNone(re.search(r'INSERT(?: OR IGNORE)? INTO MINI_WALLET_TRANSACTIONS',sql),str(path))
                     self.assertIsNone(re.search(r'UPDATE MINI_PLAYERS SET[^;]*\bCOINS\s*=',sql),str(path))
+
+    def test_combat_use_cases_do_not_write_entities_or_journals_with_raw_sql(self):
+        tree=ast.parse((ROOT/'app/mini/boss/combat.py').read_text(encoding='utf-8'))
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Constant) and isinstance(node.value,str):
+                self.assertFalse(node.value.strip().upper().startswith(('UPDATE ', 'INSERT ', 'DELETE ')), node.value)
