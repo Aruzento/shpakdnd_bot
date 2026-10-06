@@ -1,181 +1,122 @@
-# shpakdnd_bot
+# D&D Mini — V1.2.5
 
-Готовая сборка Telegram-бота для D&D-чата.
+Telegram-бот на aiogram 3 и SQLite. V1.2.5 — технический релиз: общие UI,
+combat, economy и effect contracts отделены от игровых features. Механики,
+награды, баланс, callback payloads и JSON-контент V1.2 сохранены.
 
-## Что уже работает
+## Возможности
 
-Обычные функции бота:
+D&D Mini: персональные ephemeral-меню, персонаж, daily, магазин, инвентарь и
+использование предметов, гача, коллекция, звёзды и продажа осколков, события
+«Святой / Демон / Жнец» и лабиринт, групповые боссы Combat v2.
 
-- `/timer`, `/stop`
-- `/roll`
-- `/add`, `/del`, `/inv`, `/clean`
-- `/char`, `/charset`, `/lvlup`
-- `/create`
-- глобальные `/admadd`, `/admdel`, `/admclean`, `/admcharset`
+Боевые герои фиксируются при старте в immutable loadout; текущий ход,
+ability state, события и награды сохраняются в SQLite. Watcher восстанавливает
+публичный ход и пропускает просроченные ходы после перезапуска. Фракции,
+классовые исключения, 4-часовой таймер и reward shields работают как в V1.2.
 
-D&D Mini:
+Обычные D&D команды персонажей, инвентаря, бросков и таймеров остаются в `app/handlers/`,
+`app/db/` и `app/services/`. Mini использует отдельные таблицы с префиксом `mini_`.
 
-- отдельный Mini-мир в теме `2684` чата `-1003376315265`;
-- администратор Mini-темы — `@arukozento`;
-- публичный закреп-launcher через `/minipanel`;
-- кнопка `🎮 Открыть D&D Mini`;
-- персональное ephemeral-меню для каждого игрока;
-- Mini-персонаж;
-- отдельный кошелёк и история операций;
-- ежедневные задания, магазин, usable items, гача, коллекция и прокачка звёзд;
-- Combat System v2: публичные ходы, отдельный герой на бой, фракции и способности боссов;
-- на ход игрока в бою даётся 4 часа;
-- Mini полностью отделён от обычных персонажей и инвентаря.
+Башня, экипировка и Mythic в этот релиз не входят.
 
-## Combat System v2
-
-После регистрации в личном меню босса доступна кнопка «🎴 Выбрать героя».
-Активный герой коллекции служит начальным выбором. Выбор можно менять до старта
-(announced / ready); после старта герой, атака, Combat v2 характеристики и
-passive_key закреплены в battle snapshot. Смена активного героя коллекции
-не меняет уже начавшийся бой.
-
-Фракции: Простолюдины → Звери → Монстры → Воины → Тьма → Простолюдины.
-Преимущество даёт ×2, обратная пара — ×0.25; одинаковая, нейтральная и прочие
-пары — ×1. Классы взаимодействуют с конкретными способностями: Маг снимает
-магический щит без урона этим ударом; Технический класс избегает штрафа Механизма.
-Тип урона, дальность, особое свойство и boss features пока являются
-информационными тегами, без универсальных модификаторов урона.
-
-Движок поддерживает none, paralysis, critical_strike, banishment, shapeshifter,
-rapier, hydra_regeneration, kamikaze, magic_shield и mechanism. Перевёртыш
-вампира срабатывает один раз при старте. События способностей видны в публичном
-ходе; действуют таймер 4 часа, защита старых кнопок и дедупликация сообщений.
-
-Пассивки новых героев: rune_spark (20% снятия magic_shield), unstable_shell и
-infernal_guard (заряды защиты награды), holy_relic (15% на +3 осколка после
-обычной победы с участием), battle_echo (эхо половины фактического HP-урона)
-и blood_frenzy (цикл усиления и одна дополнительная атака). Runtime хранится
-в hero_state_json; старые бои сохраняют loadout и текущие параметры.
-
-Администратор Mini может выдавать существующих героев по code:
-
-    /admadd @user -p panic_dungeon_engineer
-    /admadd ALL -p panic_dungeon_engineer
-
-«Гоблин — инженер подземелья» — эксклюзивная компенсация: active=false исключает
-его из обычной гачи, но сохраняет админскую выдачу, владение, коллекцию, прокачку,
-выбор на бой и emergency_salvage. Повторная админская выдача идемпотентна.
-
-check_bot.py проверяет активных контргероев для фракций и способностей
-magic_shield / mechanism, а также русские labels текущего контента.
-Open class/special/feature tags допустимы в архитектуре; для публикации
-production-контента нужно добавить их отображение.
-Нейтральная фракция не требует контрфракции, так как её matchup всегда ×1.
-
-check_bot.py выводит неблокирующий WARN, если rapier используется без щитов.
-Пользователь установил fallen_sun_champion 420 HP и 2 щита; эта конфигурация
-проверяется без такого предупреждения.
-
-Подробности: [COMBAT_V2.md](app/mini/boss/COMBAT_V2.md).
-
-## Главное исправление этой сборки
-
-Mini-тему больше не нужно отдельно регистрировать командой на сервере.
-
-В `app/topics.py` у темы стоит:
-
-```python
-"mini": True,
-"mini_name": "D&D Mini",
-```
-
-При каждом старте бот сам создаёт/включает соответствующий `mini_worlds`.
-
-Callback-кнопки персонального меню теперь содержат `world_id`, поэтому после
-перехода в ephemeral-сообщение бот не зависит от того, передал ли Telegram
-`message_thread_id` в callback.
-
-## Установка / обновление на сервере
-
-Перед заменой файлов сделай резервную копию базы:
-
-```bash
-cd /opt/shpakdnd-bot
-cp shpakdnd.db shpakdnd.db.backup
-```
-
-Распакуй содержимое архива в `/opt/shpakdnd-bot`, но НЕ удаляй:
-
-- `.env`
-- `shpakdnd.db`
-
-Установи зависимости:
-
-```bash
-cd /opt/shpakdnd-bot
-./.venv/bin/pip install -r requirements.txt
-```
-
-Проверь сборку без запуска polling:
-
-```bash
-sudo -u shpakbot ./.venv/bin/python check_bot.py
-```
-
-Должна появиться строка примерно:
+## Структура
 
 ```text
-OK: D&D Mini: chat=-1003376315265 topic=2684 name=D&D Mini
+bot.py                          startup, polling, routers, timers, Boss watcher
+check_bot.py                    imports, schema, catalog sync, content safety
+app/mini/
+  handlers.py                   home / launcher / character; parent Mini router
+  ui/                           shared context, callbacks, ephemeral transport
+                                inventory, shop, heroes, daily/rules subrouters
+  events/                       Telegram handlers + transactional game service
+  combat/                       common tags, integer matchups, hero_abilities
+  boss/
+    handlers.py                 combat callbacks; parent Boss router
+    registration.py             registration and admin callbacks
+    selection.py                battle hero selection
+    presentation.py / ui.py     private screens, keyboards, announcement transport
+    public.py / watcher.py      public messages and recovery
+    combat.py                   stable combat use cases and transactions
+    calculations.py             primary-hit calculations
+    runtime.py                  turn progression and hook orchestration
+    repository.py / rewards.py  snapshots, journal, transactional rewards
+    boss_abilities/             Boss-specific engine and catalog
+    schema.py                   Boss schema and legacy battle migrations
+  effects/                      effect registry, contracts, existing use handlers
+  wallet.py                     canonical coin mutations and ledger
+  migrations/                   ordered idempotent Mini schema steps
+  schema.py                     transactional migration entrypoint
+  content/                      hero/shop JSON and images
+  daily.py / shop.py / gacha.py / items.py / hero_upgrades.py
+                                feature services with SQLite transactions
+docs/architecture/              audit and extension contracts
+docs/operations/                admin grants and recovery
+docs/history/                   historical release documents
+deploy/                         systemd deployment and watcher
 ```
 
-Потом:
+Подробности: [архитектура и расширение](docs/architecture/ARCHITECTURE.md),
+[независимый аудит V1.2.5](docs/architecture/V1.2.5_AUDIT.md),
+[Combat v2](app/mini/boss/COMBAT_V2.md).
+
+## Запуск и проверка
+
+Python 3.13, зависимости из `requirements.txt`. Создай venv и установи зависимости:
 
 ```bash
-sudo -u shpakbot ./.venv/bin/python -m compileall -q bot.py app
-systemctl restart shpakdnd-bot
-systemctl status shpakdnd-bot --no-pager
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
-Если сервис не запустился:
+На Windows используй `.venv\Scripts\python.exe` и `.venv\Scripts\pip.exe`.
+В `.env` нужны `BOT_TOKEN` и, при необходимости, `BOT_TIMEZONE=Europe/Moscow`.
+Настройки тем, Mini worlds и администраторов находятся в `app/topics.py`.
+Не включай `.env`, рабочую БД или backup БД в Git.
 
 ```bash
-journalctl -u shpakdnd-bot -n 100 --no-pager
+python -m unittest discover -s tests -v
+python check_bot.py
+python -m compileall -q bot.py app
+python -m app.mini.combat.hero_abilities.validate
+python -m app.mini.boss.boss_abilities.validate
+python bot.py
 ```
 
-## Создание закрепа Mini
+`check_bot.py` не запускает polling, но создаёт/мигрирует `shpakdnd.db`, включает
+настроенные worlds и синхронизирует каталоги. Для проверки сохранности данных
+применяй миграции к отдельной копии БД, не к рабочему файлу.
 
-После успешного запуска зайди в тему `2684` и один раз отправь:
+Startup сам регистрирует темы с `mini=True`. В Mini-теме администратор выполняет
+`/minipanel`, чтобы создать или обновить публичный launcher. Игрок создаётся
+приватной командой `/minicreate "Имя персонажа"`.
 
-```text
-/minipanel
-```
+## Обновление существующей БД
 
-Бот создаст общую кнопку:
+Останови сервис и сделай backup `shpakdnd.db`. Сохрани `.env` и рабочую БД при
+замене кода. Миграции запускаются автоматически при старте:
 
-```text
-🎲 D&D Mini
-[ 🎮 Открыть D&D Mini ]
-```
+- Mini: `init_mini_db()` выполняет core, inventory, activities и legacy steps
+  в одной `BEGIN IMMEDIATE` транзакции, включая DDL.
+- Boss: `init_boss_db()` сохраняет прежний отдельный transactional migrator,
+  журнал legacy events и восстановление loadouts до синхронизации героев.
+- Steps повторно запускаемы; legacy columns остаются для совместимости.
 
-Если у бота есть право закреплять сообщения, он закрепит её сам.
+Проверены пустая БД, старые схемы, повторный запуск, rollback миграции и
+сохранность всех 19 Mini-таблиц на копии существующей БД. Полный regression suite
+содержит 347 тестов; исходные 321 сценарий сохранены.
 
-После нажатия на кнопку каждый игрок получает своё ephemeral-меню. Другие
-участники его не видят.
+Инструкции: [deploy](deploy/README.md), [recovery](docs/operations/RECOVERY.md),
+[admin grants](docs/operations/README_ADMIN_GRANTS.md).
 
-## Создание Mini-персонажа
+## Контент и подготовка к V1.3
 
-Нажать `🎮 Открыть D&D Mini` → `👤 Создать персонажа`.
+Hero passives находятся в `app/mini/combat/hero_abilities/abilities.json`,
+Boss abilities — в `app/mini/boss/boss_abilities/abilities.json`.
+Новые item effect keys регистрируются через `EffectDefinition` / `register_effect`;
+каталоги проверяют ключи до синхронизации. Изменение coins выполняется только
+через `change_balance()` или `change_balance_in_transaction()`.
 
-Имя пока вводится ephemeral-командой:
-
-```text
-/minicreate "Дед Максим"
-```
-
-Она зарегистрирована как приватная команда Telegram.
-
-## Важно
-
-В архиве нет `.env` и нет рабочей базы данных. Это специально: токен и
-существующие данные должны оставаться на сервере.
-
-
-## D&D Mini — шаг 6
-
-Добавлены гача героев, коллекция, картинки карточек, дубликаты/осколки и выбор активного героя. См. `README_STEP6_GACHA.md`.
+Будущая Tower может использовать shared tags, matchups, hero hooks, players,
+heroes, effects и wallet без импорта Boss combat. Её состояния и use cases
+должны принадлежать отдельной feature; копировать Boss combat не требуется.

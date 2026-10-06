@@ -3,9 +3,12 @@
 No version ledger is needed for these guarded CREATE/ALTER steps. Append new
 feature modules without changing historical data conversions or their order.
 """
-from app.mini.migrations import core, inventory, activities, legacy
+from app.mini.migrations.core import apply as core_schema
+from app.mini.migrations.inventory import apply as inventory_schema
+from app.mini.migrations.activities import apply as activities_schema
+from app.mini.migrations.legacy import apply as legacy_schema
 
-MIGRATIONS = (core.apply, inventory.apply, activities.apply, legacy.apply)
+MIGRATIONS = (core_schema, inventory_schema, activities_schema, legacy_schema)
 
 
 def migrate(conn) -> None:

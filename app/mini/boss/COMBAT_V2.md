@@ -43,7 +43,7 @@ Forward adjacent: 200%; backward adjacent: 25%; same, nonadjacent or neutral:
 
 ## Boss hooks and state
 
-boss_abilities/ is independent of hero abilities/. Hooks return effect plans;
+boss_abilities/ is independent of shared ../combat/hero_abilities/. Hooks return effect plans;
 combat applies and logs them inside the same transaction. Implemented hooks:
 battle_start, modify_hero_damage, boss_turn, after_boss_turn, boss_death.
 Random rolls/target choice are injectable or patchable.
