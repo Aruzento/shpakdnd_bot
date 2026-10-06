@@ -1,4 +1,7 @@
+import json
 from pathlib import Path
+
+from app.mini.boss.loadouts import freeze_legacy_loadouts
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
@@ -9,6 +12,7 @@ BOSS_TABLES = (
     "mini_bosses",
     "mini_boss_participants",
     "mini_boss_actions",
+    "mini_boss_events",
 )
 
 
@@ -16,6 +20,7 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
     """Создаёт и мигрирует только таблицы модуля боссов."""
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("BEGIN IMMEDIATE")
 
         conn.execute(
             """
@@ -107,6 +112,7 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             for row in conn.execute("PRAGMA table_info(mini_bosses)").fetchall()
         }
         additions = {
+            "turn_notice_json": "TEXT NOT NULL DEFAULT '{}'",
             "faction": "TEXT NOT NULL DEFAULT 'commoners'",
             "ability_key": "TEXT NOT NULL DEFAULT 'none'",
             "ability_text": "TEXT NOT NULL DEFAULT 'Нет особой способности.'",
@@ -118,6 +124,7 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             "signup_message_id": "INTEGER",
             "signup_message_kind": "TEXT NOT NULL DEFAULT 'text'",
             "turn_message_id": "INTEGER",
+            "turn_message_kind": "TEXT NOT NULL DEFAULT 'text'",
             "reward_items_json": "TEXT NOT NULL DEFAULT '[]'",
             "reward_shields": "INTEGER NOT NULL DEFAULT 3",
             "reward_shields_max": "INTEGER NOT NULL DEFAULT 3",
@@ -178,6 +185,43 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             ON mini_boss_participants (player_id, boss_id)
             """
         )
+        # New journal permits boss-only events without a fabricated player actor.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS mini_boss_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                boss_id INTEGER NOT NULL,
+                round_number INTEGER NOT NULL,
+                event_type TEXT NOT NULL,
+                target_player_id INTEGER,
+                event_json TEXT NOT NULL DEFAULT '{}',
+                boss_hp_after INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                legacy_action_id INTEGER UNIQUE,
+                FOREIGN KEY (boss_id) REFERENCES mini_bosses(id) ON DELETE CASCADE,
+                FOREIGN KEY (target_player_id) REFERENCES mini_players(id) ON DELETE SET NULL
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mini_boss_events_boss ON mini_boss_events (boss_id, id)"
+        )
+        # Preserve old action history and copy it once to the canonical journal.
+        for row in conn.execute(
+            """SELECT a.id, a.boss_id, a.round_number, a.event_json, a.boss_hp_after, a.created_at
+               FROM mini_boss_actions a
+               WHERE a.action_type LIKE 'boss_ability_%'
+                 AND NOT EXISTS (SELECT 1 FROM mini_boss_events e WHERE e.legacy_action_id = a.id)"""
+        ).fetchall():
+            action_id, boss_id, round_number, raw, hp, created_at = row
+            event = json.loads(raw)
+            conn.execute(
+                """INSERT INTO mini_boss_events (
+                    boss_id, round_number, event_type, target_player_id,
+                    event_json, boss_hp_after, created_at, legacy_action_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (boss_id, round_number, event.get("type", "legacy"),
+                 event.get("player_id"), raw, hp, created_at, action_id),
+            )
+        freeze_legacy_loadouts(conn)
         conn.commit()
 
     sync_boss_reward_items(db_path)

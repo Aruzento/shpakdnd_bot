@@ -1,12 +1,12 @@
 import asyncio
 
+from app.mini.boss.notices import timeout_event_lines
 from app.mini.boss.combat import (
     BossCombatError,
     advance_expired_turns,
     list_fighting_bosses,
 )
 from app.mini.boss.public import (
-    boss_attack_passive_lines,
     ensure_public_turn,
     refresh_public_boss,
     replace_public_turn,
@@ -15,20 +15,7 @@ from app.mini.worlds import get_mini_world_by_id
 
 
 def _timeout_notice(result: dict) -> str:
-    skipped = result.get("skipped") or []
-    labels = [
-        str(row.get("username") or row.get("character_name") or "Игрок")
-        for row in skipped
-    ]
-    if labels:
-        parts = ["⏭ По таймеру пропущен ход: " + ", ".join(labels)]
-    else:
-        parts = ["⏭ Просроченный ход пропущен."]
-
-    for reward_event in result.get("reward_events", []) or []:
-        parts.extend(boss_attack_passive_lines(reward_event))
-
-    return " ".join(parts)
+    return "\n".join(timeout_event_lines(result))
 
 
 async def boss_watch_loop(bot, *, interval_seconds: int = 60) -> None:

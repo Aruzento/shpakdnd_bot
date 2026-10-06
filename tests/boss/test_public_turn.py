@@ -1,7 +1,7 @@
 import os
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
@@ -74,7 +74,7 @@ class PublicBossTurnTests(unittest.IsolatedAsyncioTestCase):
         text = format_public_turn(self.boss, self.participants)
         self.assertIn("⚔️ Ход: @second", text)
         self.assertIn("❤️ HP: 90/100", text)
-        self.assertIn("🔄 Раунд: 2", text)
+        self.assertIn("РАУНД 2", text)
 
     def test_turn_button_contains_round_and_position_token(self):
         markup = public_turn_menu(1, self.boss)
@@ -157,7 +157,7 @@ class PublicBossTurnTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("💥 @first наносит 10 урона.", bot.sent[0]["text"])
         self.assertIn("⚔️ Ход: @second", bot.sent[0]["text"])
         self.assertEqual(bot.deleted[0]["message_id"], 123)
-        mocked_set_turn_message.assert_called_once_with(7, 456)
+        mocked_set_turn_message.assert_called_once_with(7, 456, notice_json=ANY)
 
     @patch("app.mini.boss.public.get_boss")
     @patch("app.mini.boss.public.set_turn_message")

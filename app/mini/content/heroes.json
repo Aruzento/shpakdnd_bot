@@ -47,7 +47,7 @@
       "image": "Villager.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
+      "damage_type": "bludgeoning",
       "class_tag": "none",
       "attack_range": "melee",
       "special_trait": "none"
@@ -65,8 +65,8 @@
       "image": "CityBlacksmith.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -82,9 +82,9 @@
       "description": "Первый контракт, первый меч и подозрительно много уверенности в собственных силах.",
       "image": "InexperiencedMercenary.png",
       "active": true,
-      "faction": "commoners",
+      "faction": "warriors",
       "damage_type": "slashing",
-      "class_tag": "none",
+      "class_tag": "warrior",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -101,8 +101,8 @@
       "image": "TavernBouncer.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -119,9 +119,9 @@
       "image": "ApprenticeMage.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -136,9 +136,9 @@
       "description": "Вооружён половником, ножом и крайне сомнительными рецептами.",
       "image": "GoblinCook.png",
       "active": true,
-      "faction": "commoners",
+      "faction": "monsters",
       "damage_type": "slashing",
-      "class_tag": "none",
+      "class_tag": "sneaky",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -155,8 +155,8 @@
       "image": "DwarfMiner.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -173,8 +173,8 @@
       "image": "HalflingCourier.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "damage_type": "bludgeoning",
+      "class_tag": "sneaky",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -190,11 +190,11 @@
       "description": "Стоит у ворот, проверяет телеги и мечтает, чтобы сегодня ничего не произошло.",
       "image": "TownGuard.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "faction": "warriors",
+      "damage_type": "piercing",
+      "class_tag": "guardian",
       "attack_range": "melee",
-      "special_trait": "none"
+      "special_trait": "armored"
     },
     {
       "code": "ElfLibrarian",
@@ -209,7 +209,7 @@
       "image": "ElfLibrarian.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
+      "damage_type": "bludgeoning",
       "class_tag": "none",
       "attack_range": "melee",
       "special_trait": "none"
@@ -226,8 +226,8 @@
       "description": "Носит факел впереди отряда и первым узнаёт, где именно сегодня прячется опасность.",
       "image": "KoboldTorchbearer.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
       "class_tag": "none",
       "attack_range": "melee",
       "special_trait": "none"
@@ -244,10 +244,10 @@
       "description": "Умеет предсказывать неприятности удивительно точно, особенно если они происходят прямо сейчас.",
       "image": "TieflingFortuneTeller.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -268,8 +268,6 @@
       "attack_range": "melee",
       "special_trait": "none"
     },
-    
-    
     {
       "code": "village_hunter",
       "name": "Деревенский охотник",
@@ -283,9 +281,9 @@
       "image": "village_hunter.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -300,11 +298,11 @@
       "description": "Страж, переживший достаточно нападений на караваны, чтобы перестать удивляться происходящему",
       "image": "caravan_guard.png",
       "active": true,
-      "faction": "commoners",
+      "faction": "warriors",
       "damage_type": "slashing",
-      "class_tag": "none",
+      "class_tag": "guardian",
       "attack_range": "melee",
-      "special_trait": "none"
+      "special_trait": "armored"
     },
     {
       "code": "battle_mage_apprentice",
@@ -318,10 +316,10 @@
       "description": "Маг всё ещё учится, но уже понял, что огненный снаряд решает большинство учебных споров",
       "image": "battle_mage_apprentice.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -336,11 +334,11 @@
       "description": "Младший служитель храма, которого отправляют разбираться с проклятиями, нежитью и подозрительными подвалами",
       "image": "temple_exorcist.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
-      "special_trait": "none"
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy"
     },
     {
       "code": "dwarf_sapper",
@@ -354,10 +352,10 @@
       "description": "Шахтёрское дело научило его двум вещам: куда закладывать заряд и когда пора очень быстро уходить",
       "image": "dwarf_sapper.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -372,10 +370,10 @@
       "description": "Разведчик, привыкший замечать опасность немного раньше, чем опасность замечает его",
       "image": "elf_scout.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "warriors",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -390,10 +388,10 @@
       "description": "Гоблин, который перестал ломать механизмы случайно и начал ломать ими окружающих",
       "image": "goblin_tinkerer.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -408,9 +406,9 @@
       "description": "Не чемпион арены, но людей, желающих проверить это лично, осталось довольно мало",
       "image": "half_orc_pit_fighter.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -427,8 +425,8 @@
       "image": "halfling_smuggler.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -444,9 +442,9 @@
       "description": "Терпеливый охотник из тёмных лесов, который предпочитает, чтобы противник замечал его слишком поздно.",
       "image": "BugbearAmbusher.png",
       "active": true,
-      "faction": "commoners",
+      "faction": "monsters",
       "damage_type": "slashing",
-      "class_tag": "none",
+      "class_tag": "sneaky",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -462,15 +460,12 @@
       "description": "Спокойный, медлительный и очень меткий охотник, который умеет одним броском решить спор с морским чудовищем.",
       "image": "TortleHarpooner.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
-      "special_trait": "none"
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "guardian",
+      "attack_range": "ranged",
+      "special_trait": "armored"
     },
-
-
-
     {
       "code": "witcher_isekai",
       "name": "Ведьмак из другого мира",
@@ -483,9 +478,9 @@
       "description": "Сука. Как я тут очутился, вот же срань.",
       "image": "witcher_isekai.png",
       "active": true,
-      "faction": "commoners",
+      "faction": "warriors",
       "damage_type": "slashing",
-      "class_tag": "none",
+      "class_tag": "warrior",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -501,10 +496,10 @@
       "description": "Пади щупальце мерзотное! Любой ценой, любой стрелой!",
       "image": "rebel_archer.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "faction": "warriors",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
       "special_trait": "none"
     },
     {
@@ -519,9 +514,9 @@
       "description": "Суки, мы не так договаривались! Почему меня призвали из лужи? Почему лужа жёлтая??",
       "image": "frog_man_spearman.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -537,14 +532,12 @@
       "description": "Он не спал уже третью смену. Где-то снова течёт лава, дверь в сокровищницу заклинило, ловушка с пилой работает наоборот, а теперь ещё и босс дерётся. Вооружившись гаечным ключом и чистой паникой, гоблин пытается одновременно чинить подземелье и выжить.",
       "image": "panic_dungeon_engineer.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
       "attack_range": "melee",
       "special_trait": "none"
     },
-
-
     {
       "code": "Asrael",
       "name": "Азраэль",
@@ -557,9 +550,9 @@
       "description": "Лутаемся? Лутаемся!",
       "image": "Asrael.png",
       "active": true,
-      "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
       "attack_range": "melee",
       "special_trait": "none"
     },
@@ -576,11 +569,10 @@
       "image": "Lasar.png",
       "active": true,
       "faction": "commoners",
-      "damage_type": "slashing",
-      "class_tag": "none",
-      "attack_range": "melee",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
       "special_trait": "none"
     }
-    
   ]
 }

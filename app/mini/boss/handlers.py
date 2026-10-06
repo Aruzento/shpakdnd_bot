@@ -26,6 +26,7 @@ from app.mini.boss.combat import (
     hit_boss,
     start_battle,
 )
+from app.mini.boss.notices import combat_event_lines, timeout_event_lines, boss_event_line
 from app.mini.boss.public import (
     boss_attack_passive_lines,
     ensure_public_turn,
@@ -380,16 +381,7 @@ async def _show_boss_home(
             boss = timeout_result["state"]["boss"]
             if timeout_result["changed"]:
                 await refresh_public_boss(callback.bot, world, boss)
-                skipped = timeout_result.get("skipped") or []
-                labels = [
-                    str(row.get("username") or row.get("character_name") or "Игрок")
-                    for row in skipped
-                ]
-                notice = (
-                    "⏭ По таймеру пропущен ход: " + ", ".join(labels)
-                    if labels
-                    else "⏭ Просроченный ход пропущен."
-                )
+                notice = "\n".join(timeout_event_lines(timeout_result))
                 await replace_public_turn(
                     callback.bot, world, boss, notice=notice
                 )
@@ -893,7 +885,10 @@ async def boss_start_callback(callback: CallbackQuery):
         callback.bot,
         world,
         boss,
-        notice="⚔️ Бой начался!",
+        notice="\n".join([
+            "⚔️ Бой начался!",
+            *(boss_event_line(event, state["participants"]) for event in state.get("boss_events", [])),
+        ]),
     )
     current = state.get("current")
     who = (
@@ -984,20 +979,8 @@ async def boss_hit_callback(callback: CallbackQuery):
         public_parts.append(passive_text)
 
     reward_event = result.get("reward_event")
-    if reward_event:
-        if reward_event.get("type") == "shield":
-            public_parts.append(
-                f"🛡 Босс разбил щит награды. Осталось: {reward_event['shields']}."
-            )
-        elif reward_event.get("type") == "reward_damage":
-            public_parts.append(
-                f"💎 Сохранность награды: {reward_event['reward_percent']}%."
-            )
-        elif reward_event.get("type") == "boss_skip":
-            public_parts.append("🎵 Босс пропустил атаку по награде.")
-        public_parts.extend(boss_attack_passive_lines(reward_event))
-
-    public_notice = " ".join(public_parts)
+    public_parts.extend(combat_event_lines(result))
+    public_notice = "\n".join(public_parts)
 
     if result.get("battle_ended"):
         if boss["status"] == "defeated":

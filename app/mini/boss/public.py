@@ -2,9 +2,11 @@ import asyncio
 import json
 
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.mini.boss.catalog import list_boss_reward_items
+from app.mini.catalog import hero_image_path
+from app.mini.presentation import faction_label, tag_label, TRAIT_LABELS
 from app.mini.boss.service import get_boss, list_participants, set_turn_message
 
 
@@ -143,66 +145,45 @@ def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
     return lines
 
 def format_public_boss(boss: dict, participants: list[dict]) -> str:
-    """Статичная карточка босса/регистрации. Текущий ход публикуется отдельно."""
-    status = STATUS_TEXT.get(str(boss["status"]), str(boss["status"]))
-    minimum = int(boss["min_players"])
-    count = len(participants)
-    shields = int(boss.get("reward_shields", 3))
-    shields_max = int(boss.get("reward_shields_max", 3))
-    percent = int(boss.get("reward_percent", 100))
-
+    """Boss announcement with Combat v2 traits and unchanged reward amounts."""
+    percent = max(0, min(100, int(boss.get("reward_percent", 100))))
+    coins = int(boss.get("reward_coins", 0)) * percent // 100
+    features = json.loads(boss.get("features_json") or "[]")
+    feature_text = ", ".join(tag_label(tag, TRAIT_LABELS) for tag in features) or "Нет."
+    items = [
+        item["name"] + (f" ×{item['quantity']}" if item["quantity"] > 1 else "")
+        for item in reward_items(boss)
+    ]
     lines = [
-        f"👹 {boss['name']}",
+        f"👹 {boss['name']} • {faction_label(boss.get('faction', 'commoners'))}",
         "",
-        str(boss.get("description") or "Без описания."),
+        str(boss.get("description") or "Без описания.")[:300],
         "",
         f"❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
-        f"👥 Участники: {count} • минимум {minimum}",
-        f"🎁 Награда сейчас: {_reward_line(boss)}",
-        f"🛡 Щиты награды: {shields}/{shields_max}",
-        f"💎 Сохранность награды: {percent}%",
-        status,
+        f"💫 Способность: {boss.get('ability_text') or 'Нет особой способности.'}",
+        "",
+        f"‼️ Особенности: {feature_text}",
+        "",
+        f"🎁 Награда: {coins} монет • 🛡 Щиты: {boss.get('reward_shields', 3)}",
+        f"🎁 Доп. награда: {', '.join(items) if items else 'Нет.'}",
     ]
-
-    if boss["status"] == "announced":
-        lines.extend(["", "Запишись на бой кнопкой ниже."])
-    elif boss["status"] == "ready":
-        lines.extend(["", "Состав зафиксирован. Администратор может начать бой."])
-    elif boss["status"] == "fighting":
-        lines.extend(
-            [
-                "",
-                f"🔄 Раунд: {boss['current_round']}",
-                "⚔️ Актуальный ход публикуется отдельным сообщением внизу темы.",
-            ]
-        )
-    elif boss["status"] == "defeated":
-        if str(boss.get("battle_result") or "") == "admin_victory":
-            victory_text = "🏆 Победа! Награда выдана всем зарегистрированным участникам."
-        else:
-            victory_text = (
-                "🏆 Победа! Награда выдана тем, кто участвовал в бою "
-                "или использовал фантомное участие."
-            )
-        lines.extend(
-            [
-                "",
-                victory_text,
-                f"🎁 Итог: {_reward_line(boss)}",
-            ]
-        )
-    elif boss["status"] == "failed":
-        shards = max(0, int(boss.get("reward_coins", 0)) // 10)
-        lines.extend(
-            [
-                "",
-                "💥 Награда уничтожена — бой проигран.",
-                f"🧩 Участники с правом на награду получают {shards} осколков.",
-            ]
-        )
-    elif boss["status"] == "cancelled":
+    status = str(boss["status"])
+    if status in ("announced", "ready"):
+        lines.extend([
+            "", f"👥 Участники: {len(participants)} • минимум {boss.get('min_players', 1)}",
+            STATUS_TEXT[status],
+        ])
+    elif status == "defeated":
+        lines.extend(["", (
+            "🏆 Победа! Награда выдана всем зарегистрированным участникам."
+            if boss.get("battle_result") == "admin_victory"
+            else "🏆 Победа! Награда выдана участникам боя и фантомным участникам."
+        )])
+    elif status == "failed":
+        lines.extend(["", "💥 Награда уничтожена — бой проигран.",
+                      f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
+    elif status == "cancelled":
         lines.extend(["", "Босс отменён."])
-
     return "\n".join(lines)[:1024]
 
 
@@ -212,53 +193,48 @@ def format_public_turn(
     *,
     notice: str = "",
 ) -> str:
-    """Сообщение боя, которое всегда видно всей теме и движется вниз после хода."""
-    lines = []
-    notice = str(notice or "").strip()
-    if notice:
-        lines.extend([notice, ""])
-
-    lines.extend(
-        [
-            f"👹 {boss['name']}",
-            f"❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
-            f"🎁 Награда: {_reward_line(boss)}",
-            f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}",
-        ]
-    )
-
     status = str(boss.get("status") or "")
+    lines = [
+        f"РАУНД {boss['current_round']}",
+        "",
+        f"👹 {boss['name']} - ❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
+        "",
+        f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}"
+        f" • 💎 Состояние награды: {boss.get('reward_percent', 100)}%",
+    ]
     if status == "fighting":
         current = current_participant(boss, participants)
-        lines.extend(["", f"🔄 Раунд: {boss['current_round']}"])
         if current is not None:
-            mention = _participant_mention(current)
-            hero = str(current.get("hero_name") or "герой")
-            attack = int(current.get("battle_attack") or 0)
-            lines.extend(
-                [
-                    f"⚔️ Ход: {mention}",
-                    f"🎴 {hero} • атака {attack}",
-                    f"⏳ На ход: {boss['skip_after_hours']} ч.",
-                ]
-            )
+            lines.extend([
+                "",
+                f"⚔️ Ход: {_participant_mention(current)} - \"{current.get('hero_name') or 'герой'}\"",
+                f"⏳ На ход: {boss['skip_after_hours']} ч.",
+            ])
         else:
-            lines.append("⚠️ Не удалось определить текущего игрока.")
+            lines.extend(["", "⚠️ Не удалось определить текущего игрока."])
     elif status == "defeated":
         lines.extend(["", "🏆 Босс повержен!", f"🎁 Итог: {_reward_line(boss)}"])
     elif status == "failed":
-        shards = max(0, int(boss.get("reward_coins", 0)) // 10)
-        lines.extend(
-            [
-                "",
-                "💀 Бой проигран: награда уничтожена.",
-                f"🧩 Награда за участие: {shards} осколков.",
-            ]
-        )
+        lines.extend(["", "💀 Бой проигран: награда уничтожена.",
+                      f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
     else:
         lines.extend(["", STATUS_TEXT.get(status, status)])
-
+    if not notice:
+        saved = json.loads(boss.get("turn_notice_json") or "{}")
+        if (
+            saved.get("status") == status
+            and saved.get("round") == int(boss["current_round"])
+            and saved.get("position") == int(boss.get("current_turn_position", 0))
+        ):
+            notice = str(saved.get("text") or "")
+    if notice.strip():
+        lines.extend(["", notice.strip()])
     return "\n".join(lines)[:4096]
+
+
+def _turn_image(boss: dict, participants: list[dict]):
+    current = current_participant(boss, participants)
+    return hero_image_path(current.get("hero_image_path", "")) if current else None
 
 
 def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
@@ -362,21 +338,46 @@ async def _send_public_turn_locked(
     markup = public_turn_menu(world["id"], boss)
     old_message_id = boss.get("turn_message_id")
 
+    # Long event notices must not silently disappear at the caption limit.
+    image = _turn_image(boss, participants) if len(text) <= 1024 else None
+    kind = "text"
     try:
-        sent = await bot.send_message(
-            chat_id=world["chat_id"],
-            message_thread_id=world["thread_id"] or None,
-            text=text,
-            reply_markup=markup,
-        )
+        if image is not None:
+            try:
+                sent = await bot.send_photo(
+                    chat_id=world["chat_id"],
+                    message_thread_id=world["thread_id"] or None,
+                    photo=FSInputFile(image), caption=text[:1024], reply_markup=markup,
+                )
+                kind = "photo"
+            except TelegramBadRequest:
+                sent = await bot.send_message(
+                    chat_id=world["chat_id"],
+                    message_thread_id=world["thread_id"] or None,
+                    text=text, reply_markup=markup,
+                )
+        else:
+            sent = await bot.send_message(
+                chat_id=world["chat_id"],
+                message_thread_id=world["thread_id"] or None,
+                text=text, reply_markup=markup,
+            )
     except TelegramAPIError as error:
-        print(
-            "Boss: не удалось опубликовать публичный ход: "
-            f"{type(error).__name__}: {error}"
-        )
+        # A network failure can occur after Telegram accepted the send.
+        # Never produce a second message as an uncertain fallback.
+        print(f"Boss: не удалось опубликовать публичный ход: {type(error).__name__}: {error}")
         return False
 
-    set_turn_message(int(boss["id"]), int(sent.message_id))
+    notice_json = json.dumps({
+        "status": boss["status"], "round": int(boss["current_round"]),
+        "position": int(boss.get("current_turn_position", 0)), "text": notice,
+    }, ensure_ascii=False)
+    if kind == "photo":
+        set_turn_message(int(boss["id"]), int(sent.message_id), kind=kind, notice_json=notice_json)
+    else:
+        set_turn_message(int(boss["id"]), int(sent.message_id), notice_json=notice_json)
+    boss["turn_message_kind"] = kind
+    boss["turn_notice_json"] = notice_json
 
     if old_message_id and int(old_message_id) != int(sent.message_id):
         try:
@@ -439,6 +440,41 @@ async def replace_public_turn(
         # сформировать этот переход. Не публикуем второе сообщение.
         if current_normalized != expected_normalized:
             boss["turn_message_id"] = current_normalized
+            saved = json.loads(fresh.get("turn_notice_json") or "{}")
+            # Recovery can publish the new state before the callback arrives.
+            # Attach its ability notice to that message, without another send.
+            if current_normalized is not None and notice.strip() and (
+                saved.get("status") == fresh["status"]
+                and saved.get("round") == int(fresh["current_round"])
+                and saved.get("position") == int(fresh.get("current_turn_position", 0))
+                and not saved.get("text")
+            ):
+                participants = list_participants(boss_id)
+                text = format_public_turn(fresh, participants, notice=notice)
+                kind = fresh.get("turn_message_kind", "text")
+                if kind == "photo" and len(text) > 1024:
+                    applied = await _send_public_turn_locked(bot, world, fresh, notice=notice)
+                    if applied:
+                        boss["turn_message_id"] = fresh.get("turn_message_id")
+                        boss["turn_message_kind"] = fresh.get("turn_message_kind", "text")
+                    return applied
+                try:
+                    kwargs = {
+                        "chat_id": world["chat_id"], "message_id": current_normalized,
+                        "reply_markup": public_turn_menu(world["id"], fresh),
+                    }
+                    if kind == "photo":
+                        await bot.edit_message_caption(**kwargs, caption=text)
+                    else:
+                        await bot.edit_message_text(**kwargs, text=text)
+                except TelegramBadRequest as error:
+                    if "message is not modified" not in str(error).lower():
+                        return False
+                except TelegramAPIError:
+                    return False
+                saved["text"] = notice
+                set_turn_message(boss_id, current_normalized, kind=kind,
+                                 notice_json=json.dumps(saved, ensure_ascii=False))
             return True
 
         applied = await _send_public_turn_locked(
@@ -449,6 +485,7 @@ async def replace_public_turn(
         )
         if applied:
             boss["turn_message_id"] = fresh.get("turn_message_id")
+            boss["turn_message_kind"] = fresh.get("turn_message_kind", "text")
         return applied
 
 
@@ -502,40 +539,53 @@ async def publish_admin_victory(
 
 
 async def ensure_public_turn(bot, world: dict, boss: dict) -> bool:
-    """Восстанавливает/проверяет единственное публичное сообщение текущего хода."""
+    """Recover one current turn message, preserving photo/text and dedup locks."""
     if boss.get("status") != "fighting":
         return False
-
     boss_id = int(boss["id"])
     async with _turn_publish_lock(boss_id):
         fresh = get_boss(boss_id)
         if fresh is None or fresh.get("status") != "fighting":
             return False
-
         participants = list_participants(boss_id)
         text = format_public_turn(fresh, participants)
         markup = public_turn_menu(world["id"], fresh)
         message_id = fresh.get("turn_message_id")
-
-        if message_id:
+        kind = fresh.get("turn_message_kind", "text")
+        wants_photo = _turn_image(fresh, participants) is not None and len(text) <= 1024
+        # The old text message is upgraded to a hero photo once on recovery.
+        if message_id and not (kind == "text" and wants_photo) and not (kind == "photo" and len(text) > 1024):
             try:
-                await bot.edit_message_text(
-                    chat_id=world["chat_id"],
-                    message_id=int(message_id),
-                    text=text,
-                    reply_markup=markup,
-                )
+                if kind == "photo":
+                    await bot.edit_message_caption(
+                        chat_id=world["chat_id"], message_id=int(message_id),
+                        caption=text[:1024], reply_markup=markup,
+                    )
+                else:
+                    await bot.edit_message_text(
+                        chat_id=world["chat_id"], message_id=int(message_id),
+                        text=text, reply_markup=markup,
+                    )
                 boss["turn_message_id"] = int(message_id)
+                boss["turn_message_kind"] = kind
                 return True
             except TelegramBadRequest as error:
                 if "message is not modified" in str(error).lower():
                     boss["turn_message_id"] = int(message_id)
+                    boss["turn_message_kind"] = kind
                     return True
-            except TelegramAPIError:
-                pass
+            except TelegramAPIError as error:
+                print(f"Boss: ошибка проверки хода: {type(error).__name__}: {error}")
+                return False
 
-        applied = await _send_public_turn_locked(bot, world, fresh)
+        saved = json.loads(fresh.get("turn_notice_json") or "{}")
+        recovered_notice = str(saved.get("text") or "") if (
+            saved.get("status") == fresh["status"]
+            and saved.get("round") == int(fresh["current_round"])
+            and saved.get("position") == int(fresh.get("current_turn_position", 0))
+        ) else ""
+        applied = await _send_public_turn_locked(bot, world, fresh, notice=recovered_notice)
         if applied:
             boss["turn_message_id"] = fresh.get("turn_message_id")
+            boss["turn_message_kind"] = fresh.get("turn_message_kind", "text")
         return applied
-

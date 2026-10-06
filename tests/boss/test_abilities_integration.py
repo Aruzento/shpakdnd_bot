@@ -78,7 +78,6 @@ class BossAbilityIntegrationTests(unittest.TestCase):
         register_player(self.boss["id"], self.player2["id"], self.db)
         close_registration(self.boss["id"], self.db)
         self.now = datetime(2026, 10, 5, 12, 0, 0, tzinfo=UTC)
-        start_battle(self.boss["id"], now=self.now, db_path=self.db)
 
     def tearDown(self):
         self.tempdir.cleanup()
@@ -109,6 +108,7 @@ class BossAbilityIntegrationTests(unittest.TestCase):
         return player
 
     def test_combat_applies_execution_damage_and_kill_shards(self):
+        start_battle(self.boss["id"], now=self.now, db_path=self.db)
         # Фиксируем HP тестовой цели: 50 из 300 строго ниже 20%.
         with connect_mini_db(self.db) as conn:
             conn.execute(
@@ -166,6 +166,7 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             )
             conn.commit()
 
+        start_battle(self.boss["id"], now=self.now, db_path=self.db)
         results = []
         minute = 1
         for _ in range(3):
@@ -251,6 +252,7 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             )
             conn.commit()
 
+        start_battle(self.boss["id"], now=self.now, db_path=self.db)
         hit_boss(
             self.boss["id"],
             self.player1["id"],

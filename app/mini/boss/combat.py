@@ -12,6 +12,7 @@ from app.mini.boss.abilities import (
 from app.mini.boss.catalog import get_boss_template, sync_boss_reward_items
 from app.mini.boss.boss_abilities import engine as boss_abilities
 from app.mini.boss.matchups import faction_multiplier_percent, modify_damage
+from app.mini.boss.loadouts import battle_loadout
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
 from app.mini.db import connect_mini_db
@@ -369,11 +370,11 @@ def _apply_boss_attack_passives(
             p.username,
             p.character_name,
             h.name AS hero_name,
-            h.passive_key
+            bp.hero_snapshot_json
         FROM mini_boss_participants bp
         JOIN mini_players p ON p.id = bp.player_id
         LEFT JOIN mini_heroes h ON h.id = bp.hero_id
-        WHERE bp.boss_id = ?
+        WHERE bp.boss_id = ? AND bp.banished = 0
         ORDER BY bp.queue_position
         """,
         (int(boss["id"]),),
@@ -381,7 +382,7 @@ def _apply_boss_attack_passives(
 
     events: list[dict] = []
     for row in rows:
-        resolution = resolve_boss_attack(str(row["passive_key"] or "none"))
+        resolution = resolve_boss_attack(str(battle_loadout(row["hero_snapshot_json"]).get("passive_key", "none")))
         bonus_shards = int(resolution.get("bonus_shards", 0))
         if bonus_shards > 0:
             conn.execute(
@@ -534,24 +535,19 @@ def _apply_boss_effects(
             (*fields.values(), int(boss["id"]), int(change["player_id"])),
         )
     events = resolution.get("events", [])
-    if events and actor_id is None:
-        row = conn.execute(
-            "SELECT player_id FROM mini_boss_participants WHERE boss_id = ? ORDER BY queue_position LIMIT 1",
-            (int(boss["id"]),),
-        ).fetchone()
-        if row is None:
-            raise BossCombatError("У босса нет участников.")
-        actor_id = int(row["player_id"])
-    for event in events:
+    for raw_event in events:
+        event = dict(raw_event)
+        event["actor_kind"] = "boss"
+        if actor_id is not None:
+            event.setdefault("source_player_id", actor_id)
         conn.execute(
-            """INSERT INTO mini_boss_actions (
-                boss_id, player_id, round_number, action_type, damage,
+            """INSERT INTO mini_boss_events (
+                boss_id, round_number, event_type, target_player_id,
                 boss_hp_after, created_at, event_json
-            ) VALUES (?, ?, ?, ?, 0, ?, ?, ?)""",
-            (int(boss["id"]), int(event.get("player_id", actor_id)),
-             int(boss["current_round"]), "boss_ability_" + event["type"],
-             int(changes.get("current_hp", boss["current_hp"])), _db_time(when),
-             json.dumps(event, ensure_ascii=False)),
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (int(boss["id"]), int(boss["current_round"]), event["type"],
+             event.get("player_id"), int(changes.get("current_hp", boss["current_hp"])),
+             _db_time(when), json.dumps(event, ensure_ascii=False)),
         )
     return list(events)
 
@@ -693,6 +689,7 @@ def start_battle(
                 bp.queue_position,
                 COALESCE(bp.hero_id, p.active_hero_id) AS selected_hero_id,
                 h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
+                h.passive_key, h.passive_text,
                 h.attack AS base_attack,
                 ph.stars
             FROM mini_boss_participants bp
@@ -737,6 +734,7 @@ def start_battle(
                     max(1, attack),
                     json.dumps({field: row[field] for field in (
                         "faction", "damage_type", "class_tag", "attack_range", "special_trait",
+                        "passive_key", "passive_text",
                     )}, ensure_ascii=False),
                     10 if damage_potion else 0,
                     1 if phantom_potion else 0,
@@ -756,10 +754,12 @@ def start_battle(
             (_db_time(now), _db_time(now), int(boss_id)),
         )
         fresh = _refresh_boss(conn, int(boss_id))
-        _apply_boss_effects(conn, fresh, boss_abilities.battle_start(dict(fresh)), now)
+        start_events = _apply_boss_effects(conn, fresh, boss_abilities.battle_start(dict(fresh)), now)
         conn.commit()
 
-    return get_combat_state(boss_id, db_path=db_path)
+    state = get_combat_state(boss_id, db_path=db_path)
+    state["boss_events"] = start_events
+    return state
 
 
 def list_fighting_bosses(db_path: str | Path = DB_PATH) -> list[dict]:
@@ -992,9 +992,6 @@ def hit_boss(
             """
             SELECT
                 bp.*,
-                h.passive_key,
-                h.passive_text,
-                h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
                 h.name AS hero_name
             FROM mini_boss_participants bp
             LEFT JOIN mini_heroes h ON h.id = bp.hero_id
@@ -1017,14 +1014,8 @@ def hit_boss(
 
         if int(participant["banished"]) or int(participant["forced_skip_turns"]) > 0:
             raise BossNotYourTurn("Этот участник сейчас не может ходить.")
-        hero = dict(participant)
-        snapshot = json.loads(participant["hero_snapshot_json"] or "{}")
-        if not isinstance(snapshot, dict):
-            raise BossCombatError("Некорректный snapshot героя.")
-        hero.update({field: snapshot[field] for field in (
-            "faction", "damage_type", "class_tag", "attack_range", "special_trait",
-        ) if field in snapshot})
-        passive_key = str(participant["passive_key"] or "none")
+        hero = battle_loadout(participant["hero_snapshot_json"])
+        passive_key = str(hero.get("passive_key", "none"))
         attack_resolution = resolve_attack(
             passive_key,
             base_damage=max(1, int(participant["attack"])),

@@ -146,6 +146,15 @@ class BossHookTests(unittest.TestCase):
             self.assertEqual(json.loads(boss["ability_state_json"])["shield_active"], active)
         self.assertEqual(engine.modify_hero_damage(boss, {"class_tag": "none"}, 20)["damage"], 20)
 
+    def test_magic_shield_requires_magical_tag_even_for_mage(self):
+        boss = self.boss("magic_shield", ability_state_json='{"shield_active": true}')
+        blocked = engine.modify_hero_damage(boss, {"class_tag": "mage"}, 20)
+        self.assertEqual(blocked["damage"], 0)
+        self.assertTrue(json.loads(blocked["boss_changes"]["ability_state_json"])["shield_active"])
+        removed = engine.modify_hero_damage(boss, {"class_tag": "magical"}, 20)
+        self.assertEqual(removed["damage"], 0)
+        self.assertFalse(json.loads(removed["boss_changes"]["ability_state_json"])["shield_active"])
+
     def test_mechanism_technical_and_minimum(self):
         boss = self.boss("mechanism")
         self.assertEqual(engine.modify_hero_damage(boss, {"class_tag": "none"}, 11)["damage"], 8)
@@ -235,7 +244,7 @@ class CombatV2IntegrationTests(unittest.TestCase):
     def events(self):
         with connect_mini_db(self.db) as conn:
             return [json.loads(row[0]) for row in conn.execute(
-                "SELECT event_json FROM mini_boss_actions WHERE boss_id = ? AND action_type LIKE 'boss_ability_%' ORDER BY id",
+                "SELECT event_json FROM mini_boss_events WHERE boss_id = ? ORDER BY id",
                 (self.boss["id"],),
             )]
 
@@ -578,12 +587,19 @@ class CombatV2IntegrationTests(unittest.TestCase):
 
 
 class CombatV2CatalogTests(unittest.TestCase):
-    def test_all_current_content_is_placeholder(self):
-        for hero in load_hero_catalog()["heroes"]:
-            self.assertEqual(
-                tuple(hero[key] for key in ("faction", "damage_type", "class_tag", "attack_range", "special_trait")),
-                ("commoners", "slashing", "none", "melee", "none"),
-            )
+    def test_current_hero_traits_are_valid_and_bosses_remain_placeholders(self):
+        from app.mini.boss.matchups import FACTIONS
+        heroes = load_hero_catalog()["heroes"]
+        self.assertEqual(len({hero["code"] for hero in heroes}), len(heroes))
+        for hero in heroes:
+            with self.subTest(hero=hero["code"]):
+                self.assertIn(hero["faction"], FACTIONS)
+                self.assertIn(hero["damage_type"], {"slashing", "piercing", "bludgeoning", "magic"})
+                self.assertIn(hero["attack_range"], {"melee", "ranged"})
+                self.assertIsInstance(hero["class_tag"], str)
+                self.assertTrue(hero["class_tag"])
+                self.assertIsInstance(hero["special_trait"], str)
+                self.assertTrue(hero["special_trait"])
         for boss in load_boss_catalog()["bosses"]:
             self.assertEqual((boss["faction"], boss["ability_key"], boss["ability_text"], boss["features"]),
                              ("commoners", "none", "Нет особой способности.", []))

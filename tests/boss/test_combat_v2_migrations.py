@@ -1,4 +1,5 @@
 import os
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -127,14 +128,20 @@ class CombatV2MigrationTests(unittest.TestCase):
                         self.assertEqual({key: updated[key] for key in original}, original)
                 hero = conn.execute("SELECT * FROM mini_heroes WHERE id = 1").fetchone()
                 self.assertEqual(hero["faction"], "commoners")
-                self.assertEqual(hero["damage_type"], "slashing")
+                self.assertEqual(hero["damage_type"], "bludgeoning")
                 participant = conn.execute("SELECT * FROM mini_boss_participants").fetchone()
                 self.assertEqual(participant["forced_skip_turns"], 0)
                 self.assertEqual(participant["banished"], 0)
-                self.assertEqual(participant["hero_snapshot_json"], "{}")
+                snapshot = json.loads(participant["hero_snapshot_json"])
+                self.assertEqual(snapshot["faction"], "commoners")
+                self.assertEqual(snapshot["class_tag"], "none")
+                self.assertEqual(snapshot["damage_type"], "slashing")
+                self.assertEqual(snapshot["passive_key"], "none")
             boss = get_boss(1, db)
             self.assertEqual(boss["ability_key"], "none")
             self.assertEqual(boss["ability_state_json"], "{}")
+            self.assertEqual(boss["turn_message_kind"], "text")
+            self.assertEqual(boss["turn_notice_json"], "{}")
             result = hit_boss(1, 1, now=datetime(2026, 10, 6, 10, tzinfo=timezone.utc), db_path=db)
             self.assertEqual(result["base_damage"], 17)  # Do not recalculate the 4 stars.
             self.assertEqual(result["damage"], 19)

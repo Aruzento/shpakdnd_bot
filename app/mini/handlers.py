@@ -17,6 +17,7 @@ from app.context import (
     get_topic_admin,
 )
 from app.mini.daily import claim_daily
+from app.mini.presentation import hero_heading, hero_trait_lines
 from app.mini.gacha import (
     GachaError,
     GachaInsufficientFunds,
@@ -394,43 +395,17 @@ def _format_gacha(world: dict, state: dict) -> str:
 
 
 def _hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
-    rarity = RARITY_EMOJI.get(hero.get("rarity"), "⚪")
-    rarity_title = RARITY_TITLE.get(hero.get("rarity"), hero.get("rarity", ""))
-    description = _clip(hero.get("description", ""), 250)
-    passive = _clip(hero.get("passive_text", ""), 250)
-    upgrade = hero.get("upgrade") or hero_upgrade_state(hero)
-
-    maximum = upgrade["max_stars"]
-    max_text = "∞" if maximum is None else str(maximum)
-    current_attack = int(upgrade["current_attack"])
-    base_attack = int(upgrade["base_attack"])
-
+    description = _clip(hero.get("description", ""), 300)
+    passive = _clip(hero.get("passive_text", ""), 300)
     lines = [
-        f"{rarity} {hero['name']}",
-        f"{rarity_title} • {hero.get('race', '')} • {hero.get('class_name', '')}",
-        f"⭐ Звёзды: {upgrade['stars']}/{max_text}",
-        (
-            f"⚔️ Атака: {current_attack} (база {base_attack})"
-            if int(upgrade["stars"]) > 0
-            else f"⚔️ Атака: {current_attack}"
-        ),
-        f"🧩 Общие осколки: {upgrade['shards']}",
+        hero_heading(hero),
+        *hero_trait_lines(hero),
+        "",
+        f"⚔️ Урон: {int(hero.get('attack', 1))}",
+        f"💫 Особый эффект: {passive or 'Нет особых способностей.'}",
         "",
         description or "Без описания.",
     ]
-
-    if passive:
-        lines.extend(["", "Пассивка:", passive])
-
-    lines.append("")
-    if upgrade["at_max"]:
-        lines.append("🏆 Максимум звёзд достигнут.")
-    else:
-        lines.append(
-            f"⬆️ Следующая: ⭐{upgrade['next_star']} • "
-            f"атака {current_attack} → {upgrade['next_attack']} • "
-            f"{upgrade['upgrade_cost']} 🧩"
-        )
 
     if pull_result is not None:
         lines.append("")
@@ -675,7 +650,7 @@ async def _send_hero_card(
             )
             await _delete_current_ephemeral(callback)
             return sent
-        except TelegramAPIError as error:
+        except TelegramBadRequest as error:
             print(
                 "Не удалось отправить картинку героя: "
                 f"hero={hero.get('code')} error={type(error).__name__}: {error}"
@@ -706,7 +681,7 @@ async def _send_public_hero_share(
                 photo=FSInputFile(image),
                 caption=caption,
             )
-        except TelegramAPIError as error:
+        except TelegramBadRequest as error:
             print(
                 "Не удалось публично отправить картинку героя: "
                 f"hero={hero.get('code')} "
@@ -1037,25 +1012,31 @@ def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def _format_home(world: dict, player: dict) -> str:
-    active = get_active_hero(player["id"])
+def _home_content(player: dict, active: dict | None) -> str:
     if active is None:
-        active_text = "пока не выбран"
+        lines = ["🎴 Активный герой пока не выбран.", "Выбери героя в коллекции."]
     else:
-        active_text = (
-            f"{active['name']} — "
-            f"{active.get('race', '')} / {active.get('class_name', '')} • "
-            f"⭐{active.get('stars', 0)} • ⚔️{active.get('attack', 1)}"
-        )
+        lines = [
+            hero_heading(active), "", *hero_trait_lines(active),
+            f"⚔️ Урон: {int(active.get('attack', 1))}",
+        ]
+    return "\n".join([
+        *lines, "",
+        f"🪙 {int(player['coins'])} монет • 🧩 {int(player['shards'])} осколков",
+    ])
 
-    return (
-        f"🎲 {world['name']}\n\n"
-        f"👤 Персонаж: {player['character_name']}\n"
-        f"🎴 Активный герой: {active_text}\n"
-        f"🪙 Монеты: {player['coins']}\n"
-        f"🧩 Осколки: {player['shards']}\n\n"
-        "Выбери раздел:"
-    )
+
+def _format_home(world: dict, player: dict) -> str:
+    return _home_content(player, get_active_hero(player["id"]))
+
+
+async def _send_home_from_callback(callback: CallbackQuery, world: dict, player: dict):
+    active = get_active_hero(player["id"])
+    text = _home_content(player, active)
+    markup = _player_menu(world["id"], callback.from_user.id)
+    if active is not None:
+        return await _send_hero_card(callback, world, active, text, markup)
+    return await _send_private_text_from_callback(callback, world, text, markup)
 
 
 def _format_wallet_history(history: list[dict]) -> str:
@@ -1125,6 +1106,8 @@ async def _send_private(
     message: Message,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
+    *,
+    hero: dict | None = None,
 ):
     """Отправляет ephemeral-сообщение только автору команды."""
     if message.from_user is None:
@@ -1148,6 +1131,16 @@ async def _send_private(
             ephemeral_message_id=message.ephemeral_message_id,
         )
 
+    image = get_hero_image(hero) if hero else None
+    if image is not None:
+        photo_kwargs = dict(kwargs)
+        photo_kwargs.pop("text")
+        try:
+            return await message.bot.send_photo(
+                **photo_kwargs, photo=FSInputFile(image), caption=text,
+            )
+        except TelegramBadRequest:
+            pass
     try:
         return await message.bot.send_message(**kwargs)
     except TelegramBadRequest:
@@ -1365,12 +1358,10 @@ async def launch_callback(callback: CallbackQuery):
         markup = _player_menu(world_id, callback.from_user.id)
 
     try:
-        await _send_private_from_launcher(
-            callback,
-            world,
-            text,
-            markup,
-        )
+        if player is not None:
+            await _send_home_from_callback(callback, world, player)
+        else:
+            await _send_private_from_launcher(callback, world, text, markup)
     except TelegramAPIError as error:
         print(
             "Ошибка открытия D&D Mini: "
@@ -1417,10 +1408,10 @@ async def mini_handler(message: Message):
     )
     player = get_mini_player(world["id"], message.from_user.id)
 
+    active = get_active_hero(player["id"])
     await _send_private(
-        message,
-        _format_home(world, player),
-        _player_menu(world["id"], message.from_user.id),
+        message, _home_content(player, active),
+        _player_menu(world["id"], message.from_user.id), hero=active,
     )
 
 
@@ -1474,10 +1465,10 @@ async def minicreate_handler(message: Message):
         await _send_private(message, f"❌ {error}")
         return
 
+    active = get_active_hero(player["id"])
     await _send_private(
-        message,
-        "✅ Mini-персонаж создан!\n\n" + _format_home(world, player),
-        _player_menu(world["id"], message.from_user.id),
+        message, "✅ Mini-персонаж создан!\n\n" + _home_content(player, active),
+        _player_menu(world["id"], message.from_user.id), hero=active,
     )
 
 
@@ -1517,11 +1508,7 @@ async def home_callback(callback: CallbackQuery):
 
     world, player = context
     await callback.answer()
-    await _edit_private(
-        callback,
-        _format_home(world, player),
-        _player_menu(world["id"], callback.from_user.id),
-    )
+    await _send_home_from_callback(callback, world, player)
 
 
 async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
@@ -1772,30 +1759,8 @@ async def character_callback(callback: CallbackQuery):
         return
 
     world, player = context
-    username = player["username"] or "без @username"
     active = get_active_hero(player["id"])
-
-    if active is None:
-        hero_text = (
-            "🎴 Активный герой: пока не выбран\n"
-            "⚔️ Атака: —"
-        )
-    else:
-        hero_text = (
-            f"🎴 Активный герой: {active['name']}\n"
-            f"⚔️ Атака: {active.get('attack', 1)}"
-        )
-        if active.get("passive_text"):
-            hero_text += f"\nПассивка: {active['passive_text']}"
-
-    text = (
-        "👤 Mini-персонаж\n\n"
-        f"Имя: {player['character_name']}\n"
-        f"Игрок: {username}\n"
-        f"{hero_text}\n"
-        f"🪙 Монеты: {player['coins']}\n"
-        f"🧩 Осколки: {player['shards']}"
-    )
+    text = _hero_caption(active) if active is not None else "🎴 Активный герой пока не выбран."
     markup = _back_menu(world["id"], callback.from_user.id)
 
     await callback.answer()

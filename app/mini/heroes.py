@@ -13,6 +13,9 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
 
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
+        # Freeze old fighting loadouts before changing any catalog passive/trait.
+        from app.mini.boss.loadouts import freeze_legacy_loadouts
+        freeze_legacy_loadouts(conn)
         catalog_codes = []
 
         for hero in heroes:

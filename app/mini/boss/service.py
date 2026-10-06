@@ -184,12 +184,17 @@ def set_turn_message(
     boss_id: int,
     message_id: int | None,
     db_path: str | Path = DB_PATH,
+    *,
+    kind: str = "text",
+    notice_json: str | None = None,
 ) -> None:
-    """Сохраняет ID текущего публичного сообщения хода боя."""
+    """Сохраняет ID и тип текущего публичного сообщения хода боя."""
     with connect_mini_db(db_path) as conn:
         conn.execute(
-            "UPDATE mini_bosses SET turn_message_id = ? WHERE id = ?",
-            (int(message_id) if message_id is not None else None, int(boss_id)),
+            """UPDATE mini_bosses SET turn_message_id = ?, turn_message_kind = ?,
+               turn_notice_json = COALESCE(?, turn_notice_json) WHERE id = ?""",
+            (int(message_id) if message_id is not None else None,
+             "photo" if kind == "photo" else "text", notice_json, int(boss_id)),
         )
         conn.commit()
 
@@ -218,7 +223,9 @@ def list_participants(
                 bp.forced_skip_turns,
                 bp.banished,
                 h.name AS hero_name,
-                h.rarity AS hero_rarity
+                h.rarity AS hero_rarity,
+                h.image_path AS hero_image_path,
+                bp.hero_snapshot_json
             FROM mini_boss_participants bp
             JOIN mini_players p ON p.id = bp.player_id
             JOIN mini_bosses b ON b.id = bp.boss_id
