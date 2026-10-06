@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -196,34 +197,10 @@ def _grant_victory_rewards(
             )
             missed += 1
             continue
-        current_coins = int(row["coins"])
-        new_balance = current_coins + coins_each
-
         if coins_each > 0:
-            conn.execute(
-                "UPDATE mini_players SET coins = ? WHERE id = ?",
-                (new_balance, player_id),
-            )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO mini_wallet_transactions (
-                    player_id,
-                    amount,
-                    balance_after,
-                    reason,
-                    reference_type,
-                    reference_id,
-                    operation_key
-                ) VALUES (?, ?, ?, ?, 'boss', ?, ?)
-                """,
-                (
-                    player_id,
-                    coins_each,
-                    new_balance,
-                    f"Победа над боссом: {boss['name']}",
-                    int(boss["id"]),
-                    f"boss:{boss['id']}:victory:{player_id}:coins",
-                ),
+            change_balance_in_transaction(
+                conn, player_id, coins_each, f"Победа над боссом: {boss['name']}",
+                "boss", int(boss["id"]), f"boss:{boss['id']}:victory:{player_id}:coins",
             )
 
         for item in items:

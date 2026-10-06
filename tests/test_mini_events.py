@@ -106,11 +106,11 @@ class MiniEventTests(unittest.TestCase):
         self.assertEqual(self.resources(), (0, 0))
 
     def test_start_failure_after_wallet_write_rolls_back_everything(self):
-        original = events._change_balance_in_transaction
+        original = events.change_balance_in_transaction
         def fail(*args, **kwargs):
             original(*args, **kwargs)
             raise RuntimeError("interrupted after debit")
-        with patch.object(events, "_change_balance_in_transaction", side_effect=fail):
+        with patch.object(events, "change_balance_in_transaction", side_effect=fail):
             with self.assertRaises(RuntimeError):
                 self.start()
         self.assertEqual(self.resources(), (100, 0))

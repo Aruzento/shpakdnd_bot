@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import json
 import sqlite3
 from pathlib import Path
@@ -391,35 +392,12 @@ def purchase_offer(
                 (int(player_id), int(item_id)),
             )
 
-        new_balance = balance - price
-        conn.execute(
-            "UPDATE mini_players SET coins = ? WHERE id = ?",
-            (new_balance, int(player_id)),
-        )
-
+        new_balance = balance
         if price > 0:
-            conn.execute(
-                """
-                INSERT INTO mini_wallet_transactions (
-                    player_id,
-                    amount,
-                    balance_after,
-                    reason,
-                    reference_type,
-                    reference_id,
-                    operation_key
-                )
-                VALUES (?, ?, ?, ?, 'shop', ?, ?)
-                """,
-                (
-                    int(player_id),
-                    -price,
-                    new_balance,
-                    f"Покупка: {offer['title']}",
-                    purchase_id,
-                    f"shop:{purchase_id}",
-                ),
-            )
+            new_balance = change_balance_in_transaction(
+                conn, int(player_id), -price, f"Покупка: {offer['title']}",
+                "shop", purchase_id, f"shop:{purchase_id}",
+            )["balance"]
 
         conn.commit()
 

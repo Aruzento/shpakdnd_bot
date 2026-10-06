@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import secrets
 import sqlite3
 from pathlib import Path
@@ -259,10 +260,7 @@ def perform_gacha_pull(
                 )
             cost_coins = pull_price
             balance -= pull_price
-            conn.execute(
-                "UPDATE mini_players SET coins = ? WHERE id = ?",
-                (balance, int(player_id)),
-            )
+
 
         luck_used = consume_effect_charge(
             conn, int(player_id), EFFECT_GACHA_LUCK
@@ -354,28 +352,10 @@ def perform_gacha_pull(
         pull_id = int(pull_cursor.lastrowid)
 
         if cost_coins > 0:
-            conn.execute(
-                """
-                INSERT INTO mini_wallet_transactions (
-                    player_id,
-                    amount,
-                    balance_after,
-                    reason,
-                    reference_type,
-                    reference_id,
-                    operation_key
-                )
-                VALUES (?, ?, ?, ?, 'gacha', ?, ?)
-                """,
-                (
-                    int(player_id),
-                    -cost_coins,
-                    balance,
-                    f"Призыв героя: {hero['name']}",
-                    pull_id,
-                    f"gacha:{pull_id}",
-                ),
-            )
+            balance = change_balance_in_transaction(
+                conn, int(player_id), -cost_coins, f"Призыв героя: {hero['name']}",
+                "gacha", pull_id, f"gacha:{pull_id}",
+            )["balance"]
 
         tickets_after = _ticket_quantity(conn, player_id, ticket_code)
         conn.commit()

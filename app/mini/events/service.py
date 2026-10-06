@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
-from app.mini.wallet import _change_balance_in_transaction
+from app.mini.wallet import change_balance_in_transaction
 
 RPS_CHOICES = ("saint", "demon", "villager")
 RPS_BEATS = {"saint": "demon", "demon": "villager", "villager": "saint"}
@@ -113,7 +113,7 @@ def _start(conn, player_id, world_id, game_type, stake, start_key) -> dict:
         (player_id, game_type, stake, start_key, json.dumps(payload)),
     )
     session_id = int(cursor.lastrowid)
-    _change_balance_in_transaction(
+    change_balance_in_transaction(
         conn, player_id, -stake, "Ставка в событии Mini",
         "mini_event", session_id, f"event:{session_id}:stake",
     )
@@ -160,7 +160,7 @@ def _finish(conn, session: dict, outcome: str, coins: int, shards: int = 0):
     session["payload"].update(outcome=outcome, coins_awarded=coins,
                               shards_awarded=shards)
     if coins:
-        _change_balance_in_transaction(
+        change_balance_in_transaction(
             conn, session["player_id"], coins, "Результат события Mini",
             "mini_event", session["id"], f"event:{session['id']}:reward",
         )

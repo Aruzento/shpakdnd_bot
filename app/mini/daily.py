@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import secrets
 import sqlite3
 from datetime import date, datetime
@@ -322,43 +323,10 @@ def claim_daily(
         )
 
         claim_id = int(claim_cursor.lastrowid)
-        new_balance = current_balance + coins
-
-        conn.execute(
-            """
-            UPDATE mini_players
-            SET coins = ?
-            WHERE id = ?
-            """,
-            (
-                new_balance,
-                int(player_id),
-            ),
-        )
-
-        conn.execute(
-            """
-            INSERT INTO mini_wallet_transactions (
-                player_id,
-                amount,
-                balance_after,
-                reason,
-                reference_type,
-                reference_id,
-                operation_key
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                int(player_id),
-                coins,
-                new_balance,
-                "Ежедневное приключение",
-                "daily",
-                claim_id,
-                f"daily:{player_id}:{day}",
-            ),
-        )
+        new_balance = change_balance_in_transaction(
+            conn, int(player_id), coins, "Ежедневное приключение",
+            "daily", claim_id, f"daily:{player_id}:{day}",
+        )["balance"]
 
         conn.commit()
 

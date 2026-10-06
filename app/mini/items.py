@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import json
 import secrets
 import sqlite3
@@ -375,28 +376,11 @@ def use_inventory_item(
             if amount < 10 or amount > 30:
                 conn.rollback()
                 raise ItemUseError("Некорректный результат открытия кошеля.")
-            new_balance = int(row["coins"]) + amount
-            conn.execute(
-                "UPDATE mini_players SET coins = ? WHERE id = ?",
-                (new_balance, int(player_id)),
-            )
-            conn.execute(
-                """
-                INSERT INTO mini_wallet_transactions (
-                    player_id, amount, balance_after, reason,
-                    reference_type, reference_id, operation_key
-                )
-                VALUES (?, ?, ?, ?, 'item', ?, ?)
-                """,
-                (
-                    int(player_id),
-                    amount,
-                    new_balance,
-                    f"Использован предмет: {row['name']}",
-                    int(item_id),
-                    f"item-use:{operation_key}:coins" if operation_key else "",
-                ),
-            )
+            new_balance = change_balance_in_transaction(
+                conn, int(player_id), amount, f"Использован предмет: {row['name']}",
+                "item", int(item_id),
+                f"item-use:{operation_key}:coins" if operation_key else "",
+            )["balance"]
             result["amount"] = amount
             result["coins"] = new_balance
 

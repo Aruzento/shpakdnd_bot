@@ -64,7 +64,7 @@ def get_wallet_history(
     return [dict(row) for row in rows]
 
 
-def _change_balance_in_transaction(
+def change_balance_in_transaction(
     conn: sqlite3.Connection,
     player_id: int,
     amount: int,
@@ -72,6 +72,8 @@ def _change_balance_in_transaction(
     reference_type: str = "",
     reference_id: int | None = None,
     operation_key: str = "",
+    *,
+    allow_zero: bool = False,
 ) -> dict:
     """Change coins in the caller's BEGIN IMMEDIATE transaction; never commit.
 
@@ -81,7 +83,7 @@ def _change_balance_in_transaction(
     reason = reason.strip()
     reference_type = reference_type.strip()
     operation_key = operation_key.strip()
-    if amount == 0:
+    if amount == 0 and not allow_zero:
         raise ValueError("Изменение баланса не может быть равно 0.")
     if not reason:
         raise ValueError("Не указана причина изменения баланса.")
@@ -151,7 +153,7 @@ def change_balance(
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
-        return _change_balance_in_transaction(
+        return change_balance_in_transaction(
             conn, player_id, amount, reason,
             reference_type, reference_id, operation_key,
         )

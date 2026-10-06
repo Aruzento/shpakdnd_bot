@@ -1,3 +1,4 @@
+from app.mini.wallet import change_balance_in_transaction
 import sqlite3
 from pathlib import Path
 
@@ -313,31 +314,13 @@ def sell_hero_shards(
         new_balance = int(row["coins"]) + coins_earned
 
         conn.execute(
-            "UPDATE mini_players SET shards = ?, coins = ? WHERE id = ?",
-            (new_shards, new_balance, int(player_id)),
+            "UPDATE mini_players SET shards = ? WHERE id = ?",
+            (new_shards, int(player_id)),
         )
-        conn.execute(
-            """
-            INSERT INTO mini_wallet_transactions (
-                player_id,
-                amount,
-                balance_after,
-                reason,
-                reference_type,
-                reference_id,
-                operation_key
-            )
-            VALUES (?, ?, ?, ?, 'shared_shards', ?, ?)
-            """,
-            (
-                int(player_id),
-                coins_earned,
-                new_balance,
-                "Продажа общих осколков",
-                int(hero_id),
-                wallet_operation_key,
-            ),
-        )
+        new_balance = change_balance_in_transaction(
+            conn, int(player_id), coins_earned, "Продажа общих осколков",
+            "shared_shards", int(hero_id), wallet_operation_key, allow_zero=True,
+        )["balance"]
         conn.commit()
 
     return {
