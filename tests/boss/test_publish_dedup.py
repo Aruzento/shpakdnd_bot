@@ -39,7 +39,7 @@ class BossAnnouncementDedupTests(unittest.IsolatedAsyncioTestCase):
             "signup_message_id": None,
         }
 
-    @patch("app.mini.boss.handlers.get_boss")
+    @patch("app.mini.boss.ui.get_boss")
     async def test_existing_announcement_is_not_sent_again(self, mocked_get_boss):
         fresh = dict(self.boss)
         fresh["signup_message_id"] = 777
@@ -51,7 +51,7 @@ class BossAnnouncementDedupTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(bot.sent_messages, [])
 
-    @patch("app.mini.boss.handlers.get_boss")
+    @patch("app.mini.boss.ui.get_boss")
     async def test_stale_republish_callback_is_ignored(self, mocked_get_boss):
         fresh = dict(self.boss)
         fresh["signup_message_id"] = 888

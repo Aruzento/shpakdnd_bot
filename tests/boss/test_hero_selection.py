@@ -47,17 +47,17 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.player = {"id": 10}
         self.boss = {"id": 3, "world_id": 1, "status": "announced"}
         patches = [
-            patch("app.mini.boss.handlers._load_world", return_value=self.world),
-            patch("app.mini.boss.handlers._load_player", return_value=self.player),
-            patch("app.mini.boss.handlers.get_boss", return_value=self.boss),
-            patch("app.mini.boss.handlers.list_participants", return_value=[{"player_id": 10}]),
+            patch("app.mini.boss.selection._load_world", return_value=self.world),
+            patch("app.mini.boss.selection._load_player", return_value=self.player),
+            patch("app.mini.boss.selection.get_boss", return_value=self.boss),
+            patch("app.mini.boss.selection.list_participants", return_value=[{"player_id": 10}]),
         ]
         for mock_patch in patches:
             mock_patch.start()
             self.addCleanup(mock_patch.stop)
 
     async def test_selector_sends_ephemeral_to_callback_owner(self):
-        with patch("app.mini.boss.handlers.get_player_heroes", return_value=[{"id": 9, "name": "Hero", "rarity": "rare"}]) as heroes:
+        with patch("app.mini.boss.selection.get_player_heroes", return_value=[{"id": 9, "name": "Hero", "rarity": "rare"}]) as heroes:
             await boss_heroes_callback(self.callback)
         heroes.assert_called_once_with(10)
         sent = self.callback.bot.send_message.call_args.kwargs
@@ -73,7 +73,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.callback.answer.call_args.kwargs["show_alert"])
 
     async def test_selector_rejects_unregistered_and_started(self):
-        with patch("app.mini.boss.handlers.list_participants", return_value=[]):
+        with patch("app.mini.boss.selection.list_participants", return_value=[]):
             await boss_heroes_callback(self.callback)
         self.callback.bot.send_message.assert_not_awaited()
         self.boss["status"] = "fighting"
@@ -82,7 +82,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_selection_uses_service_then_returns_to_boss_home(self):
         self.callback.data = "miniboss:hero:1:101:3:9"
-        with patch("app.mini.boss.handlers.select_battle_hero", return_value={"name": "Hero"}) as select, patch("app.mini.boss.handlers._show_boss_home", new_callable=AsyncMock) as home:
+        with patch("app.mini.boss.selection.select_battle_hero", return_value={"name": "Hero"}) as select, patch("app.mini.boss.selection.show_boss_home", new_callable=AsyncMock) as home:
             await boss_select_hero_callback(self.callback)
         select.assert_called_once_with(3, 10, 9)
         home.assert_awaited_once_with(self.callback, self.world, self.player)
@@ -91,7 +91,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_selection_race_with_start_reports_service_error(self):
         from app.mini.boss.service import BossError
         self.callback.data = "miniboss:hero:1:101:3:9"
-        with patch("app.mini.boss.handlers.select_battle_hero", side_effect=BossError("Бой уже начался")), patch("app.mini.boss.handlers._show_boss_home", new_callable=AsyncMock) as home:
+        with patch("app.mini.boss.selection.select_battle_hero", side_effect=BossError("Бой уже начался")), patch("app.mini.boss.selection.show_boss_home", new_callable=AsyncMock) as home:
             await boss_select_hero_callback(self.callback)
         home.assert_not_awaited()
         self.assertTrue(self.callback.answer.call_args.kwargs["show_alert"])
