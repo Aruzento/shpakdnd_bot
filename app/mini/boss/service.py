@@ -146,6 +146,13 @@ def create_boss_event(
             conn.rollback()
             raise BossError("D&D Mini-мир не найден.")
         boss_id = int(cursor.lastrowid)
+        conn.execute(
+            """UPDATE mini_bosses SET faction = ?, ability_key = ?, ability_text = ?,
+               features_json = ?, ability_config_json = ? WHERE id = ?""",
+            (template["faction"], template["ability_key"], template["ability_text"],
+             json.dumps(template["features"], ensure_ascii=False),
+             json.dumps(template.get("ability_config", {})), boss_id),
+        )
         conn.commit()
 
     boss = get_boss(boss_id, db_path)
@@ -208,11 +215,16 @@ def list_participants(
                 bp.attack AS battle_attack,
                 bp.damage_bonus_percent,
                 bp.phantom_reward,
+                bp.forced_skip_turns,
+                bp.banished,
                 h.name AS hero_name,
                 h.rarity AS hero_rarity
             FROM mini_boss_participants bp
             JOIN mini_players p ON p.id = bp.player_id
-            LEFT JOIN mini_heroes h ON h.id = COALESCE(bp.hero_id, p.active_hero_id)
+            JOIN mini_bosses b ON b.id = bp.boss_id
+            LEFT JOIN mini_heroes h ON h.id = CASE
+                WHEN b.status IN ('announced', 'ready') THEN COALESCE(bp.hero_id, p.active_hero_id)
+                ELSE bp.hero_id END
             WHERE bp.boss_id = ?
             ORDER BY bp.queue_position, bp.joined_at, p.id
             """,
@@ -285,10 +297,10 @@ def register_player(
         conn.execute(
             """
             INSERT INTO mini_boss_participants (
-                boss_id, player_id, queue_position
-            ) VALUES (?, ?, ?)
+                boss_id, player_id, queue_position, hero_id
+            ) VALUES (?, ?, ?, ?)
             """,
-            (int(boss_id), int(player_id), next_position),
+            (int(boss_id), int(player_id), next_position, int(player["active_hero_id"])),
         )
         conn.commit()
 
@@ -470,3 +482,39 @@ def cancel_boss(
     if result is None:
         raise BossError("Босс не найден после отмены.")
     return result
+
+
+def select_battle_hero(
+    boss_id: int,
+    player_id: int,
+    hero_id: int,
+    db_path: str | Path = DB_PATH,
+) -> dict:
+    """Atomically change a registered player's hero before battle starts."""
+    init_boss_db(db_path)
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("BEGIN IMMEDIATE")
+        participant = conn.execute(
+            """SELECT b.status FROM mini_boss_participants bp
+               JOIN mini_bosses b ON b.id = bp.boss_id
+               WHERE bp.boss_id = ? AND bp.player_id = ?""",
+            (int(boss_id), int(player_id)),
+        ).fetchone()
+        if participant is None:
+            raise BossError("Ты не зарегистрирован на этого босса.")
+        if participant["status"] not in ("announced", "ready"):
+            raise BossRegistrationClosed("Героя можно выбрать только до начала боя.")
+        hero = conn.execute(
+            """SELECT h.* FROM mini_player_heroes ph
+               JOIN mini_heroes h ON h.id = ph.hero_id
+               WHERE ph.player_id = ? AND ph.hero_id = ?""",
+            (int(player_id), int(hero_id)),
+        ).fetchone()
+        if hero is None:
+            raise BossError("Этого героя нет в твоей коллекции.")
+        conn.execute(
+            "UPDATE mini_boss_participants SET hero_id = ? WHERE boss_id = ? AND player_id = ?",
+            (int(hero_id), int(boss_id), int(player_id)),
+        )
+        return dict(hero)

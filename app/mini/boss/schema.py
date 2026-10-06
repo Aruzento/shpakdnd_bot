@@ -107,6 +107,12 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             for row in conn.execute("PRAGMA table_info(mini_bosses)").fetchall()
         }
         additions = {
+            "faction": "TEXT NOT NULL DEFAULT 'commoners'",
+            "ability_key": "TEXT NOT NULL DEFAULT 'none'",
+            "ability_text": "TEXT NOT NULL DEFAULT 'Нет особой способности.'",
+            "features_json": "TEXT NOT NULL DEFAULT '[]'",
+            "ability_config_json": "TEXT NOT NULL DEFAULT '{}'",
+            "ability_state_json": "TEXT NOT NULL DEFAULT '{}'",
             "template_code": "TEXT NOT NULL DEFAULT ''",
             "image_path": "TEXT NOT NULL DEFAULT ''",
             "signup_message_id": "INTEGER",
@@ -132,6 +138,9 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             ).fetchall()
         }
         participant_additions = {
+            "hero_snapshot_json": "TEXT NOT NULL DEFAULT '{}'",
+            "forced_skip_turns": "INTEGER NOT NULL DEFAULT 0",
+            "banished": "INTEGER NOT NULL DEFAULT 0",
             "hero_id": "INTEGER",
             "attack": "INTEGER NOT NULL DEFAULT 0",
             "damage_bonus_percent": "INTEGER NOT NULL DEFAULT 0",
@@ -142,6 +151,14 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
                 conn.execute(
                     f"ALTER TABLE mini_boss_participants ADD COLUMN {name} {sql_type}"
                 )
+
+        action_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(mini_boss_actions)").fetchall()
+        }
+        if "event_json" not in action_columns:
+            conn.execute(
+                "ALTER TABLE mini_boss_actions ADD COLUMN event_json TEXT NOT NULL DEFAULT '{}'"
+            )
 
         conn.execute(
             """

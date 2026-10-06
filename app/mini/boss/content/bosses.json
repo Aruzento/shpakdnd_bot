@@ -12,7 +12,11 @@
       "reward_shields": 3,
       "reward_decay_percent": 10,
       "image": "training_golem.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "graveyard_warden",
@@ -26,7 +30,11 @@
       ],
       "reward_shields": 3,
       "image": "graveyard_warden.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "swamp_hydra",
@@ -41,7 +49,11 @@
       ],
       "reward_shields": 2,
       "image": "swamp_hydra.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "iron_juggernaut",
@@ -56,7 +68,11 @@
       ],
       "reward_shields": 3,
       "image": "iron_juggernaut.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "crimson_vampire",
@@ -71,7 +87,11 @@
       ],
       "reward_shields": 2,
       "image": "crimson_vampire.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "wild_berserker",
@@ -86,7 +106,11 @@
       ],
       "reward_shields": 2,
       "image": "wild_berserker.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     },
     {
       "code": "fallen_sun_champion",
@@ -97,7 +121,11 @@
       "reward_coins": 150,
       "reward_shields": 0,
       "image": "fallen_sun_champion.png",
-      "active": true
+      "active": true,
+      "faction": "commoners",
+      "ability_key": "none",
+      "ability_text": "Нет особой способности.",
+      "features": []
     }
   ]
 }

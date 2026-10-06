@@ -5,6 +5,7 @@ from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.catalog import validate_content
 from app.mini.boss.catalog import load_boss_catalog, load_boss_item_catalog
+from app.mini.boss.boss_abilities.catalog import load_ability_catalog
 from app.mini.boss.schema import init_boss_db
 from app.mini.heroes import sync_hero_catalog
 from app.mini.schema import init_mini_db
@@ -18,6 +19,7 @@ def main():
     init_boss_db()
     worlds = sync_configured_mini_worlds()
     content = validate_content()
+    boss_abilities = load_ability_catalog()
     boss_content = load_boss_catalog()
     boss_items = load_boss_item_catalog()
     sync_hero_catalog()
@@ -39,6 +41,7 @@ def main():
         f"боссов={len(boss_content['bosses'])} "
         f"предметов={len(boss_items['items'])}"
     )
+    print(f"OK: Combat v2: boss abilities={len(boss_abilities['abilities'])}")
     if content["missing_hero_images"]:
         print(
             "WARN: нет картинок у героев: "

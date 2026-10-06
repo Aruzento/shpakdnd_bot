@@ -30,6 +30,7 @@ from app.mini.boss.service import (
     register_player,
     reopen_registration,
     unregister_player,
+    select_battle_hero,
 )
 
 __all__ = [
@@ -54,6 +55,7 @@ __all__ = [
     "load_boss_catalog",
     "load_boss_item_catalog",
     "register_player",
+    "select_battle_hero",
     "reopen_registration",
     "start_battle",
     "sync_boss_reward_items",

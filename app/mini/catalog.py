@@ -108,6 +108,10 @@ def load_shop_catalog() -> dict:
 
 
 def load_hero_catalog() -> dict:
+    # Local imports avoid the package's existing eager re-exports during startup.
+    from app.mini.boss.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
+    from app.mini.boss.abilities.catalog import configured_ability_keys
+
     data = _read_json(HEROES_PATH)
     settings = data.get("settings")
     heroes = data.get("heroes")
@@ -184,6 +188,7 @@ def load_hero_catalog() -> dict:
                     f"heroes.json: cost_multiplier.{rarity} должен быть > 0."
                 )
 
+    passive_keys = configured_ability_keys()
     codes = set()
     for hero in heroes:
         if not isinstance(hero, dict):
@@ -218,6 +223,18 @@ def load_hero_catalog() -> dict:
                 f"heroes.json: герой {code}: attack должен быть больше 0."
             )
 
+        for field, allowed in (
+            ("faction", FACTIONS), ("damage_type", DAMAGE_TYPES),
+            ("attack_range", ATTACK_RANGES),
+        ):
+            value = hero.get(field)
+            if not isinstance(value, str) or value not in allowed:
+                raise ValueError(f"heroes.json: hero {code}: invalid {field}: {value!r}.")
+        for field in ("class_tag", "special_trait"):
+            if not isinstance(hero.get(field), str) or not hero[field].strip():
+                raise ValueError(f"heroes.json: hero {code}: {field} must be a nonempty string tag.")
+        if not isinstance(hero.get("passive_key"), str) or hero["passive_key"] not in passive_keys:
+            raise ValueError(f"heroes.json: hero {code}: unknown passive_key {hero.get('passive_key')!r}.")
         codes.add(code)
 
     return data

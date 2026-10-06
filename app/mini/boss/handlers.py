@@ -49,7 +49,9 @@ from app.mini.boss.service import (
     reopen_registration,
     set_signup_message,
     unregister_player,
+    select_battle_hero,
 )
+from app.mini.heroes import get_player_heroes
 from app.mini.players import get_mini_player, touch_mini_player
 from app.mini.worlds import get_mini_world_by_id
 
@@ -157,6 +159,14 @@ def _boss_private_menu(
                     callback_data=f"miniboss:join:{world_id}:{boss['id']}",
                 )
             ])
+
+    if joined and boss["status"] in {"announced", "ready"}:
+        rows.append([
+            InlineKeyboardButton(
+                text="🎴 Выбрать героя",
+                callback_data=f"miniboss:heroes:{world_id}:{user_id}:{boss['id']}:0",
+            )
+        ])
 
     rows.append([
         InlineKeyboardButton(
@@ -943,7 +953,10 @@ async def boss_hit_callback(callback: CallbackQuery):
         return
 
     try:
-        result = hit_boss(boss_id, player["id"])
+        result = hit_boss(
+            boss_id, player["id"],
+            expected_round=expected_round, expected_position=expected_position,
+        )
     except (BossNotYourTurn, BossNotParticipant, BossCombatError) as error:
         refreshed = get_boss(boss_id)
         if refreshed is not None:
@@ -1124,3 +1137,84 @@ async def boss_cancel_callback(callback: CallbackQuery):
     await callback.answer("Босс отменён")
     if player is not None:
         await _show_boss_home(callback, world, player)
+
+
+HERO_PAGE_SIZE = 8
+
+
+def _battle_hero_menu(world_id: int, user_id: int, boss_id: int, heroes: list[dict], page: int):
+    pages = max(1, (len(heroes) + HERO_PAGE_SIZE - 1) // HERO_PAGE_SIZE)
+    page = max(0, min(page, pages - 1))
+    rows = [[InlineKeyboardButton(
+        text=f"{hero['name']} • {hero['rarity']}",
+        callback_data=f"miniboss:hero:{world_id}:{user_id}:{boss_id}:{hero['id']}",
+    )] for hero in heroes[page * HERO_PAGE_SIZE:(page + 1) * HERO_PAGE_SIZE]]
+    navigation = []
+    for target, label in ((page - 1, "⬅️"), (page + 1, "➡️")):
+        if 0 <= target < pages:
+            navigation.append(InlineKeyboardButton(
+                text=label,
+                callback_data=f"miniboss:heroes:{world_id}:{user_id}:{boss_id}:{target}",
+            ))
+    if navigation:
+        rows.append(navigation)
+    rows.append([InlineKeyboardButton(
+        text="⬅️ К боссу", callback_data=f"mini:boss:{world_id}:{user_id}",
+    )])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _hero_selection_context(callback: CallbackQuery):
+    parts = (callback.data or "").split(":")
+    try:
+        if len(parts) != 6:
+            raise ValueError
+        world_id, owner_id, boss_id, value = map(int, parts[2:])
+    except ValueError:
+        await callback.answer("Некорректная кнопка.", show_alert=True)
+        return None
+    if callback.from_user.id != owner_id:
+        await callback.answer("Это меню другого игрока.", show_alert=True)
+        return None
+    world = _load_world(world_id)
+    player = _load_player(world_id, callback)
+    boss = get_boss(boss_id)
+    if world is None or player is None or boss is None or int(boss["world_id"]) != world_id:
+        await callback.answer("Босс больше не актуален.", show_alert=True)
+        return None
+    if boss["status"] not in {"announced", "ready"}:
+        await callback.answer("Героя можно выбрать только до начала боя.", show_alert=True)
+        return None
+    if not _is_joined(player["id"], list_participants(boss_id)):
+        await callback.answer("Ты не зарегистрирован на этого босса.", show_alert=True)
+        return None
+    return world, player, boss, value
+
+
+@router.callback_query(F.data.startswith("miniboss:heroes:"))
+async def boss_heroes_callback(callback: CallbackQuery):
+    context = await _hero_selection_context(callback)
+    if context is None:
+        return
+    world, player, boss, page = context
+    heroes = get_player_heroes(player["id"])
+    await callback.answer()
+    await _send_private(
+        callback, world, "🎴 Выбери героя на этот бой:",
+        _battle_hero_menu(world["id"], callback.from_user.id, boss["id"], heroes, page),
+    )
+
+
+@router.callback_query(F.data.startswith("miniboss:hero:"))
+async def boss_select_hero_callback(callback: CallbackQuery):
+    context = await _hero_selection_context(callback)
+    if context is None:
+        return
+    world, player, boss, hero_id = context
+    try:
+        hero = select_battle_hero(boss["id"], player["id"], hero_id)
+    except BossError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+    await callback.answer(f"✅ На этот бой выбран: {hero['name']}"[:200])
+    await _show_boss_home(callback, world, player)

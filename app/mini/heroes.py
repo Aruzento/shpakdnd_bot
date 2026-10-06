@@ -30,9 +30,9 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
                     passive_text,
                     description,
                     image_path,
-                    active
+                    active, faction, damage_type, class_tag, attack_range, special_trait
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(code) DO UPDATE SET
                     name = excluded.name,
                     rarity = excluded.rarity,
@@ -43,7 +43,12 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
                     passive_text = excluded.passive_text,
                     description = excluded.description,
                     image_path = excluded.image_path,
-                    active = excluded.active
+                    active = excluded.active,
+                    faction = excluded.faction,
+                    damage_type = excluded.damage_type,
+                    class_tag = excluded.class_tag,
+                    attack_range = excluded.attack_range,
+                    special_trait = excluded.special_trait
                 """,
                 (
                     hero["code"],
@@ -57,6 +62,8 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
                     hero.get("description", ""),
                     hero.get("image", ""),
                     1 if hero.get("active", True) else 0,
+                    hero["faction"], hero["damage_type"], hero["class_tag"],
+                    hero["attack_range"], hero["special_trait"],
                 ),
             )
 

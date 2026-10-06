@@ -10,6 +10,8 @@ from app.mini.boss.abilities import (
     resolve_kill,
 )
 from app.mini.boss.catalog import get_boss_template, sync_boss_reward_items
+from app.mini.boss.boss_abilities import engine as boss_abilities
+from app.mini.boss.matchups import faction_multiplier_percent, modify_damage
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.service import BossError, get_boss, list_participants
 from app.mini.db import connect_mini_db
@@ -133,15 +135,6 @@ def _current_participant(conn: sqlite3.Connection, boss: sqlite3.Row) -> sqlite3
         """,
         (int(boss["id"]), int(boss["current_turn_position"])),
     ).fetchone()
-
-
-def _participant_count(conn: sqlite3.Connection, boss_id: int) -> int:
-    return int(
-        conn.execute(
-            "SELECT COUNT(*) FROM mini_boss_participants WHERE boss_id = ?",
-            (int(boss_id),),
-        ).fetchone()[0]
-    )
 
 
 def _reward_eligible(row: sqlite3.Row) -> bool:
@@ -410,13 +403,16 @@ def _apply_boss_attack_passives(
 
     return events
 
-def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> dict:
+def _boss_hits_reward(
+    conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime,
+    *, ignore_shields: bool = False,
+) -> dict:
     shields = int(boss["reward_shields"])
     reward_percent = int(boss["reward_percent"])
     decay = int(boss["reward_decay_percent"])
     passive_events = _apply_boss_attack_passives(conn, boss)
 
-    if shields > 0:
+    if shields > 0 and not ignore_shields:
         new_shields = shields - 1
         conn.execute(
             "UPDATE mini_bosses SET reward_shields = ? WHERE id = ?",
@@ -439,7 +435,7 @@ def _boss_hits_reward(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetim
         "type": "reward_damage",
         "old_percent": reward_percent,
         "reward_percent": new_percent,
-        "shields": 0,
+        "shields": shields,
         "passive_events": passive_events,
     }
     if new_percent <= 0:
@@ -504,53 +500,165 @@ def _consume_pending_boss_skip(
     }
 
 
+
+def _refresh_boss(conn: sqlite3.Connection, boss_id: int) -> sqlite3.Row:
+    return conn.execute("SELECT * FROM mini_bosses WHERE id = ?", (boss_id,)).fetchone()
+
+
+def _apply_boss_effects(
+    conn: sqlite3.Connection,
+    boss: sqlite3.Row,
+    resolution: dict,
+    when: datetime,
+    *,
+    actor_id: int | None = None,
+) -> list[dict]:
+    """Persist hook effects and their structured audit events atomically."""
+    allowed = {"faction", "ability_state_json", "current_hp", "reward_percent"}
+    changes = resolution.get("boss_changes", {})
+    if not set(changes).issubset(allowed):
+        raise BossCombatError("Недопустимое изменение состояния способности босса.")
+    if changes:
+        assignments = ", ".join(f"{field} = ?" for field in changes)
+        conn.execute(
+            f"UPDATE mini_bosses SET {assignments} WHERE id = ?",
+            (*changes.values(), int(boss["id"])),
+        )
+    for change in resolution.get("participant_changes", []):
+        fields = {key: value for key, value in change.items() if key != "player_id"}
+        if not fields or not set(fields).issubset({"forced_skip_turns", "banished"}):
+            raise BossCombatError("Недопустимое изменение состояния участника.")
+        assignments = ", ".join(f"{field} = ?" for field in fields)
+        conn.execute(
+            f"UPDATE mini_boss_participants SET {assignments} WHERE boss_id = ? AND player_id = ?",
+            (*fields.values(), int(boss["id"]), int(change["player_id"])),
+        )
+    events = resolution.get("events", [])
+    if events and actor_id is None:
+        row = conn.execute(
+            "SELECT player_id FROM mini_boss_participants WHERE boss_id = ? ORDER BY queue_position LIMIT 1",
+            (int(boss["id"]),),
+        ).fetchone()
+        if row is None:
+            raise BossCombatError("У босса нет участников.")
+        actor_id = int(row["player_id"])
+    for event in events:
+        conn.execute(
+            """INSERT INTO mini_boss_actions (
+                boss_id, player_id, round_number, action_type, damage,
+                boss_hp_after, created_at, event_json
+            ) VALUES (?, ?, ?, ?, 0, ?, ?, ?)""",
+            (int(boss["id"]), int(event.get("player_id", actor_id)),
+             int(boss["current_round"]), "boss_ability_" + event["type"],
+             int(changes.get("current_hp", boss["current_hp"])), _db_time(when),
+             json.dumps(event, ensure_ascii=False)),
+        )
+    return list(events)
+
+
+def _boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> dict:
+    """One boss turn: skip -> ability -> reward attack(s) -> after-turn hook."""
+    skipped = _consume_pending_boss_skip(conn, boss, when)
+    if skipped is not None:
+        return skipped
+    participants = [
+        dict(row) for row in conn.execute(
+            "SELECT * FROM mini_boss_participants WHERE boss_id = ? ORDER BY queue_position",
+            (int(boss["id"]),),
+        ).fetchall()
+    ]
+    resolution = boss_abilities.boss_turn(dict(boss), participants)
+    events = _apply_boss_effects(conn, boss, resolution, when)
+    attacks = []
+    for _ in range(resolution["reward_attacks"]):
+        fresh = _refresh_boss(conn, int(boss["id"]))
+        if fresh["status"] != "fighting":
+            break
+        attack = _boss_hits_reward(
+            conn, fresh, when, ignore_shields=resolution["ignore_shields"],
+        )
+        attacks.append(attack)
+        if attack.get("battle_ended"):
+            break
+    fresh = _refresh_boss(conn, int(boss["id"]))
+    if fresh["status"] == "fighting":
+        after = boss_abilities.after_boss_turn(dict(fresh))
+        events.extend(_apply_boss_effects(conn, fresh, after, when))
+    # Preserve the existing reward_event contract for ordinary turns.
+    result = dict(attacks[-1])
+    result["attacks"] = attacks
+    result["boss_events"] = events
+    result["passive_events"] = [
+        event for attack in attacks for event in attack.get("passive_events", [])
+    ]
+    return result
+
+
+def _consume_forced_skip(
+    conn: sqlite3.Connection, boss: sqlite3.Row, current: sqlite3.Row, when: datetime,
+) -> dict:
+    player_id = int(current["player_id"])
+    conn.execute(
+        """UPDATE mini_boss_participants SET forced_skip_turns = forced_skip_turns - 1
+           WHERE boss_id = ? AND player_id = ?""",
+        (int(boss["id"]), player_id),
+    )
+    event = {"type": "paralysis_skip", "player_id": player_id}
+    _apply_boss_effects(conn, boss, {"events": [event]}, when, actor_id=player_id)
+    return event
+
+
 def _advance_after_turn(
     conn: sqlite3.Connection,
     boss: sqlite3.Row,
     when: datetime,
 ) -> dict:
-    count = _participant_count(conn, int(boss["id"]))
-    position = int(boss["current_turn_position"])
-
-    if count <= 0:
-        raise BossCombatError("У босса нет участников.")
-
-    if position < count:
+    """Advance through active participants, immediately consuming forced skips."""
+    reward_events = []
+    forced_events = []
+    round_ended = False
+    while True:
+        next_row = conn.execute(
+            """SELECT queue_position FROM mini_boss_participants
+               WHERE boss_id = ? AND banished = 0 AND queue_position > ?
+               ORDER BY queue_position LIMIT 1""",
+            (int(boss["id"]), int(boss["current_turn_position"])),
+        ).fetchone()
+        if next_row is None:
+            round_ended = True
+            reward_event = _boss_turn(conn, boss, when)
+            reward_events.append(reward_event)
+            if reward_event.get("battle_ended"):
+                return {
+                    "round_ended": True, "battle_ended": True,
+                    "reward_event": reward_event, "reward_events": reward_events,
+                    "forced_skip_events": forced_events,
+                }
+            next_row = conn.execute(
+                """SELECT queue_position FROM mini_boss_participants
+                   WHERE boss_id = ? AND banished = 0 ORDER BY queue_position LIMIT 1""",
+                (int(boss["id"]),),
+            ).fetchone()
+            if next_row is None:
+                raise BossCombatError("У босса нет активных участников.")
+            conn.execute(
+                "UPDATE mini_bosses SET current_round = current_round + 1 WHERE id = ?",
+                (int(boss["id"]),),
+            )
         conn.execute(
-            """
-            UPDATE mini_bosses
-            SET current_turn_position = ?, turn_started_at = ?
-            WHERE id = ?
-            """,
-            (position + 1, _db_time(when), int(boss["id"])),
+            """UPDATE mini_bosses SET current_turn_position = ?, turn_started_at = ?
+               WHERE id = ?""",
+            (int(next_row["queue_position"]), _db_time(when), int(boss["id"])),
         )
-        return {"round_ended": False, "battle_ended": False}
-
-    reward_event = _consume_pending_boss_skip(conn, boss, when)
-    if reward_event is None:
-        reward_event = _boss_hits_reward(conn, boss, when)
-    if reward_event.get("battle_ended"):
-        return {
-            "round_ended": True,
-            "battle_ended": True,
-            "reward_event": reward_event,
-        }
-
-    conn.execute(
-        """
-        UPDATE mini_bosses
-        SET current_round = current_round + 1,
-            current_turn_position = 1,
-            turn_started_at = ?
-        WHERE id = ?
-        """,
-        (_db_time(when), int(boss["id"])),
-    )
-    return {
-        "round_ended": True,
-        "battle_ended": False,
-        "reward_event": reward_event,
-    }
+        boss = _refresh_boss(conn, int(boss["id"]))
+        current = _current_participant(conn, boss)
+        if int(current["forced_skip_turns"]) <= 0:
+            return {
+                "round_ended": round_ended, "battle_ended": False,
+                "reward_event": reward_events[-1] if reward_events else None,
+                "reward_events": reward_events, "forced_skip_events": forced_events,
+            }
+        forced_events.append(_consume_forced_skip(conn, boss, current, when))
 
 
 def start_battle(
@@ -583,14 +691,15 @@ def start_battle(
             SELECT
                 bp.player_id,
                 bp.queue_position,
-                p.active_hero_id,
+                COALESCE(bp.hero_id, p.active_hero_id) AS selected_hero_id,
+                h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
                 h.attack AS base_attack,
                 ph.stars
             FROM mini_boss_participants bp
             JOIN mini_players p ON p.id = bp.player_id
-            LEFT JOIN mini_heroes h ON h.id = p.active_hero_id
+            LEFT JOIN mini_heroes h ON h.id = COALESCE(bp.hero_id, p.active_hero_id)
             LEFT JOIN mini_player_heroes ph
-              ON ph.player_id = p.id AND ph.hero_id = p.active_hero_id
+              ON ph.player_id = p.id AND ph.hero_id = COALESCE(bp.hero_id, p.active_hero_id)
             WHERE bp.boss_id = ?
             ORDER BY bp.queue_position
             """,
@@ -602,7 +711,7 @@ def start_battle(
             raise BossCombatError("Недостаточно участников для старта боя.")
 
         for row in participants:
-            if row["active_hero_id"] is None or row["base_attack"] is None or row["stars"] is None:
+            if row["selected_hero_id"] is None or row["base_attack"] is None or row["stars"] is None:
                 conn.rollback()
                 raise BossCombatError(
                     "У одного из участников больше нет выбранного героя. Открой регистрацию и проверь состав."
@@ -619,12 +728,16 @@ def start_battle(
                 UPDATE mini_boss_participants
                 SET hero_id = ?, attack = ?, hit_count = 0, total_damage = 0,
                     skipped_turns = 0, reward_granted = 0,
+                    forced_skip_turns = 0, banished = 0, hero_snapshot_json = ?,
                     damage_bonus_percent = ?, phantom_reward = ?
                 WHERE boss_id = ? AND player_id = ?
                 """,
                 (
-                    int(row["active_hero_id"]),
+                    int(row["selected_hero_id"]),
                     max(1, attack),
+                    json.dumps({field: row[field] for field in (
+                        "faction", "damage_type", "class_tag", "attack_range", "special_trait",
+                    )}, ensure_ascii=False),
                     10 if damage_potion else 0,
                     1 if phantom_potion else 0,
                     int(boss_id),
@@ -642,6 +755,8 @@ def start_battle(
             """,
             (_db_time(now), _db_time(now), int(boss_id)),
         )
+        fresh = _refresh_boss(conn, int(boss_id))
+        _apply_boss_effects(conn, fresh, boss_abilities.battle_start(dict(fresh)), now)
         conn.commit()
 
     return get_combat_state(boss_id, db_path=db_path)
@@ -748,6 +863,7 @@ def advance_expired_turns(
     changed = False
     skipped = []
     reward_events = []
+    forced_skip_events = []
 
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -762,6 +878,20 @@ def advance_expired_turns(
                 raise BossCombatError("Босс не найден.")
             if boss["status"] != "fighting":
                 break
+
+            current = _current_participant(conn, boss)
+            if current is None:
+                raise BossCombatError("Не удалось определить текущего участника.")
+            if int(current["banished"]) or int(current["forced_skip_turns"]) > 0:
+                if not int(current["banished"]):
+                    forced_skip_events.append(_consume_forced_skip(conn, boss, current, now))
+                advance = _advance_after_turn(conn, boss, now)
+                forced_skip_events.extend(advance.get("forced_skip_events", []))
+                reward_events.extend(advance.get("reward_events", []))
+                changed = True
+                if advance.get("battle_ended"):
+                    break
+                continue
 
             started = _parse_db_time(boss["turn_started_at"])
             if started is None:
@@ -805,8 +935,8 @@ def advance_expired_turns(
             changed = True
 
             advance = _advance_after_turn(conn, boss, deadline)
-            if advance.get("reward_event"):
-                reward_events.append(advance["reward_event"])
+            reward_events.extend(advance.get("reward_events", []))
+            forced_skip_events.extend(advance.get("forced_skip_events", []))
             if advance.get("battle_ended"):
                 break
 
@@ -816,6 +946,7 @@ def advance_expired_turns(
     return {
         "changed": changed,
         "skipped": skipped,
+        "forced_skip_events": forced_skip_events,
         "reward_events": reward_events,
         "state": state,
     }
@@ -826,6 +957,8 @@ def hit_boss(
     player_id: int,
     *,
     now: datetime | None = None,
+    expected_round: int | None = None,
+    expected_position: int | None = None,
     db_path: str | Path = DB_PATH,
 ) -> dict:
     now = _coerce_utc(now)
@@ -849,12 +982,19 @@ def hit_boss(
             conn.rollback()
             raise BossCombatError("Бой уже завершён.")
 
+        if (
+            (expected_round is not None and int(boss["current_round"]) != expected_round)
+            or (expected_position is not None and int(boss["current_turn_position"]) != expected_position)
+        ):
+            raise BossNotYourTurn("Этот ход уже завершён. Используй актуальное сообщение.")
+
         participant = conn.execute(
             """
             SELECT
                 bp.*,
                 h.passive_key,
                 h.passive_text,
+                h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
                 h.name AS hero_name
             FROM mini_boss_participants bp
             LEFT JOIN mini_heroes h ON h.id = bp.hero_id
@@ -875,6 +1015,15 @@ def hit_boss(
             conn.rollback()
             raise BossNotYourTurn(f"Сейчас ход {who}.")
 
+        if int(participant["banished"]) or int(participant["forced_skip_turns"]) > 0:
+            raise BossNotYourTurn("Этот участник сейчас не может ходить.")
+        hero = dict(participant)
+        snapshot = json.loads(participant["hero_snapshot_json"] or "{}")
+        if not isinstance(snapshot, dict):
+            raise BossCombatError("Некорректный snapshot героя.")
+        hero.update({field: snapshot[field] for field in (
+            "faction", "damage_type", "class_tag", "attack_range", "special_trait",
+        ) if field in snapshot})
         passive_key = str(participant["passive_key"] or "none")
         attack_resolution = resolve_attack(
             passive_key,
@@ -885,10 +1034,18 @@ def hit_boss(
         )
         ability_damage = int(attack_resolution["damage"])
         damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
-        damage = ability_damage
+        faction_percent = faction_multiplier_percent(hero["faction"], boss["faction"])
+        damage_after_faction = modify_damage(ability_damage, faction_percent)
+        boss_resolution = boss_abilities.modify_hero_damage(dict(boss), hero, damage_after_faction)
+        boss_events = _apply_boss_effects(
+            conn, boss, boss_resolution, now, actor_id=int(player_id),
+        )
+        boss_modifier_percent = int(boss_resolution["modifier_percent"])
+        damage_before_external_bonus = int(boss_resolution["damage"])
+        damage = damage_before_external_bonus
         passive_events = list(attack_resolution["events"])
         boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
-        if damage_bonus_percent > 0:
+        if damage_bonus_percent > 0 and damage > 0:
             damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
             passive_events.append(
                 {
@@ -943,6 +1100,8 @@ def hit_boss(
             )
 
         reward_event = None
+        reward_events = []
+        forced_skip_events = []
         rewards = None
         battle_ended = False
         bonus_shards = 0
@@ -959,7 +1118,14 @@ def hit_boss(
             refreshed = conn.execute(
                 "SELECT * FROM mini_bosses WHERE id = ?", (int(boss_id),)
             ).fetchone()
-            rewards = _finish_victory(conn, refreshed, now)
+            death = boss_abilities.boss_death(dict(refreshed))
+            boss_events.extend(_apply_boss_effects(conn, refreshed, death, now, actor_id=int(player_id)))
+            refreshed = _refresh_boss(conn, int(boss_id))
+            rewards = (
+                _finish_failure(conn, refreshed, now)
+                if death["destroyed_reward"]
+                else _finish_victory(conn, refreshed, now)
+            )
             battle_ended = True
         else:
             refreshed = conn.execute(
@@ -967,6 +1133,8 @@ def hit_boss(
             ).fetchone()
             advance = _advance_after_turn(conn, refreshed, now)
             reward_event = advance.get("reward_event")
+            reward_events = advance.get("reward_events", [])
+            forced_skip_events = advance.get("forced_skip_events", [])
             battle_ended = bool(advance.get("battle_ended"))
             if battle_ended and reward_event:
                 rewards = reward_event.get("failure_rewards")
@@ -979,6 +1147,13 @@ def hit_boss(
         "damage": damage,
         "base_damage": int(attack_resolution["base_damage"]),
         "ability_damage": ability_damage,
+        "faction_multiplier_percent": faction_percent,
+        "damage_after_faction": damage_after_faction,
+        "boss_modifier_percent": boss_modifier_percent,
+        "damage_before_external_bonus": damage_before_external_bonus,
+        "boss_events": boss_events,
+        "forced_skip_events": forced_skip_events,
+        "reward_events": reward_events,
         "damage_bonus_percent": damage_bonus_percent,
         "passive_key": passive_key,
         "passive_name": attack_resolution["passive_name"],

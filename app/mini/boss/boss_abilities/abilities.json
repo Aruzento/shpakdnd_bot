@@ -1,0 +1,28 @@
+{
+  "abilities": {
+    "none": {},
+    "paralysis": {},
+    "critical_strike": {
+      "chance_percent": 10
+    },
+    "banishment": {
+      "every": 5,
+      "chance_percent": 50
+    },
+    "shapeshifter": {
+      "chance_percent": 50,
+      "target_faction": "dark"
+    },
+    "rapier": {
+      "chance_percent": 10
+    },
+    "hydra_regeneration": {
+      "heal_percent": 10
+    },
+    "kamikaze": {},
+    "magic_shield": {},
+    "mechanism": {
+      "damage_percent": 80
+    }
+  }
+}

@@ -1,4 +1,7 @@
 import json
+
+from app.mini.boss.matchups import FACTIONS
+from app.mini.boss.boss_abilities.catalog import get_ability, validate_config
 from pathlib import Path
 
 
@@ -82,6 +85,8 @@ def load_boss_catalog() -> dict:
     except json.JSONDecodeError as error:
         raise BossCatalogError(f"Некорректный JSON боссов: {error}") from error
 
+    if not isinstance(data, dict):
+        raise BossCatalogError("bosses.json: root must be an object.")
     bosses = data.get("bosses")
     if not isinstance(bosses, list):
         raise BossCatalogError("В bosses.json поле bosses должно быть списком.")
@@ -114,6 +119,20 @@ def load_boss_catalog() -> dict:
                 f"У босса {code} reward_decay_percent должен быть от 1 до 100."
             )
 
+        faction = boss.get("faction")
+        if not isinstance(faction, str) or faction not in FACTIONS:
+            raise BossCatalogError(f"Boss {code}: invalid faction {faction!r}.")
+        try:
+            get_ability(boss.get("ability_key"))
+            validate_config(boss["ability_key"], boss.get("ability_config", {}))
+        except ValueError as error:
+            raise BossCatalogError(f"Boss {code}: {error}") from error
+        if not isinstance(boss.get("ability_text"), str):
+            raise BossCatalogError(f"Boss {code}: ability_text must be a string.")
+        if not isinstance(boss.get("features"), list) or any(
+            not isinstance(tag, str) or not tag.strip() for tag in boss["features"]
+        ):
+            raise BossCatalogError(f"Boss {code}: features must be a list of string tags.")
         boss["reward_items"] = _validate_reward_items(
             boss.get("reward_items", []), known_items, code
         )

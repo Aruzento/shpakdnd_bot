@@ -391,6 +391,16 @@ def init_mini_db(db_path: str | Path = DB_PATH) -> None:
             ).fetchall()
         }
 
+        combat_defaults = {
+            "faction": "commoners", "damage_type": "slashing",
+            "class_tag": "none", "attack_range": "melee", "special_trait": "none",
+        }
+        for name, default in combat_defaults.items():
+            if name not in hero_columns:
+                conn.execute(
+                    f"ALTER TABLE mini_heroes ADD COLUMN {name} TEXT NOT NULL DEFAULT '{default}'"
+                )
+
         if "image_path" not in hero_columns:
             conn.execute(
                 """
