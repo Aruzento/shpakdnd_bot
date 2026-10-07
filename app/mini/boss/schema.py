@@ -227,6 +227,8 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
                 (boss_id, round_number, event.get("type", "legacy"),
                  event.get("player_id"), raw, hp, created_at, action_id),
             )
+        from app.mini.migrations.v1_3_2 import boss_state
+        boss_state(conn)
         freeze_legacy_loadouts(conn)
         conn.commit()
 

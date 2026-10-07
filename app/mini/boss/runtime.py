@@ -96,6 +96,7 @@ def boss_hits_reward(
         "type": "shield" if shield_hit else "reward_damage",
         "old_shields": shields, "shields": new_shields,
         "old_percent": reward_percent, "reward_percent": int(fresh["reward_percent"]),
+        "display_reward_percent": creatures.effective_reward_percent(dict(fresh)) if int(fresh["class_rules_version"]) else int(fresh["reward_percent"]),
         "reward_temp_hp": int(fresh["reward_temp_hp"]),
         "effective_reward_percent": creatures.effective_reward_percent(dict(fresh)),
         "poisonous": poisonous, "passive_events": passive_events,

@@ -97,7 +97,7 @@ def _inventory_menu(
     rows.append([
         InlineKeyboardButton(
             text="⬅️ Назад",
-            callback_data=_personal_callback("home", world_id, user_id),
+            callback_data=_personal_callback("heroarea", world_id, user_id),
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -180,7 +180,7 @@ def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="⬅️ На главную",
-                    callback_data=_personal_callback("home", world_id, user_id),
+                    callback_data=_personal_callback("heroarea", world_id, user_id),
                 )
             ],
         ]

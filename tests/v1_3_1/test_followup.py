@@ -121,7 +121,7 @@ class SharedActiveHeroTests(MiniCase):
 
     def test_collection_callback_updates_active_hero_and_boss_prestart(self):
         callback = SimpleNamespace(from_user=SimpleNamespace(id=900123),answer=AsyncMock())
-        with patch('app.mini.ui.heroes._load_extended_context', new_callable=AsyncMock, return_value=(self.world,self.player,str(self.second))), patch('app.mini.ui.heroes.set_active_hero', side_effect=lambda p,h: set_active_hero(p,h,self.db)) as select, patch('app.mini.ui.heroes.get_player_hero', side_effect=lambda p,h: get_player_hero(p,h,self.db)), patch('app.mini.ui.heroes.get_gacha_state', side_effect=lambda p: get_gacha_state(p,self.db)), patch('app.mini.ui.heroes.send_hero_card', new_callable=AsyncMock):
+        with patch('app.mini.ui.heroes._load_extended_context', new_callable=AsyncMock, return_value=(self.world,self.player,str(self.second))), patch('app.mini.ui.heroes.set_active_hero', side_effect=lambda p,h: set_active_hero(p,h,self.db)) as select, patch('app.mini.ui.heroes.get_player_hero', side_effect=lambda p,h: get_player_hero(p,h,self.db)), patch('app.mini.ui.heroes.get_gacha_state', side_effect=lambda p: get_gacha_state(p,self.db)), patch('app.mini.ui.heroes.send_hero_card', new_callable=AsyncMock), patch('app.mini.ui.heroes.is_favorite', return_value=False):
             asyncio.run(hero_active_callback(callback))
         select.assert_called_once_with(self.pid,self.second)
         self.assertEqual(get_active_hero(self.pid,self.db)['id'],self.second)

@@ -150,6 +150,7 @@ def upgrade_hero(
     player_id: int,
     hero_id: int,
     db_path: str | Path = DB_PATH,
+    *, expected_stars: int | None = None,
 ) -> dict:
     """Тратит общие осколки игрока и повышает звёзды героя на 1."""
     with connect_mini_db(db_path) as conn:
@@ -180,6 +181,8 @@ def upgrade_hero(
             raise HeroUpgradeError("Этого героя нет в твоей коллекции.")
 
         stars = int(row["stars"])
+        if expected_stars is not None and stars != expected_stars:
+            raise HeroUpgradeError("Кнопка улучшения устарела. Открой карточку заново.")
         shards = int(row["shards"])
         rarity = str(row["rarity"])
         settings = get_upgrade_settings()

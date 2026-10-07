@@ -4,7 +4,7 @@ Boss reward-only decay/corruption have no meaning here. Passive shard procs are
 banked until victory so losing/retrying cannot farm combat currency.
 """
 import json
-from app.mini.combat import creatures
+from app.mini.combat import creatures, classes
 from app.mini.combat.hero_abilities import engine as abilities
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
@@ -15,6 +15,7 @@ def resolve_turn(attempt, *, roller=None):
     runtime = json.loads(attempt["runtime_json"])
     hero_state = runtime.get("hero", {})
     enemy.update(current_hp=attempt["current_hp"], trait_rules_version=1,
+                 class_rules_version=runtime.get("class_rules_version",0),
                  features_json=json.dumps(enemy["features"]),
                  feature_state_json=json.dumps(runtime.get("creature", {})),
                  reward_shields=attempt["shields"], reward_shields_max=3)
@@ -55,15 +56,18 @@ def resolve_turn(attempt, *, roller=None):
         hit_number = runtime.get("hit_count",attempt["turn"]) + 1
         runtime["hit_count"] = hit_number
         attack = abilities.resolve_attack(passive if reachable else "none",
-            base_damage=hero["attack"]+attempt["equipment_bonus"],hit_number=hit_number,
+            base_damage=classes.initial_attack(hero["attack"]+attempt["equipment_bonus"],participants,active=classes.enabled(enemy)),hit_number=hit_number,
             boss_hp_before=enemy["current_hp"],boss_max_hp=enemy["max_hp"],roller=roller)
         events.extend(attack["events"])
-        hit = damage(creatures.feature_damage(enemy,hero,modify_damage(attack["damage"],percent)))
+        ordinary=creatures.feature_damage(enemy,hero,modify_damage(attack["damage"],percent))
+        hit = damage(classes.beast_damage(ordinary,hero,hero_state,active=classes.enabled(enemy)))
         if not reachable:
             events.append({"type":"unreachable","message":"🪽 Нужен дальний бой или летающий герой."})
         apply(creatures.on_hit(enemy,hero,successful=hit>0,roller=roller))
         after = abilities.resolve_after_attack(passive if reachable else "none",hit_number=hit_number,actual_hp_damage=hit,state=hero_state)
-        hero_state = after["state"]; events.extend(after["events"])
+        class_plan=classes.on_hit(enemy,hero,after['state'],successful=hit>0,roller=roller)
+        apply(class_plan)
+        hero_state = class_plan["state"]; events.extend(after["events"])
         runtime["skips"] = runtime.get("skips",0)+attack["boss_skip_turns"]
         primary_killed = enemy["current_hp"] == 0
         won = death() if primary_killed else False

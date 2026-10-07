@@ -39,7 +39,7 @@ def _screen(world_id: int, user_id: int, player: dict, screen: str,
         rows = [[button("😇 Святоша, Демон, Житель", "rps")],
                 [button("🌀 Лабиринт интуиции", "lab")],
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data=
-                    personal_callback("home", world_id, user_id))]]
+                    personal_callback("fair", world_id, user_id))]]
     elif screen == "rps":
         text = ("😇 Святоша, Демон, Житель\n\nСвятоша побеждает Демона, "
                 "Демон — Жителя, а Житель — Святошу. Выбери ставку, затем "

@@ -44,7 +44,7 @@ def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     rows.append([
         InlineKeyboardButton(
             text="⬅️ Назад",
-            callback_data=_personal_callback("home", world_id, user_id),
+            callback_data=_personal_callback("fair", world_id, user_id),
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -116,7 +116,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
             [
                 InlineKeyboardButton(
                     text="⬅️ На главную",
-                    callback_data=_personal_callback("home", world_id, user_id),
+                    callback_data=_personal_callback("fair", world_id, user_id),
                 )
             ],
         ]

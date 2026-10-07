@@ -9,12 +9,13 @@ import json
 import sqlite3
 import time
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
-from app.config import DB_PATH
+from app import config
 from app.mini.db import connect_mini_db
 from app.mini.presentation import format_player_mention
 
 
-def enqueue_expired_titles(db_path=DB_PATH, *, now=None):
+def enqueue_expired_titles(db_path=None, *, now=None):
+    db_path=config.DB_PATH if db_path is None else db_path
     when=int(time.time() if now is None else now)
     with connect_mini_db(db_path) as conn:
         conn.execute('BEGIN IMMEDIATE')
@@ -28,7 +29,8 @@ def enqueue_expired_titles(db_path=DB_PATH, *, now=None):
     return len(rows)
 
 
-def claim_notification(notification_id, db_path=DB_PATH):
+def claim_notification(notification_id, db_path=None):
+    db_path=config.DB_PATH if db_path is None else db_path
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('BEGIN IMMEDIATE')
@@ -42,13 +44,15 @@ def claim_notification(notification_id, db_path=DB_PATH):
         return dict(row)
 
 
-def finish_notification(notification_id,status,db_path=DB_PATH, *, message_id=None,error=''):
+def finish_notification(notification_id,status,db_path=None, *, message_id=None,error=''):
+    db_path=config.DB_PATH if db_path is None else db_path
     with connect_mini_db(db_path) as conn:
         conn.execute("""UPDATE mini_public_notifications SET status=?,message_id=?,last_error=?
             WHERE id=? AND status='sending'""",(status,message_id,error[:500],notification_id))
 
 
-async def publish_pending_notifications(bot, db_path=DB_PATH, *, player_id=None):
+async def publish_pending_notifications(bot, db_path=None, *, player_id=None):
+    db_path=config.DB_PATH if db_path is None else db_path
     with connect_mini_db(db_path) as conn:
         rows=conn.execute("""SELECT id FROM mini_public_notifications WHERE status='pending'
             AND (? IS NULL OR player_id=?) ORDER BY id""",(player_id,player_id)).fetchall()
@@ -88,8 +92,9 @@ async def mini_notice_watch_loop(bot, *, interval_seconds=60):
         await asyncio.sleep(max(10,interval_seconds))
 
 
-def recover_interrupted_notifications(db_path=DB_PATH):
+def recover_interrupted_notifications(db_path=None):
     """Called before polling: never re-send an unacknowledged prior dispatch."""
+    db_path=config.DB_PATH if db_path is None else db_path
     with connect_mini_db(db_path) as conn:
         return conn.execute("""UPDATE mini_public_notifications SET status='uncertain',
             last_error='Bot stopped before send acknowledgment' WHERE status='sending'""").rowcount

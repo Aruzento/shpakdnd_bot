@@ -8,7 +8,7 @@ from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarku
 from app.mini.boss.catalog import list_boss_reward_items
 from app.mini.catalog import hero_image_path
 from app.mini.presentation import faction_label, tag_label, TRAIT_LABELS, FEATURE_DESCRIPTIONS
-from app.mini.combat import creatures
+from app.mini.combat import creatures,classes
 from app.mini.boss.service import get_boss, list_participants, set_turn_message
 
 
@@ -33,6 +33,7 @@ def _turn_state_key(boss: dict) -> tuple:
         int(boss.get("current_turn_position") or 0),
         int(boss.get("current_hp") or 0),
         int(boss.get("reward_shields") or 0),
+        int(boss.get("boss_damage", 0)), int(boss.get("sneaky_stolen", 0)),
         int(boss.get("reward_percent") or 0),
         str(boss.get("battle_result") or ""),
         int(boss.get("reward_temp_hp", 0)), int(boss.get("reward_corruption", 0)),
@@ -115,7 +116,7 @@ def _participant_mention(row: dict | None) -> str:
 
 def _reward_line(boss: dict) -> str:
     percent = max(0, min(100, int(boss.get("reward_percent", 100))))
-    coins = int(boss.get("reward_coins", 0)) * percent // 100
+    coins = classes.real_reward(boss)
     parts = [f"{coins} 🪙"] if int(boss.get("reward_coins", 0)) > 0 else []
     for item in reward_items(boss):
         suffix = f" ×{item['quantity']}" if item["quantity"] > 1 else ""
@@ -141,7 +142,7 @@ def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
 def format_public_boss(boss: dict, participants: list[dict]) -> str:
     """Boss announcement with Combat v2 traits and unchanged reward amounts."""
     percent = max(0, min(100, int(boss.get("reward_percent", 100))))
-    coins = int(boss.get("reward_coins", 0)) * percent // 100
+    coins = classes.real_reward(boss)
     features = json.loads(boss.get("features_json") or "[]")
     feature_text = ", ".join(tag_label(tag, TRAIT_LABELS) for tag in features) or "Нет."
     feature_details = ("\n".join(FEATURE_DESCRIPTIONS[creatures.canonical_trait(tag)]
@@ -164,7 +165,7 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
         f"🎁 Награда: {coins} монет • 🛡 Щиты: {boss.get('reward_shields', 3)}",
         f"🎁 Доп. награда: {', '.join(items) if items else 'Нет.'}",
     ]
-    if int(boss.get("reward_temp_hp", 0)) or int(boss.get("reward_corruption", 0)):
+    if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
             f"💎 Запас награды: {creatures.effective_reward_percent(boss)}%"
             f" • Временный: +{int(boss.get('reward_temp_hp', 0))}%"
@@ -214,15 +215,15 @@ def format_public_turn(
         f"👹 {boss['name']} - ❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
         "",
         f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}"
-        f" • 💎 Состояние награды: {boss.get('reward_percent', 100)}%",
+        f" • 💎 Состояние награды: {creatures.effective_reward_percent(boss) if classes.enabled(boss) else boss.get('reward_percent',100)}%",
     ]
-    if int(boss.get("reward_temp_hp", 0)) or int(boss.get("reward_corruption", 0)):
+    if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
-            f"💎 Реальная награда: {int(boss['reward_coins']) * int(boss['reward_percent']) // 100} монет"
+            f"💎 Реальная награда: {classes.real_reward(boss)} монет"
             f" • Временный запас: +{int(boss.get('reward_temp_hp', 0))}%"
             f" • Порча: {int(boss.get('reward_corruption', 0))}%"
             f" • Эффективный запас: {creatures.effective_reward_percent(boss)}%"
-            f" ({int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100} монет)"
+            f" ({classes.effective_reward(boss) if classes.enabled(boss) else int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100} монет)"
         )
     if status == "fighting":
         current = current_participant(boss, participants)

@@ -23,7 +23,7 @@ def create_attempt(conn,player_id,hero,enemy,bonus):
     cursor=conn.execute("""INSERT INTO mini_tower_attempts
         (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,runtime_json)
         VALUES(?,?,?,?,?,?,?,?)""",(player_id,enemy["floor"],hero["id"],json.dumps(hero),
-        json.dumps(enemy),bonus,enemy["max_hp"],json.dumps({"hero":{"reward_guard_charges":guard}})))
+        json.dumps(enemy),bonus,enemy["max_hp"],json.dumps({"class_rules_version":1,"hero":{"reward_guard_charges":guard}})))
     return attempt_by_id(conn,player_id,cursor.lastrowid)
 
 

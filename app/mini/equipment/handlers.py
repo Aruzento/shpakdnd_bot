@@ -21,7 +21,7 @@ def render_equipment(state,world,user,page=0,mode='home'):
             lines.append(f"{LABELS[slot]}: {item['name']} +{item['attack_bonus']}" if item else f"{LABELS[slot]}: пусто")
         lines += ['','Ненадетые предметы можно посмотреть в «Инвентаре».']
         rows=[[btn('Надеть...','choose_equip.0')],[btn('Снять...','choose_remove.0')],
-              [InlineKeyboardButton(text='Назад',callback_data=personal_callback('home',world,user))]]
+              [InlineKeyboardButton(text='Назад',callback_data=personal_callback('heroarea',world,user))]]
     elif mode=='choose_remove':
         lines=['🛡 Снять экипировку','','Выбери слот. Снятый предмет останется в инвентаре.']
         for slot in SLOTS:

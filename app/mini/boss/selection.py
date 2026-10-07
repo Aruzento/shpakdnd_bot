@@ -8,6 +8,9 @@ from app.mini.boss.presentation import battle_hero_menu, selection_details
 from app.mini.boss.ui import is_joined, show_boss_home
 from app.mini.boss.public import format_public_boss
 
+from app.mini.favorites import get_favorites
+from app.mini.ui.hero_selector import render_selector
+
 router = Router(name="mini_boss_selection")
 
 async def _hero_selection_context(callback: CallbackQuery):
@@ -44,11 +47,10 @@ async def boss_heroes_callback(callback: CallbackQuery):
         return
     world, player, boss, page = context
     heroes = get_player_heroes(player["id"])
+    text,markup=render_selector(heroes,get_favorites(player['id']),'b',world['id'],callback.from_user.id,boss['id'])
     await callback.answer()
-    await _send_private(
-        callback, world, format_public_boss(boss, list_participants(boss["id"])) + "\n\n🎴 Выбери активного героя:\n\n" + selection_details(heroes, page),
-        battle_hero_menu(world["id"], callback.from_user.id, boss["id"], heroes, page),
-    )
+    await _send_private(callback,world,format_public_boss(boss,list_participants(boss['id']))+'\n\n🎴 Выбери активного героя\n'+text,markup)
+
 
 
 @router.callback_query(F.data.startswith("miniboss:hero:"))

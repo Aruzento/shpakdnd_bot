@@ -6,6 +6,7 @@ from app.mini.combat.hero_abilities import engine as hero_abilities
 from app.mini.boss.catalog import get_boss_template
 from app.mini.boss.loadouts import battle_loadout
 from app.mini.boss.errors import BossCombatError
+from app.mini.combat import classes
 from app.mini.boss.clock import utcnow, db_time
 from app.mini.boss.repository import log_hero_event
 
@@ -73,7 +74,7 @@ def grant_victory_rewards(
     when: datetime | None = None,
 ) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
-    coins_each = int(boss["reward_coins"]) * reward_percent // 100
+    coins_each = classes.real_reward(dict(boss))
     items = reward_items(boss["reward_items_json"])
 
     item_ids = {}

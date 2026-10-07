@@ -127,7 +127,7 @@ def boss_private_menu(
     rows.append([
         InlineKeyboardButton(
             text="⬅️ На главную",
-            callback_data=f"mini:home:{world_id}:{user_id}",
+            callback_data=f"mini:adventures:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -150,7 +150,7 @@ def no_boss_menu(
     rows.append([
         InlineKeyboardButton(
             text="⬅️ На главную",
-            callback_data=f"mini:home:{world_id}:{user_id}",
+            callback_data=f"mini:adventures:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -202,34 +202,10 @@ def preview_menu(
 
 
 def battle_hero_menu(world_id: int, user_id: int, boss_id: int, heroes: list[dict], page: int):
-    pages = max(1, (len(heroes) + HERO_PAGE_SIZE - 1) // HERO_PAGE_SIZE)
-    page = max(0, min(page, pages - 1))
-    rows = [[InlineKeyboardButton(
-        text=f"{hero['name']} • {hero['rarity']}",
-        callback_data=f"miniboss:hero:{world_id}:{user_id}:{boss_id}:{hero['id']}",
-    )] for hero in heroes[page * HERO_PAGE_SIZE:(page + 1) * HERO_PAGE_SIZE]]
-    navigation = []
-    for target, label in ((page - 1, "⬅️"), (page + 1, "➡️")):
-        if 0 <= target < pages:
-            navigation.append(InlineKeyboardButton(
-                text=label,
-                callback_data=f"miniboss:heroes:{world_id}:{user_id}:{boss_id}:{target}",
-            ))
-    if navigation:
-        rows.append(navigation)
-    rows.append([InlineKeyboardButton(
-        text="⬅️ К боссу", callback_data=f"mini:boss:{world_id}:{user_id}",
-    )])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
+    # Compatibility export; live entry screens show favorites via the same renderer.
+    from app.mini.ui.hero_selector import render_selector
+    return render_selector(heroes,[],'b',world_id,user_id,boss_id,view='all',page=page)[1]
 
 
 def selection_details(heroes: list[dict], page: int) -> str:
-    pages = max(1, (len(heroes) + HERO_PAGE_SIZE - 1) // HERO_PAGE_SIZE)
-    page = max(0, min(page, pages - 1))
-    return "\n\n".join(
-        "\n".join([hero_heading(hero), *hero_trait_lines(hero),
-                   f"⚔️ Урон: {hero.get('attack', 1)}",
-                   f"💫 {str(hero.get('passive_text') or 'Нет особой способности.')[:120]}"])
-        for hero in heroes[page * HERO_PAGE_SIZE:(page + 1) * HERO_PAGE_SIZE]
-    )
+    return 'Выбери активного героя кнопкой.'

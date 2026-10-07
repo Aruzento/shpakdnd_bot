@@ -1,7 +1,7 @@
 from app.mini.presentation import format_player_mention
 """Mini admin use cases. Each mutation and its audit commit in one transaction."""
 import sqlite3
-from app.config import DB_PATH
+from app import config
 from app.topic_guard import require_mini_topic
 from app.mini.db import connect_mini_db
 from app.mini.hero_upgrades import calculate_attack
@@ -104,7 +104,8 @@ def _item(conn,player_id,code,deleting):
             ON CONFLICT(player_id,item_id) DO UPDATE SET quantity=quantity+1,updated_at=CURRENT_TIMESTAMP""",(player_id,item['id']))
 
 
-def execute(admin_user_id,command,*,operation_key='',db_path=DB_PATH):
+def execute(admin_user_id,command,*,operation_key='',db_path=None):
+    db_path=config.DB_PATH if db_path is None else db_path
     require_superadmin(admin_user_id)
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row

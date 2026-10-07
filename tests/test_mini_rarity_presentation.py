@@ -40,10 +40,10 @@ class RarityPresentationTests(unittest.TestCase):
         for rarity, emoji in EXPECTED.items():
             with self.subTest(rarity=rarity):
                 hero = {"id": 11, "name": "Герой", "rarity": rarity}
-                menu = _collection_menu(1, 2, {"heroes": [hero]})
-                label = menu.inline_keyboard[1][0].text
-                self.assertEqual(label, f"{emoji} Герой")
-                self.assertTrue(hero_caption(hero).startswith(f"{label} • "))
+                menu = _collection_menu(1, 2, {"heroes": [hero],"favorites":[11]})
+                label = menu.inline_keyboard[0][0].text
+                self.assertEqual(label, f"{emoji} Герой ★0")
+                self.assertTrue(hero_caption(hero).startswith(f"{emoji} Герой • "))
                 self.assertEqual(label.count(emoji), 1)
 
     def test_missing_or_unknown_rarity_keeps_existing_white_fallback(self):

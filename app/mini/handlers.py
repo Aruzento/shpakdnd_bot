@@ -64,75 +64,38 @@ def _launcher_menu(world_id: int) -> InlineKeyboardMarkup:
 
 
 def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="⚔️ Дейлик",
-                    callback_data=_personal_callback(
-                        "daily", world_id, user_id
-                    ),
-                ),
-                InlineKeyboardButton(
-                    text="👹 Босс",
-                    callback_data=_personal_callback(
-                        "boss", world_id, user_id
-                    ),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🎪 События",
-                    callback_data=_personal_callback("events", world_id, user_id),
-                    style="success",
-                ),
-            ],
-            [InlineKeyboardButton(text="🏰 Испытания", callback_data=_personal_callback("tower",world_id,user_id)),
-             InlineKeyboardButton(text="🛡 Экипировка", callback_data=_personal_callback("equipment",world_id,user_id))],
-            [
-                InlineKeyboardButton(
-                    text="🛒 Магазин",
-                    callback_data=_personal_callback(
-                        "shop", world_id, user_id
-                    ),
-                ),
-                InlineKeyboardButton(
-                    text="🎴 Коллекция",
-                    callback_data=_personal_callback(
-                        "collection", world_id, user_id
-                    ),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="👤 Персонаж",
-                    callback_data=_personal_callback(
-                        "character", world_id, user_id
-                    ),
-                ),
-                InlineKeyboardButton(
-                    text="🎒 Инвентарь",
-                    callback_data=_personal_callback(
-                        "inventory", world_id, user_id
-                    ),
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📖 Правила",
-                    callback_data=_personal_callback(
-                        "rules", world_id, user_id
-                    ),
-                ),
-                InlineKeyboardButton(
-                    text="🔄 Обновить",
-                    callback_data=_personal_callback(
-                        "home", world_id, user_id
-                    ),
-                ),
-            ],
-        ]
-    )
+    def b(label,action,**kwargs):
+        return InlineKeyboardButton(text=label,callback_data=_personal_callback(action,world_id,user_id),**kwargs)
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [b('⚔️ Приключения','adventures'),b('🧙 Герой','heroarea')],
+        [b('✨ Призвать героя','gacha',style='success')],
+        [b('🎪 Ярмарка','fair'),b('📖 Ещё','more')],
+    ])
+
+
+SUBMENUS={
+    'adventures': ('⚔️ Приключения', [('🔥 Босс','boss'),('🏰 Испытания','tower'),('⚔️ Ежедневный бой','daily')]),
+    'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('📚 Коллекция','collection'),('🛡 Экипировка','equipment'),('🎒 Инвентарь','inventory')]),
+    'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🎪 События','events')]),
+    'more': ('📖 Ещё', [('📖 Правила','rules'),('🔄 Обновить','home')]),
+}
+
+
+def submenu(action,world,user):
+    title,entries=SUBMENUS[action]
+    rows=[[InlineKeyboardButton(text=label,callback_data=_personal_callback(target,world,user))] for label,target in entries]
+    rows.append([InlineKeyboardButton(text='⬅️ Назад',callback_data=_personal_callback('home',world,user))])
+    return title,InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data.regexp(r'^mini:(adventures|heroarea|fair|more):'))
+async def submenu_callback(callback):
+    context=await _load_personal_context(callback)
+    if context is None: return
+    world,player=context
+    text,markup=submenu(callback.data.split(':')[1],world['id'],callback.from_user.id)
+    await callback.answer()
+    await _send_private_text_from_callback(callback,world,text,markup)
 
 
 def _create_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
@@ -521,7 +484,7 @@ async def character_callback(callback: CallbackQuery):
     world, player = context
     active = get_active_hero(player["id"])
     text = hero_caption(active) if active is not None else "🎴 Активный герой пока не выбран."
-    markup = back_menu(world["id"], callback.from_user.id)
+    markup = back_menu(world["id"], callback.from_user.id,"heroarea")
 
     await callback.answer()
     if active is not None:
@@ -542,9 +505,9 @@ async def character_callback(callback: CallbackQuery):
 
 from app.mini.ui.hero_cards import hero_caption as _hero_caption
 
-from app.mini.ui import activities, heroes, inventory, shop
+from app.mini.ui import activities, heroes, inventory, shop, hero_selector
 
-for screen in (inventory, shop, heroes, activities):
+for screen in (inventory, shop, heroes, activities, hero_selector):
     router.include_router(screen.router)
 
 from app.mini.tower.handlers import router as tower_router

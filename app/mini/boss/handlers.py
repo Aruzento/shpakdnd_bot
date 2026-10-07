@@ -161,7 +161,7 @@ async def boss_hit_callback(callback: CallbackQuery):
             if reward_event.get("type") == "shield":
                 suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
             elif reward_event.get("type") == "reward_damage":
-                suffix += f" Награда: {reward_event['reward_percent']}%."
+                suffix += f" Награда: {reward_event.get('display_reward_percent',reward_event['reward_percent'])}%."
             elif reward_event.get("type") == "boss_skip":
                 suffix += " 🎵 Босс пропускает атаку по награде."
             passive_lines = boss_attack_passive_lines(reward_event)

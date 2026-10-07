@@ -7,6 +7,8 @@ from app.mini.ui.transport import send_private_text_from_callback
 from app.mini.tower.service import get_state,list_heroes,start_attempt,attack
 from app.mini.combat.matchups import faction_multiplier_percent
 from app.mini.presentation import faction_name,tag_label,hero_trait_lines,TRAIT_LABELS
+from app.mini.favorites import get_favorites
+from app.mini.ui.hero_selector import render_selector
 from app.mini.tower.catalog import load_catalog
 TOTAL_FLOORS=len(load_catalog()["floors"])
 
@@ -34,20 +36,9 @@ def hero_button_text(hero, bonus):
     return f"{hero['name']} · {faction_name(hero['faction'])} · ATK {hero['attack']}{extra}"
 
 
-def render_hero_selection(state,heroes,world,user,page=0):
-    floor=state['floor']['floor'];page=min(max(0,page),max(0,(len(heroes)-1)//8))
-    lines=['🎴 Выбор героя','']+enemy_lines(state['floor'],selection=True)
-    rows=[[button(hero_button_text(h,state['equipment_bonus']),world,user,f"pick.{floor}.{h['id']}")]
-          for h in heroes[page*8:(page+1)*8]]
-    nav=[]
-    if page: nav.append(button('⬅️',world,user,f'heroes.{floor}.{page-1}'))
-    if (page+1)*8<len(heroes): nav.append(button('➡️',world,user,f'heroes.{floor}.{page+1}'))
-    if nav: rows.append(nav)
-    if not heroes:
-        lines.append('Героев пока нет. Открой гачу в коллекции.')
-        rows.append([InlineKeyboardButton(text='🎴 Перейти в Гачу',callback_data=personal_callback('gacha',world,user))])
-    rows.append([button('Назад',world,user)])
-    return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
+def render_hero_selection(state,heroes,world,user,page=0,favorites=None):
+    text,markup=render_selector(heroes,favorites or [],'t',world,user,state['floor']['floor'])
+    return '\n'.join(['🎴 Выбор героя','']+enemy_lines(state['floor'],selection=True))+'\n\n'+text,markup
 
 
 def render_state(state,world,user,reward=None):
@@ -86,7 +77,7 @@ def render_state(state,world,user,reward=None):
         if reward['equipment']:
             e=reward['equipment'];lines.append(f"🎁 Сундук: {e['name']} +{e['attack_bonus']}")
     rows.append([InlineKeyboardButton(text='🛡 Экипировка',callback_data=personal_callback('equipment',world,user))])
-    rows.append([InlineKeyboardButton(text='Назад',callback_data=personal_callback('home',world,user))])
+    rows.append([InlineKeyboardButton(text='Назад',callback_data=personal_callback('adventures',world,user))])
     return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -106,7 +97,7 @@ async def tower_callback(callback):
             if state['completed'] or floor!=state['floor']['floor'] or state['attempt']:
                 raise ValueError('Кнопка выбора героя устарела. Открой текущий бой.')
         if parts[0]=='heroes' and len(parts)==3:
-            text,markup=render_hero_selection(state,list_heroes(player['id']),w,u,int(parts[2]))
+            text,markup=render_hero_selection(state,list_heroes(player['id']),w,u,int(parts[2]),get_favorites(player["id"]))
         elif parts[0]=='pick' and len(parts)==3:
             hero=next((h for h in list_heroes(player['id']) if h['id']==int(parts[2])),None)
             if not hero: raise ValueError('Этого героя нет в коллекции.')

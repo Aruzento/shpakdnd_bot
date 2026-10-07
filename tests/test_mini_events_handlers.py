@@ -17,11 +17,11 @@ from app.mini.worlds import get_mini_world_by_id, sync_configured_mini_worlds
 
 
 class EventMenuTests(unittest.TestCase):
-    def test_events_is_separate_green_row_after_daily_and_boss(self):
+    def test_summon_is_separate_green_row_between_new_submenus(self):
         menu = mini_ui._player_menu(1, 101)
-        self.assertEqual([b.text for b in menu.inline_keyboard[0]], ["⚔️ Дейлик", "👹 Босс"])
+        self.assertEqual([b.text for b in menu.inline_keyboard[0]], ["⚔️ Приключения", "🧙 Герой"])
         self.assertEqual(len(menu.inline_keyboard[1]), 1)
-        self.assertEqual(menu.inline_keyboard[1][0].text, "🎪 События")
+        self.assertEqual(menu.inline_keyboard[1][0].text, "✨ Призвать героя")
         self.assertEqual(menu.inline_keyboard[1][0].style, "success")
         self.assertTrue(all(b.style is None for i, row in enumerate(menu.inline_keyboard)
                             if i != 1 for b in row))

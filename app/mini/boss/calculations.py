@@ -2,18 +2,18 @@
 
 
 import json
-from app.mini.combat import creatures
+from app.mini.combat import creatures, classes
 from app.mini.combat.hero_abilities import resolve_attack
 from app.mini.boss.boss_abilities import engine as boss_abilities
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
 
-def calculate_hit(boss: dict, participant: dict, hero: dict) -> dict:
+def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None) -> dict:
     passive_key = str(hero.get("passive_key", "none"))
     reachable = creatures.can_reach(boss, hero)
     attack_resolution = resolve_attack(
         passive_key if reachable else "none",
-        base_damage=max(1, int(participant["attack"])),
+        base_damage=classes.initial_attack(participant["attack"],participants or [],active=classes.enabled(boss)),
         hit_number=int(participant["hit_count"]) + 1,
         boss_hp_before=int(boss["current_hp"]),
         boss_max_hp=int(boss["max_hp"]),
@@ -50,6 +50,7 @@ def calculate_hit(boss: dict, participant: dict, hero: dict) -> dict:
         )
     hero_final_damage = damage
     damage = creatures.feature_damage(boss, hero, hero_final_damage)
+    damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss))
     hp_after = max(0, int(boss["current_hp"]) - damage)
     return {
         "reachable": reachable,

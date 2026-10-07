@@ -141,9 +141,11 @@ def get_hero_by_id(
 def get_player_heroes(
     player_id: int,
     db_path: str | Path = DB_PATH,
+    *, sync_catalog: bool = True,
 ) -> list[dict]:
     """Все полученные герои игрока, включая выключенных из текущей гачи."""
-    sync_hero_catalog(db_path)
+    if sync_catalog:
+        sync_hero_catalog(db_path)
 
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row

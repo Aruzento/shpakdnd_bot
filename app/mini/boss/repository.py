@@ -91,7 +91,7 @@ def apply_boss_effects(
     """Persist hook effects and their structured audit events atomically."""
     allowed = {"faction", "ability_state_json", "current_hp", "reward_percent",
                "feature_state_json", "reward_temp_hp", "reward_corruption",
-               "reward_shields", "reward_shields_max"}
+               "reward_shields", "reward_shields_max", "boss_damage", "sneaky_stolen"}
     changes = resolution.get("boss_changes", {})
     if not set(changes).issubset(allowed):
         raise BossCombatError("Недопустимое изменение состояния способности босса.")
@@ -203,7 +203,8 @@ def mark_battle_started(conn, boss_id, now):
         SET status = 'fighting', starts_at = ?, ended_at = NULL,
             current_round = 1, current_turn_position = 1, turn_started_at = ?,
             current_hp = max_hp, reward_percent = 100, battle_result = '',
-            feature_state_json = '{}', reward_temp_hp = 0, reward_corruption = 0
+            feature_state_json = '{}', reward_temp_hp = 0, reward_corruption = 0,
+            boss_damage = 0, sneaky_stolen = 0
         WHERE id = ?
         """,
         (db_time(now), db_time(now), int(boss_id)),

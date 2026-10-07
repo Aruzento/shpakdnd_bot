@@ -138,7 +138,7 @@ def create_boss_event(
         boss_id = int(cursor.lastrowid)
         conn.execute(
             """UPDATE mini_bosses SET faction = ?, ability_key = ?, ability_text = ?,
-               features_json = ?, ability_config_json = ?, trait_rules_version = 1 WHERE id = ?""",
+               features_json = ?, ability_config_json = ?, trait_rules_version = 1, class_rules_version = 1 WHERE id = ?""",
             (template["faction"], template["ability_key"], template["ability_text"],
              json.dumps(template["features"], ensure_ascii=False),
              json.dumps(template.get("ability_config", {})), boss_id),

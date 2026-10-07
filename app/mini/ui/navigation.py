@@ -2,14 +2,14 @@ from app.mini.ui.context import personal_callback as _personal_callback
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def back_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
+def back_menu(world_id: int, user_id: int, action: str = "home") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="⬅️ Назад",
                     callback_data=_personal_callback(
-                        "home", world_id, user_id
+                        action, world_id, user_id
                     ),
                 )
             ]

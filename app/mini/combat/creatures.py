@@ -5,7 +5,8 @@ Temporary HP absorbs permanent decay first; corruption is subtracted afterwards.
 """
 import json
 import secrets
-from app.mini.combat.tags import TECHNICAL_CLASS, LEGACY_TRAIT_ALIASES, CREATURE_TRAITS
+from app.mini.combat import classes
+from app.mini.combat.tags import LEGACY_TRAIT_ALIASES, CREATURE_TRAITS
 
 def roll_success(chance_percent: int) -> bool:
     return secrets.randbelow(100) < chance_percent
@@ -51,6 +52,9 @@ def active_heroes(participants: list[dict]) -> list[dict]:
             for p in participants if not p.get("banished", 0)]
 
 def effective_reward_percent(boss: dict) -> int:
+    if classes.enabled(boss) and int(boss.get('reward_coins',0))>0:
+        base=int(boss['reward_coins'])
+        return (classes.effective_reward(boss)*100+base-1)//base
     return max(0, int(boss.get("reward_percent", 100))
                + int(boss.get("reward_temp_hp", 0)) - int(boss.get("reward_corruption", 0)))
 
@@ -58,8 +62,15 @@ def reward_decay(boss: dict) -> dict:
     decay = int(boss["reward_decay_percent"])
     temporary = int(boss.get("reward_temp_hp", 0))
     absorbed = min(temporary, decay)
-    return {"reward_temp_hp": temporary - absorbed,
-            "reward_percent": max(0, int(boss["reward_percent"]) - decay + absorbed)}
+    percent=max(0,int(boss['reward_percent'])-decay+absorbed)
+    changes={"reward_temp_hp":temporary-absorbed,"reward_percent":percent}
+    if classes.enabled(boss):
+        base=int(boss.get('reward_coins',0))
+        loss=base*int(boss['reward_percent'])//100-base*percent//100
+        changes['boss_damage']=classes.permanent_damage(boss)+min(classes.real_reward(boss),max(0,loss))
+        if base:
+            changes['reward_percent']=max(percent,((base-changes['boss_damage'])*100+base-1)//base)
+    return changes
 
 def _plan(changes=None, events=None) -> dict:
     return {"boss_changes": changes or {}, "events": events or []}
@@ -150,9 +161,7 @@ def demonic_corruption(boss: dict) -> dict:
         "message": f"😈 Временная порча награды: {corruption}%."}])
 
 def end_round(boss: dict, participants: list[dict]) -> dict:
-    if "construct" not in features(boss) or any(
-        h.get("class_tag") == TECHNICAL_CLASS for h in active_heroes(participants)
-    ):
+    if "construct" not in features(boss) or classes.blocks_construct_regeneration(participants):
         return _plan()
     return _heal(boss, 10, "construct_regeneration", "⚙️ Конструкт")
 

@@ -28,7 +28,7 @@ def _daily_result_menu(
                 InlineKeyboardButton(
                     text="⬅️ Назад",
                     callback_data=_personal_callback(
-                        "home", world_id, user_id
+                        "adventures", world_id, user_id
                     ),
                 ),
             ]
@@ -133,7 +133,7 @@ def rules_menu(world_id, user_id, *, section=False):
         rows=[[InlineKeyboardButton(text=label,callback_data=f'mini:rulespage:{world_id}:{user_id}:{key}')]
               for key,(label,_) in SECTIONS.items()]
     rows.append([InlineKeyboardButton(text='Назад',callback_data=_personal_callback(
-        'rules' if section else 'home',world_id,user_id))])
+        'rules' if section else 'more',world_id,user_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

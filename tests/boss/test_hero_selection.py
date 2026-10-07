@@ -24,12 +24,12 @@ class HeroSelectionMenuTests(unittest.TestCase):
     def test_pagination_has_owned_hero_ids_and_clamps_pages(self):
         heroes = [{"id": n, "name": f"Hero {n}", "rarity": "rare"} for n in range(1, 19)]
         first = _battle_hero_menu(1, 101, 3, heroes, 0)
-        self.assertEqual(first.inline_keyboard[0][0].text, "Hero 1 • rare")
+        self.assertEqual(first.inline_keyboard[0][0].text, "🟣 Hero 1 ★0")
         self.assertEqual(first.inline_keyboard[0][0].callback_data, "miniboss:hero:1:101:3:1")
-        self.assertEqual(len([row for row in first.inline_keyboard if row[0].callback_data.startswith("miniboss:hero:")]), 8)
+        self.assertEqual(len([row for row in first.inline_keyboard if row[0].callback_data.startswith("miniboss:hero:")]), 3)
         last = _battle_hero_menu(1, 101, 3, heroes, 999)
-        self.assertEqual(last.inline_keyboard[0][0].text, "Hero 17 • rare")
-        self.assertEqual(last.inline_keyboard[-2][0].callback_data, "miniboss:heroes:1:101:3:1")
+        self.assertEqual(last.inline_keyboard[0][0].text, "🟣 Hero 13 ★0")
+        self.assertEqual(last.inline_keyboard[-2][0].callback_data, "mini:select:1:101:b3.home.0.0000000")
         self.assertTrue(all(len(b.callback_data.encode()) <= 64 for row in last.inline_keyboard for b in row))
 
 
@@ -51,6 +51,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
             patch("app.mini.boss.selection._load_player", return_value=self.player),
             patch("app.mini.boss.selection.get_boss", return_value=self.boss),
             patch("app.mini.boss.selection.list_participants", return_value=[{"player_id": 10}]),
+            patch("app.mini.boss.selection.get_favorites", return_value=[]),
         ]
         for mock_patch in patches:
             mock_patch.start()

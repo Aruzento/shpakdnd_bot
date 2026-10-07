@@ -2,7 +2,7 @@ import re
 import shlex
 import sqlite3
 import time
-from app.config import DB_PATH
+from app import config
 from app.mini.db import connect_mini_db
 
 MAX_TITLE_LENGTH = 48
@@ -35,7 +35,7 @@ def parse_command(text):
     return args[1].lower(), parse_duration(args[2]), validate_title(args[3])
 
 
-def get_active_title(player_id, db_path=DB_PATH, *, now=None, conn=None):
+def get_active_title(player_id, db_path=None, *, now=None, conn=None):
     when = int(time.time() if now is None else now)
     def lookup(connection):
         # Legacy pre-migration presentation remains usable during recovery.
@@ -47,19 +47,19 @@ def get_active_title(player_id, db_path=DB_PATH, *, now=None, conn=None):
         return row[0] if row else None
     if conn is not None:
         return lookup(conn)
-    with connect_mini_db(db_path) as connection:
+    with connect_mini_db(config.DB_PATH if db_path is None else db_path) as connection:
         return lookup(connection)
 
 
 def issue_title(player_id, text, duration_seconds, admin_user_id, operation_key,
-                db_path=DB_PATH, *, now=None):
+                db_path=None, *, now=None):
     text=validate_title(text)
     if type(duration_seconds) is not int or not 86400<=duration_seconds<=MAX_DAYS*86400:
         raise ValueError('Недопустимый срок титула.')
     if not operation_key:
         raise ValueError('Не указан ключ выдачи титула.')
     when=int(time.time() if now is None else now)
-    with connect_mini_db(db_path) as conn:
+    with connect_mini_db(config.DB_PATH if db_path is None else db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('BEGIN IMMEDIATE')
         old=conn.execute('SELECT * FROM mini_titles WHERE operation_key=?',(operation_key,)).fetchone()
@@ -77,8 +77,8 @@ def issue_title(player_id, text, duration_seconds, admin_user_id, operation_key,
         return dict(conn.execute('SELECT * FROM mini_titles WHERE id=?',(cursor.lastrowid,)).fetchone())
 
 
-def get_title_target(world_id, username, db_path=DB_PATH):
-    with connect_mini_db(db_path) as conn:
+def get_title_target(world_id, username, db_path=None):
+    with connect_mini_db(config.DB_PATH if db_path is None else db_path) as conn:
         conn.row_factory=sqlite3.Row
         rows=conn.execute('SELECT * FROM mini_players WHERE world_id=? AND lower(username)=?',
                           (world_id,username.lower())).fetchall()

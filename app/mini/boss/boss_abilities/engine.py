@@ -66,7 +66,8 @@ def _magic_shield_damage(boss, hero, damage, state, config):
     if not state.get("shield_active", False):
         return damage, 100, []
     # mage is the live catalog tag; magical remains valid for older loadouts.
-    magical = hero.get("class_tag") in MAGIC_CLASSES
+    from app.mini.combat.classes import can_remove_magic_shield
+    magical = can_remove_magic_shield(hero)
     if magical:
         state["shield_active"] = False
     return 0, 0, [_event("magic_shield_removed" if magical else "magic_shield_blocked")]

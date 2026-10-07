@@ -29,7 +29,7 @@ from app.mini.boss.repository import (
     save_hero_state,
 )
 from app.mini.boss.rewards import reward_items, hydrate_reward_snapshot, finish_admin_victory
-from app.mini.combat import creatures
+from app.mini.combat import creatures, classes
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -138,8 +138,8 @@ def get_combat_state(
         "participants": participants,
         "current": current,
         "reward_items": reward_items(boss.get("reward_items_json")),
-        "current_reward_coins": int(boss["reward_coins"]) * creatures.effective_reward_percent(boss) // 100,
-        "real_reward_coins": int(boss["reward_coins"]) * int(boss["reward_percent"]) // 100,
+        "current_reward_coins": classes.effective_reward(boss) if classes.enabled(boss) else int(boss["reward_coins"]) * creatures.effective_reward_percent(boss) // 100,
+        "real_reward_coins": classes.real_reward(boss),
         "effective_reward_percent": creatures.effective_reward_percent(boss),
     }
 
@@ -334,7 +334,7 @@ def hit_boss(
         if int(participant["banished"]) or int(participant["forced_skip_turns"]) > 0:
             raise BossNotYourTurn("Этот участник сейчас не может ходить.")
         hero = battle_loadout(participant["hero_snapshot_json"])
-        calculation = calculate_hit(dict(boss), dict(participant), hero)
+        calculation = calculate_hit(dict(boss), dict(participant), hero, active_loadouts(conn,int(boss_id)))
         passive_key = calculation["passive_key"]
         attack_resolution = calculation["attack_resolution"]
         ability_damage = calculation["ability_damage"]
@@ -357,7 +357,14 @@ def hit_boss(
         )
         if not calculation["reachable"]:
             after_attack = {"state": hero_abilities.hero_state(participant["hero_state_json"]), "events": []}
-        save_hero_state(conn, int(boss_id), int(player_id), after_attack["state"])
+        fresh=refresh_boss(conn,int(boss_id))
+        class_plan=classes.on_hit(dict(fresh),hero,after_attack['state'],successful=damage>0)
+        save_hero_state(conn,int(boss_id),int(player_id),class_plan['state'])
+        boss_events.extend(apply_boss_effects(conn,fresh,class_plan,now,actor_id=int(player_id)))
+        if class_plan['stolen']:
+            from app.mini.wallet import change_balance_in_transaction
+            action_id=conn.execute('SELECT MAX(id) FROM mini_boss_actions WHERE boss_id=? AND player_id=?',(boss_id,player_id)).fetchone()[0]
+            change_balance_in_transaction(conn,int(player_id),class_plan['stolen'],'Кража награды плутом','boss',int(boss_id),f'boss:{boss_id}:sneaky:{action_id}')
         passive_events.extend(after_attack["events"])
         fresh = refresh_boss(conn, int(boss_id))
         boss_events.extend(apply_boss_effects(

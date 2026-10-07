@@ -6,7 +6,7 @@ from tests.v1_3.support import MiniCase
 from app.mini.tower.handlers import tower_callback,render_state
 from app.mini.equipment.handlers import equipment_callback,render_equipment
 from app.mini.tower.service import get_state,start_attempt
-from app.mini.handlers import _player_menu
+from app.mini.handlers import _player_menu,submenu
 from app.mini.ui.context import shop_context
 
 
@@ -30,7 +30,7 @@ class UIContractTests(unittest.IsolatedAsyncioTestCase):
             await equipment_callback(callback);send.assert_awaited_once()
 
     def test_launcher_has_tower_and_equipment(self):
-        buttons=[b for row in _player_menu(1,20).inline_keyboard for b in row]
+        buttons=[b for action in ('adventures','heroarea') for row in submenu(action,1,20)[1].inline_keyboard for b in row]
         self.assertIn('🏰 Испытания',[b.text for b in buttons])
         self.assertIn('🛡 Экипировка',[b.text for b in buttons])
 

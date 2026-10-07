@@ -12,9 +12,9 @@ from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
 from app.mini.ui.navigation import clip
 
-def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
-    description = clip(hero.get("description", ""), 300)
-    passive = clip(hero.get("passive_text", ""), 300)
+def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = False) -> str:
+    description = clip(hero.get("description", ""), 220 if full else 300)
+    passive = clip(hero.get("passive_text", ""), 200 if full else 300)
     lines = [
         f"{rarity_emoji(hero.get('rarity'))} {hero_heading(hero)}",
         *hero_trait_lines(hero),
@@ -28,6 +28,11 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None) -> str:
           if hero.get("special_trait") in TRAIT_DESCRIPTIONS else []),
     ]
 
+    if full:
+        rarity={'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный'}.get(hero.get('rarity'),'Неизвестная редкость')
+        upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
+        lines += ['', f"Редкость: {rarity}", f"Копий: {hero.get('copies',1)} · Осколки: {hero.get('shards',0)}",
+                  '⭐ Максимум звёзд' if upgrade['at_max'] else f"Улучшение до ★{upgrade['next_star']}: {upgrade['upgrade_cost']} осколков"]
     if pull_result is not None:
         lines.append("")
         if pull_result["is_duplicate"]:
@@ -71,6 +76,8 @@ def hero_card_menu(
     state: dict,
     *,
     allow_share: bool = False,
+    collection: bool = False,
+    favorite: bool = False,
 ) -> InlineKeyboardMarkup:
     rows = []
     upgrade = hero.get("upgrade") or hero_upgrade_state(hero)
@@ -79,36 +86,25 @@ def hero_card_menu(
         rows.append([
             InlineKeyboardButton(
                 text=(
-                    f"⬆️ До ⭐{upgrade['next_star']} · "
-                    f"{upgrade['upgrade_cost']} 🧩"
+                    (f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩" if collection
+                     else f"⬆️ До ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩")
                 ),
                 callback_data=(
-                    f"mini:heroupgrade:{world_id}:{user_id}:{hero['id']}"
+                    f"mini:heroupgrade:{world_id}:{user_id}:{hero['id']}.{int(hero.get('stars',0))}{'.c' if collection else ''}"
                 ),
             )
         ])
 
     if not int(hero.get("is_active", 0)):
-        rows.append([
-            InlineKeyboardButton(
-                text="✅ Сделать активным",
-                callback_data=f"mini:heroactive:{world_id}:{user_id}:{hero['id']}",
-            )
-        ])
-
-    rows.append([
-        InlineKeyboardButton(
-            text=f"🪙 Ещё призыв · {state['pull_price']}",
-            callback_data=f"mini:gacharepeat:{world_id}:{user_id}:coins",
-        )
-    ])
-    if int(state.get("tickets", 0)) > 0:
-        rows.append([
-            InlineKeyboardButton(
-                text=f"🎟 Билет · {state['tickets']}",
-                callback_data=f"mini:gacharepeat:{world_id}:{user_id}:ticket",
-            )
-        ])
+        rows.append([InlineKeyboardButton(text='✅ Сделать активным',callback_data=f"mini:heroactive:{world_id}:{user_id}:{hero['id']}{'.c' if collection else ''}")])
+    if collection:
+        rows.append([InlineKeyboardButton(
+            text='☆ Убрать из избранного' if favorite else '⭐ Сделать избранным',
+            callback_data=f"mini:favorite:{world_id}:{user_id}:{'remove' if favorite else 'add'}.{hero['id']}")])
+    else:
+        rows.append([InlineKeyboardButton(text=f"🪙 Ещё призыв · {state['pull_price']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:coins')])
+        if int(state.get('tickets',0))>0:
+            rows.append([InlineKeyboardButton(text=f"🎟 Билет · {state['tickets']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:ticket')])
 
     if allow_share:
         rows.append([
@@ -122,7 +118,7 @@ def hero_card_menu(
 
     rows.append([
         InlineKeyboardButton(
-            text="🎴 Открыть коллекцию",
+            text="📚 Коллекция" if collection else "🎴 Открыть коллекцию",
             callback_data=f"mini:collectionopen:{world_id}:{user_id}:0",
         )
     ])

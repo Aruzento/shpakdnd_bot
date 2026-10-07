@@ -75,14 +75,16 @@ class CreatureContentTests(unittest.TestCase):
                 load_hero_catalog()
 
 
-    def test_hero_selector_shows_traits_and_stays_within_telegram_text_limit(self):
-        from app.mini.boss.presentation import selection_details
-        heroes=[dict(id=i,name="Герой",stars=2,faction="dark",damage_type="magic",class_tag="mage",
+    def test_hero_selector_is_compact_and_full_traits_remain_in_cards(self):
+        from app.mini.boss.presentation import selection_details, battle_hero_menu
+        heroes=[dict(id=i,name="Герой",rarity="rare",stars=2,faction="dark",damage_type="magic",class_tag="mage",
                      attack_range="ranged",special_trait="holy",attack=123,passive_text="X"*1000) for i in range(8)]
         text=selection_details(heroes,0)
-        self.assertIn("Тьма",text); self.assertIn("Магический | Маг",text)
-        self.assertIn("Дальний бой | Святой",text)
-        self.assertIn("Урон: 123",text)
+        self.assertNotIn("Урон: 123",text)
+        self.assertNotIn("X"*100,text)
+        menu=battle_hero_menu(1,42,12,heroes,0)
+        self.assertEqual([len(row) for row in menu.inline_keyboard[:3]],[2,2,2])
+        self.assertEqual(menu.inline_keyboard[0][0].text,"🟣 Герой ★2")
         self.assertLessEqual(len(text)+1024+40,4096)
 
     def test_hero_card_shows_traits_before_description_and_effect(self):

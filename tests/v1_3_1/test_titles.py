@@ -84,7 +84,7 @@ class TitlePermissionTests(MiniCase,unittest.IsolatedAsyncioTestCase):
 
     async def test_topic_admin_can_issue(self):
         admin=get_topic_admin(self.world['chat_id'],self.world['thread_id']).lstrip('@');msg=self.message(admin)
-        with patch('app.mini.titles.handlers.ensure_configured_mini_world',return_value=dict(self.world,enabled=True)),patch('app.mini.titles.handlers.get_title_target',side_effect=lambda w,u:get_title_target(w,u,self.db)),patch('app.mini.titles.handlers.issue_title',side_effect=lambda *a:issue_title(*a,db_path=self.db)),patch('app.config.DB_PATH',self.db):
+        with patch('app.mini.titles.handlers.ensure_configured_mini_world',return_value=dict(self.world,enabled=True)),patch('app.config.DB_PATH',self.db):
             await supertitle_handler(msg)
         self.assertEqual(get_active_title(self.pid,self.db),'Гроза кабанов')
         self.assertIn('[Гроза кабанов]@tester',msg.answer.call_args.args[0])

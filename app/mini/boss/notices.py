@@ -44,7 +44,7 @@ def reward_event_lines(event: dict) -> list[str]:
             if attack.get("poisonous"):
                 lines.append(f"☠️ Яд повредил награду через щит: {attack['effective_reward_percent']}% запаса.")
         elif kind == "reward_damage":
-            lines.append(f"💎 Состояние награды: {attack['reward_percent']}%.")
+            lines.append(f"💎 Состояние награды: {attack.get('display_reward_percent',attack['reward_percent'])}%.")
         elif kind == "boss_skip":
             lines.append("🎵 Босс пропустил весь ход.")
         for passive in attack.get("passive_events", []):
