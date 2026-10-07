@@ -86,7 +86,7 @@ class SuperadminTests(MiniCase):
     def test_usable_item_and_equipment_add_delete(self):
         sync_shop_catalog(self.world['id'],self.db)
         self.command('superadd',tail='-i summon_ticket');self.command('superdel',tail='-i summon_ticket')
-        self.assertEqual(self.sql('SELECT quantity FROM mini_inventory')[0]['quantity'],0)
+        self.assertEqual(self.sql('SELECT quantity FROM mini_inventory')[0]['quantity'],3)
         self.command('superadd',tail='-i eq_helmet_017');equip(self.pid,'eq_helmet_017',self.db)
         self.command('superdel',tail='-i eq_helmet_017')
         self.assertEqual(get_equipment(self.pid,self.db)['equipped'],{})
@@ -156,7 +156,7 @@ class SuperadminTests(MiniCase):
         sync_shop_catalog(self.world['id'],self.db)
         self.command('superadd',tail='-i summon_ticket');self.command('superluck')
         result=perform_gacha_pull(self.pid,payment='ticket',db_path=self.db)
-        self.assertEqual(result['rarity'],'legendary');self.assertEqual(result['tickets'],0)
+        self.assertEqual(result['rarity'],'legendary');self.assertEqual(result['tickets'],3)
         self.assertEqual(self.sql('SELECT forced_legendary FROM mini_gacha_guarantees')[0]['forced_legendary'],0)
 
     def test_failed_gacha_commit_rolls_back_payment_and_guarantee(self):
@@ -168,12 +168,13 @@ class SuperadminTests(MiniCase):
         self.assertEqual(self.sql('SELECT forced_legendary FROM mini_gacha_guarantees')[0]['forced_legendary'],1)
         self.assertEqual(self.sql('SELECT * FROM mini_player_heroes'),[])
 
-    def test_guarantee_menu_uses_personal_100_percent_without_changing_global_weights(self):
+    def test_hidden_override_does_not_change_public_odds_or_global_weights(self):
         from app.mini.ui.heroes import _format_gacha
         from app.mini.catalog import load_hero_catalog
         before=dict(load_hero_catalog()['settings']['rarity_weights'])
+        ordinary=get_gacha_state(self.pid,self.db)
         self.command('superluck');state=get_gacha_state(self.pid,self.db)
-        self.assertEqual(state['rarity_chances']['legendary'],100)
-        self.assertEqual(state['rarity_chances']['common'],0)
-        self.assertIn('Legendary 100%',_format_gacha(self.world,state))
+        self.assertTrue(state['forced_legendary'])
+        self.assertEqual(state['rarity_chances'],ordinary['rarity_chances'])
+        self.assertEqual(_format_gacha(self.world,state),_format_gacha(self.world,ordinary))
         self.assertEqual(load_hero_catalog()['settings']['rarity_weights'],before)

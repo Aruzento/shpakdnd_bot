@@ -94,6 +94,8 @@ class MiniBossCombatTests(unittest.TestCase):
             self.world_id, user_id, username, name, self.db
         )
         with connect_mini_db(self.db) as conn:
+            # Isolate Boss reward assertions from the V1.3.1 starter gift.
+            conn.execute("DELETE FROM mini_inventory WHERE player_id=? AND item_id IN (SELECT id FROM mini_items WHERE code='summon_ticket')",(player['id'],))
             hero_id = int(
                 conn.execute(
                     "SELECT id FROM mini_heroes WHERE code = 'Villager'"

@@ -68,7 +68,7 @@ class EffectRegistryTests(unittest.TestCase):
             with self.assertRaises(ItemUseError):
                 use_inventory_item(player,item,amount_picker=lambda a,b:31,operation_key='bad',db_path=db)
             with connect_mini_db(db) as conn:
-                self.assertEqual(conn.execute('SELECT quantity FROM mini_inventory').fetchone()[0],1)
+                self.assertEqual(conn.execute('SELECT quantity FROM mini_inventory WHERE item_id=?',(item,)).fetchone()[0],1)
                 self.assertEqual(conn.execute('SELECT coins FROM mini_players').fetchone()[0],0)
                 self.assertEqual(conn.execute('SELECT COUNT(*) FROM mini_wallet_transactions').fetchone()[0],0)
                 self.assertEqual(conn.execute('SELECT COUNT(*) FROM mini_item_uses').fetchone()[0],0)

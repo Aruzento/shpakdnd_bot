@@ -6,7 +6,9 @@ from app.mini.ui.context import shop_context,personal_callback
 from app.mini.ui.transport import send_private_text_from_callback
 from app.mini.tower.service import get_state,list_heroes,start_attempt,attack
 from app.mini.combat.matchups import faction_multiplier_percent
-from app.mini.presentation import faction_label,tag_label,hero_trait_lines,TRAIT_LABELS,FEATURE_DESCRIPTIONS
+from app.mini.presentation import faction_name,tag_label,hero_trait_lines,TRAIT_LABELS
+from app.mini.tower.catalog import load_catalog
+TOTAL_FLOORS=len(load_catalog()["floors"])
 
 router=Router(name="mini_tower")
 
@@ -16,32 +18,50 @@ def button(text,world,user,tail=''):
     return InlineKeyboardButton(text=text,callback_data=data+(':'+tail if tail else ''))
 
 
-def enemy_lines(enemy):
-    lines = [f"Этаж {enemy['floor']}/200 · {enemy['name']}", f"HP: {enemy['max_hp']}",
-             f"Фракция: {faction_label(enemy['faction'])}"]
+def enemy_lines(enemy, *, selection=False):
+    heading=f"{enemy['name']} {'·' if selection else '●'} {faction_name(enemy['faction'])}"
+    lines=[heading,'']
+    if not selection:
+        lines += [f"HP: {enemy['max_hp']}",'']
     lines += hero_trait_lines(enemy)
-    lines.append('Ответный ход: сначала подготовка, затем удар по щиту.'
-                 if enemy.get('response') == 'prepare' else 'Ответный ход: удар по щиту.')
-    labels = [tag_label(trait,TRAIT_LABELS) for trait in enemy['features']]
-    lines.append('Особенности: '+(', '.join(labels) or 'нет'))
-    for trait in enemy['features']:
-        if trait == 'demonic':
-            lines.append('Святой герой может ослепить демонического противника.')
-        elif trait in FEATURE_DESCRIPTIONS:
-            lines.append(FEATURE_DESCRIPTIONS[trait])
+    labels=[tag_label(trait,TRAIT_LABELS) for trait in enemy['features']]
+    lines += ['', 'Особенности: '+(', '.join(labels) or 'нет')]
     return lines
 
 
+def hero_button_text(hero, bonus):
+    extra=f' +{bonus}' if bonus else ''
+    return f"{hero['name']} · {faction_name(hero['faction'])} · ATK {hero['attack']}{extra}"
+
+
+def render_hero_selection(state,heroes,world,user,page=0):
+    floor=state['floor']['floor'];page=min(max(0,page),max(0,(len(heroes)-1)//8))
+    lines=['🎴 Выбор героя','']+enemy_lines(state['floor'],selection=True)
+    rows=[[button(hero_button_text(h,state['equipment_bonus']),world,user,f"pick.{floor}.{h['id']}")]
+          for h in heroes[page*8:(page+1)*8]]
+    nav=[]
+    if page: nav.append(button('⬅️',world,user,f'heroes.{floor}.{page-1}'))
+    if (page+1)*8<len(heroes): nav.append(button('➡️',world,user,f'heroes.{floor}.{page+1}'))
+    if nav: rows.append(nav)
+    if not heroes:
+        lines.append('Героев пока нет. Открой гачу в коллекции.')
+        rows.append([InlineKeyboardButton(text='🎴 Перейти в Гачу',callback_data=personal_callback('gacha',world,user))])
+    rows.append([button('Назад',world,user)])
+    return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def render_state(state,world,user,reward=None):
-    rows=[];lines=['🏰 Испытания',f"Пройдено: {state['highest_cleared']}/200"]
-    attempt=state['attempt']
-    if attempt:
-        hero=json.loads(attempt['hero_json']);enemy=json.loads(attempt['enemy_json'])
+    rows=[];attempt=state['attempt']
+    enemy=json.loads(attempt['enemy_json']) if attempt else state['floor']
+    floor=enemy['floor'] if enemy else TOTAL_FLOORS
+    lines=[f'🏰 Испытания: {floor}/{TOTAL_FLOORS}','']
+    if enemy:
         lines+=enemy_lines(enemy)
-        lines += [f"HP сейчас: {attempt['current_hp']}/{enemy['max_hp']}",
-                  f"Герой: {hero['name']} ★{hero['stars']} · ATK {hero['attack']}",
-                  f"Equipment: +{attempt['equipment_bonus']} ATK · до matchup: {hero['attack']+attempt['equipment_bonus']}",
-                  f"Фракция героя: {hero['faction']} · matchup ×{faction_multiplier_percent(hero['faction'],enemy['faction'])/100:g}",
+    if attempt:
+        hero=json.loads(attempt['hero_json'])
+        lines += ['',f"HP сейчас: {attempt['current_hp']}/{enemy['max_hp']}",
+                  f"Герой: {hero_button_text(hero,attempt['equipment_bonus'])}",
+                  f"Урон по фракции: ×{faction_multiplier_percent(hero['faction'],enemy['faction'])/100:g}",
                   f"🛡 Щиты: {attempt['shields']}/3"]
         lines += [e.get('message','') for e in json.loads(attempt['events_json'])]
         if attempt['status']=='active':
@@ -56,16 +76,17 @@ def render_state(state,world,user,reward=None):
     elif state['completed']:
         lines.append('🏁 Все 200 этажей пройдены!')
     else:
-        lines+=enemy_lines(state['floor'])
-        lines += [f"Equipment: +{state['equipment_bonus']} ATK",'🛡 Новая попытка: 3/3',
+        lines += ['',f"Бонус экипировки: +{state['equipment_bonus']} к атаке",'🛡 Новая попытка: 3/3',
                   'Выбери героя под фракцию и особенности противника.']
-        rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{state['floor']['floor']}.0")])
+        if enemy.get('response')=='prepare':
+            lines.append('Противник сначала готовит атаку, затем бьёт по щиту.')
+        rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{enemy['floor']}.0")])
     if reward:
         lines.append(f"💎 Награда: {reward['shards']} осколков")
         if reward['equipment']:
-            e=reward['equipment'];lines.append(f"🎁 Сундук: {e['name']} (+{e['attack_bonus']} ATK)")
+            e=reward['equipment'];lines.append(f"🎁 Сундук: {e['name']} +{e['attack_bonus']}")
     rows.append([InlineKeyboardButton(text='🛡 Экипировка',callback_data=personal_callback('equipment',world,user))])
-    rows.append([InlineKeyboardButton(text='⬅️ Mini',callback_data=personal_callback('home',world,user))])
+    rows.append([InlineKeyboardButton(text='Назад',callback_data=personal_callback('home',world,user))])
     return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -85,25 +106,12 @@ async def tower_callback(callback):
             if state['completed'] or floor!=state['floor']['floor'] or state['attempt']:
                 raise ValueError('Кнопка выбора героя устарела. Открой текущий бой.')
         if parts[0]=='heroes' and len(parts)==3:
-            page=max(0,int(parts[2]));heroes=list_heroes(player['id']);page=min(page,max(0,(len(heroes)-1)//8))
-            rows=[];lines=['🎴 Выбор героя']+enemy_lines(state['floor'])+[f"Equipment +{state['equipment_bonus']} ATK · 🛡 3/3"]
-            for h in heroes[page*8:(page+1)*8]:
-                m=faction_multiplier_percent(h['faction'],state['floor']['faction'])/100
-                lines.append(f"{h['name']} · {faction_label(h['faction'])} · ATK {h['attack']} +{state['equipment_bonus']} · ×{m:g}")
-                lines += hero_trait_lines(h)
-                rows.append([button(h['name'],w,u,f"pick.{floor}.{h['id']}")])
-            nav=[]
-            if page: nav.append(button('⬅️',w,u,f'heroes.{floor}.{page-1}'))
-            if (page+1)*8<len(heroes): nav.append(button('➡️',w,u,f'heroes.{floor}.{page+1}'))
-            if nav: rows.append(nav)
-            if not heroes: lines.append('Героев пока нет. Открой гачу в коллекции.')
-            rows.append([button('⬅️ Испытания',w,u)])
-            text='\n'.join(lines);markup=InlineKeyboardMarkup(inline_keyboard=rows)
+            text,markup=render_hero_selection(state,list_heroes(player['id']),w,u,int(parts[2]))
         elif parts[0]=='pick' and len(parts)==3:
             hero=next((h for h in list_heroes(player['id']) if h['id']==int(parts[2])),None)
             if not hero: raise ValueError('Этого героя нет в коллекции.')
             text='\n'.join(enemy_lines(state['floor'])+[f"Герой: {hero['name']} ★{hero['stars']}",
-                f"ATK: {hero['attack']} + Equipment {state['equipment_bonus']}",hero.get('passive_text',''),'🛡 Начало: 3/3'])
+                hero_button_text(hero,state['equipment_bonus']),*hero_trait_lines(hero),hero.get('passive_text',''),'🛡 Начало: 3/3'])
             markup=InlineKeyboardMarkup(inline_keyboard=[
                 [button('▶️ Начать бой',w,u,f"start.{floor}.{hero['id']}")],
                 [button('🎴 Другой герой',w,u,f'heroes.{floor}.0')]])

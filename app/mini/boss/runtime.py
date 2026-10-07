@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 from app.mini.boss.errors import BossCombatError
 from app.mini.boss.clock import db_time
 from app.mini.boss.repository import (
@@ -179,7 +180,7 @@ def consume_reward_guard(conn, boss, when) -> dict | None:
             continue
         state["reward_guard_charges"] = charges - 1
         save_hero_state(conn, int(boss["id"]), int(row["player_id"]), state)
-        who = row["username"] or row["character_name"] or row["hero_name"] or "Игрок"
+        who = format_player_mention(row,conn=conn)
         return log_hero_event(conn, boss, row, {
             "type": "reward_guard_absorbed", "remaining_charges": charges - 1,
             "message": f"🛡 {who} защитил награду: атака босса полностью поглощена.",

@@ -6,7 +6,8 @@ from app.mini.ui.transport import edit_private as _edit_private
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from app.mini.daily import claim_daily
-from app.mini.rules import RULES_TEXT
+from app.mini.rules import RULES_TEXT, SECTIONS
+from app.mini.ui.context import load_extended_context
 from app.mini.ui.navigation import back_menu
 
 router = Router(name="mini_activities")
@@ -121,6 +122,29 @@ async def rules_callback(callback: CallbackQuery):
     await _edit_private(
         callback,
         RULES_TEXT,
-        back_menu(world["id"], callback.from_user.id),
+        rules_menu(world["id"], callback.from_user.id),
     )
 
+
+
+def rules_menu(world_id, user_id, *, section=False):
+    rows=[]
+    if not section:
+        rows=[[InlineKeyboardButton(text=label,callback_data=f'mini:rulespage:{world_id}:{user_id}:{key}')]
+              for key,(label,_) in SECTIONS.items()]
+    rows.append([InlineKeyboardButton(text='Назад',callback_data=_personal_callback(
+        'rules' if section else 'home',world_id,user_id))])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data.startswith('mini:rulespage:'))
+async def rules_section_callback(callback):
+    context=await load_extended_context(callback,'rulespage')
+    if context is None:
+        return
+    world,_,key=context
+    if key not in SECTIONS:
+        await callback.answer('Этот раздел недоступен.',show_alert=True)
+        return
+    await callback.answer()
+    await _edit_private(callback,SECTIONS[key][1],rules_menu(world['id'],callback.from_user.id,section=True))

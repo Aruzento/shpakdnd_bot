@@ -1,12 +1,13 @@
-# Архитектура V1.3
+# Архитектура V1.3.1
 
 ## Точки входа и зависимости
 
 `bot.py` выполняет обычную схему, Mini migration steps, Boss migrator,
-world/catalog sync; затем подключает 10 parent routers и запускает polling.
+world/catalog sync; затем подключает 11 parent routers и запускает polling.
 Mini и Boss включают feature subrouters. `check_bot.py` выполняет startup
 проверки без polling. Обычные timers восстанавливаются через
 `app/services/timers.py`; Boss watcher восстанавливает public turn и таймауты.
+Mini notice watcher проверяет сроки титулов и доставляет сохранённые публичные уведомления.
 `deploy/` содержит systemd unit/path и прежний compile-before-restart script.
 Path unit дополнен всеми вложенными module/catalog directories; тест проверяет
 их покрытие. Установка обновлённого unit выполняется при deploy на Linux.
@@ -88,7 +89,7 @@ repository interface на каждый SELECT и новый универсаль
 ## Схема и миграции
 
 `init_mini_db()` открывает одну `BEGIN IMMEDIATE` транзакцию с foreign keys.
-`migrations/` выполняет `core`, `inventory`, `activities`, затем `legacy`.
+`migrations/` выполняет `core`, `inventory`, `activities`, затем `legacy`, `v1_3` и `v1_3_1`.
 CREATE IF NOT EXISTS и проверки PRAGMA table_info делают steps повторяемыми.
 Legacy conversions сохраняют guard conditions: shards переносятся только при
 отсутствии player.shards; старый per-hero столбец остаётся. Wallet operation
@@ -100,7 +101,7 @@ index создаётся после добавления operation_key. DDL и �
 Существующий отдельный Boss migrator сохраняется; он выполняет freeze legacy
 loadouts до catalog sync и переносит old ability events по legacy_action_id.
 
-Проверки покрывают 23 Mini tables и 4 Boss tables: worlds, players, heroes/ownership/stars,
+Проверки покрывают 26 Mini tables и 4 Boss tables: worlds, players, heroes/ownership/stars,
 wallet, items/inventory/effects/uses, daily, offers/purchases, gacha, event
 sessions/requests, bosses/participants/actions/events. Проверяются old columns,
 перенос shards, running battle snapshots, repeated init и rollback DDL.
@@ -145,3 +146,25 @@ repository и reward policy в `app/mini/tower/`. Equipment имеет отде�
 Оставшийся долг: dict/SQLite Row contracts в зрелых сервисах, локальный SQL
 runtime, синхронный SQLite в handlers и исторические patch aliases.
 Эти системы сохраняют прежнее поведение.
+
+## UX V1.3.1
+
+`rules.py` содержит главное меню и восемь самостоятельных sections.
+`ui/activities.py` использует общий personal/extended context и back navigation.
+Tower enemy cards и hero buttons используют общие Russian labels; attack героя
+и бонус экипировки остаются отдельными полями. Equipment menus разделены на
+надетые слоты, выбор предмета, снятие и paginated inventory; сервисы не изменены.
+
+`onboarding.py` выдаёт существующие summon tickets в транзакции создания player.
+`mini_onboarding_claims` уникален по world/user и переживает удаление player
+через nullable reference. Исторические игроки backfill-ятся без новой награды.
+
+`titles/service.py` владеет сроками, заменой и validation. Единственный активный
+титул обеспечен partial unique index. `presentation.format_player_mention`
+проверяет фактический UTC deadline при каждом новом отображении и не меняет
+username/permissions. `/supertitle` использует обычные права admin Mini-темы.
+
+`notifications.py` сохраняет welcome/expiration intent в БД и резервирует его
+перед Telegram отправкой. Pending восстанавливаются на первом проходе watcher;
+confirmed rejection допускает retry, uncertain send не повторяется автоматически.
+Подробности и граница гарантий доставки: [V1.3.1](V1.3.1.md).

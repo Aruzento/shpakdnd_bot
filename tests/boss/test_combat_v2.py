@@ -261,19 +261,21 @@ class CombatV2IntegrationTests(unittest.TestCase):
             select_battle_hero(self.boss["id"], player["id"], self.hero, self.db)
         set_active_hero(self.players[0]["id"], self.villager, self.db)
         state = self.start()
-        self.assertEqual([p["battle_hero_id"] for p in state["participants"]], [self.hero, self.hero])
+        self.assertEqual([p["battle_hero_id"] for p in state["participants"]], [self.villager, self.hero])
         set_active_hero(self.players[0]["id"], self.hero, self.db)
-        self.assertEqual(self.hit(0)["damage"], 10)
+        self.assertEqual(self.hit(0)["damage"], 3)
         set_active_hero(self.players[0]["id"], self.villager, self.db)
         self.hit(1)
-        self.assertEqual(self.hit(0)["damage"], 10)
+        self.assertEqual(self.hit(0)["damage"], 3)
 
-    def test_registration_locks_initial_hero_and_ready_allows_change(self):
+    def test_registration_reads_active_hero_and_ready_allows_change(self):
         set_active_hero(self.players[0]["id"], self.hero, self.db)
-        self.assertEqual(self.participant(0)["hero_id"], self.villager)
+        self.assertIsNone(self.participant(0)["hero_id"])
+        self.assertEqual(list_participants(self.boss["id"], self.db)[0]["battle_hero_id"], self.hero)
         close_registration(self.boss["id"], self.db)
         select_battle_hero(self.boss["id"], self.players[0]["id"], self.hero, self.db)
-        self.assertEqual(self.participant(0)["hero_id"], self.hero)
+        self.assertIsNone(self.participant(0)["hero_id"])
+        self.assertEqual(list_participants(self.boss["id"], self.db)[0]["battle_hero_id"], self.hero)
 
     def test_selection_rejects_unowned_and_unregistered_and_started(self):
         outsider = create_mini_player(self.world, 70003, "@outsider", "Outsider", self.db)
@@ -544,10 +546,10 @@ class CombatV2IntegrationTests(unittest.TestCase):
     def test_complete_selected_hero_lifecycle_and_normal_rewards(self):
         select_battle_hero(self.boss["id"], self.players[0]["id"], self.villager, self.db)
         select_battle_hero(self.boss["id"], self.players[1]["id"], self.hero, self.db)
-        set_active_hero(self.players[0]["id"], self.hero, self.db)
         self.update_boss(max_hp=26, current_hp=26)
         state = self.start()
         self.assertEqual([p["battle_hero_id"] for p in state["participants"]], [self.villager, self.hero])
+        set_active_hero(self.players[0]["id"], self.hero, self.db)
         first = self.hit(0)
         self.assertEqual(first["damage"], 3)
         second = self.hit(1)

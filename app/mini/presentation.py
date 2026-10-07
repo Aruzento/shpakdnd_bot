@@ -73,3 +73,42 @@ TRAIT_DESCRIPTIONS = {
     "demonic": "Отключает регенерацию святого босса",
     "demon": "Отключает регенерацию святого босса",
 }
+
+
+def format_player_mention(player, db_path=None, *, now=None, conn=None, include_title=True):
+    """Format a Mini identity; usernames and authorization data stay untouched.
+
+    Accept player rows (id/world_id/telegram_user_id), participant/event rows
+    (player_id), or an identity without a database reference for plain fallback.
+    An existing transaction may be supplied by combat notices.
+    """
+    from app.config import DB_PATH
+    from app.mini.titles.service import get_active_title
+    row=dict(player or {})
+    username=str(row.get('username') or '').strip()
+    if not username:
+        return str(row.get('character_name') or row.get('hero_name') or 'Игрок')
+    if not username.startswith('@'):
+        username='@'+username
+    player_id=row.get('player_id')
+    if player_id is None and 'world_id' in row and 'telegram_user_id' in row:
+        player_id=row.get('id')
+    target_path=DB_PATH if db_path is None else db_path
+    if include_title and player_id is None and row.get('world_id') is not None:
+        from app.mini.db import connect_mini_db
+        def find_id(connection):
+            rows=connection.execute('SELECT id FROM mini_players WHERE world_id=? AND lower(username)=?',
+                (row['world_id'],username.lower())).fetchall()
+            return rows[0][0] if len(rows)==1 else None
+        if conn is not None:
+            player_id=find_id(conn)
+        else:
+            with connect_mini_db(target_path) as connection:
+                player_id=find_id(connection)
+    title=get_active_title(player_id,target_path,now=now,conn=conn) if include_title and player_id is not None else None
+    return f'[{title}]{username}' if title else username
+
+
+def faction_name(value):
+    """The existing faction label without its decorative icon."""
+    return faction_label(value).split(' ',1)[-1]

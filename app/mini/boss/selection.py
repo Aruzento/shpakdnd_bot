@@ -46,7 +46,7 @@ async def boss_heroes_callback(callback: CallbackQuery):
     heroes = get_player_heroes(player["id"])
     await callback.answer()
     await _send_private(
-        callback, world, format_public_boss(boss, list_participants(boss["id"])) + "\n\n🎴 Выбери героя на этот бой:\n\n" + selection_details(heroes, page),
+        callback, world, format_public_boss(boss, list_participants(boss["id"])) + "\n\n🎴 Выбери активного героя:\n\n" + selection_details(heroes, page),
         battle_hero_menu(world["id"], callback.from_user.id, boss["id"], heroes, page),
     )
 
@@ -62,6 +62,6 @@ async def boss_select_hero_callback(callback: CallbackQuery):
     except BossError as error:
         await callback.answer(str(error), show_alert=True)
         return
-    await callback.answer(f"✅ На этот бой выбран: {hero['name']}"[:200])
+    await callback.answer(f"⭐ Активный герой: {hero['name']}"[:200])
     await show_boss_home(callback, world, player)
 

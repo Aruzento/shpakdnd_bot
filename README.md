@@ -1,7 +1,11 @@
-# D&D Mini — V1.3
+# D&D Mini — V1.3.1
 
 Telegram-бот на aiogram 3 и SQLite. V1.3 добавляет одиночные Испытания на 200 этажей,
 300 предметов экипировки и отдельные Mini superadmin-команды.
+
+V1.3.1 добавляет справку с восемью разделами, три стартовых билета призыва,
+временные титулы и компактные экраны Испытаний и экипировки.
+Полный отчёт: [V1.3.1](docs/architecture/V1.3.1.md).
 
 ## Возможности
 
@@ -25,7 +29,11 @@ Mythic в V1.3 не входит. Полные правила и баланс: [
 
 Mini superadmin авторизуется только по закреплённому `SUPERADMIN_USER_ID = 694384548`
 в `app/mini/superadmin/access.py`. ID подтверждён владельцем; username и topic-admin
-права не дают доступа к `/super*`.
+права не дают доступа к `/superlook`, `/superadd`, `/superdel`, `/superchars`, `/superluck`.
+
+`/supertitle @user 7d "Титул"` доступна администратору текущей Mini-темы.
+Титул хранится до указанного срока в БД и отображается как `[Титул]@username`.
+Сертификат `chat_title` сохраняет прежний запрос администратору.
 
 ## Структура
 
@@ -39,6 +47,9 @@ app/mini/
   events/                       Telegram handlers + transactional game service
   tower/                        handlers, service, combat adapter, repository, floors.json, balance.json
   equipment/                    handlers, service, catalog, items.json
+  titles/                       временные титулы, parser/service/admin handler
+  onboarding.py / notifications.py  atomic starter tickets, durable public notices и watcher
+  rules.py                      тексты восьми разделов пользовательской справки
   superadmin/                   numeric access, strict parser, service, handlers + persistent audit
   combat/                       common tags, integer matchups, creatures, hero_abilities
   boss/

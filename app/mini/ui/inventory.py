@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
     username_from_user as _username_from_user,
     personal_callback as _personal_callback,
@@ -85,6 +86,8 @@ def _inventory_menu(
                 callback_data=_personal_callback("useitems", world_id, user_id),
             )
         ])
+    rows.append([InlineKeyboardButton(text='🛡 Экипировка в инвентаре',
+        callback_data=_personal_callback('equipment',world_id,user_id)+':inventory.0')])
     rows.append([
         InlineKeyboardButton(
             text="🛒 Магазин",
@@ -340,18 +343,13 @@ async def use_item_confirm_callback(callback: CallbackQuery):
             return
 
         admin = get_topic_admin(int(world["chat_id"]), int(world["thread_id"])) or "@arukozento"
-        who = (
-            _username_from_user(callback.from_user)
-            or player.get("username")
-            or player.get("character_name")
-            or f"игрок {callback.from_user.id}"
-        )
+        who = format_player_mention(dict(player,username=_username_from_user(callback.from_user) or player.get("username")))
         try:
             await callback.bot.send_message(
                 chat_id=world["chat_id"],
                 message_thread_id=world["thread_id"] or None,
                 text=(
-                    f"🔔 {admin}\n\n"
+                    f"🔔 {format_player_mention(dict(world_id=world['id'],username=admin))}\n\n"
                     f"{who} использовал «{certificate['title']}» "
                     f"(сертификат #{certificate['purchase_id']}).\n"
                     "Нужно применить награду вручную."

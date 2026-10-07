@@ -6,6 +6,9 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_onboarding_claims",
+    "mini_titles",
+    "mini_public_notifications",
     "mini_equipment",
     "mini_equipment_owned",
     "mini_equipment_slots",

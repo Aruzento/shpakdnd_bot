@@ -1,3 +1,4 @@
+from app.mini.titles.handlers import router as mini_titles_router
 from app.handlers.create import router as create_router
 from app.mini.superadmin.handlers import router as superadmin_router
 from app.handlers.admin import router as admin_router
@@ -12,6 +13,7 @@ from app.mini.handlers import router as mini_router
 
 ROUTERS = [
     common_router,
+    mini_titles_router,
     mini_boss_router,
     mini_events_router,
     mini_router,

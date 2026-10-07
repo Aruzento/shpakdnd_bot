@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 """Combat notices shared by hit callbacks, home recovery and the watcher."""
 from app.mini.presentation import faction_label
 
@@ -5,7 +6,7 @@ from app.mini.presentation import faction_label
 def _target(event: dict, participants: list[dict]) -> str:
     player_id = event.get("player_id")
     row = next((p for p in participants if p.get("player_id") == player_id), {})
-    return str(row.get("username") or row.get("character_name") or "участника")
+    return format_player_mention(row) if row else "участника"
 
 
 def boss_event_line(event: dict, participants: list[dict]) -> str:
@@ -47,7 +48,7 @@ def reward_event_lines(event: dict) -> list[str]:
         elif kind == "boss_skip":
             lines.append("🎵 Босс пропустил весь ход.")
         for passive in attack.get("passive_events", []):
-            who = passive.get("username") or passive.get("character_name") or passive.get("hero_name") or "Игрок"
+            who = format_player_mention(passive)
             if passive.get("message"):
                 lines.append(f"{who}: {passive['message']}")
     return lines
@@ -75,7 +76,7 @@ def combat_event_lines(result: dict) -> list[str]:
 
 
 def timeout_event_lines(result: dict) -> list[str]:
-    labels = [str(row.get("username") or row.get("character_name") or "Игрок") for row in result.get("skipped", [])]
+    labels = [format_player_mention(row) for row in result.get("skipped", [])]
     lines = ["⏭ По таймеру пропущен ход: " + ", ".join(labels)] if labels else []
     lines.extend(combat_event_lines({key: value for key, value in result.items() if key != "timeout_result"}))
     return lines

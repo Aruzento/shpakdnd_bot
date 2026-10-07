@@ -170,8 +170,8 @@ def get_gacha_state(
         else:
             rarity_chances[rarity] = round(units * 100 / eligible_total, 1)
 
-    if forced_legendary:
-        rarity_chances = {rarity: 100.0 if rarity == "legendary" else 0.0 for rarity in rarity_weights}
+    # Public odds describe ordinary pulls (including visible luck potions).
+    # The administrative override stays private and is applied only at pull time.
 
     return {
         "pull_price": int(settings["pull_price"]),

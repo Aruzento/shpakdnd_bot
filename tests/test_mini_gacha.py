@@ -103,7 +103,7 @@ class MiniGachaTests(unittest.TestCase):
 
         before = get_balance(self.player["id"], self.db)
         state = get_gacha_state(self.player["id"], self.db)
-        self.assertEqual(state["tickets"], 1)
+        self.assertEqual(state["tickets"], 4)
 
         with patch("app.mini.gacha._choose_hero_code", return_value="CityBlacksmith"):
             result = perform_gacha_pull(
@@ -112,7 +112,7 @@ class MiniGachaTests(unittest.TestCase):
 
         self.assertTrue(result["used_ticket"])
         self.assertEqual(result["cost_coins"], 0)
-        self.assertEqual(result["tickets"], 0)
+        self.assertEqual(result["tickets"], 3)
         self.assertEqual(get_balance(self.player["id"], self.db), before)
 
     def test_cannot_pull_with_not_enough_coins(self):

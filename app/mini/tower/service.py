@@ -83,7 +83,7 @@ def attack(player_id,attempt_id,expected_turn,db_path=DB_PATH,*,roller=None,choo
         if not attempt or attempt["status"] != "active" or attempt["turn"] != expected_turn:
             raise ValueError("Эта кнопка атаки устарела. Открой текущий бой.")
         if attempt["floor"] != repo.progress(conn,player_id)+1:
-            raise ValueError("Некорректный прогресс Tower.")
+            raise ValueError("Некорректный прогресс Испытаний.")
         result=resolve_turn(attempt,roller=roller)
         repo.save_turn(conn,attempt_id,result)
         attempt.update(result)

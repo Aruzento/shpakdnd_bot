@@ -357,3 +357,16 @@ def use_inventory_item(
         conn.commit()
 
     return result
+
+
+def grant_item_in_transaction(conn, player_id, code, quantity):
+    """Grant a known item without taking transaction ownership from the caller."""
+    if not conn.in_transaction or type(quantity) is not int or quantity<=0:
+        raise ValueError('Выдача предмета требует транзакции и положительного количества.')
+    row=conn.execute('SELECT id FROM mini_items WHERE code=?',(code,)).fetchone()
+    if row is None:
+        raise ValueError('Предмет не найден.')
+    conn.execute("""INSERT INTO mini_inventory(player_id,item_id,quantity,updated_at)
+        VALUES(?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(player_id,item_id) DO UPDATE SET
+        quantity=mini_inventory.quantity+excluded.quantity,updated_at=CURRENT_TIMESTAMP""",
+        (player_id,row[0],quantity))

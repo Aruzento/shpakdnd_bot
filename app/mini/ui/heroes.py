@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
     username_from_user as _username_from_user,
     personal_callback as _personal_callback,
@@ -162,10 +163,6 @@ def _format_gacha(world: dict, state: dict) -> str:
         if state.get("luck_active")
         else ""
     )
-    guarantee_line = (
-        "🟡 Персональная гарантия: следующий успешный призыв — Legendary 100%.\n\n"
-        if state.get("forced_legendary") else ""
-    )
     return (
         "✨ Призыв героев\n\n"
         f"🪙 Цена: {state['pull_price']}\n"
@@ -173,7 +170,6 @@ def _format_gacha(world: dict, state: dict) -> str:
         f"🪙 Монеты: {state['coins']}\n"
         f"🧩 Осколки: {state['shards']}\n\n"
         f"{luck_line}"
-        f"{guarantee_line}"
         "Текущие шансы редкостей:\n"
         f"⚪ Обычный — {chances.get('common', 0):g}%\n"
         f"🟢 Необычный — {chances.get('uncommon', 0):g}%\n"
@@ -384,12 +380,7 @@ async def hero_share_callback(callback: CallbackQuery):
         await callback.answer("Этого героя нет в коллекции.", show_alert=True)
         return
 
-    sharer = (
-        _username_from_user(callback.from_user)
-        or player.get("username")
-        or player.get("character_name")
-        or "Игрок"
-    )
+    sharer = format_player_mention(dict(player,username=_username_from_user(callback.from_user) or player.get("username")))
 
     try:
         await send_public_hero_share(callback, world, hero, sharer)

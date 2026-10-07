@@ -145,9 +145,10 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             hero_id = int(
                 conn.execute(
                     """
-                    SELECT hero_id
-                    FROM mini_boss_participants
-                    WHERE boss_id = ? AND player_id = ?
+                    SELECT p.active_hero_id
+                    FROM mini_boss_participants bp
+                    JOIN mini_players p ON p.id = bp.player_id
+                    WHERE bp.boss_id = ? AND bp.player_id = ?
                     """,
                     (self.boss["id"], self.player1["id"]),
                 ).fetchone()[0]
@@ -231,9 +232,10 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             hero_id = int(
                 conn.execute(
                     """
-                    SELECT hero_id
-                    FROM mini_boss_participants
-                    WHERE boss_id = ? AND player_id = ?
+                    SELECT p.active_hero_id
+                    FROM mini_boss_participants bp
+                    JOIN mini_players p ON p.id = bp.player_id
+                    WHERE bp.boss_id = ? AND bp.player_id = ?
                     """,
                     (self.boss["id"], self.player2["id"]),
                 ).fetchone()[0]

@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 from app.mini.boss.repository import (
     start_participants,
     active_loadouts,
@@ -326,7 +327,7 @@ def hit_boss(
             conn.rollback()
             raise BossCombatError("Не удалось определить текущий ход.")
         if int(current["player_id"]) != int(player_id):
-            who = str(current["username"] or current["character_name"] or "другого игрока")
+            who = format_player_mention(current,conn=conn)
             conn.rollback()
             raise BossNotYourTurn(f"Сейчас ход {who}.")
 

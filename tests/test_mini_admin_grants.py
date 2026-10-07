@@ -77,8 +77,8 @@ class MiniAdminGrantTests(unittest.TestCase):
             item["id"],
             self.db,
         )
-        self.assertEqual(first["quantity"], 1)
-        self.assertEqual(second["quantity"], 2)
+        self.assertEqual(first["quantity"], 4)
+        self.assertEqual(second["quantity"], 5)
 
     def test_admin_item_grant_accepts_item_code(self):
         result = grant_mini_item(
@@ -87,7 +87,7 @@ class MiniAdminGrantTests(unittest.TestCase):
             self.db,
         )
         self.assertEqual(result["code"], "summon_ticket")
-        self.assertEqual(result["quantity"], 1)
+        self.assertEqual(result["quantity"], 4)
 
     def test_admin_coin_grant_all_players(self):
         second = create_mini_player(
@@ -137,7 +137,7 @@ class MiniAdminGrantTests(unittest.TestCase):
             ).fetchall()
         self.assertEqual(
             [(int(row[0]), int(row[1])) for row in rows],
-            [(self.player["id"], 1), (second["id"], 1)],
+            [(self.player["id"], 4), (second["id"], 4)],
         )
 
     def test_admin_hero_grant_by_code_is_idempotent(self):

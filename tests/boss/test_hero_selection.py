@@ -86,7 +86,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
             await boss_select_hero_callback(self.callback)
         select.assert_called_once_with(3, 10, 9)
         home.assert_awaited_once_with(self.callback, self.world, self.player)
-        self.assertEqual(self.callback.answer.call_args.args[0], "✅ На этот бой выбран: Hero")
+        self.assertEqual(self.callback.answer.call_args.args[0], "⭐ Активный герой: Hero")
 
     async def test_selection_race_with_start_reports_service_error(self):
         from app.mini.boss.service import BossError

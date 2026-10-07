@@ -17,13 +17,14 @@ Mini cards use shared Russian labels.
 
 ## Hero selection and snapshots
 
-Registration fixes the active hero as the initial battle selection.
-select_battle_hero() can replace it in announced or ready, with ownership
-checked under a SQLite write lock. The private boss menu offers a paginated,
-ephemeral selector. start_battle() uses the selected participant hero; only a
-legacy NULL selection falls back once to active hero. The start transaction
-snapshots attack including stars, the five Combat v2 traits, passive_key and
-passive_text. Fighting battles never recalculate those snapshots or use active
+Before start, the global active hero is the only selection source. Registration
+leaves participant.hero_id empty; legacy pre-start values are ignored.
+select_battle_hero() uses the shared set_active_hero_in_transaction() operation,
+checking registration, status and ownership under one SQLite write lock. Both
+Collection and Boss selection update the same player field. The private boss
+menu offers a paginated, ephemeral selector. start_battle() reads the current
+active hero and atomically saves participant.hero_id plus attack including stars,
+the five Combat v2 traits, passive_key and passive_text. Fighting battles never recalculate those snapshots or use active
 hero as the combat source. All passive hooks read the frozen passive_key.
 
 Migration fills missing traits of legacy fighting loadouts with the original

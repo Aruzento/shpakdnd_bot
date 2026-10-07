@@ -154,16 +154,16 @@ def start_participants(conn, boss_id: int):
         SELECT
             bp.player_id,
             bp.queue_position,
-            COALESCE(bp.hero_id, p.active_hero_id) AS selected_hero_id,
+            p.active_hero_id AS selected_hero_id,
             h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
             h.passive_key, h.passive_text,
             h.attack AS base_attack,
             ph.stars
         FROM mini_boss_participants bp
         JOIN mini_players p ON p.id = bp.player_id
-        LEFT JOIN mini_heroes h ON h.id = COALESCE(bp.hero_id, p.active_hero_id)
+        LEFT JOIN mini_heroes h ON h.id = p.active_hero_id
         LEFT JOIN mini_player_heroes ph
-          ON ph.player_id = p.id AND ph.hero_id = COALESCE(bp.hero_id, p.active_hero_id)
+          ON ph.player_id = p.id AND ph.hero_id = p.active_hero_id
         WHERE bp.boss_id = ?
         ORDER BY bp.queue_position
         """,

@@ -25,6 +25,8 @@ from aiogram.types import (
 )
 from app.context import check_topic_admin_permission, get_thread_id
 from app.mini.presentation import hero_heading, hero_trait_lines
+from app.mini.onboarding import STARTER_MESSAGE
+from app.mini.notifications import publish_pending_notifications
 from app.mini.heroes import get_active_hero, get_hero_image
 from app.mini.players import create_mini_player, get_mini_player, touch_mini_player
 from app.mini.worlds import (
@@ -462,11 +464,13 @@ async def minicreate_handler(message: Message):
         await _send_private(message, f"❌ {error}")
         return
 
-    active = get_active_hero(player["id"])
-    await _send_private(
-        message, "✅ Mini-персонаж создан!\n\n" + _home_content(player, active),
-        _player_menu(world["id"], message.from_user.id), hero=active,
-    )
+    await publish_pending_notifications(message.bot, player_id=player['id'])
+    gift = STARTER_MESSAGE if player.get('onboarding_granted') else 'Mini-персонаж восстановлен. Стартовый подарок уже выдавался.'
+    markup=InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='🎴 Перейти в Гачу',callback_data=_personal_callback('gacha',world['id'],message.from_user.id))],
+        [InlineKeyboardButton(text='🚀 Быстрый старт',callback_data=f"mini:rulespage:{world['id']}:{message.from_user.id}:start")],
+        [InlineKeyboardButton(text='Назад',callback_data=_personal_callback('home',world['id'],message.from_user.id))]])
+    await _send_private(message, "✅ Mini-персонаж создан!\n\n" + gift, markup)
 
 
 @router.callback_query(F.data.startswith("mini:create_help:"))

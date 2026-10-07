@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 """Mini admin use cases. Each mutation and its audit commit in one transaction."""
 import sqlite3
 from app.config import DB_PATH
@@ -30,7 +31,7 @@ def _player(conn,world_id,target):
 
 
 def _look(conn,player,flags):
-    lines=[f"{player['character_name']} — {player['telegram_user_id']} {player['username']}"]
+    lines=[f"{player['character_name']} — {player['telegram_user_id']} {format_player_mention(player,conn=conn)}"]
     if '-c' in flags: lines.append(f"Монеты: {player['coins']}")
     if '-s' in flags: lines.append(f"Осколки: {player['shards']}")
     if '-p' in flags:
@@ -74,8 +75,8 @@ def _hero(conn,player,value,deleting):
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mini_boss_participants'").fetchone():
         busy=conn.execute("""SELECT 1 FROM mini_boss_participants bp JOIN mini_bosses b ON b.id=bp.boss_id
             WHERE bp.player_id=? AND b.status IN ('announced','ready','fighting')
-            AND (bp.hero_id=? OR (bp.hero_id IS NULL AND ?=?))""",
-            (player['id'],hero['id'],player['active_hero_id'],hero['id'])).fetchone()
+            AND CASE WHEN b.status IN ('announced','ready') THEN ? ELSE bp.hero_id END=?""",
+            (player['id'],player['active_hero_id'],hero['id'])).fetchone()
         if busy: raise ValueError("Герой используется активным Boss battle.")
     conn.execute("DELETE FROM mini_player_heroes WHERE player_id=? AND hero_id=?",(player['id'],hero['id']))
     if player['active_hero_id']==hero['id']:
@@ -114,7 +115,7 @@ def execute(admin_user_id,command,*,operation_key='',db_path=DB_PATH):
         world=_world(conn,command)
         if command.action=='superchars':
             return '\n'.join([f"Mini players {command.chat_id}:{command.thread_id}"]+[
-                f"{r['telegram_user_id']} {r['username']} — {r['character_name']}"
+                f"{r['telegram_user_id']} {format_player_mention(r,conn=conn)} — {r['character_name']}"
                 for r in conn.execute("SELECT * FROM mini_players WHERE world_id=? ORDER BY telegram_user_id",(world['id'],))])
         player=_player(conn,world['id'],command.target)
         if command.action=='superlook': return _look(conn,player,command.flags)

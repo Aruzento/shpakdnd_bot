@@ -220,6 +220,31 @@ def get_active_hero(
     return _enrich_owned_hero(dict(row)) if row else None
 
 
+def set_active_hero_in_transaction(
+    conn: sqlite3.Connection,
+    player_id: int,
+    hero_id: int,
+) -> dict:
+    """Shared selection operation; the caller owns the write transaction."""
+    if not conn.in_transaction:
+        raise RuntimeError("Active hero selection requires a transaction.")
+    owned = conn.execute(
+        """SELECT h.* FROM mini_player_heroes ph
+           JOIN mini_heroes h ON h.id = ph.hero_id
+           WHERE ph.player_id = ? AND ph.hero_id = ?""",
+        (int(player_id), int(hero_id)),
+    ).fetchone()
+    if owned is None:
+        raise ValueError("Этого героя нет в твоей коллекции.")
+    conn.execute(
+        "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+        (int(hero_id), int(player_id)),
+    )
+    result = dict(owned)
+    result["is_active"] = 1
+    return result
+
+
 def set_active_hero(
     player_id: int,
     hero_id: int,
@@ -228,30 +253,7 @@ def set_active_hero(
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
-
-        owned = conn.execute(
-            """
-            SELECT h.*
-            FROM mini_player_heroes ph
-            JOIN mini_heroes h ON h.id = ph.hero_id
-            WHERE ph.player_id = ? AND ph.hero_id = ?
-            """,
-            (int(player_id), int(hero_id)),
-        ).fetchone()
-
-        if owned is None:
-            conn.rollback()
-            raise ValueError("Этого героя нет в твоей коллекции.")
-
-        conn.execute(
-            "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
-            (int(hero_id), int(player_id)),
-        )
-        conn.commit()
-
-    result = dict(owned)
-    result["is_active"] = 1
-    return result
+        return set_active_hero_in_transaction(conn, player_id, hero_id)
 
 
 def get_collection_summary(

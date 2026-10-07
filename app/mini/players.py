@@ -56,6 +56,8 @@ def create_mini_player(
         raise ValueError("Имя персонажа не может быть пустым.")
 
     with connect_mini_db(db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("BEGIN IMMEDIATE")
         existing = conn.execute(
             """
             SELECT id
@@ -74,7 +76,7 @@ def create_mini_player(
                 "Mini-персонаж для этого игрока уже существует."
             )
 
-        conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO mini_players (
                 world_id,
@@ -94,6 +96,9 @@ def create_mini_player(
             ),
         )
 
+        from app.mini.onboarding import grant_starter_in_transaction
+        granted = grant_starter_in_transaction(conn, int(cursor.lastrowid), world_id,
+            telegram_user_id, character_name)
         conn.commit()
 
     player = get_mini_player(
@@ -105,6 +110,7 @@ def create_mini_player(
     if player is None:
         raise RuntimeError("Не удалось создать Mini-персонажа.")
 
+    player["onboarding_granted"] = granted
     return player
 
 

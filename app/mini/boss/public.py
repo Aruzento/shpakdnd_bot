@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 import asyncio
 import json
 
@@ -82,10 +83,8 @@ def reward_items(boss: dict) -> list[dict]:
 
 
 def participant_label(row: dict) -> str:
-    username = str(row.get("username") or "").strip()
-    character = str(row.get("character_name") or "Игрок").strip()
     hero = str(row.get("hero_name") or "без героя").strip()
-    who = username or character
+    who = format_player_mention(row)
     extra = ""
     if int(row.get("battle_attack") or 0) > 0:
         extra = f" • ⚔️ {int(row['battle_attack'])}"
@@ -111,10 +110,7 @@ def current_participant(boss: dict, participants: list[dict]) -> dict | None:
 def _participant_mention(row: dict | None) -> str:
     if not row:
         return "Игрок"
-    username = str(row.get("username") or "").strip()
-    if username:
-        return username
-    return str(row.get("character_name") or "Игрок").strip()
+    return format_player_mention(row)
 
 
 def _reward_line(boss: dict) -> str:
@@ -138,12 +134,7 @@ def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
         message = str(event.get("message") or "").strip()
         if not message:
             continue
-        who = str(
-            event.get("username")
-            or event.get("character_name")
-            or event.get("hero_name")
-            or "Игрок"
-        ).strip()
+        who = format_player_mention(event)
         lines.append(f"{who}: {message}")
     return lines
 

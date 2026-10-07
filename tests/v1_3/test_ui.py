@@ -38,13 +38,13 @@ class UIContractTests(unittest.IsolatedAsyncioTestCase):
 class UIScreenTests(MiniCase):
     def test_enemy_visible_before_hero_selection(self):
         text,markup=render_state(get_state(self.pid,self.db),1,900123)
-        for value in ['HP: 6','Фракция:','Особенности:','3/3','Equipment:']:self.assertIn(value,text)
+        for value in ['🏰 Испытания: 1/200','HP: 6','● Простолюдины','Особенности:','3/3','Бонус экипировки:']:self.assertIn(value,text)
         self.assertTrue(any('Выбрать героя' in b.text for row in markup.inline_keyboard for b in row))
 
     def test_fighting_screen_contains_shields_attack_and_matchup(self):
         hero=self.hero();a=start_attempt(self.pid,hero['id'],1,self.db)
         text,markup=render_state(get_state(self.pid,self.db),1,900123)
-        for value in ['ATK 3','3/3','matchup','HP сейчас:']:self.assertIn(value,text)
+        for value in ['ATK 3','3/3','Урон по фракции:','HP сейчас:']:self.assertIn(value,text)
         data=[b.callback_data for row in markup.inline_keyboard for b in row]
         self.assertIn(f'mini:tower:1:900123:hit.{a["id"]}.0',data)
         self.assertTrue(all(len(x.encode())<=64 for x in data))

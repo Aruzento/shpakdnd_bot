@@ -10,6 +10,7 @@ from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.watcher import boss_watch_loop
+from app.mini.notifications import mini_notice_watch_loop, recover_interrupted_notifications
 from app.mini.commands import configure_mini_commands
 from app.mini.heroes import sync_hero_catalog
 from app.mini.shop import sync_shop_catalog
@@ -55,14 +56,21 @@ async def main():
     for router in ROUTERS:
         dp.include_router(router)
 
+    recover_interrupted_notifications()
     await restore_timers(bot)
 
     boss_watch_task = asyncio.create_task(boss_watch_loop(bot))
+    mini_notice_task = asyncio.create_task(mini_notice_watch_loop(bot))
     print("Бот запущен.")
     try:
         await dp.start_polling(bot)
     finally:
+        mini_notice_task.cancel()
         boss_watch_task.cancel()
+        try:
+            await mini_notice_task
+        except asyncio.CancelledError:
+            pass
         try:
             await boss_watch_task
         except asyncio.CancelledError:

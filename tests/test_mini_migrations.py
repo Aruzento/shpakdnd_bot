@@ -74,6 +74,8 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("""INSERT INTO mini_superadmin_audit
                 (admin_user_id,action,world_id,target_user_id,player_id,resource,operation_key)
                 VALUES(555,'superluck',?,555,?,'gacha_guarantee','fixture')""",(world,player))
+        from app.mini.titles.service import issue_title
+        issue_title(player,'Хранитель',86400,555,'fixture:title',self.db,now=1000)
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

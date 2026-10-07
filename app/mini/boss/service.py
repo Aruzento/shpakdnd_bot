@@ -7,6 +7,7 @@ from app.config import DB_PATH
 from app.mini.boss.catalog import get_boss_template
 from app.mini.boss.schema import init_boss_db
 from app.mini.db import connect_mini_db
+from app.mini.heroes import set_active_hero_in_transaction
 
 
 ACTIVE_STATUSES = ("announced", "ready", "fighting")
@@ -205,7 +206,8 @@ def list_participants(
                 p.username,
                 p.character_name,
                 p.active_hero_id,
-                bp.hero_id AS battle_hero_id,
+                CASE WHEN b.status IN ('announced', 'ready') THEN p.active_hero_id
+                     ELSE bp.hero_id END AS battle_hero_id,
                 bp.attack AS battle_attack,
                 bp.damage_bonus_percent,
                 bp.phantom_reward,
@@ -219,7 +221,7 @@ def list_participants(
             JOIN mini_players p ON p.id = bp.player_id
             JOIN mini_bosses b ON b.id = bp.boss_id
             LEFT JOIN mini_heroes h ON h.id = CASE
-                WHEN b.status IN ('announced', 'ready') THEN COALESCE(bp.hero_id, p.active_hero_id)
+                WHEN b.status IN ('announced', 'ready') THEN p.active_hero_id
                 ELSE bp.hero_id END
             WHERE bp.boss_id = ?
             ORDER BY bp.queue_position, bp.joined_at, p.id
@@ -293,10 +295,10 @@ def register_player(
         conn.execute(
             """
             INSERT INTO mini_boss_participants (
-                boss_id, player_id, queue_position, hero_id
-            ) VALUES (?, ?, ?, ?)
+                boss_id, player_id, queue_position
+            ) VALUES (?, ?, ?)
             """,
-            (int(boss_id), int(player_id), next_position, int(player["active_hero_id"])),
+            (int(boss_id), int(player_id), next_position),
         )
         conn.commit()
 
@@ -486,7 +488,7 @@ def select_battle_hero(
     hero_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    """Atomically change a registered player's hero before battle starts."""
+    """Change the global active hero under the same lock as the Boss start check."""
     init_boss_db(db_path)
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -501,16 +503,7 @@ def select_battle_hero(
             raise BossError("Ты не зарегистрирован на этого босса.")
         if participant["status"] not in ("announced", "ready"):
             raise BossRegistrationClosed("Героя можно выбрать только до начала боя.")
-        hero = conn.execute(
-            """SELECT h.* FROM mini_player_heroes ph
-               JOIN mini_heroes h ON h.id = ph.hero_id
-               WHERE ph.player_id = ? AND ph.hero_id = ?""",
-            (int(player_id), int(hero_id)),
-        ).fetchone()
-        if hero is None:
-            raise BossError("Этого героя нет в твоей коллекции.")
-        conn.execute(
-            "UPDATE mini_boss_participants SET hero_id = ? WHERE boss_id = ? AND player_id = ?",
-            (int(hero_id), int(boss_id), int(player_id)),
-        )
-        return dict(hero)
+        try:
+            return set_active_hero_in_transaction(conn, player_id, hero_id)
+        except ValueError as error:
+            raise BossError(str(error)) from error

@@ -1,37 +1,37 @@
 import unittest
 
 from app.mini.presentation import hero_trait_lines
-from app.mini.rules import RULES_TEXT
+from app.mini.rules import RULES_TEXT, SECTIONS
 
 
 class MiniReleaseRulesTests(unittest.TestCase):
-    def test_battle_hero_is_selected_separately_and_locked_at_start(self):
-        self.assertNotIn("Перед боссом выбери героя активным", RULES_TEXT)
-        self.assertNotIn("именно он будет драться", RULES_TEXT)
-        self.assertIn("После регистрации", RULES_TEXT)
-        self.assertIn("🎴 Выбрать героя", RULES_TEXT)
-        self.assertIn("именно на этот бой", RULES_TEXT)
-        self.assertIn("После начала боя сменить героя нельзя", RULES_TEXT)
-        self.assertIn("Смена активного героя в коллекции не меняет текущий бой", RULES_TEXT)
+    def test_active_hero_is_shared_and_battle_hero_locked_at_start(self):
+        text=SECTIONS['bosses'][1]
+        for value in ('в коллекции или меню босса герой становится активным','До начала боя его можно менять','После старта',
+                      '🎴 Выбрать героя','Смена активного героя в коллекции не меняет уже начавшийся бой'):
+            self.assertIn(value,text)
 
     def test_rules_explain_faction_cycle_and_multipliers(self):
-        self.assertIn("Простолюдины → Звери → Монстры → Воины → Тьма → Простолюдины", RULES_TEXT)
-        for multiplier in ("×2", "×0.25", "×1"):
-            self.assertIn(multiplier, RULES_TEXT)
-        self.assertIn("нейтральная с любой стороны", RULES_TEXT)
+        text=SECTIONS['factions'][1]
+        self.assertIn('Простолюдины → Звери → Монстры → Воины → Тьма → Простолюдины',text)
+        for value in ('×2','×0.25','×1','Остальные сочетания','Звери сильны против Монстров'):
+            self.assertIn(value,text)
 
     def test_rules_describe_class_exceptions_and_executable_traits(self):
-        for text in ("mage", "magical", "0 урона HP", "Технический класс", "20%",
-                     "после пассивки и фракции, до бонуса зелья", "Тип урона, дальность",
-                     "влияют на новые бои", "Броня босса", "Нежить один раз воскресает", "Демоническая порча", "не увеличивает выплату"):
-            self.assertIn(text, RULES_TEXT)
+        text=SECTIONS['factions'][1]
+        for value in ('Маг снимает магический щит','сам удар при этом не ранит босса',
+                      'Технический герой','летающего врага','Броня','нежить может воскреснуть'):
+            self.assertIn(value,text)
+        all_text=RULES_TEXT+' '.join(text for _,text in SECTIONS.values())
+        for technical in ('mage','magical','Combat v2','effect_key','после пассивки и фракции'):
+            self.assertNotIn(technical,all_text)
 
     def test_rules_keep_timer_shields_rewards_and_consolation(self):
-        for text in ("4 часа", "сначала ломает щиты", "10 процентных пунктов",
-                     "хотя бы раз ударил", "фантомного участия", "утешительные осколки",
-                     "÷ 10", "округлением вниз"):
-            self.assertIn(text, RULES_TEXT)
-        self.assertLessEqual(len(RULES_TEXT), 4096)
+        text=SECTIONS['bosses'][1]
+        for value in ('4 часа','ломают защитные щиты','хотя бы одной атакой',
+                      'фантомного участия','утешительные осколки','на 10 с округлением вниз'):
+            self.assertIn(value,text)
+        for _,text in SECTIONS.values(): self.assertLessEqual(len(text),4096)
 
     def test_all_damage_labels_render_with_agreed_terminology(self):
         for code, expected in (("slashing", "Режущий"), ("piercing", "Колющий"),

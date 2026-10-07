@@ -1,3 +1,4 @@
+from app.mini.presentation import format_player_mention
 from app.mini.ui.context import username_from_user
 from app.mini.boss.ui import admin_action_context as _admin_action_context
 from app.mini.ui.context import load_world as _load_world, load_player as _load_player
@@ -50,11 +51,7 @@ async def boss_start_callback(callback: CallbackQuery):
         ]),
     )
     current = state.get("current")
-    who = (
-        (current or {}).get("username")
-        or (current or {}).get("character_name")
-        or "первого игрока"
-    )
+    who = format_player_mention(current) if current else "первого игрока"
     await callback.answer(f"Бой начался. Ход {who}")
     await _delete_current_ephemeral(callback)
 
@@ -128,11 +125,7 @@ async def boss_hit_callback(callback: CallbackQuery):
     ]
     passive_text = " ".join(passive_messages)
 
-    attacker = (
-        username_from_user(callback.from_user)
-        or str(player.get("username") or "").strip()
-        or str(player.get("character_name") or "Игрок").strip()
-    )
+    attacker = format_player_mention(dict(player, username=username_from_user(callback.from_user) or player.get("username")))
     public_parts = [f"💥 {attacker} наносит {result.get('damage', 0)} урона."]
     if passive_text:
         public_parts.append(passive_text)
