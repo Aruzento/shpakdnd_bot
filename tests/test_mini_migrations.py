@@ -76,6 +76,8 @@ class MiniMigrationTests(unittest.TestCase):
                 VALUES(555,'superluck',?,555,?,'gacha_guarantee','fixture')""",(world,player))
         from app.mini.favorites import add_favorite
         add_favorite(player,hero,self.db)
+        from app.mini.tower.service import select_hero
+        select_hero(player,hero,self.db)
         from app.mini.titles.service import issue_title
         issue_title(player,'Хранитель',86400,555,'fixture:title',self.db,now=1000)
         return player

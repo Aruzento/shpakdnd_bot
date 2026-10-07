@@ -4,11 +4,11 @@ from aiogram.types import InlineKeyboardButton,InlineKeyboardMarkup
 from app.topic_guard import is_mini_topic
 from app.mini.ui.context import shop_context,personal_callback
 from app.mini.ui.transport import send_private_text_from_callback
-from app.mini.tower.service import get_state,list_heroes,start_attempt,attack
+from app.mini.tower.service import get_state,list_heroes,start_selected_attempt,select_hero,attack
 from app.mini.combat.matchups import faction_multiplier_percent
 from app.mini.presentation import faction_name,tag_label,hero_trait_lines,TRAIT_LABELS
 from app.mini.favorites import get_favorites
-from app.mini.ui.hero_selector import render_selector
+from app.mini.ui.hero_selector import render_selector,hero_label
 from app.mini.tower.catalog import load_catalog
 TOTAL_FLOORS=len(load_catalog()["floors"])
 
@@ -58,8 +58,9 @@ def render_state(state,world,user,reward=None):
         if attempt['status']=='active':
             rows.append([button('⚔️ Атаковать',world,user,f"hit.{attempt['id']}.{attempt['turn']}")])
         elif attempt['status']=='lost':
-            lines.append('💀 Щиты закончились. Выбери героя для новой попытки.')
-            rows.append([button('🔄 Повторить другим героем',world,user,f"heroes.{attempt['floor']}.0")])
+            lines.append('💀 Щиты закончились. Можно повторить бой или сменить героя.')
+            rows.append([button('🔄 Повторить бой',world,user)])
+            rows.append([button('🔄 Сменить героя',world,user,f"heroes.{attempt['floor']}.0")])
         else:
             lines.append('🏆 Этаж пройден!')
             if state['completed']: lines.append('🏁 Все 200 этажей пройдены!')
@@ -71,7 +72,13 @@ def render_state(state,world,user,reward=None):
                   'Выбери героя под фракцию и особенности противника.']
         if enemy.get('response')=='prepare':
             lines.append('Противник сначала готовит атаку, затем бьёт по щиту.')
-        rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{enemy['floor']}.0")])
+        selected=state.get('selected_hero')
+        if selected:
+            lines += ['', 'Текущий герой:', hero_label(selected)]
+            rows.append([button('⚔️ Начать бой',world,user,f"start.{enemy['floor']}.{selected['id']}")])
+            rows.append([button('🔄 Сменить героя',world,user,f"heroes.{enemy['floor']}.0")])
+        else:
+            rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{enemy['floor']}.0")])
     if reward:
         lines.append(f"💎 Награда: {reward['shards']} осколков")
         if reward['equipment']:
@@ -99,22 +106,21 @@ async def tower_callback(callback):
         if parts[0]=='heroes' and len(parts)==3:
             text,markup=render_hero_selection(state,list_heroes(player['id']),w,u,int(parts[2]),get_favorites(player["id"]))
         elif parts[0]=='pick' and len(parts)==3:
-            hero=next((h for h in list_heroes(player['id']) if h['id']==int(parts[2])),None)
-            if not hero: raise ValueError('Этого героя нет в коллекции.')
-            text='\n'.join(enemy_lines(state['floor'])+[f"Герой: {hero['name']} ★{hero['stars']}",
-                hero_button_text(hero,state['equipment_bonus']),*hero_trait_lines(hero),hero.get('passive_text',''),'🛡 Начало: 3/3'])
-            markup=InlineKeyboardMarkup(inline_keyboard=[
-                [button('▶️ Начать бой',w,u,f"start.{floor}.{hero['id']}")],
-                [button('🎴 Другой герой',w,u,f'heroes.{floor}.0')]])
+            select_hero(player['id'],int(parts[2]),expected_floor=floor)
+            state=get_state(player['id'])
+            text,markup=render_state(state,w,u)
         else:
             if parts[0]=='start' and len(parts)==3:
-                state['attempt']=start_attempt(player['id'],int(parts[2]),floor)
+                state['attempt']=start_selected_attempt(player['id'],floor,int(parts[2]))
             elif parts[0]=='hit' and len(parts)==3:
                 result=attack(player['id'],int(parts[1]),int(parts[2]))
                 state=get_state(player['id']);state['attempt']=result['attempt'];reward=result['reward']
             elif tail:
                 raise ValueError('Некорректная кнопка.')
-            text,markup=render_state(state,w,u,reward)
+            if not state.get('selected_hero') and not state['attempt'] and not state['completed']:
+                text,markup=render_hero_selection(state,list_heroes(player['id']),w,u,favorites=get_favorites(player['id']))
+            else:
+                text,markup=render_state(state,w,u,reward)
     except (ValueError,IndexError) as error:
         await callback.answer(str(error) or 'Некорректная кнопка.',show_alert=True);return
     await callback.answer()

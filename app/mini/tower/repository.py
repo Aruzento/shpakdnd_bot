@@ -30,3 +30,21 @@ def create_attempt(conn,player_id,hero,enemy,bonus):
 def save_turn(conn,attempt_id,result):
     conn.execute("""UPDATE mini_tower_attempts SET current_hp=?,shields=?,turn=?,status=?,runtime_json=?,events_json=?
         WHERE id=?""",tuple(result[k] for k in ("current_hp","shields","turn","status","runtime_json","events_json"))+(attempt_id,))
+
+
+def selected_hero(conn,player_id):
+    row=conn.execute("""SELECT h.*,ph.stars FROM mini_tower_selections s
+        JOIN mini_player_heroes ph ON ph.player_id=s.player_id AND ph.hero_id=s.hero_id
+        JOIN mini_heroes h ON h.id=s.hero_id WHERE s.player_id=? AND h.active=1""",(player_id,)).fetchone()
+    if row is None:
+        # Also repairs legacy DBs where foreign keys were disabled during deletion.
+        conn.execute("""DELETE FROM mini_tower_selections WHERE player_id=? AND NOT EXISTS (
+            SELECT 1 FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
+            WHERE ph.player_id=mini_tower_selections.player_id
+            AND ph.hero_id=mini_tower_selections.hero_id AND h.active=1)""",(player_id,))
+    return dict(row) if row else None
+
+
+def save_selection(conn,player_id,hero_id):
+    conn.execute("""INSERT INTO mini_tower_selections(player_id,hero_id) VALUES(?,?)
+        ON CONFLICT(player_id) DO UPDATE SET hero_id=excluded.hero_id""",(player_id,hero_id))

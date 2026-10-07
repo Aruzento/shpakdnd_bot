@@ -42,8 +42,9 @@ def filtered(heroes, token=EMPTY, mode='c'):
             (not upgrade or hero_upgrade_state(h)['can_upgrade'])]
 
 
-def hero_label(hero):
-    return f"{rarity_emoji(hero.get('rarity'))} {hero['name'][:27]} ★{int(hero.get('stars',0))}"
+def hero_label(hero, *, active_marker=False):
+    marker=" ✅" if active_marker and int(hero.get("is_active",0)) else ""
+    return f"{rarity_emoji(hero.get('rarity'))} {hero['name'][:27]} ★{int(hero.get('stars',0))}{marker}"
 
 
 def choice(mode,world,user,context,hero_id):
@@ -60,7 +61,7 @@ def render_selector(heroes, favorites, mode, world, user, context=0, *, view='ho
         if len(data.encode())>64: raise ValueError('Некорректный размер кнопки.')
         return data
     def button(label,action,target=0,state=token): return Button(text=label,callback_data=nav(action,target,state))
-    def hero_button(h): return Button(text=hero_label(h),callback_data=choice(mode,world,user,context,h['id']))
+    def hero_button(h): return Button(text=hero_label(h,active_marker=mode=="c"),callback_data=choice(mode,world,user,context,h['id']))
     rows=[]
     if view=='home':
         text='⭐ Избранные'

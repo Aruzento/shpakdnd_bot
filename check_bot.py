@@ -43,7 +43,7 @@ def main():
     for world in worlds:
         sync_shop_catalog(world["id"])
 
-    print(f"OK: V1.3.2 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
+    print(f"OK: V1.3.3 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
     print("OK: Python-модули импортированы")
     print(f"OK: база данных: {DB_PATH}")
     print(f"OK: часовой пояс: {TIMEZONE_NAME}")

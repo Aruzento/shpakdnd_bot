@@ -1,3 +1,8 @@
+# Production release deployment V1.3.3
+
+Интерактивная команда `sudo deploy-shpakdnd`: установка, dry run, backup, проверки и rollback
+описаны в [docs/deployment.md](../docs/deployment.md). Она отдельна от filesystem watcher ниже.
+
 # Обновление watcher после перехода на модули
 
 Старый watcher следил только за `bot.py`. Теперь нужно следить также за папкой `app/`.

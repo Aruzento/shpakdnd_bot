@@ -1,4 +1,4 @@
-"""Upgrade an actual backed-up V1.3.1 schema and compare every old column."""
+"""Upgrade an actual backed-up V1.3.2 schema and compare every old column."""
 import sqlite3
 from pathlib import Path
 from tests import test_mini_migrations as fixtures
@@ -12,13 +12,10 @@ class ReleaseMigrationTests(unittest.TestCase):
     setUp=fixtures.MiniMigrationTests.setUp
     seed=fixtures.MiniMigrationTests.seed
 
-    def test_v131_sqlite_backup_preserves_all_existing_data_and_snapshots(self):
+    def test_v132_sqlite_backup_preserves_all_existing_data_and_snapshots(self):
         self.seed()
         with connect_mini_db(self.db) as conn:
             conn.execute('DROP TABLE mini_tower_selections')
-            conn.execute('DROP TABLE mini_hero_favorites')
-            for column in ('class_rules_version','boss_damage','sneaky_stolen'):
-                conn.execute(f'ALTER TABLE mini_bosses DROP COLUMN {column}')
         original=self.db
         copy=Path(original.parent)/'upgrade-copy.db'
         with connect_mini_db(original) as source,connect_mini_db(copy) as target:source.backup(target)
@@ -31,9 +28,8 @@ class ReleaseMigrationTests(unittest.TestCase):
             for table in tables:
                 names=','.join(columns[table])
                 self.assertEqual(upgraded.execute(f'SELECT {names} FROM {table} ORDER BY rowid').fetchall(),before[table],table)
-            self.assertEqual(upgraded.execute('SELECT class_rules_version,boss_damage,sneaky_stolen FROM mini_bosses').fetchall(),[(0,0,0)])
-            self.assertEqual(upgraded.execute('SELECT * FROM mini_hero_favorites').fetchall(),[])
+            self.assertEqual(upgraded.execute('SELECT * FROM mini_tower_selections').fetchall(),[])
             self.assertEqual(upgraded.execute('PRAGMA integrity_check').fetchone()[0],'ok')
             self.assertEqual(upgraded.execute('PRAGMA foreign_key_check').fetchall(),[])
         with connect_mini_db(original) as source:
-            self.assertNotIn('boss_damage',[r[1] for r in source.execute('PRAGMA table_info(mini_bosses)')])
+            self.assertNotIn('mini_tower_selections',[r[0] for r in source.execute("SELECT name FROM sqlite_master WHERE type='table'")])
