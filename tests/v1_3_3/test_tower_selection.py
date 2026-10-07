@@ -62,8 +62,8 @@ class TowerSelectionTests(MiniCase):
         with self.assertRaises(ValueError):start_selected_attempt(self.pid,2,self.second,self.db)
         self.assertIsNone(get_state(self.pid,self.db)['attempt'])
 
-    def test_invalid_missing_disabled_not_owned_selection_is_cleared(self):
-        for action in ('disabled','ownership','missing'):
+    def test_invalid_missing_not_owned_selection_is_cleared(self):
+        for action in ('ownership','missing'):
             with self.subTest(action=action):
                 # Fresh copy of a catalog row, so each invalidation is independent.
                 row=self.sql('SELECT * FROM mini_heroes WHERE id=?',(self.second,))[0]
@@ -74,7 +74,6 @@ class TowerSelectionTests(MiniCase):
                 identifier=self.sql('SELECT id FROM mini_heroes WHERE code=?',(code,))[0]['id']
                 self.sql('INSERT INTO mini_player_heroes(player_id,hero_id) VALUES(?,?)',(self.pid,identifier))
                 select_hero(self.pid,identifier,self.db)
-                if action=='disabled':self.sql('UPDATE mini_heroes SET active=0 WHERE id=?',(identifier,))
                 if action=='ownership':self.sql('DELETE FROM mini_player_heroes WHERE player_id=? AND hero_id=?',(self.pid,identifier))
                 if action=='missing':self.sql('DELETE FROM mini_heroes WHERE id=?',(identifier,))
                 self.assertIsNone(get_state(self.pid,self.db)['selected_hero'])
@@ -135,12 +134,14 @@ class TowerSelectionUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
         change=await self.invoke('heroes.2.0')
         self.assertIn('⭐ Избранные',change.bot.send_message.call_args.kwargs['text'])
 
-    async def test_disabled_saved_hero_prompts_shared_selector(self):
+    async def test_gacha_inactive_saved_hero_still_offers_start(self):
         select_hero(self.pid,self.hero_id,self.db)
         self.sql('UPDATE mini_heroes SET active=0 WHERE id=?',(self.hero_id,))
         cb=await self.invoke()
-        self.assertIn('⭐ Избранные',cb.bot.send_message.call_args.kwargs['text'])
-        self.assertIsNone(get_state(self.pid,self.db)['selected_hero'])
+        sent=cb.bot.send_message.call_args.kwargs
+        self.assertIn('Текущий герой:',sent['text'])
+        self.assertIn('⚔️ Начать бой',[b.text for row in sent['reply_markup'].inline_keyboard for b in row])
+        self.assertEqual(get_state(self.pid,self.db)['selected_hero']['id'],self.hero_id)
 
     async def test_stale_pick_cannot_change_selection_after_floor_progress(self):
         self.floor(1)

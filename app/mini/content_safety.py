@@ -28,8 +28,10 @@ def validate_combat_content(
 ) -> dict:
     """Validate loaded catalogs, returning nonblocking product warnings.
 
-    Inactive owned heroes still need labels. Only active heroes provide release
-    counter coverage. Neutral bosses have no faction advantage by definition.
+    All owned heroes remain playable and need labels. Release counter coverage
+    counts only the ordinary public gacha pool (hero.active), so exclusive
+    admin-granted heroes are never mandatory counters for every player.
+    Neutral bosses have no faction advantage by definition.
     Open class/special/feature tags remain valid in the catalog/engine; production
     publication additionally requires their display labels here.
     """

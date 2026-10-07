@@ -34,9 +34,8 @@ class SelectorViewTests(unittest.TestCase):
             self.assertEqual(markup.inline_keyboard[0][0].callback_data,expected)
             self.assertEqual([r[0].text for r in markup.inline_keyboard[2:4]],['👥 Показать всех','🔎 Поиск по фильтру'])
 
-    def test_empty_invalid_disabled_favorites_keep_both_paths(self):
-        self.heroes[0]['active']=0
-        text,markup=render_selector(self.heroes,[1,999],'c',1,42)
+    def test_empty_and_missing_favorites_keep_both_paths(self):
+        text,markup=render_selector(self.heroes,[999],'c',1,42)
         self.assertEqual(text,'⭐ Избранные\nПока никого нет.')
         self.assertEqual([r[0].text for r in markup.inline_keyboard[:2]],['👥 Показать всех','🔎 Поиск по фильтру'])
 

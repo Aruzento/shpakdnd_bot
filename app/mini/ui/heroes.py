@@ -597,7 +597,7 @@ async def favorite_callback(callback):
         action,new_id,*old=tail.split('.')
         new_id=int(new_id)
         hero=get_player_hero(player['id'],new_id)
-        if not hero or not hero.get('active',1): raise ValueError('Этот герой больше недоступен.')
+        if not hero: raise ValueError('Этот герой больше недоступен.')
         if action=='add':
             ids=get_favorites(player['id'])
             if len(ids)==3 and new_id not in ids:

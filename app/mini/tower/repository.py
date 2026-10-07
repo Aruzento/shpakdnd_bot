@@ -35,13 +35,13 @@ def save_turn(conn,attempt_id,result):
 def selected_hero(conn,player_id):
     row=conn.execute("""SELECT h.*,ph.stars FROM mini_tower_selections s
         JOIN mini_player_heroes ph ON ph.player_id=s.player_id AND ph.hero_id=s.hero_id
-        JOIN mini_heroes h ON h.id=s.hero_id WHERE s.player_id=? AND h.active=1""",(player_id,)).fetchone()
+        JOIN mini_heroes h ON h.id=s.hero_id WHERE s.player_id=?""",(player_id,)).fetchone()
     if row is None:
         # Also repairs legacy DBs where foreign keys were disabled during deletion.
         conn.execute("""DELETE FROM mini_tower_selections WHERE player_id=? AND NOT EXISTS (
             SELECT 1 FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
             WHERE ph.player_id=mini_tower_selections.player_id
-            AND ph.hero_id=mini_tower_selections.hero_id AND h.active=1)""",(player_id,))
+            AND ph.hero_id=mini_tower_selections.hero_id)""",(player_id,))
     return dict(row) if row else None
 
 

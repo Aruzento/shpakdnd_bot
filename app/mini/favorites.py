@@ -7,12 +7,12 @@ from app.mini.db import connect_mini_db
 def _clean(conn, player_id):
     conn.execute("""DELETE FROM mini_hero_favorites WHERE player_id=? AND hero_id NOT IN (
         SELECT ph.hero_id FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
-        WHERE ph.player_id=? AND h.active=1)""", (player_id,player_id))
+        WHERE ph.player_id=?)""", (player_id,player_id))
 
 
 def _valid(conn, player_id, hero_id):
     if not conn.execute("""SELECT 1 FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
-        WHERE ph.player_id=? AND ph.hero_id=? AND h.active=1""",(player_id,hero_id)).fetchone():
+        WHERE ph.player_id=? AND ph.hero_id=?""",(player_id,hero_id)).fetchone():
         raise ValueError('Этот герой больше недоступен в коллекции.')
 
 

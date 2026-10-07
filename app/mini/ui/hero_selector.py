@@ -37,7 +37,7 @@ def decode(token, mode):
 
 def filtered(heroes, token=EMPTY, mode='c'):
     fields,upgrade=decode(token,mode)
-    return [h for h in heroes if h.get('active',1) and
+    return [h for h in heroes if
             all(h.get(k)==v for k,v in fields.items()) and
             (not upgrade or hero_upgrade_state(h)['can_upgrade'])]
 
@@ -65,7 +65,7 @@ def render_selector(heroes, favorites, mode, world, user, context=0, *, view='ho
     rows=[]
     if view=='home':
         text='⭐ Избранные'
-        by_id={h['id']:h for h in heroes if h.get('active',1)}
+        by_id={h['id']:h for h in heroes}
         selected=[by_id[h] for h in favorites if h in by_id][:3]
         rows=[[hero_button(h)] for h in selected]
         if not selected: text+='\nПока никого нет.'

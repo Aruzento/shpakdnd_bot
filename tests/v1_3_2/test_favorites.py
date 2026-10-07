@@ -69,12 +69,13 @@ class FavoriteTests(MiniCase):
         with self.assertRaises(ValueError):add_favorite(other['id'],self.ids[0],self.db)
         with self.assertRaises(ValueError):add_favorite(self.pid,999999,self.db)
 
-    def test_disabled_or_lost_hero_is_cleaned_without_breaking_list(self):
+    def test_gacha_inactive_favorite_remains_and_lost_ownership_is_cleaned(self):
         for h in self.ids[:3]:add_favorite(self.pid,h,self.db)
         self.sql('UPDATE mini_heroes SET active=0 WHERE id=?',(self.ids[0],))
         self.sql('DELETE FROM mini_player_heroes WHERE player_id=? AND hero_id=?',(self.pid,self.ids[1]))
-        self.assertEqual(get_favorites(self.pid,self.db),[self.ids[2]])
-        with self.assertRaises(ValueError):add_favorite(self.pid,self.ids[0],self.db)
+        self.assertEqual(get_favorites(self.pid,self.db),[self.ids[0],self.ids[2]])
+        self.assertFalse(add_favorite(self.pid,self.ids[0],self.db))
+        with self.assertRaises(ValueError):add_favorite(self.pid,self.ids[1],self.db)
 
     def test_missing_catalog_hero_is_cleaned_even_with_legacy_fk_disabled(self):
         add_favorite(self.pid,self.ids[0],self.db)

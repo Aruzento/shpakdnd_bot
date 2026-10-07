@@ -1,3 +1,10 @@
+"""Hero catalog and ownership.
+
+hero.active controls ordinary gacha availability only. active=false excludes a
+hero from ordinary/forced gacha pools; existing or admin-granted ownership stays
+fully usable in Collection, Favorites, Boss and Tower. active_hero_id/is_active
+are the player's selection and have a separate meaning.
+"""
 import sqlite3
 from pathlib import Path
 
