@@ -9,14 +9,17 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
 BASH=shutil.which('bash') if os.name!='nt' else r'C:\Program Files\Git\bin\bash.exe'
 OLD='a'*40;TARGET='b'*40
 
 
-def shell_path(path):
-    value=str(Path(path).resolve()).replace('\\','/')
+def shell_path(path,*,preserve_symlink=False):
+    # Executables must keep their venv entry point, even when it is a symlink.
+    absolute=os.path.abspath(path) if preserve_symlink else str(Path(path).resolve())
+    value=absolute.replace('\\','/')
     return '/'+value[0].lower()+value[2:] if os.name=='nt' else value
 
 
@@ -98,6 +101,34 @@ python)
 *) echo "Unexpected fake command: $name" >&2;exit 9 ;;
 esac
 '''
+
+
+class ShellPathTests(unittest.TestCase):
+    def test_executable_does_not_resolve_virtualenv_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable=Path(directory)/'.venv'/'bin'/'python'
+            system_python=Path(directory)/'system-python'
+            # Simulate dereferencing without requiring Windows symlink privileges.
+            with patch.object(sys,'executable',str(executable)), \
+                 patch.object(Path,'resolve',return_value=system_python) as resolve:
+                value=shell_path(sys.executable,preserve_symlink=True)
+                resolve.assert_not_called()
+            expected=str(executable).replace('\\','/')
+            if os.name=='nt':expected='/'+expected[0].lower()+expected[2:]
+            self.assertEqual(value,expected)
+            self.assertNotEqual(value,shell_path(system_python))
+
+    @unittest.skipUnless(os.name=='posix','POSIX symlink semantics')
+    def test_real_posix_executable_symlink_keeps_venv_entry_point(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable=Path(directory)/'.venv'/'bin'/'python'
+            executable.parent.mkdir(parents=True)
+            executable.symlink_to(sys.executable)
+            self.assertTrue(executable.is_symlink())
+            value=shell_path(executable,preserve_symlink=True)
+            self.assertEqual(value,str(executable))
+            self.assertNotEqual(value,str(executable.resolve()))
+            self.assertEqual(Path(value).resolve(),Path(sys.executable).resolve())
 
 
 @unittest.skipUnless(BASH and Path(BASH).exists(),'Bash unavailable')
@@ -233,7 +264,7 @@ class DeployShellTests(unittest.TestCase):
         # Real line-based redactor, fake production; no answer to this prompt is
         # written until its complete line has reached stdout. Pipes work on
         # Windows/Git Bash too, without a platform-specific pseudo-TTY.
-        env=dict(self.env,FAKE_REAL_PYTHON=shell_path(sys.executable),PYTHONUTF8='1',
+        env=dict(self.env,FAKE_REAL_PYTHON=shell_path(sys.executable,preserve_symlink=True),PYTHONUTF8='1',
                  **{k:str(v) for k,v in flags.items()})
         command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'
         process=subprocess.Popen([BASH,'--noprofile','--norc','-c',command],env=env,
