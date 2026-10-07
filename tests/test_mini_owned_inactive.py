@@ -15,7 +15,7 @@ from app.mini.boss.service import (
     register_player, select_battle_hero,
 )
 from app.mini.boss.combat import start_battle
-from app.mini.catalog import load_hero_catalog
+from app.mini.catalog import load_hero_catalog, GACHA_RARITIES
 from app.mini.gacha import get_gacha_state, perform_gacha_pull
 from app.mini.hero_upgrades import calculate_attack, sell_hero_shards
 from app.mini.heroes import (
@@ -65,15 +65,32 @@ class OwnedInactiveTests(OwnedInactiveCase):
         self.assertFalse(next(h for h in catalog if h['code'] == ENGINEER)['active'])
         summary = get_collection_summary(self.pid, self.db)
         state = get_gacha_state(self.pid, self.db)
-        expected = sum(bool(h.get('active', True)) for h in catalog)
+        public = [h for h in catalog if h['rarity'] in GACHA_RARITIES and h.get('active', True)]
+        expected = len(public)
+        self.assertTrue(any(h['rarity']=='shadow' and h.get('active', True) for h in catalog))
         self.assertEqual(summary['owned'], 2)
         self.assertEqual(summary['total_active'], expected)
         self.assertEqual(state['total'], expected)
+        self.assertLess(expected, sum(bool(h.get('active', True)) for h in catalog))
+        self.assertTrue(set(state['rarity_counts']) <= GACHA_RARITIES)
         self.assertEqual(state['rarity_counts']['rare'],
                          sum(h['active'] and h['rarity'] == 'rare' for h in catalog))
         owned = next(h for h in summary['heroes'] if h['code'] == ENGINEER)
         self.assertEqual(owned['active'], 0)
         self.assertNotIn('inactive', hero_ui._format_collection(self.world, self.player, summary))
+
+    def test_active_mythic_fixture_and_published_shadows_do_not_inflate_public_totals(self):
+        expected=sum(h['rarity'] in GACHA_RARITIES and bool(h.get('active', True))
+                     for h in load_hero_catalog()['heroes'])
+        # Disposable DB fixture only; published catalog and ownership stay intact.
+        self.sql("UPDATE mini_heroes SET rarity='mythic', active=1 WHERE id=?",(self.eid,))
+        summary=get_collection_summary(self.pid,self.db)
+        state=get_gacha_state(self.pid,self.db)
+        self.assertEqual(summary['total_active'],expected)
+        self.assertEqual(state['total'],expected)
+        self.assertEqual(summary['owned'],2)
+        self.assertEqual(next(h for h in summary['heroes'] if h['id']==self.eid)['rarity'],'mythic')
+        self.assertTrue(set(state['rarity_counts']) <= GACHA_RARITIES)
 
     def test_forced_legendary_pool_still_requires_gacha_active(self):
         price = load_hero_catalog()['settings']['pull_price']

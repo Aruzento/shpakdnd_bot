@@ -10,7 +10,7 @@ from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
-from app.mini.catalog import hero_image_path, load_hero_catalog
+from app.mini.catalog import hero_image_path, load_hero_catalog, GACHA_RARITIES
 from app.mini.hero_upgrades import calculate_attack, hero_upgrade_state
 
 
@@ -278,8 +278,11 @@ def get_collection_summary(
             "SELECT COUNT(*) FROM mini_player_heroes WHERE player_id = ?",
             (int(player_id),),
         ).fetchone()[0])
+        public_rarities = sorted(GACHA_RARITIES)
+        placeholders = ",".join("?" for _ in public_rarities)
         total_active = int(conn.execute(
-            "SELECT COUNT(*) FROM mini_heroes WHERE active = 1",
+            f"SELECT COUNT(*) FROM mini_heroes WHERE active = 1 AND rarity IN ({placeholders})",
+            public_rarities,
         ).fetchone()[0])
 
     return {

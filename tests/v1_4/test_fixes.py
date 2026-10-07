@@ -1,4 +1,4 @@
-"""Post-audit fixes: isolated fixtures only, no published Shadow content."""
+"""Post-audit combat fixtures and published Shadow content contracts."""
 import copy
 import json
 import sqlite3
@@ -36,10 +36,18 @@ class ShadowHitTests(unittest.TestCase):
         p=dict(attack=attack,hit_count=n-1,damage_bonus_percent=potion,hero_state_json=json.dumps(state or {}))
         return calculate_hit(b,p,h,participants,extra_percent=extra)
 
-    def test_all_shadow_keys_are_canonical_with_no_published_content(self):
+    def test_all_shadow_keys_are_canonical_and_bound_to_published_heroes(self):
         keys={'shadow_collapse','shadow_waste_of_time','shadow_transformation','shadow_oneshot','shadow_simple'}
         self.assertTrue(keys <= ability_catalog.configured_ability_keys())
-        self.assertEqual(json.loads((HERO_CATALOG_DIR/'shadow.json').read_text(encoding='utf-8'))['heroes'],[])
+        expected = {'shadow_mister_inversion':'shadow_collapse',
+            'shadow_flying_schoolboy':'shadow_waste_of_time',
+            'shadow_doppelganger':'shadow_transformation',
+            'shadow_one_punch_mob':'shadow_oneshot',
+            'shadow_simple_village_guy':'shadow_simple'}
+        shadows=[h for h in load_hero_catalog()['heroes'] if h['rarity']=='shadow']
+        self.assertEqual(len(shadows),5)
+        self.assertEqual({h['code']:h['passive_key'] for h in shadows},expected)
+        self.assertEqual(set(expected.values()),keys)
         self.assertEqual(json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes'],[])
 
     def test_collapse_first_two_normal_third_base_times_two_and_sixth_repeats(self):

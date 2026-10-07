@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from app.mini.catalog import load_hero_catalog,RARITIES,HERO_CATALOG_DIR,HEROES_PATH
+from app.mini.catalog import load_hero_catalog,RARITIES,HERO_CATALOG_DIR,HEROES_PATH,GACHA_RARITIES
 from app.mini.gacha import _choose_hero_code,perform_gacha_pull,GachaNoHeroes
 from app.mini.heroes import get_player_heroes,sync_hero_catalog,get_hero_by_code
 from app.mini.hero_upgrades import hero_upgrade_state,upgrade_hero
@@ -22,11 +22,21 @@ class CatalogTests(unittest.TestCase):
     def write(self,rarity,heroes):
         (self.root/f'{rarity}.json').write_text(json.dumps({'heroes':heroes}),encoding='utf-8')
 
-    def test_six_catalogs_loaded_empty_exclusives_valid(self):
+    def test_six_catalogs_loaded_with_published_shadows_and_empty_mythic(self):
         self.assertEqual(len(list(self.root.glob('*.json'))),6)
         catalog=load_hero_catalog();self.assertIn('settings',catalog)
         self.assertGreater(len(catalog['heroes']),30)
-        for rarity in ('mythic','shadow'):self.assertEqual(json.loads((self.root/f'{rarity}.json').read_text())['heroes'],[])
+        expected_shadows = {'shadow_mister_inversion','shadow_flying_schoolboy',
+            'shadow_doppelganger','shadow_one_punch_mob','shadow_simple_village_guy'}
+        for rarity in RARITIES:
+            content=json.loads((self.root/f'{rarity}.json').read_text(encoding='utf-8'))['heroes']
+            loaded=[h for h in catalog['heroes'] if h['rarity']==rarity]
+            self.assertEqual(loaded,content)
+            self.assertTrue(all(h['rarity']==rarity for h in content))
+        self.assertEqual([h for h in catalog['heroes'] if h['rarity']=='mythic'],[])
+        shadows=[h for h in catalog['heroes'] if h['rarity']=='shadow']
+        self.assertEqual(len(shadows),5)
+        self.assertEqual({h['code'] for h in shadows},expected_shadows)
 
     def test_duplicate_across_files(self):
         hero=copy.deepcopy(load_hero_catalog()['heroes'][0]);hero['rarity']='shadow';self.write('shadow',[hero])
@@ -67,7 +77,9 @@ class CatalogTests(unittest.TestCase):
             data['heroes'].append(hero);data['settings']['rarity_weights'][rarity]=10**9
         with patch('app.mini.gacha.load_hero_catalog',return_value=data),patch('app.mini.gacha.secrets.randbelow',side_effect=lambda bound:bound-1):
             for luck in (True,False):
-                self.assertNotIn(_choose_hero_code(luck_active=luck),('shadow','mythic'))
+                code=_choose_hero_code(luck_active=luck)
+                self.assertNotIn(code,('shadow','mythic'))
+                self.assertIn(next(h['rarity'] for h in data['heroes'] if h['code']==code),GACHA_RARITIES)
 
     def test_no_ordinary_pool_does_not_fallback_to_exclusive(self):
         data=load_hero_catalog();hero=copy.deepcopy(data['heroes'][0]);hero['rarity']='shadow';data['heroes']=[hero]

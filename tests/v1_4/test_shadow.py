@@ -25,7 +25,7 @@ class ShadowTests(MiniCase):
     def battle(self,hero_code='hobgoblin_grave_shaman',*,mapped=True,extractable=True):
         self.hero(hero_code)
         template=get_boss_template('simple_village_guy');template.update(max_hp=3,min_players=1,shadow_extractable=extractable)
-        if mapped:template['shadow_hero_code']='fixture_shadow'
+        template['shadow_hero_code']='fixture_shadow' if mapped else None
         with patch('app.mini.boss.service.get_boss_template',return_value=template):boss=create_boss_event(self.world['id'],'simple_village_guy',1,self.db)
         register_player(boss['id'],self.pid,self.db);close_registration(boss['id'],self.db);start_battle(boss['id'],now=self.now,db_path=self.db)
         return boss
@@ -45,8 +45,29 @@ class ShadowTests(MiniCase):
         boss=self.battle();self.victory(boss);self.assertEqual(self.shadow()[0]['stars'],1)
         self.assertEqual(self.sql('SELECT shards FROM mini_players WHERE id=?',(self.pid,))[0]['shards'],0)
 
+    def test_published_five_boss_mappings_reference_exact_shadow_counterparts(self):
+        from app.mini.boss.catalog import load_boss_catalog
+        expected = {'mister_inversion':'shadow_mister_inversion',
+            'flying_schoolboy':'shadow_flying_schoolboy',
+            'doppelganger':'shadow_doppelganger',
+            'one_punch_mob':'shadow_one_punch_mob',
+            'simple_village_guy':'shadow_simple_village_guy'}
+        bosses=load_boss_catalog()['bosses']
+        mappings={b['code']:b['shadow_hero_code'] for b in bosses if b.get('shadow_hero_code') is not None}
+        self.assertEqual(mappings,expected)
+        heroes={h['code']:h for h in load_hero_catalog()['heroes']}
+        for boss in bosses:
+            if boss['code'] in expected:
+                self.assertTrue(boss['shadow_extractable'])
+                self.assertEqual(heroes[boss['shadow_hero_code']]['rarity'],'shadow')
+        dummy=next(b for b in bosses if b['code']=='training_dummy')
+        self.assertFalse(dummy['shadow_extractable']);self.assertIsNone(dummy.get('shadow_hero_code'))
+
     def test_missing_mapping_is_valid_no_roll(self):
-        boss=self.battle(mapped=False);_,roll=self.victory(boss);roll.assert_not_called();self.assertEqual(self.shadow(),[])
+        boss=self.battle(mapped=False)
+        self.assertIsNone(boss['shadow_hero_code'])
+        _,roll=self.victory(boss);roll.assert_not_called();self.assertEqual(self.shadow(),[])
+        self.assertEqual(get_boss_template('simple_village_guy')['shadow_hero_code'],'shadow_simple_village_guy')
 
     def test_missing_counterpart_is_valid_no_roll(self):
         boss=self.battle();self.sql("UPDATE mini_bosses SET shadow_hero_code='not_installed' WHERE id=?",(boss['id'],))

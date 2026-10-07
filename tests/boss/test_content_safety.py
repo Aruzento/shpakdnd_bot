@@ -9,7 +9,7 @@ os.environ.setdefault("BOT_TOKEN", "test-token")
 from app.mini.boss.catalog import load_boss_catalog
 from app.mini.boss.matchups import faction_multiplier_percent
 from app.mini.boss.public import format_public_boss
-from app.mini.catalog import load_hero_catalog
+from app.mini.catalog import load_hero_catalog, GACHA_RARITIES
 from app.mini.content_safety import validate_combat_content
 from app.mini.presentation import (
     CLASS_LABELS, DAMAGE_LABELS, FACTION_LABELS, RANGE_LABELS, TRAIT_LABELS,
@@ -23,19 +23,35 @@ class CombatContentSafetyTests(unittest.TestCase):
         self.bosses = load_boss_catalog()["bosses"]
 
     def test_current_catalog_has_active_faction_and_class_counters(self):
+        public_heroes = [h for h in self.heroes if h["rarity"] in GACHA_RARITIES and h.get("active", True)]
         result = validate_combat_content(self.heroes, self.bosses)
-        self.assertEqual(result["active_heroes"], sum(h["active"] for h in self.heroes))
+        self.assertEqual(result["active_heroes"], len(public_heroes))
         self.assertEqual(result["active_bosses"], sum(b["active"] for b in self.bosses))
         for boss in self.bosses:
-            if not boss["active"] or boss["faction"]=="neutral":
+            if not boss["active"]:
                 continue
             with self.subTest(boss=boss["code"]):
-                self.assertTrue(any(h["active"] and faction_multiplier_percent(h["faction"], boss["faction"]) == 200
-                                    for h in self.heroes))
+                if boss["faction"] != "neutral":
+                    self.assertTrue(any(faction_multiplier_percent(h["faction"], boss["faction"]) == 200
+                                        for h in public_heroes))
                 if boss["ability_key"] == "magic_shield":
-                    self.assertTrue(any(h["active"] and h["class_tag"] in ("mage", "magical") for h in self.heroes))
+                    self.assertTrue(any(h["class_tag"] in ("mage", "magical") for h in public_heroes))
                 if boss["ability_key"] == "mechanism":
-                    self.assertTrue(any(h["active"] and h["class_tag"] == "technical" for h in self.heroes))
+                    self.assertTrue(any(h["class_tag"] == "technical" for h in public_heroes))
+
+    def test_active_exclusive_heroes_cannot_supply_public_faction_or_class_counters(self):
+        for rarity in ('shadow', 'mythic'):
+            for key, faction, class_tag, message in (
+                    ('none', 'beasts', 'none', 'faction advantage'),
+                    ('magic_shield', 'neutral', 'mage', 'mage/magical'),
+                    ('mechanism', 'neutral', 'technical', 'technical')):
+                with self.subTest(rarity=rarity, ability=key):
+                    hero=copy.deepcopy(self.heroes[0])
+                    hero.update(active=True,rarity=rarity,faction='commoners',class_tag=class_tag)
+                    boss=copy.deepcopy(self.bosses[0])
+                    boss.update(active=True,ability_key=key,faction=faction,features=[])
+                    with self.assertRaisesRegex(ValueError,message):
+                        validate_combat_content([hero],[boss])
 
     def test_each_current_boss_rejects_missing_active_faction_counter(self):
         for boss in self.bosses:
