@@ -2,6 +2,11 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from importlib import import_module
+from tests.topic_fixtures import (
+    TEST_CHAT_ID, DND_THREAD_ID, MINI_THREAD_ID, TOPIC_SETTINGS_MODULES,
+    isolated_topics, topic_settings,
+)
 
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
@@ -24,6 +29,7 @@ from app.mini.worlds import (
 
 class MiniCoreTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tempdir = tempfile.TemporaryDirectory()
         self.db = Path(self.tempdir.name) / "mini.db"
         init_mini_db(self.db)
@@ -37,21 +43,23 @@ class MiniCoreTests(unittest.TestCase):
         target = [
             world
             for world in worlds
-            if world["chat_id"] == -1003376315265
-            and world["thread_id"] == 2684
+            if world["chat_id"] == TEST_CHAT_ID
+            and world["thread_id"] == MINI_THREAD_ID
         ]
 
+        self.assertEqual(len(worlds), 1)
         self.assertEqual(len(target), 1)
+        self.assertIsNone(get_mini_world(TEST_CHAT_ID, DND_THREAD_ID, self.db))
 
         world = get_mini_world(
-            -1003376315265,
-            2684,
+            TEST_CHAT_ID,
+            MINI_THREAD_ID,
             self.db,
         )
         self.assertIsNotNone(world)
         self.assertEqual(
             get_mini_world_by_id(world["id"], self.db)["thread_id"],
-            2684,
+            MINI_THREAD_ID,
         )
 
     def test_wallet_is_atomic_and_idempotent(self):
@@ -119,6 +127,27 @@ class MiniCoreTests(unittest.TestCase):
             }
 
         self.assertTrue(set(MINI_TABLES).issubset(existing))
+
+
+class TopicFixtureTests(unittest.TestCase):
+    def test_all_imports_restore_original_settings_even_after_failure(self):
+        modules = [import_module(name) for name in TOPIC_SETTINGS_MODULES]
+        originals = [module.TOPIC_SETTINGS for module in modules]
+        source = topic_settings()
+        for fail in (False, True):
+            with self.subTest(failure=fail):
+                try:
+                    with isolated_topics(source) as settings:
+                        for module in modules:
+                            self.assertIs(module.TOPIC_SETTINGS, settings)
+                        settings[TEST_CHAT_ID][MINI_THREAD_ID]['mini'] = False
+                        if fail:
+                            raise RuntimeError('fixture cleanup')
+                except RuntimeError as error:
+                    self.assertEqual(str(error), 'fixture cleanup')
+                for module, original in zip(modules, originals):
+                    self.assertIs(module.TOPIC_SETTINGS, original)
+                self.assertTrue(source[TEST_CHAT_ID][MINI_THREAD_ID]['mini'])
 
 
 if __name__ == "__main__":
