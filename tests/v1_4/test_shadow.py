@@ -117,5 +117,5 @@ class ShadowTests(MiniCase):
         village.mutate(self.pid,'assign',self.db,hero_id=keeper['id'],building='hunt',operation_key='foodworker',now=start)
         second=self.battle();self.now=self.now.replace(hour=11);self.victory(second)
         accrued=village.get_state(self.pid,self.db,now=start+3600)
-        self.assertEqual(accrued['coins'],Decimal('1.25'));self.assertEqual(self.shadow()[0]['stars'],2)
-        self.assertEqual(village.get_state(self.pid,self.db,now=start+7200)['coins'],Decimal('3.75'))
+        self.assertEqual(accrued['coins'],Decimal('2.5'));self.assertEqual(self.shadow()[0]['stars'],2)
+        self.assertEqual(village.get_state(self.pid,self.db,now=start+7200)['coins'],Decimal('6.25'))

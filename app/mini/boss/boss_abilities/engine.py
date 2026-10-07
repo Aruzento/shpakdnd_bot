@@ -146,6 +146,18 @@ _TURN_HOOKS = {
 }
 
 
+# Ability lifecycle stage, rather than boss identity, controls suppression.
+_SEAL_STAGES = {**dict.fromkeys(_TURN_HOOKS, "turn"), "oneshot": "turn",
+                "hydra_regeneration": "after_turn", "transformation": "after_turn"}
+
+
+def _consume_seal(state, key, stage, result):
+    if _SEAL_STAGES.get(key) != stage or not state.pop("grave_seal", False):
+        return False
+    result["events"].append(_event("grave_seal", message="⚰️ Гробовая печать подавила активную способность."))
+    return True
+
+
 def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None, attack_missed=False) -> dict:
     state = _state(boss)
     state["boss_turns"] = int(state.get("boss_turns", 0)) + 1
@@ -171,9 +183,11 @@ def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None
                 "forced_skip_turns":int(target.get("forced_skip_turns",0))+copied["boss_skip_turns"]})
         result["events"].extend(copied["events"])
     hook = _TURN_HOOKS.get(boss["ability_key"])
-    if hook and boss["ability_key"] != "training" and state.pop("grave_seal", False):
+    if _consume_seal(state, boss["ability_key"], "turn", result):
         hook = None
-        result["events"].append(_event("grave_seal", message="⚰️ Гробовая печать подавила активную способность."))
+        if boss["ability_key"] == "oneshot":
+            result["suppressed_ability"] = "oneshot"
+            result["attack_decay_percents"] = [10]
     if hook and not (attack_missed and boss["ability_key"] in {"critical_strike", "rapier"}):
         hook(boss, active, state, config, roller or _roll_success, chooser or _choose_participant, result)
     result.setdefault("boss_changes", {}).update(ability_state_json=json.dumps(state))
@@ -197,10 +211,10 @@ _AFTER_TURN_HOOKS = {"hydra_regeneration": _hydra_after_turn}
 def after_boss_turn(boss: dict, participants=None, *, chooser=None) -> dict:
     config = _config(boss)
     state = _state(boss)
-    if state.get("grave_seal", False) and boss["ability_key"] in {*_AFTER_TURN_HOOKS, "transformation"}:
-        state.pop("grave_seal")
+    suppressed = {"events": []}
+    if _consume_seal(state, boss["ability_key"], "after_turn", suppressed):
         return {"boss_changes": {"ability_state_json": json.dumps(state)},
-                "events": [_event("grave_seal", message="⚰️ Гробовая печать подавила активную способность.")]}
+                "events": suppressed["events"]}
     if boss["ability_key"] == "transformation":
         result = {"boss_changes": {}, "events": []}
         _transformation_turn(boss, participants or [], state, config, _roll_success,

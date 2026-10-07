@@ -177,7 +177,7 @@ def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion
     source = next((h for h in load_hero_catalog()["heroes"] if h["code"] == row["code"]), {})
     snapshot = {field: row[field] for field in (
         "faction", "damage_type", "class_tag", "attack_range", "special_trait",
-        "passive_key", "passive_text", "rarity", "code")}
+        "passive_key", "passive_text", "rarity", "code", "base_attack")}
     if "arise_chance_percent" in source:
         snapshot["arise_chance_percent"] = source["arise_chance_percent"]
     conn.execute(
@@ -336,3 +336,16 @@ def transformation_candidates(conn, boss_id):
     return [dict(row) for row in conn.execute(
         'SELECT * FROM mini_boss_participants WHERE boss_id=? AND hit_count>0 ORDER BY queue_position',
         (boss_id,))]
+
+
+
+def freeze_start_forms(conn, boss):
+    """Complete new immutable loadouts before the first shared combat hook."""
+    from app.mini.combat.hero_abilities.engine import resolve_battle_start
+    from app.mini.boss.loadouts import battle_loadout
+    for participant in active_loadouts(conn, boss["id"]):
+        form = resolve_battle_start(battle_loadout(participant["hero_snapshot_json"]), boss)
+        conn.execute(
+            "UPDATE mini_boss_participants SET hero_snapshot_json=?, hero_state_json=? WHERE boss_id=? AND player_id=?",
+            (json.dumps(form["hero"], ensure_ascii=False), json.dumps(form["state"]),
+             boss["id"], participant["player_id"]))

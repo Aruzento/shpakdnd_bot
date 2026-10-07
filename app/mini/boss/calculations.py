@@ -4,27 +4,59 @@
 import json
 from app.mini.combat import creatures, classes
 from app.mini.combat.hero_abilities import resolve_attack
+from app.mini.boss.loadouts import snapshot_base_attack
 from app.mini.boss.boss_abilities import engine as boss_abilities
 from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
 
-def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, *, extra_percent=None) -> dict:
+def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, *, extra_percent=None, extra_uses_primary_base=False) -> dict:
     passive_key = str(hero.get("passive_key", "none"))
-    reachable = boss.get("ability_key") == "simple" or creatures.can_reach(boss, hero)
+    reachable = creatures.can_reach(boss, hero) or (boss.get("ability_key") == "simple" and passive_key != "shadow_collapse")
     if extra_percent is None:
         attack_resolution = resolve_attack(
-            passive_key if reachable and extra_percent is None else "none",
+            passive_key if reachable or passive_key.startswith("shadow_") else "none",
             base_damage=classes.initial_attack(participant["attack"],participants or [],active=classes.enabled(boss) and boss.get("ability_key") != "simple"),
             hit_number=int(participant["hit_count"]) + 1,
             boss_hp_before=int(boss["current_hp"]),
             boss_max_hp=int(boss["max_hp"]),
             boss_ability_key=str(boss["ability_key"]),
             boss_state=json.loads(boss["ability_state_json"] or "{}"),
+            base_attack=snapshot_base_attack(hero, participant),
+            state=json.loads(participant.get("hero_state_json") or "{}"),
         )
     else:
         extra_base = max(1,int(participant["attack"])*extra_percent//100)
+        if extra_uses_primary_base:
+            extra_base = classes.initial_attack(extra_base, participants or [],
+                active=classes.enabled(boss) and boss.get("ability_key") != "simple")
         attack_resolution = dict(damage=extra_base,base_damage=extra_base,
             events=[],boss_skip_turns=0,remove_magic_shield=False,extra_attacks=0)
+    mode = attack_resolution.get("damage_mode", "normal")
+    if mode != "normal":
+        # Pure modes bypass all incoming modifiers, including final Boss overrides.
+        # Collapse/zero also bypass every outgoing bonus; Simple keeps own bonuses.
+        ability_damage = int(attack_resolution["damage"])
+        damage = ability_damage if reachable else 0
+        bonus = max(0, int(participant["damage_bonus_percent"] or 0))
+        events = list(attack_resolution["events"])
+        if mode == "incoming_pure" and damage > 0:
+            if bonus:
+                damage = max(1, (damage * (100 + bonus) + 99) // 100)
+                events.append({"type": "item_damage_boost", "message": f"🧪 Зелье урона: +{bonus}% урона"})
+            damage = classes.beast_damage(damage, hero,
+                json.loads(participant.get("hero_state_json") or "{}"), active=classes.enabled(boss))
+        boss_events = [] if reachable else [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости."}]
+        if not reachable:
+            attack_resolution["extra_attacks"] = 0
+        return {"reachable": reachable, "hero_final_damage": damage,
+            "passive_key": passive_key, "attack_resolution": attack_resolution,
+            "ability_damage": ability_damage, "damage_bonus_percent": bonus,
+            "faction_percent": 100, "damage_after_faction": ability_damage,
+            "boss_resolution": {"damage": damage, "modifier_percent": 100,
+                                "boss_changes": {}, "events": boss_events},
+            "boss_modifier_percent": 100, "damage_before_external_bonus": ability_damage,
+            "damage": damage, "passive_events": events, "boss_skip_turns": 0,
+            "hp_after": max(0, int(boss["current_hp"]) - damage)}
     ability_damage = int(attack_resolution["damage"])
     damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
     faction_percent = faction_multiplier_percent(hero["faction"], boss["faction"])
@@ -55,7 +87,7 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
         )
     hero_final_damage = damage
     damage = creatures.feature_damage(boss, hero, hero_final_damage)
-    damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and extra_percent is None)
+    damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and (extra_percent is None or extra_uses_primary_base))
     final = boss_abilities.final_hero_damage(dict(boss), hero, damage,
         base_attack=max(1, int(participant["attack"]) * (extra_percent or 100) // 100), raw_damage=ability_damage)
     damage = final["damage"]

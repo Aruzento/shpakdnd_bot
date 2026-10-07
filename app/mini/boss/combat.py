@@ -3,6 +3,7 @@ from app.mini.boss.repository import (
     start_participants,
     active_loadouts,
     save_start_loadout,
+    freeze_start_forms,
     mark_battle_started,
     participant_for_hit,
     record_primary_attack,
@@ -99,6 +100,8 @@ def start_battle(
         fresh = refresh_boss(conn, int(boss_id))
         start_events = apply_boss_effects(conn, fresh, boss_abilities.battle_start(dict(fresh)), now)
         fresh = refresh_boss(conn, int(boss_id))
+        # Finalize effective Shadow forms once, before shared creature/class hooks.
+        freeze_start_forms(conn, dict(fresh))
         # The snapshots just persisted, rather than the live catalog, drive bonuses.
         start_events.extend(apply_boss_effects(
             conn, fresh, creatures.battle_start(dict(fresh), active_loadouts(conn, boss_id)), now))
@@ -358,7 +361,7 @@ def hit_boss(
         after_attack = hero_abilities.resolve_after_attack(
             passive_key if calculation["reachable"] else "none", hit_number=int(participant["hit_count"]) + 1,
             actual_hp_damage=min(damage, int(boss["current_hp"])),
-            state=hero_abilities.hero_state(participant["hero_state_json"]),
+            state=attack_resolution.get("hero_state", hero_abilities.hero_state(participant["hero_state_json"])),
         )
         if not calculation["reachable"]:
             after_attack = {"state": hero_abilities.hero_state(participant["hero_state_json"]), "events": []}
@@ -386,7 +389,8 @@ def hit_boss(
         if not primary_killed:
             for _ in range(attack_resolution["extra_attacks"]):
                 extra = extra_attack(conn, refresh_boss(conn, int(boss_id)), participant, hero, now,
-                                      attack_resolution["extra_attack_message"], damage_percent=attack_resolution.get("extra_attack_percent", 100))
+                                      attack_resolution["extra_attack_message"], damage_percent=attack_resolution.get("extra_attack_percent", 100),
+                                      primary_base=attack_resolution.get("extra_uses_primary_base", False))
                 extra_damage += extra["damage"]
                 passive_events.append(extra["event"])
                 boss_events.extend(extra["boss_events"])

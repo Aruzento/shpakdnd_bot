@@ -153,6 +153,8 @@ def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> di
             if fresh["status"] != "fighting":
                 break
             attack_boss=dict(fresh)
+            if resolution.get("suppressed_ability") == "oneshot":
+                attack_boss["ability_key"] = "none"
             if 'attack_decay_percents' in resolution:
                 attack_boss['reward_decay_percent']=resolution['attack_decay_percents'][attack_index]
             attack = boss_hits_reward(conn, attack_boss, when, ignore_shields=resolution["ignore_shields"])
@@ -264,9 +266,11 @@ def apply_turn_start(conn, boss, current, when) -> dict:
     return result
 
 
-def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_percent=100) -> dict:
+def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_percent=100, primary_base=False) -> dict:
     from app.mini.boss.calculations import calculate_hit
-    calculation = calculate_hit(dict(boss), dict(participant), hero, extra_percent=damage_percent)
+    calculation = calculate_hit(dict(boss), dict(participant), hero,
+        active_loadouts(conn, int(boss["id"])) if primary_base else None,
+        extra_percent=damage_percent, extra_uses_primary_base=primary_base)
     events = apply_boss_effects(conn, boss, calculation["boss_resolution"], when, actor_id=int(participant["player_id"]))
     calculated = calculation["damage"]
     actual = min(int(boss["current_hp"]), calculated)

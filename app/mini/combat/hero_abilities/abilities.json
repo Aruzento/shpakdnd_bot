@@ -318,6 +318,61 @@
           "message": "Талая ярость"
         }
       ]
+    },
+    "shadow_collapse": {
+      "name": "Shadow Collapse",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_pure_base_hit",
+          "every": 3,
+          "multiplier_percent": 200,
+          "message": "Shadow Collapse"
+        }
+      ]
+    },
+    "shadow_waste_of_time": {
+      "name": "Shadow Waste of Time",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_zero_then_double_hit",
+          "every": 3,
+          "message": "Shadow Waste of Time"
+        }
+      ]
+    },
+    "shadow_transformation": {
+      "name": "Shadow Transformation",
+      "effects": [
+        {
+          "trigger": "battle_start",
+          "type": "copy_boss_form",
+          "message": "Shadow Transformation"
+        }
+      ]
+    },
+    "shadow_oneshot": {
+      "name": "Shadow One Shot",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_damage_multiplier",
+          "every": 5,
+          "multiplier_percent": 300,
+          "message": "Shadow One Shot"
+        }
+      ]
+    },
+    "shadow_simple": {
+      "name": "Shadow Simple",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "pure_primary_hit",
+          "message": "Shadow Simple"
+        }
+      ]
     }
   }
 }

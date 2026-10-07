@@ -9,6 +9,7 @@ from app.config import DB_PATH, TIMEZONE_NAME, TOKEN
 from app.db.schema import init_db
 from app.handlers import ROUTERS
 from app.mini.boss.schema import init_boss_db
+from app.mini.boss.catalog import load_boss_catalog
 from app.mini.boss.watcher import boss_watch_loop
 from app.mini.notifications import mini_notice_watch_loop, recover_interrupted_notifications
 from app.mini.commands import configure_mini_commands
@@ -20,6 +21,7 @@ from app.services.timers import restore_timers
 
 
 async def main():
+    load_boss_catalog()
     init_db()
     init_mini_db()
     init_boss_db()

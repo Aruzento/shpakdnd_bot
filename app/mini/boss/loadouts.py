@@ -57,3 +57,8 @@ def battle_loadout(raw: str) -> dict:
     # Legacy traits never fall through to live mini_heroes values.
     snapshot = decode_loadout(raw)
     return {**LEGACY_TRAITS, **snapshot}
+
+
+def snapshot_base_attack(hero: dict, participant: dict) -> int:
+    """Legacy fallback is frozen battle attack, never a live catalog lookup."""
+    return max(0, int(hero.get("base_attack", participant["attack"])))

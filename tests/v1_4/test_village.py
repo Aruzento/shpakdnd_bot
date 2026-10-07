@@ -27,7 +27,7 @@ class VillageTests(MiniCase):
         self.mutate('settle',now,hero_id=hero['id']);self.mutate('assign',now,hero_id=hero['id'],building=building)
         return hero
     def lineup(self):
-        self.buy();self.worker('reborn_crypt_keeper',2,'hunt');self.worker('Villager',1,'market');self.worker('CityBlacksmith',1,'mine')
+        self.buy();self.worker('reborn_crypt_keeper',1,'hunt');self.worker('Villager',0,'market');self.worker('CityBlacksmith',0,'mine')
 
     def test_all_five_prices_and_sixth_rejected(self):
         for number,price in enumerate(v.PRICES):
@@ -76,7 +76,7 @@ class VillageTests(MiniCase):
         self.buy();self.worker('Villager',1,'market');self.worker('CityBlacksmith',1,'mine')
         state=v.get_state(self.pid,self.db,now=4600);self.assertFalse(state['fed']);self.assertEqual(state['coins'],0)
         self.worker('reborn_crypt_keeper',2,'hunt',now=4600)
-        state=v.get_state(self.pid,self.db,now=8200);self.assertTrue(state['fed']);self.assertEqual(state['coins'],Decimal('.125'))
+        state=v.get_state(self.pid,self.db,now=8200);self.assertTrue(state['fed']);self.assertEqual(state['coins'],Decimal('.25'))
         self.assertNotIn('food_units',state)
 
     def test_eight_hour_cap_persists_until_collect(self):
@@ -97,7 +97,7 @@ class VillageTests(MiniCase):
         self.buy();self.worker('reborn_crypt_keeper',2,'hunt');hero=self.worker('Villager',1,'market')
         self.mutate('assign',now=4600,hero_id=hero['id'],building='mine')
         state=v.get_state(self.pid,self.db,now=8200)
-        self.assertEqual(state['coins'],Decimal('.125'));self.assertEqual(state['shards'],Decimal('.125'))
+        self.assertEqual(state['coins'],Decimal('.25'));self.assertEqual(state['shards'],Decimal('.25'))
 
     def test_house_purchase_settles_before_food_shortage(self):
         self.lineup();self.buy(now=4600)
@@ -113,9 +113,9 @@ class VillageTests(MiniCase):
         self.assertEqual(v.get_state(self.pid,self.db,now=8200)['coins'],Decimal('.25'))
         self.assertEqual(len(v.get_state(self.pid,self.db,now=8200)['residents']),3)
 
-    def test_star_cap_and_shadow_legendary_rate(self):
+    def test_actual_high_stars_and_shadow_legendary_rate(self):
         self.buy();hero=self.worker('Asrael',20,'hunt')
-        self.assertEqual(v.get_state(self.pid,self.db,now=1000)['hourly']['hunt'],Decimal('7.5'))
+        self.assertEqual(v.get_state(self.pid,self.db,now=1000)['hourly']['hunt'],Decimal('26.25'))
         self.assertEqual(v.RATE_UNITS['shadow'],v.RATE_UNITS['legendary'])
 
     def test_boost_partial_interval_and_extension(self):
@@ -189,3 +189,41 @@ class VillageTests(MiniCase):
             execute(self.owner,command,operation_key='delete-worker',db_path=self.db)
         self.assertEqual(v.get_state(self.pid,self.db,now=4600)['coins'],Decimal('0.125'))
         self.assertEqual(len(v.get_state(self.pid,self.db,now=4600)['residents']),3)
+
+
+    def test_common_zero_one_and_five_stars_produce_base_times_stars_plus_one(self):
+        self.buy()
+        codes=[h['code'] for h in self.sql("SELECT code FROM mini_heroes WHERE rarity='common' LIMIT 3")]
+        for code, stars, rate in zip(codes,(0,1,5),(".125",".25",".75")):
+            hero = self.worker(code, stars, 'hunt')
+            self.assertEqual(v.get_state(self.pid,self.db,now=1000)['hourly']['hunt'],Decimal(rate))
+            self.mutate('assign',hero_id=hero['id'],building=None)
+
+    def test_legendary_zero_star_produces_and_no_six_star_cap(self):
+        self.buy();hero=self.worker('Asrael',0,'hunt')
+        for rarity in ('legendary','shadow'):
+            self.sql('UPDATE mini_heroes SET rarity=? WHERE id=?',(rarity,hero['id']))
+            for stars,rate in ((0,'1.25'),(1,'2.5'),(5,'7.5'),(10,'13.75')):
+                self.sql('UPDATE mini_player_heroes SET stars=? WHERE player_id=? AND hero_id=?',(stars,self.pid,hero['id']))
+                self.assertEqual(v.get_state(self.pid,self.db,now=1000)['hourly']['hunt'],Decimal(rate))
+
+    def test_zero_to_one_upgrade_settles_old_period_without_prior_read(self):
+        from app.mini.hero_upgrades import upgrade_hero
+        self.lineup();self.sql('UPDATE mini_players SET shards=100 WHERE id=?',(self.pid,))
+        hero=self.sql("SELECT id FROM mini_heroes WHERE code='Villager'")[0]
+        with patch('app.mini.village.service.timestamp',return_value=4600):
+            upgrade_hero(self.pid,hero['id'],self.db)
+        stored=self.sql('SELECT coins_units,settled_at FROM mini_villages WHERE player_id=?',(self.pid,))[0]
+        self.assertEqual(stored,{'coins_units':v.UNITS//8,'settled_at':4600})
+        self.assertEqual(v.get_state(self.pid,self.db,now=8200)['coins'],Decimal('.375'))
+        self.assertEqual(v.get_state(self.pid,self.db,now=8200)['hourly']['market'],Decimal('.25'))
+
+    def test_one_second_fraction_and_boost_do_not_lose_integer_remainder(self):
+        self.lineup()
+        with connect_mini_db(self.db) as conn:
+            conn.row_factory=__import__('sqlite3').Row;conn.execute('BEGIN IMMEDIATE')
+            v.activate_boost(conn,self.pid,'coins',now=1000)
+        for second in range(1001,1010):
+            self.mutate('collect',now=second)
+        stored=self.sql('SELECT coins_units FROM mini_villages WHERE player_id=?',(self.pid,))[0]
+        self.assertEqual(stored['coins_units'],9*5)

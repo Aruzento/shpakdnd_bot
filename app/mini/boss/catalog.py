@@ -97,6 +97,7 @@ def load_boss_catalog() -> dict:
     known_items = {item["code"] for item in list_boss_reward_items(active_only=False)}
     seen = set()
     normalized = []
+    shadow_targets = None
     for raw in bosses:
         if not isinstance(raw, dict):
             raise BossCatalogError("Каждый босс должен быть JSON-объектом.")
@@ -155,6 +156,13 @@ def load_boss_catalog() -> dict:
         counterpart = boss.get("shadow_hero_code")
         if counterpart is not None and (not isinstance(counterpart,str) or not counterpart.strip()):
             raise BossCatalogError(f"Boss {code}: invalid shadow_hero_code.")
+        if counterpart is not None:
+            if shadow_targets is None:
+                from app.mini.catalog import load_hero_catalog
+                shadow_targets = {hero["code"]: hero for hero in load_hero_catalog()["heroes"]}
+            target = shadow_targets.get(counterpart)
+            if target is None or target["rarity"] != "shadow":
+                raise BossCatalogError(f"Boss {code}: shadow_hero_code {counterpart!r} must reference an existing shadow hero.")
         boss["reward_items"] = _validate_reward_items(
             boss.get("reward_items", []), known_items, code
         )

@@ -40,6 +40,10 @@ def load_ability_catalog() -> dict:
             )
 
         new_effects = {
+            'every_n_pure_base_hit': ('attack', {'every': (1,1000), 'multiplier_percent': (1,1000)}),
+            'every_n_zero_then_double_hit': ('attack', {'every': (2,1000)}),
+            'pure_primary_hit': ('attack', {}),
+            'copy_boss_form': ('battle_start', {}),
             'shadow_extraction': ('victory', {'chance_percent': (0,100)}),
             'every_n_decoy': ('after_attack', {'every': (1,1000), 'chance_percent': (0,100)}),
             'save_shield': ('boss_attack', {'chance_percent': (0,100)}),

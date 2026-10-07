@@ -36,7 +36,7 @@ def production(conn, player_id, houses):
             JOIN mini_heroes h ON h.id=v.hero_id
             JOIN mini_player_heroes ph ON ph.player_id=v.player_id AND ph.hero_id=v.hero_id
             WHERE v.player_id=? AND v.building IS NOT NULL''',(player_id,)):
-        rates[row['building']] += rarity_rates[row['rarity']] * min(row['stars'],6)
+        rates[row['building']] += rarity_rates[row['rarity']] * (row['stars'] + 1)
     rates['consumption'] = houses * 16
     rates['fed'] = rates['hunt'] >= rates['consumption']
     if not rates['fed']: rates['mine']=rates['market']=0

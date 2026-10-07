@@ -35,6 +35,8 @@ def resolve_attack(
     boss_ability_key: str = "none",
     boss_state: dict | None = None,
     roller: Roller | None = None,
+    base_attack: int | None = None,
+    state: dict | None = None,
 ) -> dict:
     """Применяет attack-эффекты пассивки и возвращает итоговый урон."""
     ability = get_ability(passive_key)
@@ -44,6 +46,9 @@ def resolve_attack(
     max_hp = max(1, int(boss_max_hp))
     roller = roller or _roll_success
     events: list[dict] = []
+    state = dict(state or {})
+    damage_mode = "normal"
+    extra_uses_primary_base = False
     boss_skip_turns = 0
     remove_magic_shield = False
     extra_attacks = 0
@@ -56,6 +61,26 @@ def resolve_attack(
 
         effect_type = str(effect.get("type", ""))
         triggered = False
+
+        if effect_type == "every_n_pure_base_hit":
+            if hit_number % int(effect["every"]) == 0:
+                damage = max(0, int(base_damage if base_attack is None else base_attack)) * int(effect["multiplier_percent"]) // 100
+                damage_mode = "fixed"
+                events.append(_event(effect))
+            continue
+        if effect_type == "every_n_zero_then_double_hit":
+            if hit_number % int(effect["every"]) == 0:
+                damage = 0
+                damage_mode = "fixed"
+                state["shadow_pending_double"] = True
+                events.append(_event(effect))
+            elif state.pop("shadow_pending_double", False):
+                extra_attacks += 1
+                extra_uses_primary_base = True
+            continue
+        if effect_type == "pure_primary_hit":
+            damage_mode = "incoming_pure"
+            continue
 
         if effect_type == "chance_remove_magic_shield":
             if (boss_ability_key == "magic_shield" and (boss_state or {}).get("shield_active")
@@ -148,6 +173,9 @@ def resolve_attack(
         "extra_attacks": extra_attacks,
         "extra_attack_percent": extra_attack_percent,
         "extra_attack_message": extra_attack_message,
+        "damage_mode": damage_mode,
+        "hero_state": state,
+        "extra_uses_primary_base": extra_uses_primary_base,
         "events": events,
     }
 
@@ -222,9 +250,16 @@ def hero_state(raw: str) -> dict:
     state = json.loads(raw or "{}")
     if not isinstance(state, dict):
         raise ValueError("Hero runtime state must be an object.")
-    for field in ('bone_decoy','grave_seal','last_watch_used'):
+    for field in ('bone_decoy','grave_seal','last_watch_used','shadow_pending_double'):
         if field in state and type(state[field]) is not bool:
             raise ValueError(f'Invalid hero state: {field}.')
+    if "shadow_form" in state:
+        from app.mini.combat.tags import CREATURE_TRAITS, FACTIONS
+        form = state["shadow_form"]
+        if (not isinstance(form, dict) or set(form) != {"faction", "special_trait"}
+                or not isinstance(form["faction"], str) or form["faction"] not in FACTIONS
+                or not isinstance(form["special_trait"], str) or form["special_trait"] not in CREATURE_TRAITS):
+            raise ValueError("Invalid shadow_form state.")
     return state
 
 
@@ -304,3 +339,23 @@ def arise_chance(hero):
         if effect.get("trigger") == "victory" and effect["type"] == "shadow_extraction":
             return int(hero.get("arise_chance_percent", effect["chance_percent"]))
     return None
+
+
+def resolve_battle_start(hero: dict, boss: dict, *, state=None, chooser=None) -> dict:
+    """Freeze one effective form at battle creation; no live hero catalog."""
+    from app.mini.combat import creatures
+    from app.mini.combat.tags import CREATURE_TRAITS
+    hero = dict(hero)
+    state = dict(state or {})
+    for effect in get_ability(hero.get("passive_key", "none"))["effects"]:
+        if effect["type"] != "copy_boss_form" or effect["trigger"] != "battle_start":
+            continue
+        if "shadow_form" not in state:
+            raw = boss.get("features_json", "[]")
+            values = json.loads(raw) if isinstance(raw, str) else list(raw)
+            traits = sorted({creatures.canonical_trait(value) for value in values}
+                            & (CREATURE_TRAITS - {"none"}))
+            state["shadow_form"] = {"faction": boss["faction"],
+                "special_trait": (chooser or secrets.choice)(traits) if traits else "none"}
+        hero.update(state["shadow_form"])
+    return {"hero": hero, "state": state}
