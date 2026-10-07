@@ -104,6 +104,65 @@ def _item(conn,player_id,code,deleting):
             ON CONFLICT(player_id,item_id) DO UPDATE SET quantity=quantity+1,updated_at=CURRENT_TIMESTAMP""",(player_id,item['id']))
 
 
+def _mutate_player(conn,admin_user_id,command,world,player,operation_key):
+    """Reuse the single-player rules; caller owns transaction and retry guard."""
+    amount=None;resource='gacha_guarantee';entity='legendary';message='';applied=True
+    if command.action=='superluck':
+        row=conn.execute("SELECT forced_legendary FROM mini_gacha_guarantees WHERE player_id=?",(player['id'],)).fetchone()
+        if row and row[0]:
+            applied=False;message='Гарантия Legendary уже установлена.'
+        else:
+            conn.execute("""INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)
+                ON CONFLICT(player_id) DO UPDATE SET forced_legendary=1""",(player['id'],))
+            message='Следующий успешный призыв: Legendary 100%.'
+    else:
+        flag=command.flags[0];deleting=command.action=='superdel'
+        resource={'-c':'coins','-s':'shards','-p':'hero','-i':'item'}[flag];entity=command.value
+        if flag in {'-c','-s'}:
+            amount=int(command.value)
+            if amount<=0: raise ValueError("Количество должно быть положительным.")
+            delta=-amount if deleting else amount
+            if flag=='-c':
+                balance=change_balance_in_transaction(conn,player['id'],delta,'Mini superadmin',
+                    'superadmin',None,operation_key)['balance']
+            else: balance=change_shards_in_transaction(conn,player['id'],delta)
+            message=f"{resource}: изменение {delta}, баланс {balance}."
+        elif flag=='-p': applied,message=_hero(conn,player,command.value,deleting)
+        else:
+            _item(conn,player['id'],command.value,deleting)
+            message=f"Предмет {command.value}: {'удалён' if deleting else 'выдан'}."
+    conn.execute("""INSERT INTO mini_superadmin_audit
+        (admin_user_id,action,world_id,target_user_id,player_id,resource,entity_code,amount,operation_key)
+        VALUES(?,?,?,?,?,?,?,?,?)""",(admin_user_id,command.action,world['id'],player['telegram_user_id'],
+            player['id'],resource,entity,amount,operation_key))
+    return applied,f"{'✅' if applied else 'ℹ️'} {player['character_name']}: {message}"
+
+
+def _mutate_all(conn,admin_user_id,command,world,players,operation_key):
+    if not players:return 'ℹ️ Нет игроков для обработки.'
+    succeeded=skipped=errors=0;lines=[]
+    for player in players:
+        child_key=f"{operation_key}:player:{player['id']}"
+        if conn.execute("SELECT 1 FROM mini_superadmin_audit WHERE operation_key=?",(child_key,)).fetchone():
+            skipped+=1
+            lines.append(f"ℹ️ {player['character_name']}: Эта административная операция уже выполнена.")
+            continue
+        conn.execute('SAVEPOINT superadmin_player')
+        try:
+            applied,message=_mutate_player(conn,admin_user_id,command,world,player,child_key)
+        except ValueError as error:
+            conn.execute('ROLLBACK TO SAVEPOINT superadmin_player')
+            conn.execute('RELEASE SAVEPOINT superadmin_player')
+            errors+=1;lines.append(f"❌ {player['character_name']}: {error}")
+        else:
+            conn.execute('RELEASE SAVEPOINT superadmin_player')
+            if applied:succeeded+=1
+            else:skipped+=1
+            lines.append(message)
+    return '\n'.join(['✅ ALL: операция завершена',f'Успешно: {succeeded}',
+        f'Пропущено: {skipped}',f'Ошибок: {errors}','',*lines])
+
+
 def execute(admin_user_id,command,*,operation_key='',db_path=None):
     db_path=config.DB_PATH if db_path is None else db_path
     require_superadmin(admin_user_id)
@@ -118,37 +177,14 @@ def execute(admin_user_id,command,*,operation_key='',db_path=None):
             return '\n'.join([f"Mini players {command.chat_id}:{command.thread_id}"]+[
                 f"{r['telegram_user_id']} {format_player_mention(r,conn=conn)} — {r['character_name']}"
                 for r in conn.execute("SELECT * FROM mini_players WHERE world_id=? ORDER BY telegram_user_id",(world['id'],))])
+        if command.target=='all':
+            players=[dict(row) for row in conn.execute(
+                "SELECT * FROM mini_players WHERE world_id=? ORDER BY telegram_user_id",(world['id'],))]
+            if command.action=='superlook':
+                return '\n\n'.join(_look(conn,player,command.flags) for player in players) or 'ℹ️ В этом Mini-мире нет игроков.'
+            return _mutate_all(conn,admin_user_id,command,world,players,operation_key)
         player=_player(conn,world['id'],command.target)
         if command.action=='superlook': return _look(conn,player,command.flags)
         if conn.execute("SELECT 1 FROM mini_superadmin_audit WHERE operation_key=?",(operation_key,)).fetchone():
             return "Эта административная операция уже выполнена."
-        amount=None;resource='gacha_guarantee';entity='legendary';message='';applied=True
-        if command.action=='superluck':
-            row=conn.execute("SELECT forced_legendary FROM mini_gacha_guarantees WHERE player_id=?",(player['id'],)).fetchone()
-            if row and row[0]:
-                applied=False;message='Гарантия Legendary уже установлена.'
-            else:
-                conn.execute("""INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)
-                    ON CONFLICT(player_id) DO UPDATE SET forced_legendary=1""",(player['id'],))
-                message='Следующий успешный призыв: Legendary 100%.'
-        else:
-            flag=command.flags[0];deleting=command.action=='superdel'
-            resource={'-c':'coins','-s':'shards','-p':'hero','-i':'item'}[flag];entity=command.value
-            if flag in {'-c','-s'}:
-                amount=int(command.value)
-                if amount<=0: raise ValueError("Количество должно быть положительным.")
-                delta=-amount if deleting else amount
-                if flag=='-c':
-                    balance=change_balance_in_transaction(conn,player['id'],delta,'Mini superadmin',
-                        'superadmin',None,operation_key)['balance']
-                else: balance=change_shards_in_transaction(conn,player['id'],delta)
-                message=f"{resource}: изменение {delta}, баланс {balance}."
-            elif flag=='-p': applied,message=_hero(conn,player,command.value,deleting)
-            else:
-                _item(conn,player['id'],command.value,deleting)
-                message=f"Предмет {command.value}: {'удалён' if deleting else 'выдан'}."
-        conn.execute("""INSERT INTO mini_superadmin_audit
-            (admin_user_id,action,world_id,target_user_id,player_id,resource,entity_code,amount,operation_key)
-            VALUES(?,?,?,?,?,?,?,?,?)""",(admin_user_id,command.action,world['id'],player['telegram_user_id'],
-                player['id'],resource,entity,amount,operation_key))
-        return f"{'✅' if applied else 'ℹ️'} {player['character_name']}: {message}"
+        return _mutate_player(conn,admin_user_id,command,world,player,operation_key)[1]

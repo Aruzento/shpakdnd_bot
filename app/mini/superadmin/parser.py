@@ -16,7 +16,7 @@ class SuperCommand:
 def parse_command(text):
     parts=shlex.split(text or "")
     if len(parts)<2:
-        raise ValueError("Использование: /super... CHAT_ID:THEME_ID @user (или numeric ID) -c/-s/-p/-i VALUE")
+        raise ValueError("Использование: /super... CHAT_ID:THEME_ID @user, numeric ID или ALL -c/-s/-p/-i VALUE")
     action=parts[0].split('@',1)[0].removeprefix('/')
     scope=re.fullmatch(r"(-?\d+):(\d+)",parts[1])
     if not scope:
@@ -26,8 +26,8 @@ def parse_command(text):
         raise ValueError("Некорректный chat ID.")
     if action=="superchars" and len(parts)==2:
         return SuperCommand(action,chat_id,thread_id)
-    if len(parts)<3 or not re.fullmatch(r"(?:@[A-Za-z0-9_]+|[1-9]\d*)",parts[2]):
-        raise ValueError("Target: @username или положительный numeric Telegram user ID.")
+    if len(parts)<3 or not re.fullmatch(r"(?:@[A-Za-z0-9_]+|[1-9]\d*|(?i:all))",parts[2]):
+        raise ValueError("Target: @username, положительный numeric Telegram user ID или ALL.")
     target=parts[2].lower()
     if action=="superluck" and len(parts)==3:
         return SuperCommand(action,chat_id,thread_id,target)

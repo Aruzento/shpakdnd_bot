@@ -26,7 +26,7 @@ class SuperadminTests(MiniCase):
     def test_parser_strict_scope_and_single_resource(self):
         for text in ['/superlook 123 @tester','/superlook 123:abc @tester','/superadd 123:0 @tester -c 0',
                      '/superadd 123:0 @tester -c -2','/superadd 123:0 @tester -c -s 10',
-                     '/superadd 123:0 @tester -c 1.5','/superluck 123:0 ALL','/superlook 123:0 @tester -x',
+                     '/superadd 123:0 @tester -c 1.5','/superluck 123:0 ALL extra','/superlook 123:0 @tester -x',
                      '/superchars 123:0 @tester','/superadminadd 123:0 @tester']:
             with self.subTest(text=text),self.assertRaises(ValueError):parse_command(text)
         self.assertEqual(parse_command('/superlook 123:0 @tester').flags,('-c','-s','-p','-i'))
