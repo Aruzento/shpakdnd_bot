@@ -33,64 +33,67 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
             events=[],boss_skip_turns=0,remove_magic_shield=False,extra_attacks=0)
     mode = attack_resolution.get("damage_mode", "normal")
     if mode != "normal":
-        # Pure modes bypass all incoming modifiers, including final Boss overrides.
-        # Collapse/zero also bypass every outgoing bonus; Simple keeps own bonuses.
+        # Shadow modes bypass ordinary incoming modifiers, never final Boss rules.
+        # Fixed hits also bypass outgoing bonuses; incoming_pure keeps own bonuses.
         ability_damage = int(attack_resolution["damage"])
         damage = ability_damage if reachable else 0
-        bonus = max(0, int(participant["damage_bonus_percent"] or 0))
-        events = list(attack_resolution["events"])
+        damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
+        passive_events = list(attack_resolution["events"])
+        faction_percent = boss_modifier_percent = 100
+        damage_after_faction = damage_before_external_bonus = ability_damage
+        boss_skip_turns = 0
+        boss_events = [] if reachable else [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости."}]
+        boss_resolution = {"damage": damage, "modifier_percent": 100,
+                           "boss_changes": {}, "events": boss_events}
         if mode == "incoming_pure" and damage > 0:
-            if bonus:
-                damage = max(1, (damage * (100 + bonus) + 99) // 100)
-                events.append({"type": "item_damage_boost", "message": f"🧪 Зелье урона: +{bonus}% урона"})
+            if damage_bonus_percent:
+                damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
+                passive_events.append({"type": "item_damage_boost", "message": f"🧪 Зелье урона: +{damage_bonus_percent}% урона"})
             damage = classes.beast_damage(damage, hero,
                 json.loads(participant.get("hero_state_json") or "{}"), active=classes.enabled(boss))
-        boss_events = [] if reachable else [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости."}]
+        hero_final_damage = damage
+        boss_resolution["damage"] = damage
         if not reachable:
             attack_resolution["extra_attacks"] = 0
-        return {"reachable": reachable, "hero_final_damage": damage,
-            "passive_key": passive_key, "attack_resolution": attack_resolution,
-            "ability_damage": ability_damage, "damage_bonus_percent": bonus,
-            "faction_percent": 100, "damage_after_faction": ability_damage,
-            "boss_resolution": {"damage": damage, "modifier_percent": 100,
-                                "boss_changes": {}, "events": boss_events},
-            "boss_modifier_percent": 100, "damage_before_external_bonus": ability_damage,
-            "damage": damage, "passive_events": events, "boss_skip_turns": 0,
-            "hp_after": max(0, int(boss["current_hp"]) - damage)}
-    ability_damage = int(attack_resolution["damage"])
-    damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
-    faction_percent = faction_multiplier_percent(hero["faction"], boss["faction"])
-    damage_after_faction = modify_damage(ability_damage, faction_percent)
-    if not reachable:
-        boss_resolution = {"damage": 0, "modifier_percent": 0, "boss_changes": {},
-                           "events": [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости. Атака ближнего боя не достигает босса."}]}
-        attack_resolution["extra_attacks"] = 0
-    elif attack_resolution["remove_magic_shield"]:
-        shield_state = json.loads(boss["ability_state_json"] or "{}")
-        shield_state["shield_active"] = False
-        boss_resolution = {"damage": 0, "modifier_percent": 0, "events": [],
-                           "boss_changes": {"ability_state_json": json.dumps(shield_state)}}
     else:
-        boss_resolution = boss_abilities.modify_hero_damage(dict(boss), hero, damage_after_faction)
-    boss_modifier_percent = int(boss_resolution["modifier_percent"])
-    damage_before_external_bonus = int(boss_resolution["damage"])
-    damage = damage_before_external_bonus
-    passive_events = list(attack_resolution["events"])
-    boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
-    if damage_bonus_percent > 0 and damage > 0:
-        damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
-        passive_events.append(
-            {
-                "type": "item_damage_boost",
-                "message": f"🧪 Зелье урона: +{damage_bonus_percent}% урона",
-            }
-        )
-    hero_final_damage = damage
-    damage = creatures.feature_damage(boss, hero, hero_final_damage)
-    damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and (extra_percent is None or extra_uses_primary_base))
+        ability_damage = int(attack_resolution["damage"])
+        damage_bonus_percent = max(0, int(participant["damage_bonus_percent"] or 0))
+        faction_percent = faction_multiplier_percent(hero["faction"], boss["faction"])
+        damage_after_faction = modify_damage(ability_damage, faction_percent)
+        if not reachable:
+            boss_resolution = {"damage": 0, "modifier_percent": 0, "boss_changes": {},
+                               "events": [{"type": "unreachable", "message": "🪽 Цель находится вне досягаемости. Атака ближнего боя не достигает босса."}]}
+            attack_resolution["extra_attacks"] = 0
+        elif attack_resolution["remove_magic_shield"]:
+            shield_state = json.loads(boss["ability_state_json"] or "{}")
+            shield_state["shield_active"] = False
+            boss_resolution = {"damage": 0, "modifier_percent": 0, "events": [],
+                               "boss_changes": {"ability_state_json": json.dumps(shield_state)}}
+        else:
+            boss_resolution = boss_abilities.modify_hero_damage(dict(boss), hero, damage_after_faction)
+        boss_modifier_percent = int(boss_resolution["modifier_percent"])
+        damage_before_external_bonus = int(boss_resolution["damage"])
+        damage = damage_before_external_bonus
+        passive_events = list(attack_resolution["events"])
+        boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
+        if damage_bonus_percent > 0 and damage > 0:
+            damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
+            passive_events.append(
+                {
+                    "type": "item_damage_boost",
+                    "message": f"🧪 Зелье урона: +{damage_bonus_percent}% урона",
+                }
+            )
+        hero_final_damage = damage
+        damage = creatures.feature_damage(boss, hero, hero_final_damage)
+        damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and (extra_percent is None or extra_uses_primary_base))
+    # Absolute Boss rules run once after every hero-side damage mode.
     final = boss_abilities.final_hero_damage(dict(boss), hero, damage,
-        base_attack=max(1, int(participant["attack"]) * (extra_percent or 100) // 100), raw_damage=ability_damage)
+        base_attack=max(1, int(participant["attack"]) * (extra_percent or 100) // 100), raw_damage=ability_damage if reachable or mode == "normal" else 0)
     damage = final["damage"]
+    if mode != "normal" and not reachable:
+        # No physical hit: a per-hit Boss rule cannot create reachability.
+        damage = 0
     boss_resolution["boss_changes"].update(final["boss_changes"])
     boss_resolution["events"].extend(final["events"])
     hp_after = min(int(boss["max_hp"]), max(0, int(boss["current_hp"]) + final["healed_hp"] - damage))

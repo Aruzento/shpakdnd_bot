@@ -53,8 +53,8 @@ class ShadowHitTests(unittest.TestCase):
         for faction in ('commoners','beasts','monsters','warriors','dark','neutral'):
             self.assertEqual(self.hit('shadow_collapse',3,boss={'faction':faction})['damage'],28)
 
-    def test_collapse_ignores_incoming_boss_hooks_and_final_overrides(self):
-        for key in ('mechanism','magic_shield','collapse','waste_of_time','training','simple'):
+    def test_collapse_ignores_ordinary_incoming_boss_hooks(self):
+        for key in ('mechanism','magic_shield'):
             result=self.hit('shadow_collapse',3,boss={'ability_key':key,'ability_state_json':'{"shield_active":true}'})
             self.assertEqual(result['damage'],28,key)
             self.assertEqual(result['boss_resolution']['boss_changes'],{})
@@ -91,8 +91,8 @@ class ShadowHitTests(unittest.TestCase):
         self.assertEqual(sequence,[70,70,0,70,70,0,70])
         self.assertEqual(doubles,[0,0,0,1,0,0,1]);self.assertEqual(state,{})
 
-    def test_waste_zero_is_not_raised_by_min_one_or_boss_overrides(self):
-        for key in ('collapse','training','simple','mechanism','magic_shield'):
+    def test_waste_zero_is_not_raised_by_ordinary_modifiers(self):
+        for key in ('simple','mechanism','magic_shield'):
             result=self.hit('shadow_waste_of_time',3,attack=1,potion=100,boss={'ability_key':key})
             self.assertEqual(result['damage'],0,key)
 
@@ -115,7 +115,7 @@ class ShadowHitTests(unittest.TestCase):
             self.assertEqual(self.hit('shadow_simple',1,attack=64,boss={'faction':faction})['damage'],64)
 
     def test_simple_ignores_armored_and_boss_incoming_modifiers(self):
-        for key in ('none','mechanism','magic_shield','collapse','waste_of_time','training'):
+        for key in ('none','mechanism','magic_shield'):
             result=self.hit('shadow_simple',1,attack=64,boss={'ability_key':key,'features_json':'["armored"]',
                 'ability_state_json':'{"shield_active":true}'},hero={'attack_range':'melee'})
             self.assertEqual(result['damage'],64,key)
