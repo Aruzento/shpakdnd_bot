@@ -7,10 +7,13 @@ from pathlib import Path
 CONTENT_DIR = Path(__file__).resolve().parent / "content"
 SHOP_PATH = CONTENT_DIR / "shop.json"
 HEROES_PATH = CONTENT_DIR / "heroes.json"
+HERO_CATALOG_DIR = CONTENT_DIR / "heroes"
+RARITIES = ("common", "uncommon", "rare", "legendary", "mythic", "shadow")
+GACHA_RARITIES = frozenset(RARITIES[:4])
 HERO_IMAGES_DIR = CONTENT_DIR / "hero_images"
 
 ALLOWED_DELIVERY_TYPES = {"inventory", "certificate"}
-ALLOWED_RARITIES = {"common", "uncommon", "rare", "legendary"}
+ALLOWED_RARITIES = frozenset(RARITIES)
 
 
 def _read_json(path: Path) -> dict:
@@ -111,12 +114,37 @@ def load_shop_catalog() -> dict:
     return data
 
 
+def _read_hero_catalog() -> dict:
+    data = _read_json(HEROES_PATH)
+    entries = []
+    codes = set()
+    for rarity in RARITIES:
+        path = HERO_CATALOG_DIR / f"{rarity}.json"
+        content = _read_json(path)
+        if not isinstance(content.get("heroes"), list):
+            raise ValueError(f"{path.name}: нужен массив heroes.")
+        for hero in content["heroes"]:
+            if not isinstance(hero, dict):
+                raise ValueError(f"{path.name}: герой должен быть объектом.")
+            code = hero.get("code")
+            if not isinstance(code, str) or not code.strip():
+                raise ValueError(f"{path.name}: нужен code героя.")
+            if code.strip() in codes:
+                raise ValueError(f"{path.name}: повтор героя {code} между каталогами.")
+            codes.add(code.strip())
+            if hero.get("rarity") != rarity:
+                raise ValueError(f"{path.name}: rarity героя {code} должна быть {rarity}.")
+            entries.append(hero)
+    data["heroes"] = entries
+    return data
+
+
 def load_hero_catalog() -> dict:
     from app.mini.combat.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
     from app.mini.combat.hero_abilities.catalog import configured_ability_keys
     from app.mini.combat.tags import LEGACY_HERO_TRAITS
 
-    data = _read_json(HEROES_PATH)
+    data = _read_hero_catalog()
     settings = data.get("settings")
     heroes = data.get("heroes")
 
@@ -242,6 +270,13 @@ def load_hero_catalog() -> dict:
                 raise ValueError(f"heroes.json: hero {code}: {field} must be a nonempty string tag.")
         if not isinstance(hero.get("passive_key"), str) or hero["passive_key"] not in passive_keys:
             raise ValueError(f"heroes.json: hero {code}: unknown passive_key {hero.get('passive_key')!r}.")
+        if rarity == "mythic" and (type(hero.get("fragment_cost")) is not int or hero["fragment_cost"] <= 0):
+            raise ValueError(f"Mythic {code}: fragment_cost должен быть > 0.")
+        if "arise_chance_percent" in hero:
+            from app.mini.combat.hero_abilities.engine import arise_chance
+            chance=hero["arise_chance_percent"]
+            if type(chance) is not int or not 0<=chance<=100 or arise_chance({"passive_key":hero["passive_key"]}) is None:
+                raise ValueError(f"Hero {code}: invalid arise_chance_percent.")
         codes.add(code)
 
     return data

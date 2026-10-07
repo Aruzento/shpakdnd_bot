@@ -90,7 +90,7 @@ class OwnedInactiveTests(OwnedInactiveCase):
                     self.assertEqual(codes, expected)
                     self.assertNotIn(ENGINEER, codes)
                     return pool[-1]
-                with patch('app.mini.gacha.sync_hero_catalog'), patch('app.mini.gacha.secrets.choice', side_effect=choose):
+                with patch('app.mini.gacha.secrets.choice', side_effect=choose):
                     result = perform_gacha_pull(self.pid, db_path=self.db)
                 self.assertEqual(result['rarity'], 'legendary')
                 self.assertNotEqual(result['code'], ENGINEER)

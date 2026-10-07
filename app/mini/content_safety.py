@@ -55,7 +55,8 @@ def validate_combat_content(
         for tag in boss["features"]:
             _require_label("boss", boss["code"], "features", tag, TRAIT_LABELS)
 
-    active_heroes = [hero for hero in heroes if bool(hero.get("active", True))]
+    from app.mini.catalog import GACHA_RARITIES
+    active_heroes = [hero for hero in heroes if hero["rarity"] in GACHA_RARITIES and bool(hero.get("active", True))]
     active_bosses = [boss for boss in bosses if bool(boss.get("active", True))]
     warnings = []
     for boss in active_bosses:

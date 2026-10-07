@@ -1,6 +1,7 @@
 """Shared Russian labels for Combat v2 cards; balance stays in catalogs."""
 
 RARITY_EMOJI = {
+    "mythic": "✨", "shadow": "🌑",
     "common": "⚪", "uncommon": "🟢", "rare": "🟣", "legendary": "🟡",
 }
 

@@ -6,6 +6,18 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_villages",
+    "mini_village_residents",
+    "mini_village_boosts",
+    "mini_village_operations",
+    "mini_daily_streak",
+    "mini_daily_chests",
+    "mini_duels",
+    "mini_duel_locks",
+    "mini_shadow_rolls",
+    "mini_mythic_fragments",
+    "mini_mythic_grants",
+
     "mini_tower_selections",
     "mini_hero_favorites",
     "mini_onboarding_claims",

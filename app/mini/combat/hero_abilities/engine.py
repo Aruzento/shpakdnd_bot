@@ -47,6 +47,7 @@ def resolve_attack(
     boss_skip_turns = 0
     remove_magic_shield = False
     extra_attacks = 0
+    extra_attack_percent = 100
     extra_attack_message = "💥 Дополнительная атака — {damage} урона"
 
     for effect in ability["effects"]:
@@ -63,6 +64,17 @@ def resolve_attack(
                 events.append(_event(effect))
             continue
 
+        if effect_type == "every_n_max_hp_damage":
+            if hit_number % int(effect["every"]) == 0:
+                damage += max_hp * int(effect["damage_percent"]) // 100
+                events.append(_event(effect))
+            continue
+        if effect_type == "every_n_extra_hits":
+            if hit_number % int(effect["every"]) == 0:
+                extra_attacks += int(effect["extra_attacks"])
+                extra_attack_percent = int(effect["damage_percent"])
+                events.append(_event(effect))
+            continue
         if effect_type == "cyclic_damage_bonus":
             every = int(effect["every"])
             step = (hit_number - 1) % every
@@ -134,6 +146,7 @@ def resolve_attack(
         "boss_skip_turns": boss_skip_turns,
         "remove_magic_shield": remove_magic_shield,
         "extra_attacks": extra_attacks,
+        "extra_attack_percent": extra_attack_percent,
         "extra_attack_message": extra_attack_message,
         "events": events,
     }
@@ -209,6 +222,9 @@ def hero_state(raw: str) -> dict:
     state = json.loads(raw or "{}")
     if not isinstance(state, dict):
         raise ValueError("Hero runtime state must be an object.")
+    for field in ('bone_decoy','grave_seal','last_watch_used'):
+        if field in state and type(state[field]) is not bool:
+            raise ValueError(f'Invalid hero state: {field}.')
     return state
 
 
@@ -221,7 +237,11 @@ def resolve_after_attack(passive_key: str, *, hit_number: int, actual_hp_damage:
             continue
         kind = effect["type"]
         event = _event(effect)
-        if kind == "every_n_reward_guard":
+        if kind == "every_n_decoy":
+            state["bone_decoy"] = True
+        elif kind == "every_n_seal":
+            state["grave_seal"] = True
+        elif kind == "every_n_reward_guard":
             charges = int(effect["charges"])
             state["reward_guard_charges"] = int(state.get("reward_guard_charges", 0)) + charges
             event["charges"] = charges
@@ -255,3 +275,32 @@ def resolve_victory(passive_key: str, *, roller: Roller | None = None) -> dict:
                 shards += amount
                 events.append({**_event(effect), "shards": amount})
     return {"bonus_shards": shards, "events": events}
+
+
+def resolve_reward_defense(passive_key, *, state, shields, roller=None):
+    """Attempt one decoy/save; failed Last Watch attempts do not consume it."""
+    state = dict(state)
+    roll = roller or _roll_success
+    blocked = False
+    kind = None
+    if state.pop("bone_decoy", False):
+        chance = next((e['chance_percent'] for e in get_ability('bone_decoy')['effects']
+                       if e['type']=='every_n_decoy'),25)
+        blocked = roll(chance)
+        kind = "bone_decoy"
+    if not blocked and shields > 0 and not state.get("last_watch_used"):
+        for effect in get_ability(passive_key)["effects"]:
+            if effect["type"] == "save_shield" and roll(effect["chance_percent"]):
+                state["last_watch_used"] = True
+                blocked = True
+                kind = "last_watch"
+                break
+    return {"state": state, "blocked": blocked, "type": kind}
+
+
+def arise_chance(hero):
+    effects = get_ability(hero.get("passive_key", "none"))["effects"]
+    for effect in effects:
+        if effect.get("trigger") == "victory" and effect["type"] == "shadow_extraction":
+            return int(hero.get("arise_chance_percent", effect["chance_percent"]))
+    return None

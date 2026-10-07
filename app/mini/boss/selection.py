@@ -46,7 +46,8 @@ async def boss_heroes_callback(callback: CallbackQuery):
     if context is None:
         return
     world, player, boss, page = context
-    heroes = get_player_heroes(player["id"])
+    from app.mini.availability import filter_heroes
+    heroes = filter_heroes(get_player_heroes(player["id"], sync_catalog=False), player["id"])
     text,markup=render_selector(heroes,get_favorites(player['id']),'b',world['id'],callback.from_user.id,boss['id'])
     await callback.answer()
     await _send_private(callback,world,format_public_boss(boss,list_participants(boss['id']))+'\n\n🎴 Выбери активного героя\n'+text,markup)

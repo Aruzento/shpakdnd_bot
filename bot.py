@@ -56,6 +56,8 @@ async def main():
     for router in ROUTERS:
         dp.include_router(router)
 
+    from app.mini.duels.service import expire
+    expire()
     recover_interrupted_notifications()
     await restore_timers(bot)
 

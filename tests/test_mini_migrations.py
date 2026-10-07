@@ -80,6 +80,20 @@ class MiniMigrationTests(unittest.TestCase):
         select_hero(player,hero,self.db)
         from app.mini.titles.service import issue_title
         issue_title(player,'Хранитель',86400,555,'fixture:title',self.db,now=1000)
+        with connect_mini_db(self.db) as conn:
+            other=conn.execute("INSERT INTO mini_players(world_id,telegram_user_id,character_name) VALUES(?,556,'Другой')",(world,)).lastrowid
+            conn.execute('INSERT INTO mini_onboarding_claims(world_id,telegram_user_id,player_id,tickets) VALUES(?,556,?,0)',(world,other))
+            conn.execute('INSERT INTO mini_villages VALUES(?,1,1000,2000,123,456,2)',(player,))
+            conn.execute("INSERT INTO mini_village_residents VALUES(?,?,'mine')",(player,hero))
+            conn.execute("INSERT INTO mini_village_boosts VALUES(?,'coins',1000,29800)",(player,))
+            conn.execute("INSERT INTO mini_village_operations VALUES(?,'fixture','buy','{}')",(player,))
+            conn.execute("INSERT INTO mini_daily_streak VALUES(?,'2026-10-05',22)",(player,))
+            conn.execute("INSERT INTO mini_daily_chests VALUES(?,'2026-10-05','boss_coin_pouch')",(player,))
+            conn.execute("INSERT INTO mini_mythic_fragments VALUES(?,'future_mythic',17)",(player,))
+            conn.execute("INSERT INTO mini_mythic_grants VALUES(?,'fixture','future_mythic',17,'test')",(player,))
+            conn.execute("INSERT INTO mini_shadow_rolls VALUES(?,?,?,5,'future_shadow',0)",(boss,player,hero))
+            duel=conn.execute("INSERT INTO mini_duels(challenger_id,defender_id,challenger_hero_id,challenger_snapshot,expires_at,operation_key) VALUES(?,?,?,'{}',1120,'fixture')",(player,other,hero)).lastrowid
+            conn.execute('INSERT INTO mini_duel_locks VALUES(?,?)',(player,duel))
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

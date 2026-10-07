@@ -138,6 +138,9 @@ def grant_victory_rewards(
             )
 
         if not include_all_registered and int(row["hit_count"]) > 0:
+            from app.mini.shadow import extract_in_transaction
+            extraction=extract_in_transaction(conn,boss,row,now=when)
+            if extraction: victory_events.append(log_hero_event(conn,boss,row,extraction,when or utcnow()))
             passive = battle_loadout(row["hero_snapshot_json"]).get("passive_key", "none")
             victory = hero_abilities.resolve_victory(passive)
             if victory["bonus_shards"]:

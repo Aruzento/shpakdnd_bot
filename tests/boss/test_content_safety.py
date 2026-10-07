@@ -27,7 +27,7 @@ class CombatContentSafetyTests(unittest.TestCase):
         self.assertEqual(result["active_heroes"], sum(h["active"] for h in self.heroes))
         self.assertEqual(result["active_bosses"], sum(b["active"] for b in self.bosses))
         for boss in self.bosses:
-            if not boss["active"]:
+            if not boss["active"] or boss["faction"]=="neutral":
                 continue
             with self.subTest(boss=boss["code"]):
                 self.assertTrue(any(h["active"] and faction_multiplier_percent(h["faction"], boss["faction"]) == 200
@@ -39,6 +39,7 @@ class CombatContentSafetyTests(unittest.TestCase):
 
     def test_each_current_boss_rejects_missing_active_faction_counter(self):
         for boss in self.bosses:
+            if boss["faction"]=="neutral": continue
             with self.subTest(boss=boss["code"]):
                 heroes = copy.deepcopy(self.heroes)
                 for hero in heroes:
@@ -128,7 +129,7 @@ class CombatContentSafetyTests(unittest.TestCase):
     def test_open_class_and_special_tags_remain_structurally_valid(self):
         catalog = copy.deepcopy(load_hero_catalog())
         catalog["heroes"][0].update(class_tag="future_class", special_trait="future_trait")
-        with patch("app.mini.catalog._read_json", return_value=catalog):
+        with patch("app.mini.catalog._read_hero_catalog", return_value=catalog):
             loaded = load_hero_catalog()
         self.assertEqual(loaded["heroes"][0]["class_tag"], "future_class")
         self.assertEqual(loaded["heroes"][0]["special_trait"], "future_trait")

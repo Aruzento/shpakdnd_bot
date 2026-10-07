@@ -23,6 +23,12 @@
     "magic_shield": {},
     "mechanism": {
       "damage_percent": 80
-    }
+    },
+    "collapse": {},
+    "waste_of_time": {},
+    "training": {},
+    "transformation": {},
+    "oneshot": {},
+    "simple": {}
   }
 }

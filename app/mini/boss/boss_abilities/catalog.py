@@ -7,6 +7,7 @@ ABILITIES_JSON = Path(__file__).with_name("abilities.json")
 ABILITY_KEYS = frozenset((
     "none", "paralysis", "critical_strike", "banishment", "shapeshifter",
     "rapier", "hydra_regeneration", "kamikaze", "magic_shield", "mechanism",
+    "collapse", "waste_of_time", "training", "transformation", "oneshot", "simple",
 ))
 
 

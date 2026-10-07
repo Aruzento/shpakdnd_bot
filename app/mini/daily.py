@@ -128,10 +128,14 @@ def _normalize_claim_date(value: date | str | None) -> str:
     if value is None:
         return _today_string()
 
+    if isinstance(value, datetime):
+        if value.tzinfo is None: raise ValueError("Нужен datetime с часовым поясом.")
+        return value.astimezone(TIMEZONE).date().isoformat()
+
     if isinstance(value, date):
         return value.isoformat()
 
-    return str(value)
+    return date.fromisoformat(str(value)).isoformat()
 
 
 def _pick_reward() -> tuple[str, int]:
@@ -199,7 +203,7 @@ def get_daily_claim(
                 id,
                 player_id,
                 claim_date,
-                encounter_key,
+                encounter_key, streak_count, cycle_day, chest_code,
                 story_text,
                 coins_earned,
                 item_id,
@@ -252,7 +256,7 @@ def claim_daily(
             SELECT
                 id,
                 claim_date,
-                encounter_key,
+                encounter_key, streak_count, cycle_day, chest_code,
                 story_text,
                 coins_earned,
                 created_at
@@ -286,6 +290,7 @@ def claim_daily(
 
             encounter_key = str(existing["encounter_key"])
             return {
+                "streak": existing["streak_count"], "cycle_day": existing["cycle_day"], "chest_code": existing["chest_code"],
                 "claimed": False,
                 "claim_id": int(existing["id"]),
                 "claim_date": str(existing["claim_date"]),
@@ -296,7 +301,26 @@ def claim_daily(
                 "balance": current_balance,
             }
 
+        last=conn.execute('SELECT last_day,streak FROM mini_daily_streak WHERE player_id=?',(player_id,)).fetchone()
+        if last and day < last['last_day']: raise ValueError('Нельзя получить прошлый дейлик.')
+        from datetime import timedelta
+        previous=(date.fromisoformat(day)-timedelta(days=1)).isoformat()
+        streak=last['streak']+1 if last and last['last_day']==previous else 1
+        if not last:
+            # Recover a historical consecutive series without rewriting old claim rows.
+            prior=previous
+            while conn.execute('SELECT 1 FROM mini_daily_claims WHERE player_id=? AND claim_date=?',(player_id,prior)).fetchone():
+                streak+=1
+                prior=(date.fromisoformat(prior)-timedelta(days=1)).isoformat()
+        cycle=(streak-1)%7+1
         rarity, coins = _pick_reward()
+        coins=coins*(100+(cycle-1)*10)//100
+        chest=None
+        if cycle==7:
+            from app.mini.weekly import grant_chest
+            chest=grant_chest(conn,player_id,day)
+        conn.execute('INSERT INTO mini_daily_streak VALUES(?,?,?) ON CONFLICT(player_id) DO UPDATE SET last_day=excluded.last_day,streak=excluded.streak',
+            (player_id,day,streak))
         encounter_key, story = _build_story(
             character_name,
             rarity,
@@ -307,16 +331,16 @@ def claim_daily(
             INSERT INTO mini_daily_claims (
                 player_id,
                 claim_date,
-                encounter_key,
+                encounter_key, streak_count, cycle_day, chest_code,
                 story_text,
                 coins_earned
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 int(player_id),
                 day,
-                encounter_key,
+                encounter_key, streak, cycle, chest,
                 story,
                 coins,
             ),
@@ -331,6 +355,7 @@ def claim_daily(
         conn.commit()
 
     return {
+        "streak": streak, "cycle_day": cycle, "chest_code": chest,
         "claimed": True,
         "claim_id": claim_id,
         "claim_date": day,

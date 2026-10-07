@@ -14,7 +14,7 @@ router=Router(name='mini_hero_selector')
 PAGE_SIZE=6
 FIELDS=('rarity','faction','class_tag','damage_type','attack_range','special_trait')
 NAMES=('Редкость','Фракция','Класс','Тип урона','Дальность','Особое свойство')
-LABELS=({'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный'},
+LABELS=({'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный','mythic':'Мифический','shadow':'Теневой'},
         FACTION_LABELS,CLASS_LABELS,DAMAGE_LABELS,RANGE_LABELS,TRAIT_LABELS)
 DIGITS='0123456789abcdefghijklmnopqrstuvwxyz'
 EMPTY='0000000'
@@ -130,6 +130,9 @@ async def selector_callback(callback):
             if n not in range(6) or v not in DIGITS or DIGITS.index(v)>len(options()[n]): raise ValueError('Фильтр устарел.')
             token=token[:n]+v+token[n+1:];view='filter'
         heroes=get_player_heroes(player['id'],sync_catalog=False)
+        if mode in ('b','t'):
+            from app.mini.availability import filter_heroes
+            heroes=filter_heroes(heroes,player['id'])
         text,markup=render_selector(heroes,get_favorites(player['id']),mode,world['id'],callback.from_user.id,value,view=view,page=page,token=token)
         if mode=='t':
             from app.mini.tower.handlers import enemy_lines

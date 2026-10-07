@@ -1,3 +1,4 @@
+import secrets
 from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
     username_from_user as _username_from_user,
@@ -76,10 +77,11 @@ def _gacha_menu(
     user_id: int,
     state: dict,
 ) -> InlineKeyboardMarkup:
+    token=secrets.token_hex(4)
     rows = [[
         InlineKeyboardButton(
             text=f"🪙 Призвать за {state['pull_price']}",
-            callback_data=f"mini:gachapull:{world_id}:{user_id}:coins",
+            callback_data=f"mini:gachapull:{world_id}:{user_id}:coins.{token}",
         )
     ]]
 
@@ -87,7 +89,7 @@ def _gacha_menu(
         rows.append([
             InlineKeyboardButton(
                 text=f"🎟 Использовать билет · {state['tickets']}",
-                callback_data=f"mini:gachapull:{world_id}:{user_id}:ticket",
+                callback_data=f"mini:gachapull:{world_id}:{user_id}:ticket.{token}",
             )
         ])
 
@@ -283,13 +285,14 @@ async def _handle_gacha_pull(
     if context is None:
         return
 
-    world, player, payment = context
+    world, player, payload = context
+    payment=payload.split('.',1)[0]
     if payment not in {"coins", "ticket"}:
         await callback.answer("Неизвестный способ призыва.", show_alert=True)
         return
 
     try:
-        result = perform_gacha_pull(player["id"], payment=payment)
+        result = perform_gacha_pull(player["id"], payment=payment, operation_key="gacha:"+payload if "." in payload else "legacy-gacha:"+callback.id)
     except (GachaInsufficientFunds, GachaNoTicket, GachaNoHeroes, GachaError) as error:
         await callback.answer(str(error), show_alert=True)
         return

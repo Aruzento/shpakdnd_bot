@@ -229,6 +229,8 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
             )
         from app.mini.migrations.v1_3_2 import boss_state
         boss_state(conn)
+        from app.mini.migrations.v1_4 import boss_state as v14_boss_state
+        v14_boss_state(conn)
         freeze_legacy_loadouts(conn)
         conn.commit()
 

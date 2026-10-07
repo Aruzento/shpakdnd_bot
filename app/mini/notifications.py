@@ -85,6 +85,8 @@ async def mini_notice_watch_loop(bot, *, interval_seconds=60):
         try:
             enqueue_expired_titles()
             await publish_pending_notifications(bot)
+            from app.mini.duels.service import expire
+            expire()
         except asyncio.CancelledError:
             raise
         except Exception as error:

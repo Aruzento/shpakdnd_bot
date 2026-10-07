@@ -17,7 +17,7 @@ def main() -> int:
         for key in missing:
             print(f"- {key}")
         return 1
-    print("OK: все passive_key из heroes.json подключены к боевому движку.")
+    print("OK: все passive_key из единого каталога героев подключены к боевому движку.")
     return 0
 
 

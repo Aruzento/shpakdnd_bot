@@ -620,6 +620,9 @@ class CombatV2CatalogTests(unittest.TestCase):
             "wild_berserker": ("beasts", "critical_strike"),
             "fallen_sun_champion": ("dark", "rapier"),
         }
+        expected.update(mister_inversion=("neutral","collapse"),flying_schoolboy=("commoners","waste_of_time"),
+            training_dummy=("neutral","training"),doppelganger=("neutral","transformation"),
+            one_punch_mob=("monsters","oneshot"),simple_village_guy=("commoners","simple"))
         bosses = load_boss_catalog()["bosses"]
         self.assertEqual({boss["code"] for boss in bosses}, set(expected))
         for boss in bosses:
@@ -636,20 +639,20 @@ class CombatV2CatalogTests(unittest.TestCase):
         ):
             broken = copy.deepcopy(data)
             broken["heroes"][0][field] = value
-            with self.subTest(field=field), patch("app.mini.catalog._read_json", return_value=broken):
+            with self.subTest(field=field), patch("app.mini.catalog._read_hero_catalog", return_value=broken):
                 with self.assertRaisesRegex(ValueError, field):
                     load_hero_catalog()
         for field in ("faction", "damage_type", "class_tag", "attack_range", "special_trait"):
             broken = copy.deepcopy(data)
             del broken["heroes"][0][field]
-            with patch("app.mini.catalog._read_json", return_value=broken):
+            with patch("app.mini.catalog._read_hero_catalog", return_value=broken):
                 from app.mini.combat.tags import LEGACY_HERO_TRAITS
                 self.assertEqual(load_hero_catalog()["heroes"][0][field], LEGACY_HERO_TRAITS[field])
 
     def test_open_string_tags_are_valid(self):
         data = load_hero_catalog()
         data["heroes"][0].update(class_tag="new_class", special_trait="new_trait")
-        with patch("app.mini.catalog._read_json", return_value=data):
+        with patch("app.mini.catalog._read_hero_catalog", return_value=data):
             self.assertEqual(load_hero_catalog()["heroes"][0]["class_tag"], "new_class")
 
     def test_boss_validation_rejects_unknown_multiple_missing_and_bad_features(self):

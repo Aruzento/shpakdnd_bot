@@ -74,9 +74,9 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 
 
 SUBMENUS={
-    'adventures': ('⚔️ Приключения', [('🔥 Босс','boss'),('🏰 Испытания','tower'),('⚔️ Ежедневный бой','daily')]),
-    'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('📚 Коллекция','collection'),('🛡 Экипировка','equipment'),('🎒 Инвентарь','inventory')]),
-    'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🎪 События','events')]),
+    'adventures': ('⚔️ Приключения', [('🔥 Босс','boss'),('🏰 Испытания','tower'),('⚔️ Ежедневный бой','daily'),('⚔️ Дуэли','duels')]),
+    'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('📚 Коллекция','collection'),('🛡 Экипировка','equipment'),('🎒 Инвентарь','inventory'),('✨ Мифические герои','mythic')]),
+    'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🏘 Моя деревня','village')]),
     'more': ('📖 Ещё', [('📖 Правила','rules'),('🔄 Обновить','home')]),
 }
 
@@ -514,3 +514,10 @@ from app.mini.tower.handlers import router as tower_router
 from app.mini.equipment.handlers import router as equipment_router
 router.include_router(tower_router)
 router.include_router(equipment_router)
+
+from app.mini.village.handlers import router as village_router
+from app.mini.duels.handlers import router as duels_router
+from app.mini.mythic.handlers import router as mythic_router
+router.include_router(village_router)
+router.include_router(duels_router)
+router.include_router(mythic_router)

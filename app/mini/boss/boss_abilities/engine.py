@@ -19,6 +19,19 @@ def _state(boss: dict) -> dict:
     state = json.loads(boss.get("ability_state_json") or "{}")
     if not isinstance(state, dict):
         raise ValueError("Boss ability_state_json must be an object.")
+    if 'grave_seal' in state and type(state['grave_seal']) is not bool:
+        raise ValueError('Invalid grave_seal state.')
+    if "form" in state:
+        form=state["form"]
+        if not isinstance(form,dict) or set(form)!={"faction","special_trait","passive_key"}:
+            raise ValueError("Invalid transformation form state.")
+        if not all(isinstance(value,str) for value in form.values()):
+            raise ValueError("Invalid transformation form value types.")
+        from app.mini.combat.tags import is_open_tag
+        from app.mini.combat.hero_abilities.catalog import configured_ability_keys
+        from app.mini.combat.matchups import FACTIONS
+        if form["faction"] not in FACTIONS or not is_open_tag(form["special_trait"]) or form["passive_key"] not in configured_ability_keys():
+            raise ValueError("Invalid transformation form values.")
     return state
 
 
@@ -142,10 +155,28 @@ def boss_turn(boss: dict, participants: list[dict], *, roller=None, chooser=None
         "reward_attacks": 1, "ignore_shields": False,
         "participant_changes": [], "events": [],
     }
+    if boss["ability_key"] == "transformation" and state.get("form"):
+        from app.mini.combat.hero_abilities.engine import resolve_attack
+        copied=resolve_attack(state["form"]["passive_key"],base_damage=int(boss["reward_decay_percent"]),
+            hit_number=state["boss_turns"],boss_hp_before=100,boss_max_hp=100,roller=roller or _roll_success)
+        result["reward_attacks"] += copied["extra_attacks"]
+        result["copied_decay_percent"]=min(100,copied["damage"])
+        extra_percent=copied.get('extra_attack_percent',100)
+        result['attack_decay_percents']=[result['copied_decay_percent']]+[
+            int(boss['reward_decay_percent'])*extra_percent//100
+        ]*copied['extra_attacks']
+        if copied["boss_skip_turns"] and active:
+            target=(chooser or _choose_participant)(active)
+            result["participant_changes"].append({"player_id":target["player_id"],
+                "forced_skip_turns":int(target.get("forced_skip_turns",0))+copied["boss_skip_turns"]})
+        result["events"].extend(copied["events"])
     hook = _TURN_HOOKS.get(boss["ability_key"])
+    if hook and boss["ability_key"] != "training" and state.pop("grave_seal", False):
+        hook = None
+        result["events"].append(_event("grave_seal", message="⚰️ Гробовая печать подавила активную способность."))
     if hook and not (attack_missed and boss["ability_key"] in {"critical_strike", "rapier"}):
         hook(boss, active, state, config, roller or _roll_success, chooser or _choose_participant, result)
-    result["boss_changes"] = {"ability_state_json": json.dumps(state)}
+    result.setdefault("boss_changes", {}).update(ability_state_json=json.dumps(state))
     return result
 
 
@@ -163,8 +194,19 @@ def _hydra_after_turn(boss, config):
 _AFTER_TURN_HOOKS = {"hydra_regeneration": _hydra_after_turn}
 
 
-def after_boss_turn(boss: dict) -> dict:
+def after_boss_turn(boss: dict, participants=None, *, chooser=None) -> dict:
     config = _config(boss)
+    state = _state(boss)
+    if state.get("grave_seal", False) and boss["ability_key"] in {*_AFTER_TURN_HOOKS, "transformation"}:
+        state.pop("grave_seal")
+        return {"boss_changes": {"ability_state_json": json.dumps(state)},
+                "events": [_event("grave_seal", message="⚰️ Гробовая печать подавила активную способность.")]}
+    if boss["ability_key"] == "transformation":
+        result = {"boss_changes": {}, "events": []}
+        _transformation_turn(boss, participants or [], state, config, _roll_success,
+                             chooser or _choose_participant, result)
+        result["boss_changes"]["ability_state_json"] = json.dumps(state)
+        return result
     hook = _AFTER_TURN_HOOKS.get(boss["ability_key"])
     return hook(boss, config) if hook else {"boss_changes": {}, "events": []}
 
@@ -187,3 +229,51 @@ def boss_death(boss: dict) -> dict:
     return hook(boss) if hook else {
         "destroyed_reward": False, "boss_changes": {}, "events": [],
     }
+
+
+def final_hero_damage(boss, hero, damage, *, base_attack, raw_damage=None):
+    """Final HP overrides: true zero and healing never pass a min-one helper."""
+    key = boss.get("ability_key", "none")
+    value = max(0, int(damage))
+    raw = value if raw_damage is None else max(0, int(raw_damage))
+    healed = 0
+    events = []
+    if key == "collapse":
+        rarity = hero.get("rarity", "common")
+        if rarity == "common": value = raw + 100
+        elif rarity == "uncommon": value = raw + 50
+        elif rarity == "rare": value = raw * 25 // 100
+        elif rarity == "legendary": value = raw // 100
+        elif rarity == "shadow": value = 0
+        elif rarity == "mythic":
+            value = 0
+            healed = min(raw, max(0, int(boss["max_hp"])-int(boss["current_hp"])))
+            events.append(_event("collapse_heal", healed_hp=healed, message=f"💚 Инверсия восстановила {healed} HP."))
+    elif key == "waste_of_time" and hero.get("rarity") in {"rare", "legendary", "mythic"}:
+        value = 0
+    elif key == "training":
+        value = 1
+    elif key == "simple":
+        value = raw
+    return {"damage": value, "healed_hp": healed, "boss_changes": {}, "events": events}
+
+
+def _training_turn(boss, participants, state, config, roller, chooser, result):
+    result["reward_attacks"] = 0
+
+
+def _transformation_turn(boss, participants, state, config, roller, chooser, result):
+    """The new form replaces the old; only an actual attacker can supply it."""
+    attacked = [p for p in participants if int(p.get("hit_count",0)) > 0]
+    if not attacked:
+        return
+    chosen = chooser(attacked)
+    hero = json.loads(chosen["hero_snapshot_json"])
+    form = {field: hero.get(field, default) for field, default in (
+        ("faction","commoners"), ("special_trait","none"), ("passive_key","none"))}
+    state["form"] = form
+    result.setdefault("boss_changes", {}).update(faction=form["faction"])
+    result["events"].append(_event("transformation", form=form, message="🎭 Дуппельгангер принял новую форму."))
+
+
+_TURN_HOOKS.update(training=_training_turn)

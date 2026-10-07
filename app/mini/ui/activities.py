@@ -90,8 +90,15 @@ async def daily_callback(callback: CallbackQuery):
             f"+{result['coins_earned']}"
         )
 
+    streak=result.get('streak',1)
+    days=('день' if streak%10==1 and streak%100!=11 else
+          'дня' if streak%10 in (2,3,4) and streak%100 not in (12,13,14) else 'дней')
+    streak_line = (f"🔥 Серия: {streak} {days}\n"
+        f"📅 День цикла: {result.get('cycle_day',1)}/7\n"
+        f"🪙 Бонус: +{(result.get('cycle_day',1)-1)*10}%\n")
+    if result.get('chest_code'): streak_line += "📦 Недельный сундук получен: проверь инвентарь.\n"
     text = (
-        f"{prefix}\n\n"
+        f"{prefix}\n\n{streak_line}\n"
         f"{result['story_text']}"
         f"{rare_line}"
         f"{reward_line}\n"

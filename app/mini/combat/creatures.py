@@ -21,7 +21,10 @@ def features(boss: dict) -> frozenset[str]:
     if not rules_enabled(boss):
         return frozenset()
     raw = boss.get("features_json", "[]")
-    values = json.loads(raw) if isinstance(raw, str) else raw
+    values = json.loads(raw) if isinstance(raw, str) else list(raw)
+    if boss.get("ability_key") == "transformation":
+        form=json.loads(boss.get("ability_state_json") or "{}").get("form",{})
+        values=[*values,form.get("special_trait","none")]
     return frozenset(canonical_trait(value) for value in values if canonical_trait(value) in CREATURE_TRAITS - {"none"})
 
 def state(boss: dict) -> dict:

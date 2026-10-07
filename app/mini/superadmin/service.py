@@ -78,6 +78,10 @@ def _hero(conn,player,value,deleting):
             AND CASE WHEN b.status IN ('announced','ready') THEN ? ELSE bp.hero_id END=?""",
             (player['id'],player['active_hero_id'],hero['id'])).fetchone()
         if busy: raise ValueError("Герой используется активным Boss battle.")
+    from app.mini.availability import assert_available, assert_not_committed
+    from app.mini.village.service import timestamp
+    assert_available(conn,player['id'],hero['id'])
+    assert_not_committed(conn,player['id'],hero['id'],now=timestamp())
     conn.execute("DELETE FROM mini_player_heroes WHERE player_id=? AND hero_id=?",(player['id'],hero['id']))
     if player['active_hero_id']==hero['id']:
         conn.execute("""UPDATE mini_players SET active_hero_id=(SELECT MIN(hero_id) FROM mini_player_heroes WHERE player_id=?)

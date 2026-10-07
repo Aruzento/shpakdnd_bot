@@ -73,7 +73,7 @@ def resolve_turn(attempt, *, roller=None):
         won = death() if primary_killed else False
         for _ in range(attack["extra_attacks"] if reachable and not primary_killed else 0):
             # Extra hits use the snapshotted account attack without retriggering passives.
-            extra_hit = damage(creatures.feature_damage(enemy,hero,modify_damage(hero["attack"]+attempt["equipment_bonus"],percent)),"extra_attack")
+            extra_hit = damage(creatures.feature_damage(enemy,hero,modify_damage(max(1,(hero["attack"]+attempt["equipment_bonus"])*attack.get("extra_attack_percent",100)//100),percent)),"extra_attack")
             apply(creatures.on_hit(enemy,hero,successful=extra_hit>0,roller=roller))
             won = death() if enemy["current_hp"] == 0 else False
             if won: break
@@ -93,8 +93,12 @@ def resolve_turn(attempt, *, roller=None):
                 proc = abilities.resolve_boss_attack(passive,roller=roller)
                 runtime["bonus_shards"] = runtime.get("bonus_shards",0)+proc["bonus_shards"]
                 events.extend(proc["events"])
+                defense = abilities.resolve_reward_defense(passive, state=hero_state, shields=enemy["reward_shields"], roller=roller)
+                hero_state = defense["state"]
                 guard = hero_state.get("reward_guard_charges",0)
-                if guard:
+                if defense["blocked"]:
+                    events.append({"type":defense["type"],"message":"🛡 Атака поглощена."})
+                elif guard:
                     hero_state["reward_guard_charges"] = guard-1
                     events.append({"type":"guard","message":"🛡 Защитный заряд поглотил ответную атаку."})
                 else:

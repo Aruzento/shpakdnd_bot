@@ -1,5 +1,5 @@
 from app.mini.effects.contracts import EffectDefinition
-from app.mini.effects.builtins import coin_pouch, shard_casket, charged_effect
+from app.mini.effects.builtins import coin_pouch, shard_casket, charged_effect, village_boost, equipment_chest
 
 EFFECT_GACHA_TICKET = "gacha_ticket"
 
@@ -41,6 +41,9 @@ def validate_effect_key(key: str, *, allow_empty: bool = True) -> None:
 
 
 for definition in (
+    EffectDefinition('village_gold_boost','Рынок +25% на 8 часов; повтор продлевает срок.',village_boost,''),
+    EffectDefinition('village_shards_boost','Шахта +25% на 8 часов; повтор продлевает срок.',village_boost,''),
+    EffectDefinition('tower_equipment_chest','Случайная экипировка Испытаний.',equipment_chest,''),
     EffectDefinition(EFFECT_GACHA_TICKET, 'Одна крутка героя без монет.', None, ''),
     EffectDefinition(EFFECT_GACHA_LUCK, 'Следующая крутка получает усиленные веса редкостей: легендарные +10%, редкие +30%.', charged_effect, '🍀 Удача — следующая крутка'),
     EffectDefinition(EFFECT_BOSS_DAMAGE, 'Следующий бой с боссом: весь твой итоговый урон после пассивки героя +10%.', charged_effect, '🧪 Урон +10% — следующий бой'),

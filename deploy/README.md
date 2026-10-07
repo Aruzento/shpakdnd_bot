@@ -1,4 +1,4 @@
-# Production release deployment V1.3.3
+# Production release deployment V1.4
 
 Интерактивная команда `sudo deploy-shpakdnd`: установка, dry run, backup, проверки и rollback
 описаны в [docs/deployment.md](../docs/deployment.md). Она отдельна от filesystem watcher ниже.

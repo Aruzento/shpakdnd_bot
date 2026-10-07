@@ -12,6 +12,8 @@ DEFAULT_MAX_STARS = {
     "uncommon": 5,
     "rare": 6,
     "legendary": None,
+    "shadow": None,
+    "mythic": None,
 }
 
 DEFAULT_COST_MULTIPLIER = {
@@ -19,6 +21,8 @@ DEFAULT_COST_MULTIPLIER = {
     "uncommon": 2,
     "rare": 4,
     "legendary": 10,
+    "shadow": 10,
+    "mythic": 10,
 }
 
 
@@ -192,6 +196,9 @@ def upgrade_hero(
             conn.rollback()
             raise HeroUpgradeMaxStars("У героя уже максимальное количество звёзд.")
 
+        if conn.execute('SELECT 1 FROM mini_villages WHERE player_id=?',(player_id,)).fetchone():
+            from app.mini.village.service import settle, timestamp
+            settle(conn,player_id,timestamp())
         target_star = stars + 1
         cost = _upgrade_cost_from_settings(settings, rarity, target_star)
 

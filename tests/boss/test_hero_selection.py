@@ -52,6 +52,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
             patch("app.mini.boss.selection.get_boss", return_value=self.boss),
             patch("app.mini.boss.selection.list_participants", return_value=[{"player_id": 10}]),
             patch("app.mini.boss.selection.get_favorites", return_value=[]),
+            patch("app.mini.availability.filter_heroes", side_effect=lambda heroes, player_id: heroes),
         ]
         for mock_patch in patches:
             mock_patch.start()
@@ -60,7 +61,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_selector_sends_ephemeral_to_callback_owner(self):
         with patch("app.mini.boss.selection.get_player_heroes", return_value=[{"id": 9, "name": "Hero", "rarity": "rare"}]) as heroes:
             await boss_heroes_callback(self.callback)
-        heroes.assert_called_once_with(10)
+        heroes.assert_called_once_with(10, sync_catalog=False)
         sent = self.callback.bot.send_message.call_args.kwargs
         params = sent["ephemeral_message_parameters"]
         self.assertEqual(params.receiver_user_id, 101)

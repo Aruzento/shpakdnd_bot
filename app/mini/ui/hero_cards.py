@@ -1,3 +1,4 @@
+import secrets
 
 from app.mini.ui.transport import (
     replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs,
@@ -29,7 +30,7 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
     ]
 
     if full:
-        rarity={'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный'}.get(hero.get('rarity'),'Неизвестная редкость')
+        rarity={'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный','mythic':'Мифический','shadow':'Теневой'}.get(hero.get('rarity'),'Неизвестная редкость')
         upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
         lines += ['', f"Редкость: {rarity}", f"Копий: {hero.get('copies',1)} · Осколки: {hero.get('shards',0)}",
                   '⭐ Максимум звёзд' if upgrade['at_max'] else f"Улучшение до ★{upgrade['next_star']}: {upgrade['upgrade_cost']} осколков"]
@@ -79,6 +80,7 @@ def hero_card_menu(
     collection: bool = False,
     favorite: bool = False,
 ) -> InlineKeyboardMarkup:
+    token=secrets.token_hex(4)
     rows = []
     upgrade = hero.get("upgrade") or hero_upgrade_state(hero)
 
@@ -102,9 +104,9 @@ def hero_card_menu(
             text='☆ Убрать из избранного' if favorite else '⭐ Сделать избранным',
             callback_data=f"mini:favorite:{world_id}:{user_id}:{'remove' if favorite else 'add'}.{hero['id']}")])
     else:
-        rows.append([InlineKeyboardButton(text=f"🪙 Ещё призыв · {state['pull_price']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:coins')])
+        rows.append([InlineKeyboardButton(text=f"🪙 Ещё призыв · {state['pull_price']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:coins.{token}')])
         if int(state.get('tickets',0))>0:
-            rows.append([InlineKeyboardButton(text=f"🎟 Билет · {state['tickets']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:ticket')])
+            rows.append([InlineKeyboardButton(text=f"🎟 Билет · {state['tickets']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:ticket.{token}')])
 
     if allow_share:
         rows.append([

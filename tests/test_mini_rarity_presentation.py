@@ -60,7 +60,7 @@ class GachaResultRouteTests(unittest.IsolatedAsyncioTestCase):
                 for duplicate in (False, True):
                     with self.subTest(handler=handler.__name__, payment=payment, duplicate=duplicate):
                         callback = SimpleNamespace(
-                            from_user=SimpleNamespace(id=3), answer=AsyncMock(),
+                            id="legacy-button", from_user=SimpleNamespace(id=3), answer=AsyncMock(),
                         )
                         pull = result(duplicate, payment == "ticket")
                         with (
@@ -72,7 +72,7 @@ class GachaResultRouteTests(unittest.IsolatedAsyncioTestCase):
                             patch("app.mini.ui.hero_cards.send_hero_card", new_callable=AsyncMock) as send,
                         ):
                             await handler(callback)
-                        service.assert_called_once_with(2, payment=payment)
+                        service.assert_called_once_with(2, payment=payment, operation_key="legacy-gacha:legacy-button")
                         send.assert_awaited_once()
                         heading = send.call_args.args[3].splitlines()[0]
                         self.assertTrue(heading.startswith("🟣 Герой • "))

@@ -1,4 +1,4 @@
-# Архитектура V1.3.1
+# Архитектура V1.4
 
 ## Точки входа и зависимости
 
@@ -14,7 +14,7 @@ Path unit дополнен всеми вложенными module/catalog direct
 
 ```mermaid
 flowchart TD
-  Telegram[Telegram callbacks / commands] --> UI[Mini / Events / Boss handlers]
+  Telegram[Telegram callbacks / commands] --> UI[Mini / Village / Duel / Boss handlers]
   UI --> SharedUI[ui.context / ui.transport / hero_cards]
   UI --> Services[Feature services / Boss combat use cases]
   Services --> Domain[combat.tags / matchups / hero_abilities]
@@ -37,7 +37,7 @@ shields остаются в Boss.
 ## Telegram UI
 
 - `ui/context.py`: callback build/parse, owner/world/player checks, player touch.
-  Shop context сохраняет прежнюю семантику без touch. Events дополнительно
+  Shop context сохраняет прежнюю семантику без touch. Legacy Events дополнительно
   проверяет chat/topic; публичные Boss callbacks используют identity нажатия.
 - `ui/transport.py`: callback parameters, send-new-then-delete-old, launcher
   send и fallback редактирования старого публичного меню. Ошибка/неопределённый
@@ -168,3 +168,9 @@ username/permissions. `/supertitle` использует обычные прав
 перед Telegram отправкой. Pending восстанавливаются на первом проходе watcher;
 confirmed rejection допускает retry, uncertain send не повторяется автоматически.
 Подробности и граница гарантий доставки: [V1.3.1](V1.3.1.md).
+
+## Расширение V1.4
+
+Текущие контракты деревни, дуэлей, Shadow, Mythic, daily streak и миграций
+описаны в [V1.4](V1.4.md). Старые описания Events ниже исторические:
+модуль и routers удалены, таблицы сохраняются для совместимости сохранений.

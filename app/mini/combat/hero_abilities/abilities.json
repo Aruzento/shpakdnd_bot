@@ -237,6 +237,87 @@
           "extra_message": "💥 Кровавое безумие: дополнительная атака — {damage} урона"
         }
       ]
+    },
+    "arise_common": {
+      "name": "Arise",
+      "effects": [
+        {
+          "trigger": "victory",
+          "type": "shadow_extraction",
+          "chance_percent": 1,
+          "message": "Arise"
+        }
+      ]
+    },
+    "arise_uncommon": {
+      "name": "Arise",
+      "effects": [
+        {
+          "trigger": "victory",
+          "type": "shadow_extraction",
+          "chance_percent": 5,
+          "message": "Arise"
+        }
+      ]
+    },
+    "bone_decoy": {
+      "name": "Костяная приманка",
+      "effects": [
+        {
+          "trigger": "after_attack",
+          "type": "every_n_decoy",
+          "every": 4,
+          "chance_percent": 25,
+          "message": "Костяная приманка"
+        }
+      ]
+    },
+    "last_watch": {
+      "name": "Последняя вахта",
+      "effects": [
+        {
+          "trigger": "boss_attack",
+          "type": "save_shield",
+          "chance_percent": 35,
+          "message": "Последняя вахта"
+        }
+      ]
+    },
+    "grave_seal": {
+      "name": "Гробовая печать",
+      "effects": [
+        {
+          "trigger": "after_attack",
+          "type": "every_n_seal",
+          "every": 4,
+          "message": "Гробовая печать"
+        }
+      ]
+    },
+    "bitter": {
+      "name": "Дополнительный урон",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_max_hp_damage",
+          "every": 2,
+          "damage_percent": 5,
+          "message": "Дополнительный урон"
+        }
+      ]
+    },
+    "thawing_frenzy": {
+      "name": "Талая ярость",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_extra_hits",
+          "every": 3,
+          "extra_attacks": 2,
+          "damage_percent": 50,
+          "message": "Талая ярость"
+        }
+      ]
     }
   }
 }

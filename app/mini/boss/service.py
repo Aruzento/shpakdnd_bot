@@ -143,6 +143,8 @@ def create_boss_event(
              json.dumps(template["features"], ensure_ascii=False),
              json.dumps(template.get("ability_config", {})), boss_id),
         )
+        conn.execute("UPDATE mini_bosses SET content_version=14, shadow_extractable=?, shadow_hero_code=? WHERE id=?",
+            (int(template.get("shadow_extractable", True)), template.get("shadow_hero_code"), boss_id))
         conn.commit()
 
     boss = get_boss(boss_id, db_path)
@@ -268,6 +270,11 @@ def register_player(
             conn.rollback()
             raise BossError("Сначала выбери активного героя в коллекции.")
 
+        from app.mini.availability import assert_available
+        try:
+            assert_available(conn, player_id, player["active_hero_id"])
+        except ValueError as error:
+            raise BossError(str(error)) from error
         existing = conn.execute(
             """
             SELECT queue_position
@@ -504,6 +511,8 @@ def select_battle_hero(
         if participant["status"] not in ("announced", "ready"):
             raise BossRegistrationClosed("Героя можно выбрать только до начала боя.")
         try:
+            from app.mini.availability import assert_available
+            assert_available(conn, player_id, hero_id)
             return set_active_hero_in_transaction(conn, player_id, hero_id)
         except ValueError as error:
             raise BossError(str(error)) from error

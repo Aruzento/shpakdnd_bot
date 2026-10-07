@@ -69,7 +69,7 @@ class NotificationTests(MiniCase,unittest.IsolatedAsyncioTestCase):
         bot=self.bot();await publish_pending_notifications(bot,self.db);bot.send_message.assert_not_awaited()
 
     async def test_watcher_runs_recovery_pass_immediately(self):
-        with patch('app.mini.notifications.enqueue_expired_titles') as expire,patch('app.mini.notifications.publish_pending_notifications',AsyncMock()) as publish,patch('app.mini.notifications.asyncio.sleep',AsyncMock(side_effect=asyncio.CancelledError)):
+        with patch('app.mini.duels.service.expire'),patch('app.mini.notifications.enqueue_expired_titles') as expire,patch('app.mini.notifications.publish_pending_notifications',AsyncMock()) as publish,patch('app.mini.notifications.asyncio.sleep',AsyncMock(side_effect=asyncio.CancelledError)):
             with self.assertRaises(asyncio.CancelledError):await mini_notice_watch_loop(self.bot())
         expire.assert_called_once();publish.assert_awaited_once()
 

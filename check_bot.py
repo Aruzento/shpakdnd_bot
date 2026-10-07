@@ -24,6 +24,8 @@ def main():
     init_boss_db()
     load_tower_catalog()
     load_tower_balance()
+    from app.mini.village.balance import load_balance as load_village_balance
+    load_village_balance()
     equipment_count = sync_equipment_catalog()
     with connect_mini_db() as conn:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -43,7 +45,7 @@ def main():
     for world in worlds:
         sync_shop_catalog(world["id"])
 
-    print(f"OK: V1.3.3 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
+    print(f"OK: V1.4 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
     print("OK: Python-модули импортированы")
     print(f"OK: база данных: {DB_PATH}")
     print(f"OK: часовой пояс: {TIMEZONE_NAME}")

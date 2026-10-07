@@ -76,6 +76,11 @@ def start_battle(
             raise BossCombatError("Недостаточно участников для старта боя.")
 
         for row in participants:
+            from app.mini.availability import assert_available
+            try:
+                assert_available(conn, row["player_id"], row["selected_hero_id"])
+            except ValueError as error:
+                raise BossCombatError(str(error)) from error
             if row["selected_hero_id"] is None or row["base_attack"] is None or row["stars"] is None:
                 conn.rollback()
                 raise BossCombatError(
@@ -357,6 +362,12 @@ def hit_boss(
         )
         if not calculation["reachable"]:
             after_attack = {"state": hero_abilities.hero_state(participant["hero_state_json"]), "events": []}
+        if after_attack["state"].pop("grave_seal", False):
+            fresh = refresh_boss(conn, int(boss_id))
+            import json
+            seal_state = json.loads(fresh["ability_state_json"] or "{}")
+            seal_state["grave_seal"] = True
+            apply_boss_effects(conn, fresh, {"boss_changes": {"ability_state_json": json.dumps(seal_state)}}, now)
         fresh=refresh_boss(conn,int(boss_id))
         class_plan=classes.on_hit(dict(fresh),hero,after_attack['state'],successful=damage>0)
         save_hero_state(conn,int(boss_id),int(player_id),class_plan['state'])
@@ -375,7 +386,7 @@ def hit_boss(
         if not primary_killed:
             for _ in range(attack_resolution["extra_attacks"]):
                 extra = extra_attack(conn, refresh_boss(conn, int(boss_id)), participant, hero, now,
-                                      attack_resolution["extra_attack_message"])
+                                      attack_resolution["extra_attack_message"], damage_percent=attack_resolution.get("extra_attack_percent", 100))
                 extra_damage += extra["damage"]
                 passive_events.append(extra["event"])
                 boss_events.extend(extra["boss_events"])

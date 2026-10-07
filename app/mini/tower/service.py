@@ -18,7 +18,7 @@ def get_state(player_id,db_path=DB_PATH):
         best=repo.progress(conn,player_id)
         return {"highest_cleared":best,"floor":get_floor(best+1) if best<200 else None,
                 "completed":best==200,"attempt":repo.active_attempt(conn,player_id),
-                "selected_hero":_enrich(repo.selected_hero(conn,player_id)),
+                "selected_hero":_available_selection(conn,player_id),
                 "equipment_bonus":aggregate_in_transaction(conn,player_id)}
 
 
@@ -31,7 +31,8 @@ def list_heroes(player_id,db_path=DB_PATH):
     for hero in result:
         hero["base_attack"]=hero["attack"]
         hero["attack"]=calculate_attack(hero["attack"],hero["stars"])
-    return result
+    from app.mini.availability import filter_heroes
+    return filter_heroes(result, player_id, db_path)
 
 
 def _enrich(hero):
@@ -51,6 +52,8 @@ def select_hero(player_id,hero_id,db_path=DB_PATH,*,expected_floor=None):
         row=conn.execute("""SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
             WHERE ph.player_id=? AND ph.hero_id=?""",(player_id,hero_id)).fetchone()
         if not row:raise ValueError('Этот герой больше недоступен в коллекции.')
+        from app.mini.availability import assert_available
+        assert_available(conn,player_id,hero_id)
         repo.save_selection(conn,player_id,hero_id)
         return _enrich(dict(row))
 
@@ -77,6 +80,8 @@ def start_attempt(player_id,hero_id,expected_floor,db_path=DB_PATH,*,require_sel
             (player_id,hero_id)).fetchone()
         if row is None:
             raise ValueError("Этого героя нет в твоей коллекции.")
+        from app.mini.availability import assert_available
+        assert_available(conn,player_id,hero_id)
         hero=dict(row);hero["base_attack"]=hero["attack"]
         hero["attack"]=calculate_attack(hero["attack"],hero["stars"])
         return repo.create_attempt(conn,player_id,hero,get_floor(best+1),aggregate_in_transaction(conn,player_id))
@@ -120,3 +125,12 @@ def attack(player_id,attempt_id,expected_turn,db_path=DB_PATH,*,roller=None,choo
         attempt.update(result)
         reward=grant_reward(conn,attempt,chooser=chooser) if result["status"]=="won" else None
         return {"attempt":attempt,"reward":reward}
+
+
+def _available_selection(conn,player_id):
+    from app.mini.availability import assert_available
+    hero=repo.selected_hero(conn,player_id)
+    if hero:
+        try: assert_available(conn,player_id,hero['id'])
+        except ValueError: return None
+    return _enrich(hero)

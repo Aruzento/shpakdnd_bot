@@ -154,7 +154,7 @@ def _use_item_confirm_menu(
                 InlineKeyboardButton(
                     text="✅ Использовать",
                     callback_data=(
-                        f"mini:useconfirm:{world_id}:{user_id}:{kind},{value}"
+                        f"mini:useconfirm:{world_id}:{user_id}:{kind},{value},{__import__('secrets').token_hex(4)}"
                     ),
                 )
             ],
@@ -327,7 +327,9 @@ async def use_item_confirm_callback(callback: CallbackQuery):
 
     world, player, payload = context
     try:
-        kind, value_text = payload.split(",", 1)
+        parts = payload.split(",")
+        kind, value_text = parts[:2]
+        operation_key = "itemuse:" + payload if len(parts)==3 else callback.id
         value = int(value_text)
     except (ValueError, IndexError):
         await callback.answer("Некорректный предмет.", show_alert=True)
@@ -393,7 +395,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
 
     if item.get("effect_key") == EFFECT_GACHA_TICKET:
         try:
-            result = perform_gacha_pull(player["id"], payment="ticket")
+            result = perform_gacha_pull(player["id"], payment="ticket", operation_key=operation_key)
         except (GachaNoTicket, GachaNoHeroes, GachaError) as error:
             await callback.answer(str(error), show_alert=True)
             return
@@ -404,7 +406,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
         result = use_inventory_item(
             player["id"],
             value,
-            operation_key=callback.id,
+            operation_key=operation_key,
         )
     except ItemUseError as error:
         await callback.answer(str(error), show_alert=True)
@@ -439,6 +441,10 @@ async def use_item_confirm_callback(callback: CallbackQuery):
             "В следующем бою ты сохранишь право на награду, даже "
             "если не нанесёшь ни одного удара."
         )
+    elif effect_key in ('village_gold_boost','village_shards_boost'):
+        text = "🏘 Производство усилено на 25%. Срок действия увеличен на 8 часов."
+    elif effect_key == 'tower_equipment_chest':
+        text = "🛡 Сундук открыт: новая экипировка доступна в меню «Экипировка»."
     else:
         text = "✅ Предмет использован."
 

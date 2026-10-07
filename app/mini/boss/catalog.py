@@ -105,6 +105,7 @@ def load_boss_catalog() -> dict:
         boss.setdefault("ability_key", "none")
         boss.setdefault("ability_text", "Нет особой способности.")
         boss.setdefault("features", [])
+        boss.setdefault("shadow_extractable", True)
         code = str(boss.get("code", "")).strip()
         name = str(boss.get("name", "")).strip()
         # Explicit migration of the verified shipped legacy template.
@@ -149,6 +150,11 @@ def load_boss_catalog() -> dict:
             raise BossCatalogError(f"Boss {code}: features must be a list of string tags.")
         if boss["ability_key"] == "mechanism" and "construct" in boss["features"]:
             raise BossCatalogError(f"Boss {code}: mechanism + construct requires explicit content migration.")
+        if type(boss["shadow_extractable"]) is not bool:
+            raise BossCatalogError(f"Boss {code}: shadow_extractable must be boolean.")
+        counterpart = boss.get("shadow_hero_code")
+        if counterpart is not None and (not isinstance(counterpart,str) or not counterpart.strip()):
+            raise BossCatalogError(f"Boss {code}: invalid shadow_hero_code.")
         boss["reward_items"] = _validate_reward_items(
             boss.get("reward_items", []), known_items, code
         )

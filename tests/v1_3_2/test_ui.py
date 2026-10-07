@@ -96,9 +96,9 @@ class SelectorViewTests(unittest.TestCase):
         self.assertEqual(summon.callback_data,'mini:gacha:1:42')
 
     def test_submenu_entries_and_back_no_old_upgrades(self):
-        expected={'adventures':['🔥 Босс','🏰 Испытания','⚔️ Ежедневный бой'],
-            'heroarea':['👤 Профиль','📚 Коллекция','🛡 Экипировка','🎒 Инвентарь'],
-            'fair':['🛒 Магазин','🎪 События'],'more':['📖 Правила','🔄 Обновить']}
+        expected={'adventures':['🔥 Босс','🏰 Испытания','⚔️ Ежедневный бой','⚔️ Дуэли'],
+            'heroarea':['👤 Профиль','📚 Коллекция','🛡 Экипировка','🎒 Инвентарь','✨ Мифические герои'],
+            'fair':['🛒 Магазин','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить']}
         for action,labels in expected.items():
             _,markup=submenu(action,1,42)
             self.assertEqual([b.text for b in buttons(markup)],labels+['⬅️ Назад'])

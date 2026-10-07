@@ -156,7 +156,7 @@ def start_participants(conn, boss_id: int):
             bp.queue_position,
             p.active_hero_id AS selected_hero_id,
             h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
-            h.passive_key, h.passive_text,
+            h.passive_key, h.passive_text, h.rarity, h.code,
             h.attack AS base_attack,
             ph.stars
         FROM mini_boss_participants bp
@@ -172,6 +172,14 @@ def start_participants(conn, boss_id: int):
 
 
 def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion):
+    from app.mini.catalog import load_hero_catalog
+    row = dict(row)
+    source = next((h for h in load_hero_catalog()["heroes"] if h["code"] == row["code"]), {})
+    snapshot = {field: row[field] for field in (
+        "faction", "damage_type", "class_tag", "attack_range", "special_trait",
+        "passive_key", "passive_text", "rarity", "code")}
+    if "arise_chance_percent" in source:
+        snapshot["arise_chance_percent"] = source["arise_chance_percent"]
     conn.execute(
         """
         UPDATE mini_boss_participants
@@ -184,10 +192,7 @@ def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion
         (
             int(row["selected_hero_id"]),
             max(1, attack),
-            json.dumps({field: row[field] for field in (
-                "faction", "damage_type", "class_tag", "attack_range", "special_trait",
-                "passive_key", "passive_text",
-            )}, ensure_ascii=False),
+            json.dumps(snapshot, ensure_ascii=False),
             10 if damage_potion else 0,
             1 if phantom_potion else 0,
             int(boss_id),
@@ -324,3 +329,10 @@ def active_loadouts(conn, boss_id: int) -> list[dict]:
         "SELECT * FROM mini_boss_participants WHERE boss_id = ? AND banished = 0 ORDER BY queue_position",
         (boss_id,),
     ).fetchall()]
+
+
+def transformation_candidates(conn, boss_id):
+    """An already banished real attacker remains a valid source of a form."""
+    return [dict(row) for row in conn.execute(
+        'SELECT * FROM mini_boss_participants WHERE boss_id=? AND hit_count>0 ORDER BY queue_position',
+        (boss_id,))]

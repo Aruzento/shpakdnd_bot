@@ -13,7 +13,7 @@ class ReleaseUIContractTests(unittest.TestCase):
     def test_rules_main_menu_all_sections_and_back(self):
         self.assertTrue(RULES_TEXT.startswith('📖 D&D Mini — как играть'))
         buttons=[b for row in rules_menu(1,20).inline_keyboard for b in row]
-        self.assertEqual([b.text for b in buttons[:-1]],['🚀 Быстрый старт','🎴 Герои и гача','👹 Боссы','🔄 Фракции и особенности','🏰 Испытания','🛡 Экипировка','💰 Монеты и осколки','🎪 События'])
+        self.assertEqual([b.text for b in buttons[:-1]],['🚀 Быстрый старт','🎴 Герои и гача','👹 Боссы','🔄 Фракции и особенности','🏰 Испытания','🛡 Экипировка','💰 Монеты и осколки','🏘 Моя деревня','⚔️ Дуэли','🔥 Серия приключений'])
         self.assertEqual(buttons[-1].callback_data,'mini:more:1:20')
         for key in SECTIONS:
             self.assertTrue(any(b.callback_data==f'mini:rulespage:1:20:{key}' for b in buttons))

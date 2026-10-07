@@ -8,7 +8,7 @@ Production: `/opt/shpakdnd-bot`, пользователь `shpakbot`, Python
 `shpakdnd-bot-update.service`. Watcher вызывает прежний маленький
 `update-shpakdnd-bot.sh`; release manager его не заменяет.
 
-После получения V1.3.3 один раз установить tooling:
+После получения V1.4 один раз установить tooling:
 
 ```bash
 cd /opt/shpakdnd-bot
@@ -87,7 +87,8 @@ Telegram не печатаются: они могут содержать ток�
 `check_bot.py` вызывает тот же `init_db` / `init_mini_db` / `init_boss_db`, что
 production startup; каталог и схема проходят обычные validators. Отдельного
 migration engine в shell нет. DB_PATH проверяется до backup и после checkout,
-до потенциальной мутации БД. V1.3.3 добавляет только `mini_tower_selections`.
+до потенциальной мутации БД. V1.4 добавляет 11 таблиц Village/Duel/Streak/Shadow/Mythic, совместимые поля
+Daily/Boss snapshots и ledger идемпотентных круток. Исторические таблицы Events сохраняются.
 
 Pipeline:
 

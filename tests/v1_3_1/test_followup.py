@@ -24,6 +24,13 @@ from app.mini.boss.selection import boss_select_hero_callback
 
 
 class HiddenSuperluckTests(MiniCase):
+    def setUp(self):
+        super().setUp()
+        # Compare visibility with the same operation nonce; new screens otherwise
+        # intentionally receive distinct nonces to prevent repeated spends.
+        nonce=patch('app.mini.ui.heroes.secrets.token_hex',return_value='aabbccdd')
+        nonce.start();self.addCleanup(nonce.stop)
+
     def enable(self):
         command = parse_command(f"/superluck {self.world['chat_id']}:{self.world['thread_id']} @tester")
         execute(self.owner, command, operation_key=f"luck:{len(self.sql('SELECT * FROM mini_superadmin_audit'))}", db_path=self.db)

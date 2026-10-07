@@ -125,6 +125,8 @@ def _enrich_owned_hero(hero: dict) -> dict:
 
 
 RARITY_ORDER = {
+    "mythic": -2,
+    "shadow": -1,
     "legendary": 0,
     "rare": 1,
     "uncommon": 2,
@@ -148,7 +150,7 @@ def get_hero_by_id(
 def get_player_heroes(
     player_id: int,
     db_path: str | Path = DB_PATH,
-    *, sync_catalog: bool = True,
+    *, sync_catalog: bool = False,
 ) -> list[dict]:
     """Все полученные герои игрока, включая выключенных из текущей гачи."""
     if sync_catalog:
@@ -245,6 +247,8 @@ def set_active_hero_in_transaction(
     ).fetchone()
     if owned is None:
         raise ValueError("Этого героя нет в твоей коллекции.")
+    from app.mini.availability import assert_available
+    assert_available(conn,player_id,hero_id)
     conn.execute(
         "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
         (int(hero_id), int(player_id)),
@@ -269,8 +273,6 @@ def get_collection_summary(
     player_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    sync_hero_catalog(db_path)
-
     with connect_mini_db(db_path) as conn:
         owned = int(conn.execute(
             "SELECT COUNT(*) FROM mini_player_heroes WHERE player_id = ?",

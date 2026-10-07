@@ -3,6 +3,7 @@ from app.mini.boss.errors import BossCombatError
 from app.mini.boss.clock import db_time
 from app.mini.boss.repository import (
     current_participant,
+    transformation_candidates,
     consume_pending_boss_skip,
     refresh_boss,
     apply_boss_effects,
@@ -78,18 +79,41 @@ def boss_hits_reward(
     passive_events = apply_boss_attack_passives(conn, boss)
 
     guarded = consume_reward_guard(conn, boss, when)
+    rows = conn.execute("SELECT * FROM mini_boss_participants WHERE boss_id=? AND banished=0 ORDER BY queue_position", (boss["id"],)).fetchall()
+    defense_states = {}
+    decoy_blocked = False
+    # Every pending decoy belongs to this actual attack, even if a guard or
+    # another decoy intercepts it. Last Watch only rolls if a shield is at risk.
+    for row in rows:
+        hero = battle_loadout(row['hero_snapshot_json'])
+        defense = hero_abilities.resolve_reward_defense(hero.get('passive_key','none'),
+            state=hero_abilities.hero_state(row['hero_state_json']),shields=0)
+        defense_states[row['player_id']] = defense['state']
+        save_hero_state(conn,int(boss['id']),int(row['player_id']),defense['state'])
+        decoy_blocked |= defense['blocked']
     if guarded:
-        return {
-            "type": "reward_guard", "shields": shields, "reward_percent": reward_percent,
-            "guard_event": guarded, "passive_events": passive_events,
-        }
-
+        return {'type':'reward_guard','shields':shields,'reward_percent':reward_percent,
+                'guard_event':guarded,'passive_events':passive_events}
+    if decoy_blocked:
+        return {'type':'bone_decoy','shields':shields,'reward_percent':reward_percent,
+                'passive_events':passive_events}
+    for row in rows:
+        hero = battle_loadout(row['hero_snapshot_json'])
+        defense = hero_abilities.resolve_reward_defense(hero.get('passive_key','none'),
+            state=defense_states[row['player_id']],shields=shields if not ignore_shields else 0)
+        save_hero_state(conn,int(boss['id']),int(row['player_id']),defense['state'])
+        if defense['blocked']:
+            return {'type':defense['type'],'shields':shields,'reward_percent':reward_percent,
+                    'passive_events':passive_events}
     shield_hit = shields > 0 and not ignore_shields
     new_shields = shields - 1 if shield_hit else shields
     poisonous = "poisonous" in creatures.features(dict(boss))
     changes = {"reward_shields": new_shields}
     if not shield_hit or poisonous:
         changes.update(creatures.reward_decay(dict(boss)))
+        if boss["ability_key"] == "oneshot" and not shield_hit:
+            changes.update(reward_percent=0, reward_temp_hp=0, reward_corruption=0,
+                boss_damage=max(0,int(boss["reward_coins"])-int(boss["sneaky_stolen"])))
     apply_boss_effects(conn, boss, {"boss_changes": changes}, when)
     fresh = refresh_boss(conn, int(boss["id"]))
     result = {
@@ -124,11 +148,14 @@ def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> di
     events.extend(apply_boss_effects(conn, fresh, resolution, when))
     attacks = []
     if not attempt["miss"]:
-        for _ in range(resolution["reward_attacks"]):
+        for attack_index in range(resolution["reward_attacks"]):
             fresh = refresh_boss(conn, int(boss["id"]))
             if fresh["status"] != "fighting":
                 break
-            attack = boss_hits_reward(conn, fresh, when, ignore_shields=resolution["ignore_shields"])
+            attack_boss=dict(fresh)
+            if 'attack_decay_percents' in resolution:
+                attack_boss['reward_decay_percent']=resolution['attack_decay_percents'][attack_index]
+            attack = boss_hits_reward(conn, attack_boss, when, ignore_shields=resolution["ignore_shields"])
             attacks.append(attack)
             if attack.get("battle_ended"):
                 break
@@ -137,7 +164,7 @@ def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> di
     fresh = refresh_boss(conn, int(boss["id"]))
     death_rewards = None
     if fresh["status"] == "fighting":
-        events.extend(apply_boss_effects(conn, fresh, boss_abilities.after_boss_turn(dict(fresh)), when))
+        events.extend(apply_boss_effects(conn, fresh, boss_abilities.after_boss_turn(dict(fresh), transformation_candidates(conn, int(fresh["id"]))), when))
         fresh = refresh_boss(conn, int(boss["id"]))
         events.extend(apply_boss_effects(conn, fresh, creatures.poison_tick(dict(fresh)), when))
         fresh = refresh_boss(conn, int(boss["id"]))
@@ -237,20 +264,13 @@ def apply_turn_start(conn, boss, current, when) -> dict:
     return result
 
 
-def extra_attack(conn, boss, participant, hero, when, message: str) -> dict:
-    faction = faction_multiplier_percent(hero["faction"], boss["faction"])
-    after_faction = modify_damage(max(1, int(participant["attack"])), faction)
-    resolution = (boss_abilities.modify_hero_damage(dict(boss), hero, after_faction)
-                  if creatures.can_reach(dict(boss), hero)
-                  else {"damage": 0, "events": [], "boss_changes": {}})
-    events = apply_boss_effects(conn, boss, resolution, when, actor_id=int(participant["player_id"]))
-    calculated = int(resolution["damage"])
-    bonus = max(0, int(participant["damage_bonus_percent"]))
-    if bonus and calculated > 0:
-        calculated = max(1, (calculated * (100 + bonus) + 99) // 100)
-    calculated = creatures.feature_damage(dict(boss), hero, calculated)
+def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_percent=100) -> dict:
+    from app.mini.boss.calculations import calculate_hit
+    calculation = calculate_hit(dict(boss), dict(participant), hero, extra_percent=damage_percent)
+    events = apply_boss_effects(conn, boss, calculation["boss_resolution"], when, actor_id=int(participant["player_id"]))
+    calculated = calculation["damage"]
     actual = min(int(boss["current_hp"]), calculated)
-    conn.execute("UPDATE mini_bosses SET current_hp = current_hp - ? WHERE id = ?", (actual, int(boss["id"])))
+    conn.execute("UPDATE mini_bosses SET current_hp = ? WHERE id = ?", (calculation["hp_after"], int(boss["id"])))
     conn.execute("UPDATE mini_boss_participants SET total_damage = total_damage + ? WHERE boss_id = ? AND player_id = ?",
                  (actual, int(boss["id"]), int(participant["player_id"])))
     event = {"type": "extra_attack", "damage": actual, "calculated_damage": calculated,
@@ -259,7 +279,7 @@ def extra_attack(conn, boss, participant, hero, when, message: str) -> dict:
         """INSERT INTO mini_boss_actions (boss_id, player_id, round_number, action_type,
            damage, boss_hp_after, created_at, event_json) VALUES (?, ?, ?, 'extra_attack', ?, ?, ?, ?)""",
         (int(boss["id"]), int(participant["player_id"]), int(boss["current_round"]), actual,
-         int(boss["current_hp"]) - actual, db_time(when), json.dumps(event, ensure_ascii=False)),
+         calculation["hp_after"], db_time(when), json.dumps(event, ensure_ascii=False)),
     )
     fresh = refresh_boss(conn, int(boss["id"]))
     events.extend(apply_boss_effects(conn, fresh, creatures.on_hit(dict(fresh), hero, successful=actual > 0),

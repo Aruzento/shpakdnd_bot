@@ -25,3 +25,20 @@ def shard_casket(ctx: ItemEffectContext) -> None:
 
 def charged_effect(ctx: ItemEffectContext) -> None:
     ctx.result["charges"] = ctx.add_charge(ctx.conn, ctx.player_id, ctx.result["effect_key"], 1)
+
+
+def village_boost(ctx):
+    from app.mini.village.service import activate_boost
+    resource='coins' if ctx.row['effect_key']=='village_gold_boost' else 'shards'
+    ctx.result['boost_ends_at']=activate_boost(ctx.conn,ctx.player_id,resource)
+    ctx.result['amount']=25
+
+
+def equipment_chest(ctx):
+    import secrets
+    from app.mini.equipment.service import grant_in_transaction
+    codes=[r[0] for r in ctx.conn.execute('SELECT code FROM mini_equipment ORDER BY code')]
+    if not codes: raise ValueError('Каталог экипировки ещё не загружен.')
+    code=secrets.choice(codes)
+    grant_in_transaction(ctx.conn,ctx.player_id,code)
+    ctx.result['equipment_code']=code

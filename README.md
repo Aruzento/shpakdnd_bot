@@ -1,21 +1,17 @@
-# D&D Mini — V1.3.3
+# D&D Mini — V1.4
 
-Telegram-бот на aiogram 3 и SQLite. V1.3 добавляет одиночные Испытания на 200 этажей,
-300 предметов экипировки и отдельные Mini superadmin-команды.
+Telegram-бот на aiogram 3 и SQLite. V1.4 добавляет шесть редкостей героев,
+новые боевые способности и шесть боссов, деревню, дуэли, ежедневную серию,
+получение теней через Arise и создание Mythic за персональные фрагменты.
 
-V1.3.1 добавляет справку с восемью разделами, три стартовых билета призыва,
-временные титулы и компактные экраны Испытаний и экипировки.
-Полный отчёт: [V1.3.1](docs/architecture/V1.3.1.md).
-
-V1.3.3 запоминает героя Испытаний между этажами, возвращает ✅ глобально активного
-героя в Collection/Favorites и добавляет `sudo deploy-shpakdnd` для production.
-[Отчёт V1.3.3](docs/architecture/V1.3.3.md), [deployment](docs/deployment.md).
+[Отчёт V1.4](docs/architecture/V1.4.md), [deployment](docs/deployment.md).
 
 ## Возможности
 
 D&D Mini: персональные ephemeral-меню, персонаж, daily, магазин, инвентарь и
-использование предметов, гача, коллекция, звёзды и продажа осколков, события
-«Святой / Демон / Жнец» и лабиринт, групповые боссы Combat v2.
+использование предметов, гача, коллекция, звёзды и продажа осколков,
+деревня, дуэли и групповые боссы Combat v2. Старые Events убраны из runtime;
+их таблицы сохранены.
 
 Боевые герои фиксируются при старте в immutable loadout; текущий ход,
 ability state, события и награды сохраняются в SQLite. Watcher восстанавливает
@@ -29,7 +25,8 @@ ability state, события и награды сохраняются в SQLite
 
 🏰 Испытания: один герой из гачи, видимый противник, 3 щита и награда только за первый clear.
 🛡 Экипировка игрока: шлем, кольцо и плащ. Бонус до +300 ATK действует в Tower.
-Mythic в V1.3 не входит. Полные правила и баланс: [V1.3](docs/architecture/V1.3.md).
+✨ Mythic создаются за фрагменты конкретного героя; 🌑 Shadow получаются через Arise.
+Оба каталога пока пустые и не входят в обычную гачу.
 
 Mini superadmin авторизуется только по закреплённому `SUPERADMIN_USER_ID = 694384548`
 в `app/mini/superadmin/access.py`. ID подтверждён владельцем; username и topic-admin
@@ -48,12 +45,15 @@ app/mini/
   handlers.py                   home / launcher / character; parent Mini router
   ui/                           shared context, callbacks, ephemeral transport
                                 inventory, shop, heroes, daily/rules subrouters
-  events/                       Telegram handlers + transactional game service
+  village/                      timestamp production, workers, food, boosts, ephemeral UI
+  duels/                        pending locks, escrow, simultaneous resolver, ephemeral UI
+  mythic/                       fragment grants and one-time atomic crafting
+  shadow.py / weekly.py          Arise extraction and weekly chest rewards
   tower/                        handlers, service, combat adapter, repository, floors.json, balance.json
   equipment/                    handlers, service, catalog, items.json
   titles/                       временные титулы, parser/service/admin handler
   onboarding.py / notifications.py  atomic starter tickets, durable public notices и watcher
-  rules.py                      тексты восьми разделов пользовательской справки
+  rules.py                      тексты десяти разделов пользовательской справки
   superadmin/                   numeric access, strict parser, service, handlers + persistent audit
   combat/                       common tags, integer matchups, creatures, hero_abilities
   boss/
@@ -72,7 +72,7 @@ app/mini/
   wallet.py                     canonical coin mutations and ledger
   migrations/                   ordered idempotent Mini schema steps
   schema.py                     transactional migration entrypoint
-  content/                      hero/shop JSON and images
+  content/                      hero settings, heroes/{rarity}.json, shop JSON and images
   daily.py / shop.py / gacha.py / items.py / hero_upgrades.py
                                 feature services with SQLite transactions
 docs/architecture/              audit and extension contracts
@@ -124,15 +124,15 @@ Startup сам регистрирует темы с `mini=True`. В Mini-тем�
 Останови сервис и сделай backup `shpakdnd.db`. Сохрани `.env` и рабочую БД при
 замене кода. Миграции запускаются автоматически при старте:
 
-- Mini: `init_mini_db()` выполняет core, inventory, activities, legacy и v1_3 steps
+- Mini: `init_mini_db()` выполняет core, inventory, activities, legacy и v1_3–v1_4 steps
   в одной `BEGIN IMMEDIATE` транзакции, включая DDL.
 - Boss: `init_boss_db()` сохраняет прежний отдельный transactional migrator,
   журнал legacy events и восстановление loadouts до синхронизации героев.
 - Steps повторно запускаемы; legacy columns остаются для совместимости.
 
 Миграции additive/idempotent: существующие игроки, коллекции, валюты, Boss state,
-обычный D&D и таймеры остаются в своих таблицах. V1.3 добавляет восемь таблиц.
-Результаты проверок и состав тестов: [V1.3](docs/architecture/V1.3.md).
+обычный D&D и таймеры остаются в своих таблицах. V1.4 добавляет 11 таблиц и nullable/совместимые snapshot-поля.
+Результаты проверок и состав тестов: [V1.4](docs/architecture/V1.4.md).
 
 Deploy watcher перечисляет новые вложенные module/catalog directories;
 при обновлении переустанови path unit по инструкции deploy.
@@ -140,7 +140,7 @@ Deploy watcher перечисляет новые вложенные module/catal
 Инструкции: [deploy](deploy/README.md), [recovery](docs/operations/RECOVERY.md),
 [admin grants](docs/operations/README_ADMIN_GRANTS.md).
 
-## Контент V1.3
+## Контент V1.4
 
 Hero passives находятся в `app/mini/combat/hero_abilities/abilities.json`,
 Boss abilities — в `app/mini/boss/boss_abilities/abilities.json`.
@@ -150,3 +150,13 @@ Boss abilities — в `app/mini/boss/boss_abilities/abilities.json`.
 
 Tower использует canonical shared combat без импорта Boss combat. Новые каталоги
 валидируются на startup; чтение Tower и Equipment не запускает migrations/catalog sync.
+
+Герои находятся в `app/mini/content/heroes/{common,uncommon,rare,legendary,mythic,shadow}.json`.
+Каждый файл содержит `{"heroes": [...]}`; настройки гачи и улучшений остаются
+в `content/heroes.json`. `mythic.fragment_cost` — положительное целое число.
+В boss content опционален `shadow_hero_code`; отсутствие counterpart допустимо.
+`shadow_extractable=false` запрещает извлечение, в том числе у манекена.
+
+Производство Mythic настраивается в `app/mini/village/balance.json`
+через `mythic_hourly_rate` (по умолчанию `"1.25"`, шаг `0.125`).
+Изображения новых героев и боссов ожидаются как внешний контент; PNG не создавались.

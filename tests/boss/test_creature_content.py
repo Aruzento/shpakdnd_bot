@@ -24,7 +24,8 @@ class CreatureContentTests(unittest.TestCase):
         for hero in data["heroes"]:
             for field in LEGACY_HERO_TRAITS:hero.pop(field)
             hero.pop("passive_key")
-        with patch("app.mini.catalog._read_json",return_value=data):
+            hero.pop("arise_chance_percent",None)
+        with patch("app.mini.catalog._read_hero_catalog",return_value=data):
             result=load_hero_catalog()
         for hero in result["heroes"]:
             for field,value in LEGACY_HERO_TRAITS.items():self.assertEqual(hero[field],value)
@@ -71,7 +72,7 @@ class CreatureContentTests(unittest.TestCase):
     def test_existing_invalid_present_hero_values_do_not_fall_through_to_defaults(self):
         for field in LEGACY_HERO_TRAITS:
             data=copy.deepcopy(load_hero_catalog());data["heroes"][0][field]=None
-            with patch("app.mini.catalog._read_json",return_value=data),self.assertRaises(ValueError):
+            with patch("app.mini.catalog._read_hero_catalog",return_value=data),self.assertRaises(ValueError):
                 load_hero_catalog()
 
 

@@ -1,12 +1,12 @@
 from app.mini.wallet import change_balance_in_transaction
+import json
 import secrets
 import sqlite3
 from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
-from app.mini.catalog import load_hero_catalog
-from app.mini.heroes import sync_hero_catalog
+from app.mini.catalog import load_hero_catalog, GACHA_RARITIES
 from app.mini.items import EFFECT_GACHA_LUCK, consume_effect_charge
 
 
@@ -47,13 +47,15 @@ def _choose_hero_code(*, luck_active: bool = False) -> str:
 
     by_rarity: dict[str, list[dict]] = {}
     for hero in catalog["heroes"]:
-        if not bool(hero.get("active", True)):
+        if hero["rarity"] not in GACHA_RARITIES or not bool(hero.get("active", True)):
             continue
         by_rarity.setdefault(hero["rarity"], []).append(hero)
 
     choices = []
     total_weight = 0
     for rarity, raw_weight in settings["rarity_weights"].items():
+        if rarity not in GACHA_RARITIES:
+            continue
         heroes = by_rarity.get(rarity, [])
         weight = _rarity_weight_units(
             int(raw_weight), rarity, luck_active=luck_active
@@ -104,7 +106,6 @@ def get_gacha_state(
     player_id: int,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    sync_hero_catalog(db_path)
     settings = _settings()
     ticket_code = str(settings["ticket_item_code"])
 
@@ -126,7 +127,7 @@ def get_gacha_state(
             """
             SELECT rarity, COUNT(*)
             FROM mini_heroes
-            WHERE active = 1
+            WHERE active = 1 AND rarity IN ('common','uncommon','rare','legendary')
             GROUP BY rarity
             """
         ).fetchall()
@@ -150,7 +151,7 @@ def get_gacha_state(
     rarity_counts = {str(rarity): int(count) for rarity, count in rarity_rows}
     rarity_weights = {
         key: int(value)
-        for key, value in settings["rarity_weights"].items()
+        for key, value in settings["rarity_weights"].items() if key in GACHA_RARITIES
     }
     weighted_units = {
         rarity: _rarity_weight_units(
@@ -195,12 +196,13 @@ def perform_gacha_pull(
     player_id: int,
     payment: str = "coins",
     db_path: str | Path = DB_PATH,
+    *, operation_key: str = "",
 ) -> dict:
     """Одна атомарная крутка. payment: coins или ticket."""
     if payment not in {"coins", "ticket"}:
         raise GachaError("Неизвестный способ оплаты призыва.")
 
-    sync_hero_catalog(db_path)
+    if not isinstance(operation_key,str): raise GachaError('Некорректный ключ призыва.')
     settings = _settings()
     pull_price = int(settings["pull_price"])
     ticket_code = str(settings["ticket_item_code"])
@@ -213,6 +215,13 @@ def perform_gacha_pull(
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
+        if operation_key:
+            old=conn.execute('SELECT result_json FROM mini_gacha_pulls WHERE player_id=? AND operation_key=?',
+                             (player_id,operation_key)).fetchone()
+            if old:
+                result=json.loads(old['result_json'])
+                if result['payment']!=payment: raise GachaError('Ключ призыва уже использован.')
+                return {**result,'repeated':True}
 
         player = conn.execute(
             """
@@ -285,7 +294,7 @@ def perform_gacha_pull(
         else:
             hero_code = _choose_hero_code(luck_active=luck_used)
         hero = conn.execute(
-            "SELECT * FROM mini_heroes WHERE code = ? AND active = 1",
+            "SELECT * FROM mini_heroes WHERE code = ? AND active = 1 AND rarity IN ('common','uncommon','rare','legendary')",
             (hero_code,),
         ).fetchone()
         if hero is None:
@@ -378,23 +387,26 @@ def perform_gacha_pull(
         if forced_legendary:
             conn.execute("UPDATE mini_gacha_guarantees SET forced_legendary=0 WHERE player_id=?", (int(player_id),))
         tickets_after = _ticket_quantity(conn, player_id, ticket_code)
-        conn.commit()
 
-    result = dict(hero)
-    result.update({
-        "pull_id": pull_id,
-        "payment": payment,
-        "cost_coins": cost_coins,
-        "used_ticket": bool(used_ticket),
-        "is_duplicate": is_duplicate,
-        "shards_awarded": shards_awarded,
-        "copies": copies,
-        "shards": shards,
-        "balance": balance,
-        "tickets": tickets_after,
-        "pull_price": pull_price,
-        "luck_used": bool(luck_used),
-        "forced_legendary": forced_legendary,
-        "auto_activated": auto_activated,
-    })
+        result = dict(hero)
+        result.update({
+            "pull_id": pull_id,
+            "payment": payment,
+            "cost_coins": cost_coins,
+            "used_ticket": bool(used_ticket),
+            "is_duplicate": is_duplicate,
+            "shards_awarded": shards_awarded,
+            "copies": copies,
+            "shards": shards,
+            "balance": balance,
+            "tickets": tickets_after,
+            "pull_price": pull_price,
+            "luck_used": bool(luck_used),
+            "forced_legendary": forced_legendary,
+            "auto_activated": auto_activated,
+        })
+        if operation_key:
+            conn.execute('UPDATE mini_gacha_pulls SET operation_key=?,result_json=? WHERE id=?',
+                         (operation_key,json.dumps(result,ensure_ascii=False),pull_id))
+        conn.commit()
     return result
