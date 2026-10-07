@@ -30,6 +30,8 @@ class MiniMigrationTests(unittest.TestCase):
         world=sync_configured_mini_worlds(self.db)[0]['id']
         player=create_mini_player(world,555,'@tester','Игрок',self.db)['id']
         sync_hero_catalog(self.db); sync_shop_catalog(world,self.db)
+        from app.mini.equipment.service import sync_catalog
+        sync_catalog(self.db)
         add_coins(player,900,'Seed','test',1,'seed',self.db)
         with connect_mini_db(self.db) as conn:
             hero=conn.execute("SELECT id FROM mini_heroes WHERE code='Villager'").fetchone()[0]
@@ -51,6 +53,27 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("INSERT INTO mini_boss_participants(boss_id,player_id,queue_position,hero_id,attack,hero_snapshot_json,hero_state_json) VALUES(?,?,1,?,9,?,'{\"pending_echo_damage\":7}')",(boss,player,hero,json.dumps(loadout)))
             conn.execute("INSERT INTO mini_boss_actions(boss_id,player_id,round_number,action_type,damage,boss_hp_after) VALUES(?,?,2,'attack',9,60)",(boss,player))
             conn.execute("INSERT INTO mini_boss_events(boss_id,round_number,event_type,target_player_id,event_json,boss_hp_after) VALUES(?,2,'battle_echo',?,'{\"damage\":7}',60)",(boss,player))
+        # V1.3 tables join the same preservation assertion; populate each table,
+        # including an active runtime snapshot and a historical first-clear claim.
+        from app.mini.tower.catalog import get_floor
+        with connect_mini_db(self.db) as conn:
+            conn.execute("INSERT INTO mini_equipment_owned(player_id,code,quantity) VALUES(?,'eq_helmet_010',2)",(player,))
+            conn.execute("INSERT INTO mini_equipment_slots(player_id,slot,code) VALUES(?,'helmet','eq_helmet_010')",(player,))
+            conn.execute("INSERT INTO mini_tower_progress(player_id,highest_cleared) VALUES(?,1)",(player,))
+            snapshot=json.dumps(dict(id=hero,name='Villager',attack=9,stars=3,**loadout))
+            won=conn.execute("""INSERT INTO mini_tower_attempts
+                (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,status)
+                VALUES(?,1,?,?,?,10,0,'won')""",(player,hero,snapshot,json.dumps(get_floor(1)))).lastrowid
+            conn.execute("""INSERT INTO mini_tower_attempts
+                (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,shields,turn,runtime_json)
+                VALUES(?,2,?,?,?,10,4,2,1,?)""",(player,hero,snapshot,json.dumps(get_floor(2)),
+                    json.dumps({'hero':{'pending_echo_damage':2},'creature':{},'hit_count':1})))
+            conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
+                VALUES(?,1,?,2,'eq_helmet_010')""",(player,won))
+            conn.execute("INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)",(player,))
+            conn.execute("""INSERT INTO mini_superadmin_audit
+                (admin_user_id,action,world_id,target_user_id,player_id,resource,operation_key)
+                VALUES(555,'superluck',?,555,?,'gacha_guarantee','fixture')""",(world,player))
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

@@ -1,3 +1,6 @@
+from app.topic_guard import allow_dnd
+from app.db.inventory import get_inventory
+from app.services.inventory import format_inventory
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -12,7 +15,6 @@ from app.context import (
 from app.db.characters import save_character_profile
 from app.db.inventory import (
     add_inventory_item,
-    clean_all_inventory,
     clean_inventory,
     delete_inventory_item,
 )
@@ -20,16 +22,7 @@ from app.services.inventory import (
     format_inventory_item,
     parse_inventory_item,
 )
-from app.mini.admin_grants import (
-    get_mini_player_by_username,
-    grant_mini_coins,
-    grant_mini_coins_all,
-    grant_mini_item,
-    grant_mini_item_all,
-    grant_mini_hero,
-    grant_mini_hero_all,
-    list_mini_items,
-)
+from app.mini.admin_grants import list_mini_items
 from app.mini.shop import sync_shop_catalog
 from app.mini.worlds import get_mini_world
 from app.topics import TOPIC_SETTINGS
@@ -115,6 +108,8 @@ async def resolve_target(
         return None
 
     chat_id, thread_id = scope
+    if not await allow_dnd(message,chat_id,thread_id):
+        return None
     username = normalize_username(raw_username)
 
     character_name = get_character_name(
@@ -138,241 +133,8 @@ async def resolve_target(
     )
 
 
-def _parse_mini_admadd(message: Message) -> tuple[str, str, str] | None:
-    """
-    Mini-форматы:
-    /admadd @user -c 100
-    /admadd @user -i boss_coin_pouch
-    /admadd ALL -c 100
-    /admadd ALL -i boss_coin_pouch
-    /admadd @user -p panic_dungeon_engineer
-    /admadd ALL -p panic_dungeon_engineer
-    """
-    if not message.text:
-        return None
-
-    parts = message.text.split(maxsplit=3)
-    if len(parts) != 4:
-        return None
-
-    username = parts[1].strip()
-    flag = parts[2].strip().lower()
-    value = parts[3].strip()
-
-    is_all = username.upper() == "ALL"
-    if (not username.startswith("@") and not is_all) or flag not in {"-c", "-i", "-p"}:
-        return None
-
-    if (
-        len(value) >= 2
-        and value[0] == value[-1]
-        and value[0] in {'"', "'"}
-    ):
-        value = value[1:-1].strip()
-
-    return username, flag, value
-
-
-async def _handle_mini_admadd(message: Message) -> bool:
-    parsed = _parse_mini_admadd(message)
-    if parsed is None:
-        return False
-
-    chat_id = message.chat.id
-    thread_id = get_thread_id(message)
-    world = get_mini_world(chat_id, thread_id)
-
-    if world is None or not world["enabled"]:
-        await message.answer(
-            "❌ Этот формат /admadd работает только в теме D&D Mini."
-        )
-        return True
-
-    if not await check_topic_admin_permission(message):
-        return True
-
-    target, flag, raw_value = parsed
-    is_all = target.upper() == "ALL"
-
-    admin_username = (
-        "@" + message.from_user.username.lower()
-        if message.from_user and message.from_user.username
-        else "@admin"
-    )
-
-    if flag == "-c":
-        try:
-            value = int(raw_value)
-        except ValueError:
-            await message.answer(
-                "❌ Количество монет должно быть целым числом.\n\n"
-                "Примеры:\n"
-                "/admadd @user -c 100\n"
-                "/admadd ALL -c 100"
-            )
-            return True
-
-        if value <= 0:
-            await message.answer("❌ Количество монет должно быть больше 0.")
-            return True
-
-        if is_all:
-            try:
-                result = grant_mini_coins_all(
-                    world["id"],
-                    value,
-                    admin_username,
-                )
-            except ValueError as error:
-                await message.answer(f"❌ {error}")
-                return True
-
-            await message.answer(
-                f"✅ Все Mini-игроки получили по {value} 🪙\n"
-                f"Игроков: {result['players']}\n"
-                f"Выдано всего: {result['total']} 🪙"
-            )
-            return True
-
-        player = get_mini_player_by_username(
-            world["id"],
-            target,
-        )
-        if player is None:
-            await message.answer(
-                f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
-                "Игрок должен сначала создать Mini-персонажа."
-            )
-            return True
-
-        result = grant_mini_coins(
-            player["id"],
-            value,
-            admin_username,
-        )
-        await message.answer(
-            f"✅ {player['character_name']} ({player['username']}) получил "
-            f"{value} 🪙\n"
-            f"Баланс: {result['balance']} 🪙"
-        )
-        return True
-
-    if flag == "-p":
-        if is_all:
-            try:
-                result = grant_mini_hero_all(
-                    world["id"],
-                    raw_value,
-                )
-            except ValueError as error:
-                await message.answer(f"❌ {error}")
-                return True
-
-            hero = result["hero"]
-            text = (
-                f"✅ Персонаж выдан Mini-игрокам:\n"
-                f"{hero['name']} [{hero['code']}]\n"
-                f"Получили: {result['granted']}"
-            )
-            if result.get("skipped"):
-                text += f"\nУже был у игроков: {result['skipped']}"
-            if result.get("auto_activated"):
-                text += f"\nАвтоматически выбран активным: {result['auto_activated']}"
-            await message.answer(text)
-            return True
-
-        player = get_mini_player_by_username(
-            world["id"],
-            target,
-        )
-        if player is None:
-            await message.answer(
-                f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
-                "Игрок должен сначала создать Mini-персонажа."
-            )
-            return True
-
-        try:
-            hero = grant_mini_hero(
-                player["id"],
-                raw_value,
-            )
-        except ValueError as error:
-            await message.answer(f"❌ {error}")
-            return True
-
-        if hero["applied"]:
-            text = (
-                f"✅ {player['character_name']} ({player['username']}) получил персонажа:\n"
-                f"{hero['name']} [{hero['code']}]"
-            )
-            if hero.get("auto_activated"):
-                text += "\nПерсонаж автоматически выбран активным."
-        else:
-            text = (
-                f"ℹ️ У {player['character_name']} ({player['username']}) уже есть "
-                f"{hero['name']} [{hero['code']}]. Повторно не выдавал."
-            )
-        await message.answer(text)
-        return True
-
-    # -i принимает как стабильный code предмета, так и старый числовой ID.
-    sync_shop_catalog(world["id"])
-
-    if is_all:
-        try:
-            result = grant_mini_item_all(
-                world["id"],
-                raw_value,
-            )
-        except ValueError as error:
-            await message.answer(f"❌ {error}")
-            return True
-
-        item = result["item"]
-        text = (
-            f"✅ Все Mini-игроки получили предмет:\n"
-            f"#{item['id']} — {item['name']} [{item['code']}]\n"
-            f"Получили: {result['players']}"
-        )
-        if result.get("skipped"):
-            text += f"\nПропущено (уже был нестакающийся предмет): {result['skipped']}"
-        await message.answer(text)
-        return True
-
-    player = get_mini_player_by_username(
-        world["id"],
-        target,
-    )
-    if player is None:
-        await message.answer(
-            f"❌ Mini-игрок {normalize_username(target)} не найден в этой теме.\n"
-            "Игрок должен сначала создать Mini-персонажа."
-        )
-        return True
-
-    try:
-        item = grant_mini_item(
-            player["id"],
-            raw_value,
-        )
-    except ValueError as error:
-        await message.answer(f"❌ {error}")
-        return True
-
-    await message.answer(
-        f"✅ {player['character_name']} ({player['username']}) получил предмет:\n"
-        f"#{item['id']} — {item['name']} [{item['code']}]\n"
-        f"Теперь в инвентаре: {item['quantity']} шт."
-    )
-    return True
-
-
 @router.message(Command("admadd"))
 async def admadd_handler(message: Message):
-    if await _handle_mini_admadd(message):
-        return
-
     if not await check_global_admin_permission(message):
         return
 
@@ -486,8 +248,7 @@ async def admitems_handler(message: Message):
         [
             "",
             "Выдать предмет:",
-            "/admadd @user -i CODE",
-            "/admadd ALL -i CODE",
+            "/superadd CHAT:THEME @user -i CODE",
         ]
     )
 
@@ -521,6 +282,11 @@ async def admdel_handler(message: Message):
         return
 
     chat_id, thread_id, username, character_name = target
+
+    if parts[3].strip().casefold() == "all":
+        clean_inventory(chat_id,thread_id,username)
+        await message.answer(f"🧹 {chat_id}:{thread_id}: инвентарь {character_name} очищен.")
+        return
 
     parsed_item = parse_inventory_item(parts[3])
 
@@ -575,68 +341,6 @@ async def admdel_handler(message: Message):
         response += "\n\nПредмет полностью удалён из инвентаря."
 
     await message.answer(response)
-
-
-@router.message(Command("admclean"))
-async def admclean_handler(message: Message):
-    if not await check_global_admin_permission(message):
-        return
-
-    parts = message.text.split(maxsplit=2)
-
-    if len(parts) != 3:
-        await message.answer(
-            "Использование:\n"
-            "/admclean CHAT_ID[:TOPIC_ID] @username\n"
-            "/admclean CHAT_ID[:TOPIC_ID] all"
-        )
-        return
-
-    scope = parse_target_scope(parts[1])
-
-    if scope is None:
-        await message.answer(
-            "❌ Не удалось определить чат/тему.\n\n"
-            + target_scope_help()
-        )
-        return
-
-    chat_id, thread_id = scope
-    target_name = parts[2].strip()
-
-    if target_name.lower() == "all":
-        clean_all_inventory(
-            chat_id,
-            thread_id,
-        )
-
-        await message.answer(
-            f"✅ {chat_id}:{thread_id}\n"
-            "🧹 Инвентарь всех персонажей очищен."
-        )
-        return
-
-    target = await resolve_target(
-        message,
-        parts[1],
-        target_name,
-    )
-
-    if target is None:
-        return
-
-    chat_id, thread_id, username, character_name = target
-
-    clean_inventory(
-        chat_id,
-        thread_id,
-        username,
-    )
-
-    await message.answer(
-        f"✅ {chat_id}:{thread_id}\n"
-        f"🧹 Инвентарь {character_name} очищен."
-    )
 
 
 @router.message(Command("admcharset"))
@@ -720,3 +424,18 @@ async def admcharset_handler(message: Message):
         f"Класс: {class_name}\n"
         f"Раса: {race}"
     )
+
+
+@router.message(Command("adminv"))
+async def adminv_handler(message: Message):
+    if not await check_global_admin_permission(message):
+        return
+    parts=(message.text or "").split()
+    if len(parts)!=3:
+        await message.answer("Использование: /adminv CHAT_ID:TOPIC_ID @username")
+        return
+    target=await resolve_target(message,parts[1],parts[2])
+    if target is None:
+        return
+    chat_id,thread_id,username,name=target
+    await message.answer(format_inventory(name,get_inventory(chat_id,thread_id,username)))

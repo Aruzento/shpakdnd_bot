@@ -8,7 +8,9 @@ from app.mini.migrations.inventory import apply as inventory_schema
 from app.mini.migrations.activities import apply as activities_schema
 from app.mini.migrations.legacy import apply as legacy_schema
 
-MIGRATIONS = (core_schema, inventory_schema, activities_schema, legacy_schema)
+from app.mini.migrations.v1_3 import apply as v1_3_schema
+
+MIGRATIONS = (core_schema, inventory_schema, activities_schema, legacy_schema, v1_3_schema)
 
 
 def migrate(conn) -> None:

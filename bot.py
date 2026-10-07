@@ -1,3 +1,6 @@
+from app.mini.tower.catalog import load_catalog as load_tower_catalog
+from app.mini.tower.balance import load_balance as load_tower_balance
+from app.mini.equipment.service import sync_catalog as sync_equipment_catalog
 import asyncio
 
 from aiogram import Bot, Dispatcher
@@ -19,6 +22,9 @@ async def main():
     init_db()
     init_mini_db()
     init_boss_db()
+    load_tower_catalog()
+    load_tower_balance()
+    equipment_count = sync_equipment_catalog()
     mini_worlds = sync_configured_mini_worlds()
     hero_count = sync_hero_catalog()
 

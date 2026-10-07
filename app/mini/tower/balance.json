@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "bands": [
+    {
+      "max_floor": 25,
+      "min_bonus": 1,
+      "max_bonus": 12,
+      "shards": 2
+    },
+    {
+      "max_floor": 50,
+      "min_bonus": 8,
+      "max_bonus": 25,
+      "shards": 3
+    },
+    {
+      "max_floor": 75,
+      "min_bonus": 20,
+      "max_bonus": 37,
+      "shards": 4
+    },
+    {
+      "max_floor": 100,
+      "min_bonus": 30,
+      "max_bonus": 50,
+      "shards": 5
+    },
+    {
+      "max_floor": 125,
+      "min_bonus": 42,
+      "max_bonus": 62,
+      "shards": 6
+    },
+    {
+      "max_floor": 150,
+      "min_bonus": 55,
+      "max_bonus": 75,
+      "shards": 7
+    },
+    {
+      "max_floor": 175,
+      "min_bonus": 68,
+      "max_bonus": 87,
+      "shards": 8
+    },
+    {
+      "max_floor": 200,
+      "min_bonus": 80,
+      "max_bonus": 100,
+      "shards": 9
+    }
+  ]
+}

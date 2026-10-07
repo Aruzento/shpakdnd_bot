@@ -6,6 +6,14 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_equipment",
+    "mini_equipment_owned",
+    "mini_equipment_slots",
+    "mini_tower_progress",
+    "mini_tower_attempts",
+    "mini_tower_rewards",
+    "mini_gacha_guarantees",
+    "mini_superadmin_audit",
     "mini_worlds",
     "mini_players",
     "mini_heroes",

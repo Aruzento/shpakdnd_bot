@@ -1,3 +1,4 @@
+from app.topic_guard import allow_dnd
 import shlex
 import sqlite3
 
@@ -19,6 +20,8 @@ router = Router(name="create_character")
 
 @router.message(Command("create"))
 async def create_handler(message: Message):
+    if not await allow_dnd(message):
+        return
     """
     Формат:
     /create @username "Имя персонажа"

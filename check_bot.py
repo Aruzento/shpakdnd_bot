@@ -1,3 +1,6 @@
+from app.mini.tower.catalog import load_catalog as load_tower_catalog
+from app.mini.tower.balance import load_balance as load_tower_balance
+from app.mini.equipment.service import sync_catalog as sync_equipment_catalog
 """Локальная проверка проекта без подключения к Telegram polling."""
 
 from app.config import DB_PATH, TIMEZONE_NAME
@@ -9,7 +12,8 @@ from app.mini.boss.catalog import load_boss_catalog, load_boss_item_catalog
 from app.mini.boss.boss_abilities.catalog import load_ability_catalog
 from app.mini.boss.schema import init_boss_db
 from app.mini.heroes import sync_hero_catalog
-from app.mini.schema import init_mini_db
+from app.mini.schema import MINI_TABLES, init_mini_db
+from app.mini.db import connect_mini_db
 from app.mini.shop import sync_shop_catalog
 from app.mini.worlds import sync_configured_mini_worlds
 
@@ -18,6 +22,17 @@ def main():
     init_db()
     init_mini_db()
     init_boss_db()
+    load_tower_catalog()
+    load_tower_balance()
+    equipment_count = sync_equipment_catalog()
+    with connect_mini_db() as conn:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not set(MINI_TABLES) <= tables:
+            raise ValueError("Mini schema is incomplete.")
+        if conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+            raise ValueError("SQLite integrity check failed.")
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise ValueError("SQLite foreign key check failed.")
     worlds = sync_configured_mini_worlds()
     content = validate_content()
     boss_abilities = load_ability_catalog()
@@ -28,6 +43,7 @@ def main():
     for world in worlds:
         sync_shop_catalog(world["id"])
 
+    print(f"OK: V1.3 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
     print("OK: Python-модули импортированы")
     print(f"OK: база данных: {DB_PATH}")
     print(f"OK: часовой пояс: {TIMEZONE_NAME}")

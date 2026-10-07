@@ -1,0 +1,1805 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "code": "eq_helmet_001",
+      "name": "Ведро паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 1
+    },
+    {
+      "code": "eq_helmet_002",
+      "name": "Ведро дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 2
+    },
+    {
+      "code": "eq_helmet_003",
+      "name": "Ведро почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 3
+    },
+    {
+      "code": "eq_helmet_004",
+      "name": "Ведро некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 4
+    },
+    {
+      "code": "eq_helmet_005",
+      "name": "Ведро гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 5
+    },
+    {
+      "code": "eq_helmet_006",
+      "name": "Ведро барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 6
+    },
+    {
+      "code": "eq_helmet_007",
+      "name": "Ведро подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 7
+    },
+    {
+      "code": "eq_helmet_008",
+      "name": "Ведро мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 8
+    },
+    {
+      "code": "eq_helmet_009",
+      "name": "Ведро варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 9
+    },
+    {
+      "code": "eq_helmet_010",
+      "name": "Ведро мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 10
+    },
+    {
+      "code": "eq_helmet_011",
+      "name": "Кастрюля паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 11
+    },
+    {
+      "code": "eq_helmet_012",
+      "name": "Кастрюля дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 12
+    },
+    {
+      "code": "eq_helmet_013",
+      "name": "Кастрюля почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 13
+    },
+    {
+      "code": "eq_helmet_014",
+      "name": "Кастрюля некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 14
+    },
+    {
+      "code": "eq_helmet_015",
+      "name": "Кастрюля гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 15
+    },
+    {
+      "code": "eq_helmet_016",
+      "name": "Кастрюля барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 16
+    },
+    {
+      "code": "eq_helmet_017",
+      "name": "Кастрюля подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 17
+    },
+    {
+      "code": "eq_helmet_018",
+      "name": "Кастрюля мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 18
+    },
+    {
+      "code": "eq_helmet_019",
+      "name": "Кастрюля варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 19
+    },
+    {
+      "code": "eq_helmet_020",
+      "name": "Кастрюля мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 20
+    },
+    {
+      "code": "eq_helmet_021",
+      "name": "Шлем паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 21
+    },
+    {
+      "code": "eq_helmet_022",
+      "name": "Шлем дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 22
+    },
+    {
+      "code": "eq_helmet_023",
+      "name": "Шлем почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 23
+    },
+    {
+      "code": "eq_helmet_024",
+      "name": "Шлем некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 24
+    },
+    {
+      "code": "eq_helmet_025",
+      "name": "Шлем гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 25
+    },
+    {
+      "code": "eq_helmet_026",
+      "name": "Шлем барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 26
+    },
+    {
+      "code": "eq_helmet_027",
+      "name": "Шлем подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 27
+    },
+    {
+      "code": "eq_helmet_028",
+      "name": "Шлем мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 28
+    },
+    {
+      "code": "eq_helmet_029",
+      "name": "Шлем варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 29
+    },
+    {
+      "code": "eq_helmet_030",
+      "name": "Шлем мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 30
+    },
+    {
+      "code": "eq_helmet_031",
+      "name": "Дуршлаг паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 31
+    },
+    {
+      "code": "eq_helmet_032",
+      "name": "Дуршлаг дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 32
+    },
+    {
+      "code": "eq_helmet_033",
+      "name": "Дуршлаг почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 33
+    },
+    {
+      "code": "eq_helmet_034",
+      "name": "Дуршлаг некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 34
+    },
+    {
+      "code": "eq_helmet_035",
+      "name": "Дуршлаг гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 35
+    },
+    {
+      "code": "eq_helmet_036",
+      "name": "Дуршлаг барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 36
+    },
+    {
+      "code": "eq_helmet_037",
+      "name": "Дуршлаг подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 37
+    },
+    {
+      "code": "eq_helmet_038",
+      "name": "Дуршлаг мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 38
+    },
+    {
+      "code": "eq_helmet_039",
+      "name": "Дуршлаг варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 39
+    },
+    {
+      "code": "eq_helmet_040",
+      "name": "Дуршлаг мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 40
+    },
+    {
+      "code": "eq_helmet_041",
+      "name": "Корона паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 41
+    },
+    {
+      "code": "eq_helmet_042",
+      "name": "Корона дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 42
+    },
+    {
+      "code": "eq_helmet_043",
+      "name": "Корона почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 43
+    },
+    {
+      "code": "eq_helmet_044",
+      "name": "Корона некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 44
+    },
+    {
+      "code": "eq_helmet_045",
+      "name": "Корона гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 45
+    },
+    {
+      "code": "eq_helmet_046",
+      "name": "Корона барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 46
+    },
+    {
+      "code": "eq_helmet_047",
+      "name": "Корона подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 47
+    },
+    {
+      "code": "eq_helmet_048",
+      "name": "Корона мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 48
+    },
+    {
+      "code": "eq_helmet_049",
+      "name": "Корона варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 49
+    },
+    {
+      "code": "eq_helmet_050",
+      "name": "Корона мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 50
+    },
+    {
+      "code": "eq_helmet_051",
+      "name": "Капюшон паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 51
+    },
+    {
+      "code": "eq_helmet_052",
+      "name": "Капюшон дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 52
+    },
+    {
+      "code": "eq_helmet_053",
+      "name": "Капюшон почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 53
+    },
+    {
+      "code": "eq_helmet_054",
+      "name": "Капюшон некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 54
+    },
+    {
+      "code": "eq_helmet_055",
+      "name": "Капюшон гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 55
+    },
+    {
+      "code": "eq_helmet_056",
+      "name": "Капюшон барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 56
+    },
+    {
+      "code": "eq_helmet_057",
+      "name": "Капюшон подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 57
+    },
+    {
+      "code": "eq_helmet_058",
+      "name": "Капюшон мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 58
+    },
+    {
+      "code": "eq_helmet_059",
+      "name": "Капюшон варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 59
+    },
+    {
+      "code": "eq_helmet_060",
+      "name": "Капюшон мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 60
+    },
+    {
+      "code": "eq_helmet_061",
+      "name": "Тазик паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 61
+    },
+    {
+      "code": "eq_helmet_062",
+      "name": "Тазик дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 62
+    },
+    {
+      "code": "eq_helmet_063",
+      "name": "Тазик почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 63
+    },
+    {
+      "code": "eq_helmet_064",
+      "name": "Тазик некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 64
+    },
+    {
+      "code": "eq_helmet_065",
+      "name": "Тазик гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 65
+    },
+    {
+      "code": "eq_helmet_066",
+      "name": "Тазик барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 66
+    },
+    {
+      "code": "eq_helmet_067",
+      "name": "Тазик подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 67
+    },
+    {
+      "code": "eq_helmet_068",
+      "name": "Тазик мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 68
+    },
+    {
+      "code": "eq_helmet_069",
+      "name": "Тазик варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 69
+    },
+    {
+      "code": "eq_helmet_070",
+      "name": "Тазик мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 70
+    },
+    {
+      "code": "eq_helmet_071",
+      "name": "Колпак паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 71
+    },
+    {
+      "code": "eq_helmet_072",
+      "name": "Колпак дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 72
+    },
+    {
+      "code": "eq_helmet_073",
+      "name": "Колпак почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 73
+    },
+    {
+      "code": "eq_helmet_074",
+      "name": "Колпак некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 74
+    },
+    {
+      "code": "eq_helmet_075",
+      "name": "Колпак гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 75
+    },
+    {
+      "code": "eq_helmet_076",
+      "name": "Колпак барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 76
+    },
+    {
+      "code": "eq_helmet_077",
+      "name": "Колпак подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 77
+    },
+    {
+      "code": "eq_helmet_078",
+      "name": "Колпак мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 78
+    },
+    {
+      "code": "eq_helmet_079",
+      "name": "Колпак варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 79
+    },
+    {
+      "code": "eq_helmet_080",
+      "name": "Колпак мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 80
+    },
+    {
+      "code": "eq_helmet_081",
+      "name": "Котелок паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 81
+    },
+    {
+      "code": "eq_helmet_082",
+      "name": "Котелок дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 82
+    },
+    {
+      "code": "eq_helmet_083",
+      "name": "Котелок почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 83
+    },
+    {
+      "code": "eq_helmet_084",
+      "name": "Котелок некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 84
+    },
+    {
+      "code": "eq_helmet_085",
+      "name": "Котелок гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 85
+    },
+    {
+      "code": "eq_helmet_086",
+      "name": "Котелок барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 86
+    },
+    {
+      "code": "eq_helmet_087",
+      "name": "Котелок подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 87
+    },
+    {
+      "code": "eq_helmet_088",
+      "name": "Котелок мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 88
+    },
+    {
+      "code": "eq_helmet_089",
+      "name": "Котелок варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 89
+    },
+    {
+      "code": "eq_helmet_090",
+      "name": "Котелок мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 90
+    },
+    {
+      "code": "eq_helmet_091",
+      "name": "Салатница паладина на больничном",
+      "slot": "helmet",
+      "attack_bonus": 91
+    },
+    {
+      "code": "eq_helmet_092",
+      "name": "Салатница дракона с икотой",
+      "slot": "helmet",
+      "attack_bonus": 92
+    },
+    {
+      "code": "eq_helmet_093",
+      "name": "Салатница почти всевластия",
+      "slot": "helmet",
+      "attack_bonus": 93
+    },
+    {
+      "code": "eq_helmet_094",
+      "name": "Салатница некроманта-вегетарианца",
+      "slot": "helmet",
+      "attack_bonus": 94
+    },
+    {
+      "code": "eq_helmet_095",
+      "name": "Салатница гоблина-бухгалтера",
+      "slot": "helmet",
+      "attack_bonus": 95
+    },
+    {
+      "code": "eq_helmet_096",
+      "name": "Салатница барда без слуха",
+      "slot": "helmet",
+      "attack_bonus": 96
+    },
+    {
+      "code": "eq_helmet_097",
+      "name": "Салатница подозрительного торговца",
+      "slot": "helmet",
+      "attack_bonus": 97
+    },
+    {
+      "code": "eq_helmet_098",
+      "name": "Салатница мага с просроченной лицензией",
+      "slot": "helmet",
+      "attack_bonus": 98
+    },
+    {
+      "code": "eq_helmet_099",
+      "name": "Салатница варвара на диете",
+      "slot": "helmet",
+      "attack_bonus": 99
+    },
+    {
+      "code": "eq_helmet_100",
+      "name": "Салатница мастера критических единиц",
+      "slot": "helmet",
+      "attack_bonus": 100
+    },
+    {
+      "code": "eq_ring_001",
+      "name": "Кольцо паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 1
+    },
+    {
+      "code": "eq_ring_002",
+      "name": "Кольцо дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 2
+    },
+    {
+      "code": "eq_ring_003",
+      "name": "Кольцо почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 3
+    },
+    {
+      "code": "eq_ring_004",
+      "name": "Кольцо некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 4
+    },
+    {
+      "code": "eq_ring_005",
+      "name": "Кольцо гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 5
+    },
+    {
+      "code": "eq_ring_006",
+      "name": "Кольцо барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 6
+    },
+    {
+      "code": "eq_ring_007",
+      "name": "Кольцо подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 7
+    },
+    {
+      "code": "eq_ring_008",
+      "name": "Кольцо мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 8
+    },
+    {
+      "code": "eq_ring_009",
+      "name": "Кольцо варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 9
+    },
+    {
+      "code": "eq_ring_010",
+      "name": "Кольцо мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 10
+    },
+    {
+      "code": "eq_ring_011",
+      "name": "Перстень паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 11
+    },
+    {
+      "code": "eq_ring_012",
+      "name": "Перстень дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 12
+    },
+    {
+      "code": "eq_ring_013",
+      "name": "Перстень почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 13
+    },
+    {
+      "code": "eq_ring_014",
+      "name": "Перстень некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 14
+    },
+    {
+      "code": "eq_ring_015",
+      "name": "Перстень гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 15
+    },
+    {
+      "code": "eq_ring_016",
+      "name": "Перстень барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 16
+    },
+    {
+      "code": "eq_ring_017",
+      "name": "Перстень подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 17
+    },
+    {
+      "code": "eq_ring_018",
+      "name": "Перстень мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 18
+    },
+    {
+      "code": "eq_ring_019",
+      "name": "Перстень варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 19
+    },
+    {
+      "code": "eq_ring_020",
+      "name": "Перстень мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 20
+    },
+    {
+      "code": "eq_ring_021",
+      "name": "Обруч паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 21
+    },
+    {
+      "code": "eq_ring_022",
+      "name": "Обруч дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 22
+    },
+    {
+      "code": "eq_ring_023",
+      "name": "Обруч почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 23
+    },
+    {
+      "code": "eq_ring_024",
+      "name": "Обруч некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 24
+    },
+    {
+      "code": "eq_ring_025",
+      "name": "Обруч гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 25
+    },
+    {
+      "code": "eq_ring_026",
+      "name": "Обруч барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 26
+    },
+    {
+      "code": "eq_ring_027",
+      "name": "Обруч подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 27
+    },
+    {
+      "code": "eq_ring_028",
+      "name": "Обруч мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 28
+    },
+    {
+      "code": "eq_ring_029",
+      "name": "Обруч варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 29
+    },
+    {
+      "code": "eq_ring_030",
+      "name": "Обруч мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 30
+    },
+    {
+      "code": "eq_ring_031",
+      "name": "Бублик паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 31
+    },
+    {
+      "code": "eq_ring_032",
+      "name": "Бублик дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 32
+    },
+    {
+      "code": "eq_ring_033",
+      "name": "Бублик почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 33
+    },
+    {
+      "code": "eq_ring_034",
+      "name": "Бублик некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 34
+    },
+    {
+      "code": "eq_ring_035",
+      "name": "Бублик гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 35
+    },
+    {
+      "code": "eq_ring_036",
+      "name": "Бублик барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 36
+    },
+    {
+      "code": "eq_ring_037",
+      "name": "Бублик подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 37
+    },
+    {
+      "code": "eq_ring_038",
+      "name": "Бублик мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 38
+    },
+    {
+      "code": "eq_ring_039",
+      "name": "Бублик варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 39
+    },
+    {
+      "code": "eq_ring_040",
+      "name": "Бублик мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 40
+    },
+    {
+      "code": "eq_ring_041",
+      "name": "Гайка паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 41
+    },
+    {
+      "code": "eq_ring_042",
+      "name": "Гайка дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 42
+    },
+    {
+      "code": "eq_ring_043",
+      "name": "Гайка почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 43
+    },
+    {
+      "code": "eq_ring_044",
+      "name": "Гайка некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 44
+    },
+    {
+      "code": "eq_ring_045",
+      "name": "Гайка гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 45
+    },
+    {
+      "code": "eq_ring_046",
+      "name": "Гайка барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 46
+    },
+    {
+      "code": "eq_ring_047",
+      "name": "Гайка подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 47
+    },
+    {
+      "code": "eq_ring_048",
+      "name": "Гайка мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 48
+    },
+    {
+      "code": "eq_ring_049",
+      "name": "Гайка варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 49
+    },
+    {
+      "code": "eq_ring_050",
+      "name": "Гайка мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 50
+    },
+    {
+      "code": "eq_ring_051",
+      "name": "Печатка паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 51
+    },
+    {
+      "code": "eq_ring_052",
+      "name": "Печатка дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 52
+    },
+    {
+      "code": "eq_ring_053",
+      "name": "Печатка почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 53
+    },
+    {
+      "code": "eq_ring_054",
+      "name": "Печатка некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 54
+    },
+    {
+      "code": "eq_ring_055",
+      "name": "Печатка гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 55
+    },
+    {
+      "code": "eq_ring_056",
+      "name": "Печатка барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 56
+    },
+    {
+      "code": "eq_ring_057",
+      "name": "Печатка подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 57
+    },
+    {
+      "code": "eq_ring_058",
+      "name": "Печатка мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 58
+    },
+    {
+      "code": "eq_ring_059",
+      "name": "Печатка варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 59
+    },
+    {
+      "code": "eq_ring_060",
+      "name": "Печатка мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 60
+    },
+    {
+      "code": "eq_ring_061",
+      "name": "Напёрсток паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 61
+    },
+    {
+      "code": "eq_ring_062",
+      "name": "Напёрсток дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 62
+    },
+    {
+      "code": "eq_ring_063",
+      "name": "Напёрсток почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 63
+    },
+    {
+      "code": "eq_ring_064",
+      "name": "Напёрсток некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 64
+    },
+    {
+      "code": "eq_ring_065",
+      "name": "Напёрсток гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 65
+    },
+    {
+      "code": "eq_ring_066",
+      "name": "Напёрсток барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 66
+    },
+    {
+      "code": "eq_ring_067",
+      "name": "Напёрсток подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 67
+    },
+    {
+      "code": "eq_ring_068",
+      "name": "Напёрсток мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 68
+    },
+    {
+      "code": "eq_ring_069",
+      "name": "Напёрсток варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 69
+    },
+    {
+      "code": "eq_ring_070",
+      "name": "Напёрсток мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 70
+    },
+    {
+      "code": "eq_ring_071",
+      "name": "Кольцо с дыркой паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 71
+    },
+    {
+      "code": "eq_ring_072",
+      "name": "Кольцо с дыркой дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 72
+    },
+    {
+      "code": "eq_ring_073",
+      "name": "Кольцо с дыркой почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 73
+    },
+    {
+      "code": "eq_ring_074",
+      "name": "Кольцо с дыркой некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 74
+    },
+    {
+      "code": "eq_ring_075",
+      "name": "Кольцо с дыркой гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 75
+    },
+    {
+      "code": "eq_ring_076",
+      "name": "Кольцо с дыркой барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 76
+    },
+    {
+      "code": "eq_ring_077",
+      "name": "Кольцо с дыркой подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 77
+    },
+    {
+      "code": "eq_ring_078",
+      "name": "Кольцо с дыркой мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 78
+    },
+    {
+      "code": "eq_ring_079",
+      "name": "Кольцо с дыркой варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 79
+    },
+    {
+      "code": "eq_ring_080",
+      "name": "Кольцо с дыркой мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 80
+    },
+    {
+      "code": "eq_ring_081",
+      "name": "Петля паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 81
+    },
+    {
+      "code": "eq_ring_082",
+      "name": "Петля дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 82
+    },
+    {
+      "code": "eq_ring_083",
+      "name": "Петля почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 83
+    },
+    {
+      "code": "eq_ring_084",
+      "name": "Петля некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 84
+    },
+    {
+      "code": "eq_ring_085",
+      "name": "Петля гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 85
+    },
+    {
+      "code": "eq_ring_086",
+      "name": "Петля барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 86
+    },
+    {
+      "code": "eq_ring_087",
+      "name": "Петля подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 87
+    },
+    {
+      "code": "eq_ring_088",
+      "name": "Петля мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 88
+    },
+    {
+      "code": "eq_ring_089",
+      "name": "Петля варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 89
+    },
+    {
+      "code": "eq_ring_090",
+      "name": "Петля мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 90
+    },
+    {
+      "code": "eq_ring_091",
+      "name": "Браслет для пальца паладина на больничном",
+      "slot": "ring",
+      "attack_bonus": 91
+    },
+    {
+      "code": "eq_ring_092",
+      "name": "Браслет для пальца дракона с икотой",
+      "slot": "ring",
+      "attack_bonus": 92
+    },
+    {
+      "code": "eq_ring_093",
+      "name": "Браслет для пальца почти всевластия",
+      "slot": "ring",
+      "attack_bonus": 93
+    },
+    {
+      "code": "eq_ring_094",
+      "name": "Браслет для пальца некроманта-вегетарианца",
+      "slot": "ring",
+      "attack_bonus": 94
+    },
+    {
+      "code": "eq_ring_095",
+      "name": "Браслет для пальца гоблина-бухгалтера",
+      "slot": "ring",
+      "attack_bonus": 95
+    },
+    {
+      "code": "eq_ring_096",
+      "name": "Браслет для пальца барда без слуха",
+      "slot": "ring",
+      "attack_bonus": 96
+    },
+    {
+      "code": "eq_ring_097",
+      "name": "Браслет для пальца подозрительного торговца",
+      "slot": "ring",
+      "attack_bonus": 97
+    },
+    {
+      "code": "eq_ring_098",
+      "name": "Браслет для пальца мага с просроченной лицензией",
+      "slot": "ring",
+      "attack_bonus": 98
+    },
+    {
+      "code": "eq_ring_099",
+      "name": "Браслет для пальца варвара на диете",
+      "slot": "ring",
+      "attack_bonus": 99
+    },
+    {
+      "code": "eq_ring_100",
+      "name": "Браслет для пальца мастера критических единиц",
+      "slot": "ring",
+      "attack_bonus": 100
+    },
+    {
+      "code": "eq_cloak_001",
+      "name": "Плащ паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 1
+    },
+    {
+      "code": "eq_cloak_002",
+      "name": "Плащ дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 2
+    },
+    {
+      "code": "eq_cloak_003",
+      "name": "Плащ почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 3
+    },
+    {
+      "code": "eq_cloak_004",
+      "name": "Плащ некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 4
+    },
+    {
+      "code": "eq_cloak_005",
+      "name": "Плащ гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 5
+    },
+    {
+      "code": "eq_cloak_006",
+      "name": "Плащ барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 6
+    },
+    {
+      "code": "eq_cloak_007",
+      "name": "Плащ подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 7
+    },
+    {
+      "code": "eq_cloak_008",
+      "name": "Плащ мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 8
+    },
+    {
+      "code": "eq_cloak_009",
+      "name": "Плащ варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 9
+    },
+    {
+      "code": "eq_cloak_010",
+      "name": "Плащ мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 10
+    },
+    {
+      "code": "eq_cloak_011",
+      "name": "Накидка паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 11
+    },
+    {
+      "code": "eq_cloak_012",
+      "name": "Накидка дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 12
+    },
+    {
+      "code": "eq_cloak_013",
+      "name": "Накидка почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 13
+    },
+    {
+      "code": "eq_cloak_014",
+      "name": "Накидка некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 14
+    },
+    {
+      "code": "eq_cloak_015",
+      "name": "Накидка гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 15
+    },
+    {
+      "code": "eq_cloak_016",
+      "name": "Накидка барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 16
+    },
+    {
+      "code": "eq_cloak_017",
+      "name": "Накидка подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 17
+    },
+    {
+      "code": "eq_cloak_018",
+      "name": "Накидка мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 18
+    },
+    {
+      "code": "eq_cloak_019",
+      "name": "Накидка варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 19
+    },
+    {
+      "code": "eq_cloak_020",
+      "name": "Накидка мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 20
+    },
+    {
+      "code": "eq_cloak_021",
+      "name": "Мантия паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 21
+    },
+    {
+      "code": "eq_cloak_022",
+      "name": "Мантия дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 22
+    },
+    {
+      "code": "eq_cloak_023",
+      "name": "Мантия почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 23
+    },
+    {
+      "code": "eq_cloak_024",
+      "name": "Мантия некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 24
+    },
+    {
+      "code": "eq_cloak_025",
+      "name": "Мантия гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 25
+    },
+    {
+      "code": "eq_cloak_026",
+      "name": "Мантия барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 26
+    },
+    {
+      "code": "eq_cloak_027",
+      "name": "Мантия подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 27
+    },
+    {
+      "code": "eq_cloak_028",
+      "name": "Мантия мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 28
+    },
+    {
+      "code": "eq_cloak_029",
+      "name": "Мантия варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 29
+    },
+    {
+      "code": "eq_cloak_030",
+      "name": "Мантия мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 30
+    },
+    {
+      "code": "eq_cloak_031",
+      "name": "Занавеска паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 31
+    },
+    {
+      "code": "eq_cloak_032",
+      "name": "Занавеска дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 32
+    },
+    {
+      "code": "eq_cloak_033",
+      "name": "Занавеска почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 33
+    },
+    {
+      "code": "eq_cloak_034",
+      "name": "Занавеска некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 34
+    },
+    {
+      "code": "eq_cloak_035",
+      "name": "Занавеска гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 35
+    },
+    {
+      "code": "eq_cloak_036",
+      "name": "Занавеска барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 36
+    },
+    {
+      "code": "eq_cloak_037",
+      "name": "Занавеска подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 37
+    },
+    {
+      "code": "eq_cloak_038",
+      "name": "Занавеска мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 38
+    },
+    {
+      "code": "eq_cloak_039",
+      "name": "Занавеска варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 39
+    },
+    {
+      "code": "eq_cloak_040",
+      "name": "Занавеска мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 40
+    },
+    {
+      "code": "eq_cloak_041",
+      "name": "Покрывало паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 41
+    },
+    {
+      "code": "eq_cloak_042",
+      "name": "Покрывало дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 42
+    },
+    {
+      "code": "eq_cloak_043",
+      "name": "Покрывало почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 43
+    },
+    {
+      "code": "eq_cloak_044",
+      "name": "Покрывало некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 44
+    },
+    {
+      "code": "eq_cloak_045",
+      "name": "Покрывало гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 45
+    },
+    {
+      "code": "eq_cloak_046",
+      "name": "Покрывало барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 46
+    },
+    {
+      "code": "eq_cloak_047",
+      "name": "Покрывало подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 47
+    },
+    {
+      "code": "eq_cloak_048",
+      "name": "Покрывало мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 48
+    },
+    {
+      "code": "eq_cloak_049",
+      "name": "Покрывало варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 49
+    },
+    {
+      "code": "eq_cloak_050",
+      "name": "Покрывало мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 50
+    },
+    {
+      "code": "eq_cloak_051",
+      "name": "Пончо паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 51
+    },
+    {
+      "code": "eq_cloak_052",
+      "name": "Пончо дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 52
+    },
+    {
+      "code": "eq_cloak_053",
+      "name": "Пончо почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 53
+    },
+    {
+      "code": "eq_cloak_054",
+      "name": "Пончо некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 54
+    },
+    {
+      "code": "eq_cloak_055",
+      "name": "Пончо гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 55
+    },
+    {
+      "code": "eq_cloak_056",
+      "name": "Пончо барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 56
+    },
+    {
+      "code": "eq_cloak_057",
+      "name": "Пончо подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 57
+    },
+    {
+      "code": "eq_cloak_058",
+      "name": "Пончо мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 58
+    },
+    {
+      "code": "eq_cloak_059",
+      "name": "Пончо варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 59
+    },
+    {
+      "code": "eq_cloak_060",
+      "name": "Пончо мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 60
+    },
+    {
+      "code": "eq_cloak_061",
+      "name": "Штора паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 61
+    },
+    {
+      "code": "eq_cloak_062",
+      "name": "Штора дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 62
+    },
+    {
+      "code": "eq_cloak_063",
+      "name": "Штора почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 63
+    },
+    {
+      "code": "eq_cloak_064",
+      "name": "Штора некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 64
+    },
+    {
+      "code": "eq_cloak_065",
+      "name": "Штора гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 65
+    },
+    {
+      "code": "eq_cloak_066",
+      "name": "Штора барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 66
+    },
+    {
+      "code": "eq_cloak_067",
+      "name": "Штора подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 67
+    },
+    {
+      "code": "eq_cloak_068",
+      "name": "Штора мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 68
+    },
+    {
+      "code": "eq_cloak_069",
+      "name": "Штора варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 69
+    },
+    {
+      "code": "eq_cloak_070",
+      "name": "Штора мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 70
+    },
+    {
+      "code": "eq_cloak_071",
+      "name": "Полотенце паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 71
+    },
+    {
+      "code": "eq_cloak_072",
+      "name": "Полотенце дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 72
+    },
+    {
+      "code": "eq_cloak_073",
+      "name": "Полотенце почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 73
+    },
+    {
+      "code": "eq_cloak_074",
+      "name": "Полотенце некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 74
+    },
+    {
+      "code": "eq_cloak_075",
+      "name": "Полотенце гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 75
+    },
+    {
+      "code": "eq_cloak_076",
+      "name": "Полотенце барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 76
+    },
+    {
+      "code": "eq_cloak_077",
+      "name": "Полотенце подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 77
+    },
+    {
+      "code": "eq_cloak_078",
+      "name": "Полотенце мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 78
+    },
+    {
+      "code": "eq_cloak_079",
+      "name": "Полотенце варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 79
+    },
+    {
+      "code": "eq_cloak_080",
+      "name": "Полотенце мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 80
+    },
+    {
+      "code": "eq_cloak_081",
+      "name": "Скатерть паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 81
+    },
+    {
+      "code": "eq_cloak_082",
+      "name": "Скатерть дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 82
+    },
+    {
+      "code": "eq_cloak_083",
+      "name": "Скатерть почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 83
+    },
+    {
+      "code": "eq_cloak_084",
+      "name": "Скатерть некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 84
+    },
+    {
+      "code": "eq_cloak_085",
+      "name": "Скатерть гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 85
+    },
+    {
+      "code": "eq_cloak_086",
+      "name": "Скатерть барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 86
+    },
+    {
+      "code": "eq_cloak_087",
+      "name": "Скатерть подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 87
+    },
+    {
+      "code": "eq_cloak_088",
+      "name": "Скатерть мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 88
+    },
+    {
+      "code": "eq_cloak_089",
+      "name": "Скатерть варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 89
+    },
+    {
+      "code": "eq_cloak_090",
+      "name": "Скатерть мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 90
+    },
+    {
+      "code": "eq_cloak_091",
+      "name": "Плед паладина на больничном",
+      "slot": "cloak",
+      "attack_bonus": 91
+    },
+    {
+      "code": "eq_cloak_092",
+      "name": "Плед дракона с икотой",
+      "slot": "cloak",
+      "attack_bonus": 92
+    },
+    {
+      "code": "eq_cloak_093",
+      "name": "Плед почти всевластия",
+      "slot": "cloak",
+      "attack_bonus": 93
+    },
+    {
+      "code": "eq_cloak_094",
+      "name": "Плед некроманта-вегетарианца",
+      "slot": "cloak",
+      "attack_bonus": 94
+    },
+    {
+      "code": "eq_cloak_095",
+      "name": "Плед гоблина-бухгалтера",
+      "slot": "cloak",
+      "attack_bonus": 95
+    },
+    {
+      "code": "eq_cloak_096",
+      "name": "Плед барда без слуха",
+      "slot": "cloak",
+      "attack_bonus": 96
+    },
+    {
+      "code": "eq_cloak_097",
+      "name": "Плед подозрительного торговца",
+      "slot": "cloak",
+      "attack_bonus": 97
+    },
+    {
+      "code": "eq_cloak_098",
+      "name": "Плед мага с просроченной лицензией",
+      "slot": "cloak",
+      "attack_bonus": 98
+    },
+    {
+      "code": "eq_cloak_099",
+      "name": "Плед варвара на диете",
+      "slot": "cloak",
+      "attack_bonus": 99
+    },
+    {
+      "code": "eq_cloak_100",
+      "name": "Плед мастера критических единиц",
+      "slot": "cloak",
+      "attack_bonus": 100
+    }
+  ]
+}

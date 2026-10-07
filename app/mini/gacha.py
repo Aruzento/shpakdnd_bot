@@ -139,6 +139,12 @@ def get_gacha_state(
             (int(player_id), EFFECT_GACHA_LUCK),
         ).fetchone()
 
+        guarantee_row = conn.execute(
+            "SELECT forced_legendary FROM mini_gacha_guarantees WHERE player_id=?",
+            (int(player_id),),
+        ).fetchone()
+        forced_legendary = bool(guarantee_row and guarantee_row[0])
+
     luck_charges = int(luck_row[0]) if luck_row else 0
     luck_active = luck_charges > 0
     rarity_counts = {str(rarity): int(count) for rarity, count in rarity_rows}
@@ -164,6 +170,9 @@ def get_gacha_state(
         else:
             rarity_chances[rarity] = round(units * 100 / eligible_total, 1)
 
+    if forced_legendary:
+        rarity_chances = {rarity: 100.0 if rarity == "legendary" else 0.0 for rarity in rarity_weights}
+
     return {
         "pull_price": int(settings["pull_price"]),
         "ticket_item_code": ticket_code,
@@ -175,6 +184,7 @@ def get_gacha_state(
         "rarity_counts": rarity_counts,
         "rarity_weights": rarity_weights,
         "rarity_chances": rarity_chances,
+        "forced_legendary": forced_legendary,
         "luck_active": luck_active,
         "luck_charges": luck_charges,
         "active_hero_id": player["active_hero_id"],
@@ -265,7 +275,15 @@ def perform_gacha_pull(
         luck_used = consume_effect_charge(
             conn, int(player_id), EFFECT_GACHA_LUCK
         )
-        hero_code = _choose_hero_code(luck_active=luck_used)
+        guarantee = conn.execute("SELECT forced_legendary FROM mini_gacha_guarantees WHERE player_id=?", (int(player_id),)).fetchone()
+        forced_legendary = bool(guarantee and guarantee[0])
+        if forced_legendary:
+            legendary = conn.execute("SELECT code FROM mini_heroes WHERE rarity='legendary' AND active=1 ORDER BY code").fetchall()
+            if not legendary:
+                raise GachaNoHeroes("В гаче пока нет активных Legendary.")
+            hero_code = secrets.choice(legendary)[0]
+        else:
+            hero_code = _choose_hero_code(luck_active=luck_used)
         hero = conn.execute(
             "SELECT * FROM mini_heroes WHERE code = ? AND active = 1",
             (hero_code,),
@@ -357,6 +375,8 @@ def perform_gacha_pull(
                 "gacha", pull_id, f"gacha:{pull_id}",
             )["balance"]
 
+        if forced_legendary:
+            conn.execute("UPDATE mini_gacha_guarantees SET forced_legendary=0 WHERE player_id=?", (int(player_id),))
         tickets_after = _ticket_quantity(conn, player_id, ticket_code)
         conn.commit()
 
@@ -374,6 +394,7 @@ def perform_gacha_pull(
         "tickets": tickets_after,
         "pull_price": pull_price,
         "luck_used": bool(luck_used),
+        "forced_legendary": forced_legendary,
         "auto_activated": auto_activated,
     })
     return result

@@ -67,3 +67,8 @@ def format_inventory_item(
         line += f"\n  ↳ {description}"
 
     return line
+
+
+def format_inventory(character_name: str, items: list) -> str:
+    body="\n".join(format_inventory_item(name,quantity,description) for name,quantity,description in items)
+    return f"🎒 {character_name}:\n\n"+(body or "Инвентарь пуст.")

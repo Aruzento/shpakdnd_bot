@@ -9,7 +9,8 @@
 - shop;
 - gacha / collection / active hero;
 - star upgrades and shard sale;
-- Mini admin grants `/admadd @user -c N`, `/admadd @user -i ID`, `/admitems`;
-- старые обычные D&D-команды.
+- Tower 200 floors, Equipment 300 items и Mini `/super*` (numeric owner ID);
+- read-only `/admitems`;
+- обычные D&D-команды с topic guards; legacy `/add`, `/del`, `/clean`, `/admclean` удалены.
 
 Не содержит `.env`, `shpakdnd.db`, `timers.db`.

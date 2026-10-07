@@ -16,6 +16,12 @@ MINI_COMMANDS = {
 }
 
 REMOVED_MINI_COMMANDS = {
+    "add",
+    "del",
+    "clean",
+    "admclean",
+    "create",
+    "adminv",
     "mini",
     "minipanel",
     "minicreate",
@@ -31,6 +37,10 @@ async def configure_mini_commands(bot: Bot):
         for command in existing
         if command.command not in REMOVED_MINI_COMMANDS
     ]
+    result.extend([
+        BotCommand(command="create",description="Создать обычного D&D-персонажа"),
+        BotCommand(command="adminv",description="D&D: посмотреть инвентарь удалённо"),
+    ])
     result.extend(MINI_COMMANDS.values())
 
     await bot.set_my_commands(result, scope=scope)

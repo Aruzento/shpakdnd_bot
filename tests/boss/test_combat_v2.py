@@ -611,6 +611,7 @@ class CombatV2CatalogTests(unittest.TestCase):
         expected = {
             "training_golem": ("monsters", "magic_shield"),
             "graveyard_warden": ("dark", "banishment"),
+            "Vov4ik": ("commoners", "banishment"),
             "swamp_hydra": ("monsters", "hydra_regeneration"),
             "iron_juggernaut": ("warriors", "none"),
             "crimson_vampire": ("dark", "shapeshifter"),

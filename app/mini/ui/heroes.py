@@ -162,6 +162,10 @@ def _format_gacha(world: dict, state: dict) -> str:
         if state.get("luck_active")
         else ""
     )
+    guarantee_line = (
+        "🟡 Персональная гарантия: следующий успешный призыв — Legendary 100%.\n\n"
+        if state.get("forced_legendary") else ""
+    )
     return (
         "✨ Призыв героев\n\n"
         f"🪙 Цена: {state['pull_price']}\n"
@@ -169,6 +173,7 @@ def _format_gacha(world: dict, state: dict) -> str:
         f"🪙 Монеты: {state['coins']}\n"
         f"🧩 Осколки: {state['shards']}\n\n"
         f"{luck_line}"
+        f"{guarantee_line}"
         "Текущие шансы редкостей:\n"
         f"⚪ Обычный — {chances.get('common', 0):g}%\n"
         f"🟢 Необычный — {chances.get('uncommon', 0):g}%\n"

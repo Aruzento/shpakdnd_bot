@@ -1,9 +1,9 @@
-# Архитектура V1.2.5
+# Архитектура V1.3
 
 ## Точки входа и зависимости
 
 `bot.py` выполняет обычную схему, Mini migration steps, Boss migrator,
-world/catalog sync; затем подключает 8 parent routers и запускает polling.
+world/catalog sync; затем подключает 10 parent routers и запускает polling.
 Mini и Boss включают feature subrouters. `check_bot.py` выполняет startup
 проверки без polling. Обычные timers восстанавливаются через
 `app/services/timers.py`; Boss watcher восстанавливает public turn и таймауты.
@@ -47,8 +47,7 @@ shields остаются в Boss.
 
 Mini `handlers.py` оставлен home/launcher/character module и parent router.
 Boss `handlers.py` оставлен combat callbacks module и parent router.
-Registration/admin и hero selection имеют отдельные subrouters. Все 50 Mini
-route filters/decorators и callback payload formats совпадают с baseline.
+Registration/admin и hero selection имеют отдельные subrouters. Существующие callback formats сохранены; Tower и Equipment используют отдельные prefixes.
 
 ## Coins и транзакции
 
@@ -101,7 +100,7 @@ index создаётся после добавления operation_key. DDL и �
 Существующий отдельный Boss migrator сохраняется; он выполняет freeze legacy
 loadouts до catalog sync и переносит old ability events по legacy_action_id.
 
-Проверки покрывают все 19 Mini tables: worlds, players, heroes/ownership/stars,
+Проверки покрывают 23 Mini tables и 4 Boss tables: worlds, players, heroes/ownership/stars,
 wallet, items/inventory/effects/uses, daily, offers/purchases, gacha, event
 sessions/requests, bosses/participants/actions/events. Проверяются old columns,
 перенос shards, running battle snapshots, repeated init и rollback DDL.
@@ -135,14 +134,14 @@ content safety. Production labels остаются в `presentation.py`; check_b
 aliases в handlers и `_finish_victory`. Неиспользуемые package-wide eager
 exports и wrappers удалены. Assertions старых тестов не ослаблялись.
 
-Tower должна владеть своими состояниями, opponents, timer/reward policy и
-schema module, используя shared combat, hero hooks, effects, wallet и players.
-Boss reward shields и multiplayer queue не относятся к Tower contracts.
-Equipment use/application сможет опираться на effect definitions, но
-слоты, бонусы экипировки, новые items и Mythic в V1.2.5 не реализованы.
+Tower владеет своими content, состояниями, handlers, service, combat adapter,
+repository и reward policy в `app/mini/tower/`. Equipment имеет отдельные ownership,
+слоты, flat aggregate и service в `app/mini/equipment/`, не использует ItemEffectContext.
+`app/mini/superadmin/` содержит ID authorization, parser, transactional service и handlers.
+`app/topic_guard.py` разделяет ordinary D&D и Mini по target/current topic.
+`create.py` подключён к ROUTERS; legacy inventory handlers удалены.
+Полный контракт релиза, миграция и баланс: [V1.3](V1.3.md).
 
 Оставшийся долг: dict/SQLite Row contracts в зрелых сервисах, локальный SQL
-runtime, public Boss presentation рядом с устойчивым media transport,
-синхронный SQLite в handlers, исторические patch aliases. У старого обычного
-D&D `create.py` router отсутствует в ROUTERS и до этого релиза; это отдельно
-от Mini и здесь не изменяется.
+runtime, синхронный SQLite в handlers и исторические patch aliases.
+Эти системы сохраняют прежнее поведение.

@@ -21,5 +21,9 @@ PathModified=/opt/shpakdnd-bot/app/mini/boss/boss_abilities
 PathModified=/opt/shpakdnd-bot/app/mini/boss/content
 Unit=shpakdnd-bot-update.service
 
+PathModified=/opt/shpakdnd-bot/app/mini/tower
+PathModified=/opt/shpakdnd-bot/app/mini/equipment
+PathModified=/opt/shpakdnd-bot/app/mini/superadmin
+
 [Install]
 WantedBy=multi-user.target

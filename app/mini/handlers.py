@@ -85,6 +85,8 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
                     style="success",
                 ),
             ],
+            [InlineKeyboardButton(text="🏰 Испытания", callback_data=_personal_callback("tower",world_id,user_id)),
+             InlineKeyboardButton(text="🛡 Экипировка", callback_data=_personal_callback("equipment",world_id,user_id))],
             [
                 InlineKeyboardButton(
                     text="🛒 Магазин",
@@ -540,3 +542,8 @@ from app.mini.ui import activities, heroes, inventory, shop
 
 for screen in (inventory, shop, heroes, activities):
     router.include_router(screen.router)
+
+from app.mini.tower.handlers import router as tower_router
+from app.mini.equipment.handlers import router as equipment_router
+router.include_router(tower_router)
+router.include_router(equipment_router)

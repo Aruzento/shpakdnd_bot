@@ -1,0 +1,2932 @@
+{
+  "version": 1,
+  "floors": [
+    {
+      "floor": 1,
+      "code": "tower_001",
+      "name": "Крыса с дипломом: смена 1",
+      "max_hp": 6,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 2,
+      "code": "tower_002",
+      "name": "Гоблин-смотритель: смена 1",
+      "max_hp": 7,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 3,
+      "code": "tower_003",
+      "name": "Рыцарь турникета: смена 1",
+      "max_hp": 8,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 4,
+      "code": "tower_004",
+      "name": "Маг квитанций: смена 1",
+      "max_hp": 10,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 5,
+      "code": "tower_005",
+      "name": "Лучник-перестраховщик: смена 1",
+      "max_hp": 11,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 6,
+      "code": "tower_006",
+      "name": "Слизень-ревизор: смена 1",
+      "max_hp": 13,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 7,
+      "code": "tower_007",
+      "name": "Орк-библиотекарь: смена 1",
+      "max_hp": 15,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 8,
+      "code": "tower_008",
+      "name": "Гном-лифтёр: смена 1",
+      "max_hp": 17,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 9,
+      "code": "tower_009",
+      "name": "Ведьма очередей: смена 1",
+      "max_hp": 19,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 10,
+      "code": "tower_010",
+      "name": "Мимик с ценником: смена 1",
+      "max_hp": 22,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 11,
+      "code": "tower_011",
+      "name": "Скелет-вахтёр: смена 1",
+      "max_hp": 24,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 12,
+      "code": "tower_012",
+      "name": "Грифон-курьер: смена 1",
+      "max_hp": 27,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 13,
+      "code": "tower_013",
+      "name": "Голем-сантехник: смена 1",
+      "max_hp": 29,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 14,
+      "code": "tower_014",
+      "name": "Паладин жалоб: смена 1",
+      "max_hp": 32,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 15,
+      "code": "tower_015",
+      "name": "Демон договоров: смена 1",
+      "max_hp": 35,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 16,
+      "code": "tower_016",
+      "name": "Тролль-сосед: смена 1",
+      "max_hp": 38,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 17,
+      "code": "tower_017",
+      "name": "Кобольд-геодезист: смена 1",
+      "max_hp": 42,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 18,
+      "code": "tower_018",
+      "name": "Друид карантинов: смена 1",
+      "max_hp": 45,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 19,
+      "code": "tower_019",
+      "name": "Огр-кассир: смена 1",
+      "max_hp": 49,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 20,
+      "code": "tower_020",
+      "name": "Дракон техподдержки: смена 1",
+      "max_hp": 53,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 21,
+      "code": "tower_021",
+      "name": "Крыса с дипломом: смена 2",
+      "max_hp": 56,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 22,
+      "code": "tower_022",
+      "name": "Гоблин-смотритель: смена 2",
+      "max_hp": 60,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 23,
+      "code": "tower_023",
+      "name": "Рыцарь турникета: смена 2",
+      "max_hp": 65,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 24,
+      "code": "tower_024",
+      "name": "Маг квитанций: смена 2",
+      "max_hp": 69,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 25,
+      "code": "tower_025",
+      "name": "Лучник-перестраховщик: смена 2",
+      "max_hp": 73,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 26,
+      "code": "tower_026",
+      "name": "Слизень-ревизор: смена 2",
+      "max_hp": 78,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 27,
+      "code": "tower_027",
+      "name": "Орк-библиотекарь: смена 2",
+      "max_hp": 83,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 28,
+      "code": "tower_028",
+      "name": "Гном-лифтёр: смена 2",
+      "max_hp": 87,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 29,
+      "code": "tower_029",
+      "name": "Ведьма очередей: смена 2",
+      "max_hp": 92,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 30,
+      "code": "tower_030",
+      "name": "Мимик с ценником: смена 2",
+      "max_hp": 98,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 31,
+      "code": "tower_031",
+      "name": "Скелет-вахтёр: смена 2",
+      "max_hp": 103,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 32,
+      "code": "tower_032",
+      "name": "Грифон-курьер: смена 2",
+      "max_hp": 108,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 33,
+      "code": "tower_033",
+      "name": "Голем-сантехник: смена 2",
+      "max_hp": 114,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 34,
+      "code": "tower_034",
+      "name": "Паладин жалоб: смена 2",
+      "max_hp": 119,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 35,
+      "code": "tower_035",
+      "name": "Демон договоров: смена 2",
+      "max_hp": 125,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 36,
+      "code": "tower_036",
+      "name": "Тролль-сосед: смена 2",
+      "max_hp": 131,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 37,
+      "code": "tower_037",
+      "name": "Кобольд-геодезист: смена 2",
+      "max_hp": 137,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 38,
+      "code": "tower_038",
+      "name": "Друид карантинов: смена 2",
+      "max_hp": 144,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 39,
+      "code": "tower_039",
+      "name": "Огр-кассир: смена 2",
+      "max_hp": 150,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 40,
+      "code": "tower_040",
+      "name": "Дракон техподдержки: смена 2",
+      "max_hp": 157,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 41,
+      "code": "tower_041",
+      "name": "Крыса с дипломом: смена 3",
+      "max_hp": 163,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 42,
+      "code": "tower_042",
+      "name": "Гоблин-смотритель: смена 3",
+      "max_hp": 170,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 43,
+      "code": "tower_043",
+      "name": "Рыцарь турникета: смена 3",
+      "max_hp": 177,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 44,
+      "code": "tower_044",
+      "name": "Маг квитанций: смена 3",
+      "max_hp": 184,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 45,
+      "code": "tower_045",
+      "name": "Лучник-перестраховщик: смена 3",
+      "max_hp": 191,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 46,
+      "code": "tower_046",
+      "name": "Слизень-ревизор: смена 3",
+      "max_hp": 199,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 47,
+      "code": "tower_047",
+      "name": "Орк-библиотекарь: смена 3",
+      "max_hp": 206,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 48,
+      "code": "tower_048",
+      "name": "Гном-лифтёр: смена 3",
+      "max_hp": 214,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 49,
+      "code": "tower_049",
+      "name": "Ведьма очередей: смена 3",
+      "max_hp": 222,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 50,
+      "code": "tower_050",
+      "name": "Мимик с ценником: смена 3",
+      "max_hp": 230,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 51,
+      "code": "tower_051",
+      "name": "Скелет-вахтёр: смена 3",
+      "max_hp": 238,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 52,
+      "code": "tower_052",
+      "name": "Грифон-курьер: смена 3",
+      "max_hp": 246,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 53,
+      "code": "tower_053",
+      "name": "Голем-сантехник: смена 3",
+      "max_hp": 254,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 54,
+      "code": "tower_054",
+      "name": "Паладин жалоб: смена 3",
+      "max_hp": 263,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 55,
+      "code": "tower_055",
+      "name": "Демон договоров: смена 3",
+      "max_hp": 271,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 56,
+      "code": "tower_056",
+      "name": "Тролль-сосед: смена 3",
+      "max_hp": 280,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 57,
+      "code": "tower_057",
+      "name": "Кобольд-геодезист: смена 3",
+      "max_hp": 289,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 58,
+      "code": "tower_058",
+      "name": "Друид карантинов: смена 3",
+      "max_hp": 298,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 59,
+      "code": "tower_059",
+      "name": "Огр-кассир: смена 3",
+      "max_hp": 307,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 60,
+      "code": "tower_060",
+      "name": "Дракон техподдержки: смена 3",
+      "max_hp": 317,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 61,
+      "code": "tower_061",
+      "name": "Крыса с дипломом: смена 4",
+      "max_hp": 326,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 62,
+      "code": "tower_062",
+      "name": "Гоблин-смотритель: смена 4",
+      "max_hp": 336,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 63,
+      "code": "tower_063",
+      "name": "Рыцарь турникета: смена 4",
+      "max_hp": 345,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 64,
+      "code": "tower_064",
+      "name": "Маг квитанций: смена 4",
+      "max_hp": 355,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 65,
+      "code": "tower_065",
+      "name": "Лучник-перестраховщик: смена 4",
+      "max_hp": 365,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 66,
+      "code": "tower_066",
+      "name": "Слизень-ревизор: смена 4",
+      "max_hp": 375,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 67,
+      "code": "tower_067",
+      "name": "Орк-библиотекарь: смена 4",
+      "max_hp": 386,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 68,
+      "code": "tower_068",
+      "name": "Гном-лифтёр: смена 4",
+      "max_hp": 396,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 69,
+      "code": "tower_069",
+      "name": "Ведьма очередей: смена 4",
+      "max_hp": 407,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 70,
+      "code": "tower_070",
+      "name": "Мимик с ценником: смена 4",
+      "max_hp": 418,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 71,
+      "code": "tower_071",
+      "name": "Скелет-вахтёр: смена 4",
+      "max_hp": 428,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 72,
+      "code": "tower_072",
+      "name": "Грифон-курьер: смена 4",
+      "max_hp": 439,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 73,
+      "code": "tower_073",
+      "name": "Голем-сантехник: смена 4",
+      "max_hp": 451,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 74,
+      "code": "tower_074",
+      "name": "Паладин жалоб: смена 4",
+      "max_hp": 462,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 75,
+      "code": "tower_075",
+      "name": "Демон договоров: смена 4",
+      "max_hp": 473,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 76,
+      "code": "tower_076",
+      "name": "Тролль-сосед: смена 4",
+      "max_hp": 485,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 77,
+      "code": "tower_077",
+      "name": "Кобольд-геодезист: смена 4",
+      "max_hp": 497,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 78,
+      "code": "tower_078",
+      "name": "Друид карантинов: смена 4",
+      "max_hp": 508,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 79,
+      "code": "tower_079",
+      "name": "Огр-кассир: смена 4",
+      "max_hp": 520,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 80,
+      "code": "tower_080",
+      "name": "Дракон техподдержки: смена 4",
+      "max_hp": 533,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 81,
+      "code": "tower_081",
+      "name": "Крыса с дипломом: смена 5",
+      "max_hp": 545,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 82,
+      "code": "tower_082",
+      "name": "Гоблин-смотритель: смена 5",
+      "max_hp": 557,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 83,
+      "code": "tower_083",
+      "name": "Рыцарь турникета: смена 5",
+      "max_hp": 570,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 84,
+      "code": "tower_084",
+      "name": "Маг квитанций: смена 5",
+      "max_hp": 582,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 85,
+      "code": "tower_085",
+      "name": "Лучник-перестраховщик: смена 5",
+      "max_hp": 595,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 86,
+      "code": "tower_086",
+      "name": "Слизень-ревизор: смена 5",
+      "max_hp": 608,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 87,
+      "code": "tower_087",
+      "name": "Орк-библиотекарь: смена 5",
+      "max_hp": 621,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 88,
+      "code": "tower_088",
+      "name": "Гном-лифтёр: смена 5",
+      "max_hp": 635,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 89,
+      "code": "tower_089",
+      "name": "Ведьма очередей: смена 5",
+      "max_hp": 648,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 90,
+      "code": "tower_090",
+      "name": "Мимик с ценником: смена 5",
+      "max_hp": 662,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 91,
+      "code": "tower_091",
+      "name": "Скелет-вахтёр: смена 5",
+      "max_hp": 675,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 92,
+      "code": "tower_092",
+      "name": "Грифон-курьер: смена 5",
+      "max_hp": 689,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 93,
+      "code": "tower_093",
+      "name": "Голем-сантехник: смена 5",
+      "max_hp": 703,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 94,
+      "code": "tower_094",
+      "name": "Паладин жалоб: смена 5",
+      "max_hp": 717,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 95,
+      "code": "tower_095",
+      "name": "Демон договоров: смена 5",
+      "max_hp": 731,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 96,
+      "code": "tower_096",
+      "name": "Тролль-сосед: смена 5",
+      "max_hp": 746,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 97,
+      "code": "tower_097",
+      "name": "Кобольд-геодезист: смена 5",
+      "max_hp": 760,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 98,
+      "code": "tower_098",
+      "name": "Друид карантинов: смена 5",
+      "max_hp": 775,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 99,
+      "code": "tower_099",
+      "name": "Огр-кассир: смена 5",
+      "max_hp": 790,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 100,
+      "code": "tower_100",
+      "name": "Дракон техподдержки: смена 5",
+      "max_hp": 805,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 101,
+      "code": "tower_101",
+      "name": "Крыса с дипломом: смена 6",
+      "max_hp": 820,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 102,
+      "code": "tower_102",
+      "name": "Гоблин-смотритель: смена 6",
+      "max_hp": 835,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 103,
+      "code": "tower_103",
+      "name": "Рыцарь турникета: смена 6",
+      "max_hp": 850,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 104,
+      "code": "tower_104",
+      "name": "Маг квитанций: смена 6",
+      "max_hp": 866,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 105,
+      "code": "tower_105",
+      "name": "Лучник-перестраховщик: смена 6",
+      "max_hp": 881,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 106,
+      "code": "tower_106",
+      "name": "Слизень-ревизор: смена 6",
+      "max_hp": 897,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 107,
+      "code": "tower_107",
+      "name": "Орк-библиотекарь: смена 6",
+      "max_hp": 913,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 108,
+      "code": "tower_108",
+      "name": "Гном-лифтёр: смена 6",
+      "max_hp": 929,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 109,
+      "code": "tower_109",
+      "name": "Ведьма очередей: смена 6",
+      "max_hp": 945,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 110,
+      "code": "tower_110",
+      "name": "Мимик с ценником: смена 6",
+      "max_hp": 962,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 111,
+      "code": "tower_111",
+      "name": "Скелет-вахтёр: смена 6",
+      "max_hp": 978,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 112,
+      "code": "tower_112",
+      "name": "Грифон-курьер: смена 6",
+      "max_hp": 995,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 113,
+      "code": "tower_113",
+      "name": "Голем-сантехник: смена 6",
+      "max_hp": 1011,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 114,
+      "code": "tower_114",
+      "name": "Паладин жалоб: смена 6",
+      "max_hp": 1028,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 115,
+      "code": "tower_115",
+      "name": "Демон договоров: смена 6",
+      "max_hp": 1045,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 116,
+      "code": "tower_116",
+      "name": "Тролль-сосед: смена 6",
+      "max_hp": 1062,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 117,
+      "code": "tower_117",
+      "name": "Кобольд-геодезист: смена 6",
+      "max_hp": 1080,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 118,
+      "code": "tower_118",
+      "name": "Друид карантинов: смена 6",
+      "max_hp": 1097,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 119,
+      "code": "tower_119",
+      "name": "Огр-кассир: смена 6",
+      "max_hp": 1115,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 120,
+      "code": "tower_120",
+      "name": "Дракон техподдержки: смена 6",
+      "max_hp": 1133,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 121,
+      "code": "tower_121",
+      "name": "Крыса с дипломом: смена 7",
+      "max_hp": 1150,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 122,
+      "code": "tower_122",
+      "name": "Гоблин-смотритель: смена 7",
+      "max_hp": 1168,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 123,
+      "code": "tower_123",
+      "name": "Рыцарь турникета: смена 7",
+      "max_hp": 1187,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 124,
+      "code": "tower_124",
+      "name": "Маг квитанций: смена 7",
+      "max_hp": 1205,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 125,
+      "code": "tower_125",
+      "name": "Лучник-перестраховщик: смена 7",
+      "max_hp": 1223,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 126,
+      "code": "tower_126",
+      "name": "Слизень-ревизор: смена 7",
+      "max_hp": 1242,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 127,
+      "code": "tower_127",
+      "name": "Орк-библиотекарь: смена 7",
+      "max_hp": 1261,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 128,
+      "code": "tower_128",
+      "name": "Гном-лифтёр: смена 7",
+      "max_hp": 1279,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 129,
+      "code": "tower_129",
+      "name": "Ведьма очередей: смена 7",
+      "max_hp": 1298,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 130,
+      "code": "tower_130",
+      "name": "Мимик с ценником: смена 7",
+      "max_hp": 1318,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 131,
+      "code": "tower_131",
+      "name": "Скелет-вахтёр: смена 7",
+      "max_hp": 1337,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 132,
+      "code": "tower_132",
+      "name": "Грифон-курьер: смена 7",
+      "max_hp": 1356,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 133,
+      "code": "tower_133",
+      "name": "Голем-сантехник: смена 7",
+      "max_hp": 1376,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 134,
+      "code": "tower_134",
+      "name": "Паладин жалоб: смена 7",
+      "max_hp": 1395,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 135,
+      "code": "tower_135",
+      "name": "Демон договоров: смена 7",
+      "max_hp": 1415,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 136,
+      "code": "tower_136",
+      "name": "Тролль-сосед: смена 7",
+      "max_hp": 1435,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 137,
+      "code": "tower_137",
+      "name": "Кобольд-геодезист: смена 7",
+      "max_hp": 1455,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 138,
+      "code": "tower_138",
+      "name": "Друид карантинов: смена 7",
+      "max_hp": 1476,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 139,
+      "code": "tower_139",
+      "name": "Огр-кассир: смена 7",
+      "max_hp": 1496,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 140,
+      "code": "tower_140",
+      "name": "Дракон техподдержки: смена 7",
+      "max_hp": 1517,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 141,
+      "code": "tower_141",
+      "name": "Крыса с дипломом: смена 8",
+      "max_hp": 1537,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 142,
+      "code": "tower_142",
+      "name": "Гоблин-смотритель: смена 8",
+      "max_hp": 1558,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 143,
+      "code": "tower_143",
+      "name": "Рыцарь турникета: смена 8",
+      "max_hp": 1579,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 144,
+      "code": "tower_144",
+      "name": "Маг квитанций: смена 8",
+      "max_hp": 1600,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 145,
+      "code": "tower_145",
+      "name": "Лучник-перестраховщик: смена 8",
+      "max_hp": 1621,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 146,
+      "code": "tower_146",
+      "name": "Слизень-ревизор: смена 8",
+      "max_hp": 1643,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 147,
+      "code": "tower_147",
+      "name": "Орк-библиотекарь: смена 8",
+      "max_hp": 1664,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 148,
+      "code": "tower_148",
+      "name": "Гном-лифтёр: смена 8",
+      "max_hp": 1686,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 149,
+      "code": "tower_149",
+      "name": "Ведьма очередей: смена 8",
+      "max_hp": 1708,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 150,
+      "code": "tower_150",
+      "name": "Мимик с ценником: смена 8",
+      "max_hp": 1730,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 151,
+      "code": "tower_151",
+      "name": "Скелет-вахтёр: смена 8",
+      "max_hp": 1752,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 152,
+      "code": "tower_152",
+      "name": "Грифон-курьер: смена 8",
+      "max_hp": 1774,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 153,
+      "code": "tower_153",
+      "name": "Голем-сантехник: смена 8",
+      "max_hp": 1796,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 154,
+      "code": "tower_154",
+      "name": "Паладин жалоб: смена 8",
+      "max_hp": 1819,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 155,
+      "code": "tower_155",
+      "name": "Демон договоров: смена 8",
+      "max_hp": 1841,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 156,
+      "code": "tower_156",
+      "name": "Тролль-сосед: смена 8",
+      "max_hp": 1864,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 157,
+      "code": "tower_157",
+      "name": "Кобольд-геодезист: смена 8",
+      "max_hp": 1887,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 158,
+      "code": "tower_158",
+      "name": "Друид карантинов: смена 8",
+      "max_hp": 1910,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 159,
+      "code": "tower_159",
+      "name": "Огр-кассир: смена 8",
+      "max_hp": 1933,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 160,
+      "code": "tower_160",
+      "name": "Дракон техподдержки: смена 8",
+      "max_hp": 1957,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 161,
+      "code": "tower_161",
+      "name": "Крыса с дипломом: смена 9",
+      "max_hp": 1980,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 162,
+      "code": "tower_162",
+      "name": "Гоблин-смотритель: смена 9",
+      "max_hp": 2004,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 163,
+      "code": "tower_163",
+      "name": "Рыцарь турникета: смена 9",
+      "max_hp": 2027,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 164,
+      "code": "tower_164",
+      "name": "Маг квитанций: смена 9",
+      "max_hp": 2051,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying",
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 165,
+      "code": "tower_165",
+      "name": "Лучник-перестраховщик: смена 9",
+      "max_hp": 2075,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 166,
+      "code": "tower_166",
+      "name": "Слизень-ревизор: смена 9",
+      "max_hp": 2099,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 167,
+      "code": "tower_167",
+      "name": "Орк-библиотекарь: смена 9",
+      "max_hp": 2124,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 168,
+      "code": "tower_168",
+      "name": "Гном-лифтёр: смена 9",
+      "max_hp": 2148,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 169,
+      "code": "tower_169",
+      "name": "Ведьма очередей: смена 9",
+      "max_hp": 2173,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 170,
+      "code": "tower_170",
+      "name": "Мимик с ценником: смена 9",
+      "max_hp": 2198,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 171,
+      "code": "tower_171",
+      "name": "Скелет-вахтёр: смена 9",
+      "max_hp": 2222,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 172,
+      "code": "tower_172",
+      "name": "Грифон-курьер: смена 9",
+      "max_hp": 2247,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 173,
+      "code": "tower_173",
+      "name": "Голем-сантехник: смена 9",
+      "max_hp": 2273,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 174,
+      "code": "tower_174",
+      "name": "Паладин жалоб: смена 9",
+      "max_hp": 2298,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying",
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 175,
+      "code": "tower_175",
+      "name": "Демон договоров: смена 9",
+      "max_hp": 2323,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 176,
+      "code": "tower_176",
+      "name": "Тролль-сосед: смена 9",
+      "max_hp": 2349,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 177,
+      "code": "tower_177",
+      "name": "Кобольд-геодезист: смена 9",
+      "max_hp": 2375,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 178,
+      "code": "tower_178",
+      "name": "Друид карантинов: смена 9",
+      "max_hp": 2400,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 179,
+      "code": "tower_179",
+      "name": "Огр-кассир: смена 9",
+      "max_hp": 2426,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 180,
+      "code": "tower_180",
+      "name": "Дракон техподдержки: смена 9",
+      "max_hp": 2453,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 181,
+      "code": "tower_181",
+      "name": "Крыса с дипломом: смена 10",
+      "max_hp": 2479,
+      "faction": "commoners",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 182,
+      "code": "tower_182",
+      "name": "Гоблин-смотритель: смена 10",
+      "max_hp": 2505,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 183,
+      "code": "tower_183",
+      "name": "Рыцарь турникета: смена 10",
+      "max_hp": 2532,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 184,
+      "code": "tower_184",
+      "name": "Маг квитанций: смена 10",
+      "max_hp": 2558,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying",
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 185,
+      "code": "tower_185",
+      "name": "Лучник-перестраховщик: смена 10",
+      "max_hp": 2585,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "warrior",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 186,
+      "code": "tower_186",
+      "name": "Слизень-ревизор: смена 10",
+      "max_hp": 2612,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "beast",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 187,
+      "code": "tower_187",
+      "name": "Орк-библиотекарь: смена 10",
+      "max_hp": 2639,
+      "faction": "beasts",
+      "damage_type": "slashing",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 188,
+      "code": "tower_188",
+      "name": "Гном-лифтёр: смена 10",
+      "max_hp": 2667,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 189,
+      "code": "tower_189",
+      "name": "Ведьма очередей: смена 10",
+      "max_hp": 2694,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 190,
+      "code": "tower_190",
+      "name": "Мимик с ценником: смена 10",
+      "max_hp": 2722,
+      "faction": "dark",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "melee",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 191,
+      "code": "tower_191",
+      "name": "Скелет-вахтёр: смена 10",
+      "max_hp": 2749,
+      "faction": "commoners",
+      "damage_type": "slashing",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "attack"
+    },
+    {
+      "floor": 192,
+      "code": "tower_192",
+      "name": "Грифон-курьер: смена 10",
+      "max_hp": 2777,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "beast",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 193,
+      "code": "tower_193",
+      "name": "Голем-сантехник: смена 10",
+      "max_hp": 2805,
+      "faction": "monsters",
+      "damage_type": "bludgeoning",
+      "class_tag": "technical",
+      "attack_range": "melee",
+      "special_trait": "none",
+      "features": [],
+      "response": "prepare"
+    },
+    {
+      "floor": 194,
+      "code": "tower_194",
+      "name": "Паладин жалоб: смена 10",
+      "max_hp": 2833,
+      "faction": "warriors",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "flying",
+      "features": [
+        "flying",
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 195,
+      "code": "tower_195",
+      "name": "Демон договоров: смена 10",
+      "max_hp": 2861,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "construct",
+      "features": [
+        "construct"
+      ],
+      "response": "prepare"
+    },
+    {
+      "floor": 196,
+      "code": "tower_196",
+      "name": "Тролль-сосед: смена 10",
+      "max_hp": 2890,
+      "faction": "commoners",
+      "damage_type": "bludgeoning",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "undead",
+      "features": [
+        "undead"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 197,
+      "code": "tower_197",
+      "name": "Кобольд-геодезист: смена 10",
+      "max_hp": 2918,
+      "faction": "beasts",
+      "damage_type": "piercing",
+      "class_tag": "sneaky",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 198,
+      "code": "tower_198",
+      "name": "Друид карантинов: смена 10",
+      "max_hp": 2947,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "healer",
+      "attack_range": "ranged",
+      "special_trait": "holy",
+      "features": [
+        "holy"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 199,
+      "code": "tower_199",
+      "name": "Огр-кассир: смена 10",
+      "max_hp": 2976,
+      "faction": "warriors",
+      "damage_type": "bludgeoning",
+      "class_tag": "guardian",
+      "attack_range": "melee",
+      "special_trait": "demonic",
+      "features": [
+        "demonic",
+        "armored"
+      ],
+      "response": "attack"
+    },
+    {
+      "floor": 200,
+      "code": "tower_200",
+      "name": "Дракон техподдержки: смена 10",
+      "max_hp": 3005,
+      "faction": "dark",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "armored",
+      "features": [
+        "armored",
+        "construct"
+      ],
+      "response": "prepare"
+    }
+  ]
+}

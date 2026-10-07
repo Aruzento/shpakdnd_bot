@@ -1,10 +1,7 @@
-# D&D Mini — V1.2.5
+# D&D Mini — V1.3
 
-Telegram-бот на aiogram 3 и SQLite. V1.2.5 отделяет общие UI, combat, economy
-и effect contracts и расширяет Boss Combat v2 природными features и свойствами
-героев. Существующие события сохраняют прежние правила; новая механика включается
-для новых событий. Экономика, базовые характеристики, цены и награды сохранены.
-У Железного исполина прежний mechanism явно заменён природной регенерацией construct.
+Telegram-бот на aiogram 3 и SQLite. V1.3 добавляет одиночные Испытания на 200 этажей,
+300 предметов экипировки и отдельные Mini superadmin-команды.
 
 ## Возможности
 
@@ -22,7 +19,13 @@ ability state, события и награды сохраняются в SQLite
 Обычные D&D команды персонажей, инвентаря, бросков и таймеров остаются в `app/handlers/`,
 `app/db/` и `app/services/`. Mini использует отдельные таблицы с префиксом `mini_`.
 
-Башня, экипировка и Mythic в этот релиз не входят.
+🏰 Испытания: один герой из гачи, видимый противник, 3 щита и награда только за первый clear.
+🛡 Экипировка игрока: шлем, кольцо и плащ. Бонус до +300 ATK действует в Tower.
+Mythic в V1.3 не входит. Полные правила и баланс: [V1.3](docs/architecture/V1.3.md).
+
+Mini superadmin авторизуется только по закреплённому `SUPERADMIN_USER_ID = 694384548`
+в `app/mini/superadmin/access.py`. ID подтверждён владельцем; username и topic-admin
+права не дают доступа к `/super*`.
 
 ## Структура
 
@@ -34,6 +37,9 @@ app/mini/
   ui/                           shared context, callbacks, ephemeral transport
                                 inventory, shop, heroes, daily/rules subrouters
   events/                       Telegram handlers + transactional game service
+  tower/                        handlers, service, combat adapter, repository, floors.json, balance.json
+  equipment/                    handlers, service, catalog, items.json
+  superadmin/                   numeric access, strict parser, service, handlers + persistent audit
   combat/                       common tags, integer matchups, creatures, hero_abilities
   boss/
     handlers.py                 combat callbacks; parent Boss router
@@ -86,6 +92,7 @@ python check_bot.py
 python -m compileall -q bot.py app
 python -m app.mini.combat.hero_abilities.validate
 python -m app.mini.boss.boss_abilities.validate
+python -m app.mini.tower.validate
 python bot.py
 ```
 
@@ -102,15 +109,15 @@ Startup сам регистрирует темы с `mini=True`. В Mini-тем�
 Останови сервис и сделай backup `shpakdnd.db`. Сохрани `.env` и рабочую БД при
 замене кода. Миграции запускаются автоматически при старте:
 
-- Mini: `init_mini_db()` выполняет core, inventory, activities и legacy steps
+- Mini: `init_mini_db()` выполняет core, inventory, activities, legacy и v1_3 steps
   в одной `BEGIN IMMEDIATE` транзакции, включая DDL.
 - Boss: `init_boss_db()` сохраняет прежний отдельный transactional migrator,
   журнал legacy events и восстановление loadouts до синхронизации героев.
 - Steps повторно запускаемы; legacy columns остаются для совместимости.
 
-Проверены пустая БД, старые схемы, повторный запуск, rollback миграции и
-сохранность всех 19 Mini-таблиц на копии существующей БД. Полный regression suite
-содержит 348 тестов; исходные 321 сценарий сохранены.
+Миграции additive/idempotent: существующие игроки, коллекции, валюты, Boss state,
+обычный D&D и таймеры остаются в своих таблицах. V1.3 добавляет восемь таблиц.
+Результаты проверок и состав тестов: [V1.3](docs/architecture/V1.3.md).
 
 Deploy watcher перечисляет новые вложенные module/catalog directories;
 при обновлении переустанови path unit по инструкции deploy.
@@ -118,7 +125,7 @@ Deploy watcher перечисляет новые вложенные module/catal
 Инструкции: [deploy](deploy/README.md), [recovery](docs/operations/RECOVERY.md),
 [admin grants](docs/operations/README_ADMIN_GRANTS.md).
 
-## Контент и подготовка к V1.3
+## Контент V1.3
 
 Hero passives находятся в `app/mini/combat/hero_abilities/abilities.json`,
 Boss abilities — в `app/mini/boss/boss_abilities/abilities.json`.
@@ -126,6 +133,5 @@ Boss abilities — в `app/mini/boss/boss_abilities/abilities.json`.
 каталоги проверяют ключи до синхронизации. Изменение coins выполняется только
 через `change_balance()` или `change_balance_in_transaction()`.
 
-Будущая Tower может использовать shared tags, matchups, hero hooks, players,
-heroes, effects и wallet без импорта Boss combat. Её состояния и use cases
-должны принадлежать отдельной feature; копировать Boss combat не требуется.
+Tower использует canonical shared combat без импорта Boss combat. Новые каталоги
+валидируются на startup; чтение Tower и Equipment не запускает migrations/catalog sync.

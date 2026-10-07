@@ -1,71 +1,42 @@
-# Mini admin grants
+# Управление D&D и Mini в V1.3
 
-В теме D&D Mini администратор темы может выдавать игрокам монеты и предметы.
+Обычный D&D: `/create`, `/char`, `/charset`, `/lvlup`, `/inv @user`, `/inv all`.
+Remote admin: `/admadd CHAT:THEME @user предмет`, `/admdel CHAT:THEME @user предмет`,
+`/admdel CHAT:THEME @user ALL`, `/adminv CHAT:THEME @user`, `/admcharset`.
+Target Mini-тема отклоняется до обращения к D&D данным.
+Команды `/add`, `/del`, `/clean`, `/admclean` удалены.
 
-## Одному игроку
-
-Монеты:
-
-```text
-/admadd @user -c 100
-```
-
-Предмет по стабильному `code`:
-
-```text
-/admadd @user -i boss_coin_pouch
-/admadd @user -i luck_potion
-```
-
-Старый числовой ID предмета тоже поддерживается для совместимости:
+Единственный Mini superadmin — владелец @arukozento, проверяемый только по numeric ID.
+В `app/mini/superadmin/access.py` закреплён подтверждённый владельцем
+`SUPERADMIN_USER_ID = 694384548`. Username и обычные topic-admin права доступа
+не дают. Передать роль командой нельзя.
 
 ```text
-/admadd @user -i 3
+/superchars -1003376315265:2684
+/superlook -1003376315265:2684 @user
+/superlook -1003376315265:2684 123456789 -c -s
+/superadd -1003376315265:2684 @user -c 500
+/superadd -1003376315265:2684 @user -s 100
+/superadd -1003376315265:2684 @user -p Villager
+/superadd -1003376315265:2684 @user -i summon_ticket
+/superadd -1003376315265:2684 @user -i eq_helmet_020
+/superdel -1003376315265:2684 @user -i eq_helmet_020
+/superluck -1003376315265:2684 @user
 ```
 
-## Всем Mini-игрокам текущей темы
+Scope строго `chatid:themeid`; target `@username` или numeric Telegram ID.
+Отсутствие флагов у superlook показывает всё; мутация принимает один флаг и значение.
+Coins/shards не уходят ниже нуля. Повторная hero grant не создаёт duplicate shards.
+Удаление используемого в активной Tower/Boss героя отклоняется. Удаление последнего
+экземпляра экипированного предмета атомарно очищает слот.
+Каждая superadd/superdel/superluck операция и audit фиксируются одной транзакцией.
+Повтор Telegram message ID не выполняет экономическую операцию ещё раз.
 
-Монеты каждому:
+`/superluck` сохраняет одну гарантию следующего успешного Legendary pull.
+Повтор не накапливает гарантии. Failed pull, меню и restart её не расходуют.
+Следующий успешный coin/ticket pull проходит обычное разрешение нового/duplicate героя
+и снимает гарантию в той же транзакции, что платёж и pull record.
 
-```text
-/admadd ALL -c 100
-```
-
-Один экземпляр предмета каждому:
-
-```text
-/admadd ALL -i boss_coin_pouch
-```
-
-`ALL` действует только внутри текущего D&D Mini-мира/темы и доступен только администратору темы.
-
-## Список предметов
-
-```text
-/admitems
-```
-
-Команда показывает ID, название и `code`. Для ручной выдачи рекомендуется использовать `code`: он не зависит от порядка записей в SQLite.
-
-## Совместимость
-
-Старая глобальная команда `/admadd CHAT_ID[:TOPIC_ID] @username предмет`
-для обычного D&D-инвентаря сохранена. Mini-синтаксис определяется по форме
-`@username -c/-i` или `ALL -c/-i` и работает только внутри темы D&D Mini.
-
-## Персонаж
-
-Выдать конкретного Mini-персонажа по его стабильному `code`:
-
-```text
-/admadd @user -p panic_dungeon_engineer
-```
-
-Выдать персонажа всем Mini-игрокам текущей темы:
-
-```text
-/admadd ALL -p panic_dungeon_engineer
-```
-
-Повторная выдача безопасна: если персонаж уже есть у игрока, копия и осколки не создаются.
-Если у игрока ещё не было активного героя, выданный персонаж автоматически станет активным.
+`/admitems` остаётся read-only каталогом usable Mini items. Equipment codes:
+`eq_helmet_001..100`, `eq_ring_001..100`, `eq_cloak_001..100`;
+имена и бонусы в `app/mini/equipment/items.json`. Mini через обычный `/admadd` не меняется.

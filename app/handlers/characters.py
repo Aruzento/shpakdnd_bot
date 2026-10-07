@@ -1,3 +1,4 @@
+from app.topic_guard import allow_dnd
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -21,6 +22,8 @@ router = Router(name="characters")
 
 @router.message(Command("char"))
 async def char_handler(message: Message):
+    if not await allow_dnd(message):
+        return
     parts = message.text.split()
 
     if len(parts) != 2:
@@ -73,6 +76,8 @@ async def char_handler(message: Message):
 
 @router.message(Command("charset"))
 async def charset_handler(message: Message):
+    if not await allow_dnd(message):
+        return
     """
     Пример:
     /charset @daniil_savenko 5 | Монах | Человек
@@ -170,6 +175,8 @@ async def charset_handler(message: Message):
 
 @router.message(Command("lvlup"))
 async def lvlup_handler(message: Message):
+    if not await allow_dnd(message):
+        return
     """
     Повышает на 1 уровень всех персонажей текущего чата/темы.
     Команда доступна только администратору этой темы.
