@@ -75,17 +75,13 @@
       "code": "iron_juggernaut",
       "name": "Железный исполин",
       "description": "Древняя боевая машина снова заработала. Магическое ядро раскалено, броня почти непробиваема, а команда отключения давно забыта.",
-      "max_hp": 360,
+      "max_hp": 800,
       "min_players": 5,
-      "reward_coins": 42,
+      "reward_coins": 75,
       "reward_items": [
         {
-          "code": "boss_coin_pouch",
-          "quantity": 1
-        },
-        {
           "code": "boss_shard_casket",
-          "quantity": 1
+          "quantity": 2
         }
       ],
       "reward_shields": 3,
