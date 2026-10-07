@@ -197,7 +197,7 @@
       "description": "Чем сильнее герой кажется на первый взгляд, тем бесполезнее он становится рядом с Инверсией. Иногда слабость — единственная настоящая сила.",
       "max_hp": 500,
       "min_players": 3,
-      "reward_coins": 0,
+      "reward_coins": 90,
       "reward_items": [],
       "reward_shields": 3,
       "reward_decay_percent": 10,
@@ -206,7 +206,11 @@
       "faction": "neutral",
       "ability_key": "collapse",
       "ability_text": "Коллапс: обычные герои получают +100 к урону, необычные +50. Редкие наносят только 25% урона, легендарные — 1%, теневые — 0. Мифические вместо урона лечат босса.",
-      "features": []
+      "features": [
+        "holy"
+      ],
+      "shadow_extractable": true,
+      "shadow_hero_code": "shadow_mister_inversion"
     },
     {
       "code": "flying_schoolboy",
@@ -214,11 +218,18 @@
       "description": "Он каким-то образом научился летать раньше, чем делать домашнее задание. Слишком сильные герои только зря тратят на него время.",
       "max_hp": 420,
       "min_players": 3,
-      "reward_coins": 0,
-      "reward_items": [],
-      "reward_shields": 3,
-      "reward_decay_percent": 10,
+      "reward_coins": 20,
+      "reward_items": [
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 3
+        }
+      ],
+      "reward_shields": 2,
+      "reward_decay_percent": 5,
       "image": "flying_schoolboy.png",
+      "shadow_extractable": true,
+      "shadow_hero_code": "shadow_flying_schoolboy",
       "active": true,
       "faction": "commoners",
       "ability_key": "waste_of_time",
@@ -233,7 +244,7 @@
       "description": "Обычный тренировочный манекен. Он не сопротивляется, не угрожает награде и терпеливо принимает каждый удар.",
       "max_hp": 30,
       "min_players": 1,
-      "reward_coins": 0,
+      "reward_coins": 30,
       "reward_items": [],
       "reward_shields": 0,
       "reward_decay_percent": 10,
@@ -251,12 +262,19 @@
       "description": "У него нет собственного лица. Каждый новый противник становится для него ещё одной формой.",
       "max_hp": 1400,
       "min_players": 4,
-      "reward_coins": 0,
-      "reward_items": [],
-      "reward_shields": 3,
-      "reward_decay_percent": 10,
+      "reward_coins": 60,
+      "reward_items": [
+        {
+          "code": "boss_coin_pouch",
+          "quantity": 1
+        }
+      ],
+      "reward_shields": 2,
+      "reward_decay_percent": 20,
       "image": "doppelganger.png",
       "active": true,
+      "shadow_extractable": true,
+      "shadow_hero_code": "shadow_doppelganger",
       "faction": "neutral",
       "ability_key": "transformation",
       "ability_text": "Превращение: в конце своего хода Дуппельгангер превращается в одного из героев, которые уже били его, перенимая его фракцию, особый тег и способность.",
@@ -267,13 +285,15 @@
       "name": "Ван панч моб",
       "description": "Ему не нужно много ударов. Ему нужен всего один.",
       "max_hp": 8000,
-      "min_players": 5,
-      "reward_coins": 0,
+      "min_players": 4,
+      "reward_coins": 150,
       "reward_items": [],
       "reward_shields": 0,
       "reward_decay_percent": 100,
       "image": "one_punch_mob.png",
       "active": true,
+      "shadow_extractable": true,
+      "shadow_hero_code": "shadow_one_punch_mob",
       "faction": "monsters",
       "ability_key": "oneshot",
       "ability_text": "Ваншот: если атака босса достигает награды без щита, награда уничтожается полностью. Щит принимает удар на себя. Стартовых щитов нет, но герои могут создавать и восстанавливать их во время боя.",
@@ -284,13 +304,20 @@
       "name": "Простой деревенский парень",
       "description": "Никаких хитростей, древних проклятий и магических правил. Просто парень. Просто победи его.",
       "max_hp": 1800,
-      "min_players": 4,
-      "reward_coins": 0,
-      "reward_items": [],
+      "min_players": 2,
+      "reward_coins": 10,
+      "reward_items": [
+        {
+          "code": "boss_shard_casket",
+          "quantity": 2
+        }
+      ],
       "reward_shields": 3,
       "reward_decay_percent": 10,
       "image": "simple_village_guy.png",
       "active": true,
+      "shadow_extractable": true,
+      "shadow_hero_code": "shadow_simple_village_guy",
       "faction": "commoners",
       "ability_key": "simple",
       "ability_text": "Он простой: весь урон по боссу является чистым. Фракции, теги, сопротивления и другие модификаторы входящего урона не применяются. Герой наносит урон своей собственной атакой.",
