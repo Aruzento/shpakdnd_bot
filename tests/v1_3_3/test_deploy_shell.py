@@ -1,9 +1,13 @@
 """Real Bash flow with ONLY fake production commands and disposable paths."""
 import os
+import queue
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+import threading
+import time
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -74,7 +78,10 @@ journalctl)
     [[ "${FAKE_JOURNAL_FAIL:-0}" != 1 ]] || echo 'Traceback: fake startup failure'
     echo 'fake startup journal' ;;
 python)
-    if [[ "$*" == *--redact-env* ]]; then exec cat; fi
+    if [[ "$*" == *--redact-env* ]]; then
+        if [[ -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
+        exec cat
+    fi
     if [[ "$*" == *telegram-deploy-notice.py* ]]; then
         count="$(cat "$FAKE_STATE/notices")"; count=$((count+1));echo "$count" > "$FAKE_STATE/notices"
         if [[ "${FAKE_NOTICE_FAIL:-0}" == "$count" ]]; then echo 'fake Telegram failure' >&2; exit 1; fi
@@ -221,3 +228,63 @@ class DeployShellTests(unittest.TestCase):
         self.assertIn('Deployment прерван',result.stdout)
         self.assertIn('Bot service: inactive',result.stdout)
         self.assertNotIn('systemctl start',trace);self.assertNotIn(' switch ',trace)
+
+    def prompt_before_answer(self,prompt,*,prefix='',answer='',**flags):
+        # Real line-based redactor, fake production; no answer to this prompt is
+        # written until its complete line has reached stdout. Pipes work on
+        # Windows/Git Bash too, without a platform-specific pseudo-TTY.
+        env=dict(self.env,FAKE_REAL_PYTHON=shell_path(sys.executable),PYTHONUTF8='1',
+                 **{k:str(v) for k,v in flags.items()})
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'
+        process=subprocess.Popen([BASH,'--noprofile','--norc','-c',command],env=env,
+                                 stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        lines=queue.Queue()
+        def receive():
+            for line in iter(process.stdout.readline,b''):lines.put(line)
+            lines.put(None)
+        reader=threading.Thread(target=receive,daemon=True);reader.start()
+        received=[]
+        try:
+            if prefix:process.stdin.write(prefix.encode('utf-8'));process.stdin.flush()
+            deadline=time.monotonic()+15
+            while True:
+                try:line=lines.get(timeout=max(0,deadline-time.monotonic()))
+                except queue.Empty:self.fail('Prompt was not visible before input: '+prompt+'\n'+b''.join(received).decode('utf-8'))
+                if line is None:self.fail('Deploy exited before prompt: '+b''.join(received).decode('utf-8'))
+                received.append(line)
+                if prompt.encode('utf-8') in line:
+                    self.assertTrue(line.endswith(b'\n'))
+                    self.assertIsNone(process.poll(),'Deploy must still be waiting for input')
+                    break
+            if answer:process.stdin.write(answer.encode('utf-8'));process.stdin.flush()
+        finally:
+            # EOF lets even the unfixed, blocked version exit safely on failure.
+            process.stdin.close()
+            try:process.wait(timeout=20)
+            except subprocess.TimeoutExpired:process.kill();process.wait();raise
+            reader.join(timeout=5)
+            process.stdout.close()
+        return process.returncode
+
+    def test_same_head_prompt_visible_before_answer_through_real_redactor(self):
+        (self.state/'target').write_text(OLD+'\n')
+        code=self.prompt_before_answer('Всё равно выполнить проверки/restart? [y/N]:',answer='\n')
+        self.assertEqual(code,0)
+        self.assertNotIn('systemctl stop',(self.state/'trace').read_text())
+
+    def test_update_prompt_visible_before_answer_and_eof_declines(self):
+        code=self.prompt_before_answer('Обновить production до origin/main? [y/N]:')
+        self.assertEqual(code,0)
+        self.assertNotIn('systemctl stop',(self.state/'trace').read_text())
+
+    def test_launch_prompt_visible_before_answer_and_empty_enter_accepts(self):
+        code=self.prompt_before_answer('Запустить новую версию? [Y/n]:',prefix='y\ny\n',answer='\n')
+        self.assertEqual(code,0)
+        self.assertEqual((self.state/'shpakdnd-bot.service').read_text().strip(),'active')
+        self.assertEqual((self.state/'shpakdnd-bot-watch.path').read_text().strip(),'active')
+
+    def test_failure_choice_visible_before_answer_and_eof_never_rolls_back(self):
+        code=self.prompt_before_answer('Выбор [1]:',prefix='y\ny\n',FAKE_CHECK_FAIL=1)
+        self.assertEqual(code,1);self.assert_stopped()
+        self.assertEqual((self.state/'head').read_text().strip(),TARGET)
+        self.assertNotIn('systemctl start',(self.state/'trace').read_text())

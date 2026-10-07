@@ -146,6 +146,11 @@ Ctrl+C/SIGTERM выводят текущие unit states, HEAD и backup; скр
 проходит redaction значений `.env` и Telegram token pattern; `.env` никогда не
 печатается. Git credentials не следует помещать в URL remote.
 
+Hotfix V1.3.3: все приглашения подтверждения и выбора rollback завершаются
+newline до `read`, чтобы построчный redactor сразу показал вопрос пользователю.
+Defaults и EOF semantics сохранены. После получения hotfix повторите installer
+выше: установленный bundle вне checkout автоматически не обновляется.
+
 ```bash
 sudo deploy-shpakdnd --dry-run
 ```

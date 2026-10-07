@@ -44,7 +44,8 @@ trap 'interrupted 143' TERM
 
 confirm() {
     local answer default="${2:-N}"
-    printf '%s [%s]: ' "$1" "$([[ "$default" == Y ]] && printf Y/n || printf y/N)"
+    # Complete the line before read: the log redactor streams whole lines.
+    printf '%s [%s]:\n' "$1" "$([[ "$default" == Y ]] && printf Y/n || printf y/N)"
     # EOF is never confirmation, including at the default-yes launch prompt.
     if ! IFS= read -r answer; then printf '\nВвод закрыт; подтверждение не получено.\n'; return 1; fi
     [[ -z "$answer" ]] && answer="$default"
@@ -181,7 +182,7 @@ rollback() {
 failure_choice() {
     local choice
     summary
-    printf '\n[1] Оставить бот остановленным\n[2] Вернуть предыдущий Git HEAD и запустить предыдущую версию\nВыбор [1]: '
+    printf '\n[1] Оставить бот остановленным\n[2] Вернуть предыдущий Git HEAD и запустить предыдущую версию\nВыбор [1]:\n'
     IFS= read -r choice || choice=1
     if [[ "$choice" == 2 ]]; then
         if ! rollback; then printf '❌ Rollback не завершён; нужен ручной разбор.\n'; return 1; fi
