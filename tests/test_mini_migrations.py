@@ -15,9 +15,11 @@ from app.mini.players import create_mini_player
 from app.mini.heroes import sync_hero_catalog
 from app.mini.shop import sync_shop_catalog
 from app.mini.wallet import add_coins
+from tests.topic_fixtures import isolated_topics
 
 class MiniMigrationTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         tmp=tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.db=Path(tmp.name)/'mini.db'
 

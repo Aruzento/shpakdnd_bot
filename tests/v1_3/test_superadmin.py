@@ -1,3 +1,4 @@
+from tests.topic_fixtures import TEST_CHAT_ID, DND_THREAD_ID
 from unittest.mock import patch
 from tests.v1_3.support import MiniCase
 from app.mini.superadmin.access import is_superadmin
@@ -105,7 +106,7 @@ class SuperadminTests(MiniCase):
 
     def test_explicit_dnd_world_is_rejected_for_every_command(self):
         for action,tail in [('superlook','-c'),('superadd','-c 1'),('superdel','-c 1'),('superluck',''),('superchars','')]:
-            text=f'/{action} -1003376315265:4'+('' if action=='superchars' else ' @tester '+tail)
+            text=f'/{action} {TEST_CHAT_ID}:{DND_THREAD_ID}'+('' if action=='superchars' else ' @tester '+tail)
             with self.subTest(action=action),self.assertRaisesRegex(ValueError,'Mini'):
                 execute(self.owner,parse_command(text),operation_key=action,db_path=self.db)
 
