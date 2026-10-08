@@ -73,12 +73,15 @@ class NewScreensTests(unittest.TestCase):
             _,markup=duels.screen({'id':1},{'id':1},41)
             self.assertEqual([b.text for b in buttons(markup)[:-1]],['Отменить вызов'])
 
-    def test_routers_present_and_old_events_absent(self):
+    def test_events_and_v1_4_features_remain_registered_and_visible(self):
         names={child.name for child in router.sub_routers}
         self.assertTrue({'mini_village','mini_duels','mini_mythic'}<=names)
-        self.assertFalse(any('event' in name for name in names))
+        from app.handlers import ROUTERS, mini_events_router
+        self.assertIn(mini_events_router,ROUTERS)
+        self.assertEqual(mini_events_router.name,'mini_events')
         _,markup=submenu('fair',1,42);self.assertTrue(any('деревня' in b.text.lower() for b in buttons(markup)))
-        self.assertFalse(any('События' in b.text for b in buttons(markup)))
+        self.assertEqual([b.text for b in buttons(markup)[:-1]],['🛒 Магазин','🎪 События','🏘 Моя деревня'])
+        self.assertEqual(buttons(markup)[1].callback_data,'mini:events:1:42')
 
 
 class NewCallbackTests(unittest.IsolatedAsyncioTestCase):

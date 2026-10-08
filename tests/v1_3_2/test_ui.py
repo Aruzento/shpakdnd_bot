@@ -98,7 +98,7 @@ class SelectorViewTests(unittest.TestCase):
     def test_submenu_entries_and_back_no_old_upgrades(self):
         expected={'adventures':['🔥 Босс','🏰 Испытания','⚔️ Ежедневный бой','⚔️ Дуэли'],
             'heroarea':['👤 Профиль','📚 Коллекция','🛡 Экипировка','🎒 Инвентарь','✨ Мифические герои'],
-            'fair':['🛒 Магазин','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить']}
+            'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить']}
         for action,labels in expected.items():
             _,markup=submenu(action,1,42)
             self.assertEqual([b.text for b in buttons(markup)],labels+['⬅️ Назад'])

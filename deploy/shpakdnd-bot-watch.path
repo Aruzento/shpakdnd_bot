@@ -8,6 +8,7 @@ PathModified=/opt/shpakdnd-bot/app/db
 PathModified=/opt/shpakdnd-bot/app/services
 PathModified=/opt/shpakdnd-bot/app/handlers
 PathModified=/opt/shpakdnd-bot/app/mini
+PathModified=/opt/shpakdnd-bot/app/mini/events
 PathModified=/opt/shpakdnd-bot/app/mini/ui
 PathModified=/opt/shpakdnd-bot/app/mini/combat
 PathModified=/opt/shpakdnd-bot/app/mini/combat/hero_abilities

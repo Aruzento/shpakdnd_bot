@@ -8,6 +8,7 @@ from app.handlers.inventory import router as inventory_router
 from app.handlers.timers import router as timers_router
 from app.mini.boss.handlers import router as mini_boss_router
 from app.mini.handlers import router as mini_router
+from app.mini.events.handlers import router as mini_events_router
 
 
 ROUTERS = [
@@ -15,6 +16,7 @@ ROUTERS = [
     mini_titles_router,
     mini_boss_router,
     mini_router,
+    mini_events_router,
     create_router,
     superadmin_router,
     characters_router,

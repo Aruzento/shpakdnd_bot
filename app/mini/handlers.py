@@ -76,7 +76,7 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 SUBMENUS={
     'adventures': ('⚔️ Приключения', [('🔥 Босс','boss'),('🏰 Испытания','tower'),('⚔️ Ежедневный бой','daily'),('⚔️ Дуэли','duels')]),
     'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('📚 Коллекция','collection'),('🛡 Экипировка','equipment'),('🎒 Инвентарь','inventory'),('✨ Мифические герои','mythic')]),
-    'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🏘 Моя деревня','village')]),
+    'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🎪 События','events'),('🏘 Моя деревня','village')]),
     'more': ('📖 Ещё', [('📖 Правила','rules'),('🔄 Обновить','home')]),
 }
 
