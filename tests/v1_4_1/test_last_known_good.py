@@ -280,5 +280,5 @@ lkg.promote(v['evidence'],lkg_path=v['lkg_path'],operator_sha=v['operator_sha'],
 
     def test_unknown_state_cannot_be_healthy_startup(self):
         self.ready();pref.abort_deployment(self.fixture.evidence)
-        with self.assertRaisesRegex(DeployError,'confirmed SOURCE/TARGET'):lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
+        with self.assertRaisesRegex(DeployError,'UNKNOWN/FAILED'):lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
         self.assertEqual(self.path.read_bytes(),self.before)

@@ -250,9 +250,6 @@ class ReleaseGuardCLITests(unittest.TestCase):
                     guard.check(self.repo,self.baseline,infrastructure_baseline=self.baseline)
                 self.write(path,original);self.commit()
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_removing_c_installer_or_lkg_blocks_release(self):
         for name in ('deploy/install-systemd-units.sh','deploy/release_lkg.py','deploy/ci-systemd/check.sh'):
             original=(self.repo/name).read_text();(self.repo/name).unlink();self.commit()
@@ -263,3 +260,7 @@ if __name__ == "__main__":
         name='.github/workflows/systemd-staging.yml'
         self.write(name,(self.repo/name).read_text().replace('    timeout-minutes: 15','    timeout-minutes: 15\n    if: false'))
         self.commit();self.assert_guard(1,'systemd staging cannot bypass')
+
+
+if __name__ == "__main__":
+    unittest.main()
