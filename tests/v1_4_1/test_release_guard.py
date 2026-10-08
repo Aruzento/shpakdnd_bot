@@ -284,12 +284,13 @@ class SquashGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             clone=Path(directory)/'squashed'
             root=SCRIPT.parents[1]
+            source_sha=guard.git(root,'rev-parse','HEAD').strip()
             for args in (['clone','--quiet','--shared',str(root),str(clone)],
                          ['-C',str(clone),'config','user.name','Fixture'],
                          ['-C',str(clone),'config','user.email','fixture@example.invalid'],
                          ['-C',str(clone),'config','commit.gpgsign','false'],
                          ['-C',str(clone),'checkout','-qb','fixture-squash',guard.BASELINE_SHA],
-                         ['-C',str(clone),'merge','--squash','origin/codex/v1.4.1'],
+                         ['-C',str(clone),'merge','--squash',source_sha],
                          ['-C',str(clone),'commit','-qm','Squash only in disposable fixture']):
                 result=subprocess.run(['git',*args],capture_output=True,text=True,encoding='utf-8')
                 self.assertEqual(result.returncode,0,result.stderr)
