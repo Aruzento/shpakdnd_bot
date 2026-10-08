@@ -59,3 +59,8 @@ class ToolingBootstrapTests(unittest.TestCase):
         self.dest.mkdir();file=self.dest/'versions';file.write_text('existing unrelated file')
         failed=self.install();self.assertNotEqual(failed.returncode,0)
         self.assertEqual(file.read_text(),'existing unrelated file');self.assertFalse(self.entry.exists())
+
+    def test_existing_lock_file_is_never_truncated(self):
+        lock=self.root/'lock';lock.write_text('existing lock metadata')
+        result=self.install();self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(lock.read_text(),'existing lock metadata')

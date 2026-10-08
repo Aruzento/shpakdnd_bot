@@ -101,7 +101,7 @@ python)
         evidence="$2"; echo RUNNING > "$evidence"
         printf 'python -m compileall TARGET\ncheck_bot.py SNAPSHOT\nvalidators TARGET\npython -m unittest TARGET\ngit diff --check BASE TARGET\n' >> "$FAKE_STATE/trace"
         [[ "${FAKE_PREFLIGHT_WAIT:-0}" == 0 ]] || sleep "$FAKE_PREFLIGHT_WAIT"
-        if [[ "${FAKE_PREFLIGHT_SIGNAL:-0}" == 1 ]]; then kill -TERM "$PPID"; sleep 1; exit 143; fi
+        if [[ "${FAKE_PREFLIGHT_SIGNAL:-0}" == 1 ]]; then kill -TERM "${FAKE_DEPLOY_PID:-$PPID}"; sleep 1; exit 143; fi
         [[ "${FAKE_PREFLIGHT_FAIL:-0}" == 0 ]] || { echo FAIL > "$evidence"; exit 1; }
         echo PASS > "$evidence"
         if [[ "${FAKE_TARGET_CHANGED:-0}" == 1 ]]; then printf '%040d\n' 2 > "$FAKE_STATE/target"; fi
@@ -122,7 +122,7 @@ python)
         while [[ "$1" != --destination ]]; do shift; done
         [[ "${FAKE_BACKUP_FAIL:-0}" != 1 ]] || exit 1
         touch "$2"
-        if [[ "${FAKE_SIGNAL:-0}" == 1 ]]; then kill -TERM "$PPID"; fi
+        if [[ "${FAKE_SIGNAL:-0}" == 1 ]]; then kill -TERM "${FAKE_DEPLOY_PID:-$PPID}"; fi
     elif [[ "$*" == *check_bot.py* ]]; then
         # Fail only for the newly installed target; rollback can still pass.
         if [[ "${FAKE_CHECK_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
@@ -186,7 +186,7 @@ class DeployShellTests(unittest.TestCase):
     def run_deploy(self,answers='',dry=False,preflight=False,**flags):
         env=dict(self.env,**{k:str(v) for k,v in flags.items()})
         # Set PATH within Bash to avoid MSYS Windows PATH conversion ambiguity.
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'+(' --dry-run' if dry else ' --preflight' if preflight else '')
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; export FAKE_DEPLOY_PID=$$; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'+(' --dry-run' if dry else ' --preflight' if preflight else '')
         result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60)
         result.stdout=result.stdout.decode('utf-8');result.stderr=result.stderr.decode('utf-8')
         trace=(self.state/'trace').read_text(encoding='utf-8') if (self.state/'trace').exists() else ''
@@ -300,7 +300,7 @@ class DeployShellTests(unittest.TestCase):
         # Windows/Git Bash too, without a platform-specific pseudo-TTY.
         env=dict(self.env,FAKE_REAL_PYTHON=shell_path(sys.executable,preserve_symlink=True),PYTHONUTF8='1',
                  **{k:str(v) for k,v in flags.items()})
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; export FAKE_DEPLOY_PID=$$; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'
         process=subprocess.Popen([BASH,'--noprofile','--norc','-c',command],env=env,
                                  stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         lines=queue.Queue()
@@ -420,12 +420,12 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual(first.returncode,0);self.assertEqual(second.returncode,0)
         self.assertEqual(trace.count('-m unittest TARGET'),2)
         self.assertNotIn('systemctl stop',trace)
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --skip-preflight'
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; export FAKE_DEPLOY_PID=$$; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --skip-preflight'
         result=subprocess.run([BASH,'-c',command],env=self.env,capture_output=True,timeout=15)
         self.assertEqual(result.returncode,2)
 
     def test_concurrent_preflight_and_deploy_share_single_lock(self):
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --preflight'
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; export FAKE_DEPLOY_PID=$$; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --preflight'
         env=dict(self.env,FAKE_CONCURRENT_LOCK='1',FAKE_PREFLIGHT_WAIT='3')
         first=subprocess.Popen([BASH,'-c',command],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         try:
@@ -452,3 +452,18 @@ class DeployShellTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode,0,result.stdout+result.stderr);self.assert_stopped()
                 self.assertEqual((self.state/'notices').read_text().strip(),'1')
                 self.assertNotIn('-m unittest',trace[trace.index('systemctl stop'):])
+
+    def test_lock_db_alias_and_watched_control_paths_are_rejected_before_write(self):
+        alias=self.root/'alias-lock';os.link(self.project/'shpakdnd.db',alias)
+        cases=[dict(SHPAKDND_LOCK=shell_path(self.project/'shpakdnd.db')),
+               dict(SHPAKDND_LOCK=shell_path(alias)),
+               dict(SHPAKDND_PREFLIGHT_WORK=shell_path(self.project/'app'/'temporary'))]
+        for flags in cases:
+            with self.subTest(flags=flags):
+                (self.state/'trace').unlink(missing_ok=True)
+                result,trace=self.run_deploy(preflight=True,**flags)
+                self.assertNotEqual(result.returncode,0)
+                self.assertEqual((self.project/'shpakdnd.db').read_bytes(),b'unchanged fake database')
+                self.assertNotIn('systemctl stop',trace);self.assertNotIn('release_preflight.py',trace)
+                self.assertEqual((self.state/'shpakdnd-bot.service').read_text().strip(),'active')
+        self.assertFalse((self.project/'app').exists())

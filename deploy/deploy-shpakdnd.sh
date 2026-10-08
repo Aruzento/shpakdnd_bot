@@ -69,14 +69,18 @@ require_clean() {
 }
 verify_head() { [[ "$(head_now)" == "$1" ]]; }
 unit_loaded() { [[ "$(systemctl show -p LoadState --value "$1")" == loaded ]]; }
-preflight() {
-    [[ -d "$PROJECT" && -x "$PYTHON" && -f "$DB" && -f "$PROJECT/.env" ]] || { printf '❌ Отсутствует project/python/DB/.env.\n'; return 1; }
+safe_control_paths() {
     local physical_project physical_directory directory
     physical_project="$(readlink -f -- "$PROJECT")" || return 1
-    for directory in "$PREFLIGHT_DIR" "$WORK_DIR" "$RUNTIME_DIR"; do
+    for directory in "$PREFLIGHT_DIR" "$WORK_DIR" "$RUNTIME_DIR" "$LOG_DIR" "$BACKUP_DIR" "$LOCK"; do
         physical_directory="$(readlink -m -- "$directory")" || return 1
         [[ "$physical_directory" != "$physical_project" && "$physical_directory" != "$physical_project/"* && "$physical_project" != "$physical_directory/"* ]] || { printf '❌ Temporary/evidence paths intersect production.\n'; return 1; }
     done
+    [[ ! -L "$LOCK" && ! "$LOCK" -ef "$DB" ]] || { printf '❌ Deployment lock aliases protected DB.\n'; return 1; }
+}
+
+preflight() {
+    [[ -d "$PROJECT" && -x "$PYTHON" && -f "$DB" && -f "$PROJECT/.env" ]] || { printf '❌ Отсутствует project/python/DB/.env.\n'; return 1; }
     id "$BOT_USER" >/dev/null || return 1
     as_bot test -r "$DB" || return 1
     as_bot test -r "$PROJECT/.env" || return 1
@@ -221,7 +225,9 @@ main() {
     [[ "$#" -le 1 ]] || return 2
     [[ "$(id -u)" == 0 ]] || { printf 'Запусти через sudo deploy-shpakdnd.\n'; return 1; }
     for command in git flock runuser systemctl journalctl install mktemp tee timeout readlink; do command -v "$command" >/dev/null || return 1; done
-    exec 9>"$LOCK"
+    safe_control_paths || return 1
+    # Opening a lock must never truncate any existing file.
+    exec 9>>"$LOCK"
     if ! flock -n 9; then printf 'Deployment уже выполняется.\n'; return 1; fi
     preflight || return 1
     cd "$PROJECT"

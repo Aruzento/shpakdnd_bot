@@ -8,7 +8,8 @@ BIN="${SHPAKDND_TOOLING_BIN:-/usr/local/bin}"
 BOOTSTRAP_PYTHON="${SHPAKDND_TOOLING_PYTHON:-python3}"
 LOCK="${SHPAKDND_LOCK:-/run/lock/shpakdnd-deploy.lock}"
 STAGING="" LINK=""
-exec 9>"$LOCK"
+[[ ! -L "$LOCK" ]] || exit 1
+exec 9>>"$LOCK"
 flock -n 9 || { echo 'Deployment уже выполняется.'; exit 1; }
 [[ "$DEST" == /* && "$BIN" == /* && ! -L "$DEST" && ! -L "$BIN" ]] || exit 1
 [[ ! -L "$DEST/versions" && ( ! -e "$DEST/versions" || -d "$DEST/versions" ) ]] || exit 1

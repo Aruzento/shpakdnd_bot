@@ -496,6 +496,11 @@ def main(argv=None):
             # shell's FD 9 holds the one deployment lock throughout run/validation.
             if os.name != "posix" or not stat.S_ISREG(os.fstat(9).st_mode):
                 raise DeployError("Preflight requires the inherited deployment lock")
+            lock_info=os.fstat(9)
+            db_info=Path(args.db).stat()
+            if (lock_info.st_uid!=os.geteuid() or lock_info.st_mode & 0o022
+                    or (lock_info.st_dev,lock_info.st_ino)==(db_info.st_dev,db_info.st_ino)):
+                raise DeployError("Deployment lock ownership/permissions or DB alias is unsafe")
             import fcntl
             fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
             def interrupted(signum, frame):
