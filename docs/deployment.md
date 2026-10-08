@@ -1,171 +1,169 @@
-# Production deployment D&D Mini
+# Production deployment D&D Mini V1.4.1 — этап B
 
-## Установка команды
+Production defaults: `/opt/shpakdnd-bot`, `shpakbot`, `.venv/bin/python`,
+`shpakdnd.db`; units `shpakdnd-bot.service`, `shpakdnd-bot-watch.path`,
+`shpakdnd-bot-update.service`. Этот документ описывает release manager.
+Обновление legacy watcher/units относится к этапу C.
 
-Production: `/opt/shpakdnd-bot`, пользователь `shpakbot`, Python
-`/opt/shpakdnd-bot/.venv/bin/python`, SQLite `/opt/shpakdnd-bot/shpakdnd.db`.
-Существующие units: `shpakdnd-bot.service`, `shpakdnd-bot-watch.path`,
-`shpakdnd-bot-update.service`. Watcher вызывает прежний маленький
-`update-shpakdnd-bot.sh`; release manager его не заменяет.
+## Bootstrap нового установленного tooling
 
-После получения V1.4 один раз установить tooling:
+Правка repository scripts не обновляет `/usr/local/bin/deploy-shpakdnd`.
+Новый installer получает весь bundle из отдельного checkout проверенного
+commit **вне production и watch paths**, без копирования `.env` или SQLite.
+После независимого одобрения этапа B оператор может выполнить:
 
 ```bash
-cd /opt/shpakdnd-bot
+# В отдельной директории, например /var/tmp/shpakdnd-tooling-source:
+git clone https://github.com/Aruzento/shpakdnd_bot.git /var/tmp/shpakdnd-tooling-source
+cd /var/tmp/shpakdnd-tooling-source
+git checkout --detach <FULL_REVIEWED_STAGE_B_SHA>
 sudo bash deploy/install-deploy-shpakdnd.sh
 sudo deploy-shpakdnd --dry-run
 ```
 
-Installer копирует небольшой bundle в `/usr/local/lib/shpakdnd-deploy` и создаёт
-symlink `/usr/local/bin/deploy-shpakdnd`. Команда продолжает существовать даже
-после code rollback на релиз без deployment scripts. При обновлении самого
-tooling повторить installer; каждое обычное обновление этого не требует.
-Installer и deploy используют один lock `/run/lock/shpakdnd-deploy.lock`.
-Нужны Bash, Git с `switch --no-overwrite-ignore`, util-linux (`flock`, `runuser`),
-systemd, coreutils и уже установленные Python dependencies проекта. `.env`/DB
-должны быть доступны `shpakbot`, а project — доступен ему на запись. Service
-должен иметь ожидаемые User/WorkingDirectory/ExecStart; скрипт проверяет их.
+Не переключайте работающий `/opt/shpakdnd-bot` ради bootstrap. Installer
+использует тот же `/run/lock/shpakdnd-deploy.lock`, копирует helper bundle в
+защищённый staging, проверяет Python/shell syntax, затем атомарно переключает
+symlink на `/usr/local/lib/shpakdnd-deploy/versions/tooling_<HASH>`.
+При ошибке прежняя команда сохраняется; старые bundles остаются для разбора.
+Installer не пишет в игровую директорию/DB и не меняет systemd units/services.
+Нужны root, Bash, Git, coreutils, util-linux (`flock`, `runuser`), systemd,
+production Python с dotenv/pip/venv и доступ к зависимостям requirements.
 
-Начальную установку нового tooling на старом сервере делайте в существующее
-maintenance window: остановите watcher, его update service и бот перед
-получением первого релиза со скриптом, затем установите команду. С последующих
-релизов всю последовательность выполняет команда ниже. Сам installer не
-переключает Git, не останавливает и не запускает production.
+Deployment по-прежнему получает TARGET из `origin/main`: до одобренного
+включения stage B в main preflight намеренно отклонит старый TARGET без
+обязательной infrastructure. Bootstrap сам ничего не merge/deploy.
 
-## Обычный релиз
+## Preflight при работающем боте
 
-Разработчик заранее публикует commit в GitHub. На сервере:
+```bash
+sudo deploy-shpakdnd --preflight
+```
+
+1. Единственный deployment lock защищает preflight, deploy и bootstrap.
+   Проверяются project/env/DB access, clean Git и unit configuration.
+   `git fetch origin` фиксирует полные OLD SHA и TARGET SHA `origin/main`.
+2. Проверяется Git history/integrity, baseline V1.4 и неизменяемый stage A,
+   наличие обязательных файлов, отсутствие tracked env/DB/venv. В этапе B
+   изменения game code/catalog/schema относительно stage A запрещены.
+3. Отдельный clone с полной историей и detached точным TARGET создаётся в
+   `/var/tmp/shpakdnd-preflight/shpakdnd-preflight-*`, вне production/watch paths.
+   Production HEAD не переключается. Отдельный clone OLD нужен для rollback.
+4. В private окружении пользователя бота создаётся новый venv, устанавливаются
+   TARGET requirements, выполняется pip check. Отдельно проверяется, что
+   установленный production venv удовлетворяет TARGET requirements; он не
+   изменяется. Недостающие packages требуют отдельного плана обновления.
+5. `deploy_helpers.backup_database` открывает live DB с `mode=ro`, использует
+   SQLite Online Backup API (включая committed WAL), проверяет integrity/FK.
+   Snapshot должен содержать настоящую инициализированную Mini schema.
+   Обычное копирование `.db` и пустая DB вместо migration snapshot запрещены.
+6. Перед записью helper проверяет реальные app.config BASE_DIR/DB_PATH и
+   check_bot.DB_PATH, SHA checkout, symlinks и physical aliases/hardlinks.
+   На snapshot запускается штатный `check_bot.main`: init_db/init_mini_db/
+   init_boss_db, каталоги и validators. Production DB_PATH недопустим.
+7. Сравниваются все существующие таблицы, определения колонок и multiset
+   хешей всех исходных записей: игроки, wallet, Events обеих игр, boss snapshots,
+   tower/equipment, village/duels, mythic/shadow и любые другие таблицы.
+   Допустимые service fields: worlds name/enabled; heroes name/description/
+   image_path/passive_text; items name/description; equipment name; offers
+   title/description. metadata_json, price/stock, rarity/attack, ownership и
+   любые game state fields сравниваются строго.
+   Пользовательские данные должны сохраниться; новые пользовательские строки
+   в существующих таблицах также запрещены. Добавленные таблицы/колонки
+   записываются в evidence. Второе применение check_bot обязано сохранить
+   уже мигрированные данные строго, включая metadata.
+8. На отдельную копию мигрированной DB запускается OLD check_bot с прежним
+   production interpreter и фиктивной конфигурацией. Проверяются integrity/FK
+   и строгая сохранность данных. Это только compatibility probe, не rollback.
+9. На TARGET запускается общий `scripts/release_checks.py`: полный unittest,
+   discovery preservation, release guard, diff --check, compileall, check_bot
+   на другой disposable DB, все content/ability/tower validators и bash -n.
+   Migration snapshot отделён от тестовой DB. Count определяется discovery;
+   failures/errors/skips/expected failures/unexpected successes недопустимы.
+10. Повторно проверяются OLD HEAD, чистота источника и состояния/PID/NRestarts
+    production. Cleanup удаляет только собственный mkdtemp directory после
+    завершения дочерних процессов, включая SIGTERM/error. PASS публикуется
+    только после всех проверок и успешного cleanup.
+
+В окружение TARGET не попадают настоящий `.env`, BOT_TOKEN, proxy credentials
+или произвольные environment values. Используется `ci-test-token`; сохраняется
+только проверяемый timezone setting. Общий sitecustomize release runner запрещает
+внешние socket connections; bot.py/polling не запускается. Package installation
+может обращаться к package index до migration/test network guard.
+
+## Evidence и срок действия
+
+JSON, SHA256 sidecar и redacted log хранятся в `/var/lib/shpakdnd-preflight`
+(root:root 0700; files 0600). Evidence включает SHA, оба baseline, hash полного
+замороженного installed bundle, UTC times, phases, discovery/executed counts,
+migration preservation/integrity/FK, schema fingerprints, dependency result,
+rollback compatible true/false/unknown и hash защищённого log.
+
+Validation требует owner/private permissions, regular files без symlinks,
+checksums report/log, полный PASS, совпадение SHA/tooling и возраст не более
+часа. RUNNING, NOT RUN, FAIL, отсутствующий/прерванный report недействительны.
+Обычный deploy всегда проводит **новый** preflight; reuse/skip flag отсутствует.
+Записи игроков не входят в условие актуальности evidence: перед checkout
+проверяется fingerprint schema свежей live DB, а не hash её содержимого.
+Изменение OLD/TARGET/tooling требует нового preflight. Новый origin/main не
+подменяет уже зафиксированный SHA.
+
+## Короткий deployment
 
 ```bash
 sudo deploy-shpakdnd
 ```
 
-1. Проверяется clean worktree, paths, пользователь и units; выполняется
-   `git fetch origin`, пока бот работает. Печатаются текущий SHA и SHA
-   `origin/main`. При одинаковом SHA restart/checks требуют согласия.
-2. После согласия во все enabled Mini worlds отправляется
-   «🛠 Технический перерыв». При ошибке требуется отдельное согласие продолжить.
-3. Останавливаются path watcher, уже запущенный update oneshot, затем бот;
-   все три должны стать inactive.
-4. SQLite Online Backup API создаёт
-   `/opt/shpakdnd-backups/shpakdnd_YYYYMMDD_HHMMSS.db`. Файл создаётся эксклюзивно,
-   проходит integrity/FK checks. Показываются Old/Target SHA и backup path.
-5. Второе подтверждение разрешает установить именно показанный target SHA.
-   `git switch --no-overwrite-ignore -C main <SHA>` не уничтожает локальные
-   изменения и не перезаписывает ignored файлы. HEAD сверяется с target.
-   Tracked `.env`, production DB и `.venv` в old/target запрещены.
-6. Под `shpakbot` последовательно выполняются compileall, runtime DB_PATH check,
-   `check_bot.py`, validators, весь unittest suite, SQLite integrity/FK checks.
-   Затем проверяются release diff, фактический HEAD и clean worktree.
-7. Выводятся результаты и число tests. Только подтверждение «Запустить новую
-   версию?» разрешает запуск. Пустой Enter — согласие; закрытый stdin — отказ.
-8. Bot service запускается первым. Две проверки с ожиданием по 5 секунд
-   проверяют active, стабильность MainPID/NRestarts; свежий journal проверяется
-   на startup failures/restart loop. Watcher запускается после первой проверки,
-   затем повторно проверяется стабильность бота.
-9. Когда bot и watcher active, отдельный helper отправляет окончание перерыва
-   с коротким SHA. Ошибка финального notice выводит WARNING; работающий релиз
-   остаётся успешным. Итог: HEAD, backup, unit states, deployment log.
+До первого `systemctl stop` завершается весь preflight, валидируется evidence,
+получается подтверждение пользователя, повторно проверяются source/services,
+затем отправляется notice о перерыве. Ошибка notice требует отдельного согласия.
 
-Production ничего не пушит в GitHub. Fetch фиксирует target SHA один раз:
-изменение origin/main другим процессом между подтверждениями не подменяет его.
-Скрипт не выполняет dependency install; релиз с новыми dependencies требует
-заранее подготовленного virtualenv в согласованное maintenance window.
+После stop watcher → update oneshot → bot все units должны быть inactive.
+Создаётся **свежий** эксклюзивный final SQLite Online Backup с integrity/FK
+в `/opt/shpakdnd-backups`, до checkout. Второе подтверждение разрешает установить
+только проверенный SHA: `git switch --no-overwrite-ignore -C main <SHA>`.
+Ignored env/venv/DB защищены, dirty worktree и tracked production files запрещены.
 
-## Telegram и миграции
+После checkout выполняются только DB_PATH/SHA checks, init_db/init_mini_db/
+init_boss_db и SQLite integrity/FK, clean worktree/evidence schema validation.
+Полный check_bot с каталогами, unittest, compileall и validators уже закончены
+до downtime; они не запускаются при deployment или rollback после остановки.
+После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
+проверяются до watcher и ещё раз после него. Только здоровый bot + watcher
+разрешают финальный notice. Ошибка финального notice — warning с сохранением
+здорового состояния. EOF никогда не считается подтверждением.
 
-`deploy/telegram-deploy-notice.py --project ... --text ...` работает независимо
-от polling-процесса. Он импортирует существующий `app.config` (`.env`, BOT_TOKEN,
-DB_PATH), открывает SQLite read-only, читает enabled `mini_worlds` и отправляет
-Bot API `sendMessage` с соответствующим `chat_id` и `message_thread_id`.
-Thread 0 означает обычный чат; параметр thread тогда не передаётся. Несколько
-worlds получают отдельные сообщения; ошибка одной не отменяет попытки для
-остальных. Пустой список worlds — явная ошибка. Исключения транспорта/ответы
-Telegram не печатаются: они могут содержать токен. Повторные HTTP sends
-автоматически не выполняются.
+## Ошибки и rollback
 
-`check_bot.py` вызывает тот же `init_db` / `init_mini_db` / `init_boss_db`, что
-production startup; каталог и схема проходят обычные validators. Отдельного
-migration engine в shell нет. DB_PATH проверяется до backup и после checkout,
-до потенциальной мутации БД. V1.4 добавляет 11 таблиц Village/Duel/Streak/Shadow/Mythic, совместимые поля
-Daily/Boss snapshots и ledger идемпотентных круток. Исторические таблицы Events сохраняются.
+До остановки: команда возвращает nonzero, production остаётся в исходном
+состоянии, notice/checkout/migrations/restart не выполняются. Защищённый log
+объясняет сбой; устраните причину и запустите полный preflight заново.
 
-Pipeline:
+После остановки: fail-closed, неисправные services останавливаются, watcher
+не активируется ради сокращения простоя. Summary содержит OLD/TARGET/current
+SHA, backup и states. Автоматический code rollback отсутствует. Пользователь
+может оставить всё остановленным либо явно выбрать rollback; последний
+разрешён только при актуальном evidence, rollback_compatible=true и точном
+совпадении live schema с проверенной мигрированной schema. false/unknown
+запрещают переключение и запуск. Повторные долгие checks при rollback отсутствуют;
+выполняются только короткие runtime checks. Deployment target остаётся FAIL
+даже после успешного возврата OLD. Ошибочное/прерванное завершение инвалидирует
+PASS этого запуска. При отказе от TARGET до checkout OLD запускается только
+после отдельного подтверждения; проверенный старый HEAD обязан совпадать.
 
-```bash
-./.venv/bin/python -m compileall -q bot.py app
-./.venv/bin/python check_bot.py
-./.venv/bin/python -m app.mini.combat.hero_abilities.validate
-./.venv/bin/python -m app.mini.boss.boss_abilities.validate
-./.venv/bin/python -m app.mini.tower.validate
-./.venv/bin/python -m unittest discover -s tests -q
-# helper: PRAGMA integrity_check и PRAGMA foreign_key_check
-# git diff --check OLD_HEAD TARGET_HEAD; HEAD и clean worktree
-```
+Никогда не восстанавливайте backup поверх live DB автоматически: после запуска
+могли появиться новые транзакции. Разбор failed runtime, dependency upgrade,
+ручной recovery и согласование downtime требуют оператора. Закреплённый
+last-known-good и модернизация legacy watcher — этап C; расширенный итоговый
+release report — этап D. Legacy update script пока не использует этот pipeline;
+этап B не объявляет его автоматическое обновление безопасным.
 
-Другие content/schema validators входят в `check_bot.py`.
+## Dry run и проверка разработки
 
-## Отказ, ошибка и rollback
-
-До первой остановки отказ не меняет работающий стек. После backup отказ от
-установки сохраняет код и предлагает явно запустить прежнюю версию; можно
-осознанно оставить bot/watcher остановленными.
-
-Failed check немедленно прекращает pipeline и запрещает запуск нового кода.
-Показываются Previous/Target HEAD и backup, затем выбор:
-
-- `[1]` оставить бот остановленным;
-- `[2]` вернуть Old Git HEAD и запустить предыдущую версию.
-
-Подтверждённый code rollback снова останавливает весь стек, безопасно
-переключает main на Old SHA, выполняет тот же pipeline и проверки startup,
-затем возвращает watcher и завершает maintenance notice. Requested target
-deployment всё равно возвращает non-zero, даже если recovery успешен.
-Если старый код несовместим с текущей БД или проверки не проходят, автоматического
-запуска нет. Backup failure также предлагает эти варианты; восстановление
-производится только после валидных проверок.
-
-**DB никогда не заменяется автоматически.** Новая версия могла выполнить
-additive migration, а после backup могли появиться данные. Восстановление БД —
-отдельное ручное действие после оценки совместимости, сохранения текущей БД и
-остановки bot/watcher. Изменять DB при работающем боте нельзя.
-
-Failed start показывает status и последние journal logs, останавливает
-нездоровый стек и предлагает code rollback. Watcher не включается до первой
-успешной проверки бота. При ошибке watcher обе службы возвращаются в остановленное
-состояние. Окончание перерыва не публикуется для нездорового стека.
-
-Ctrl+C/SIGTERM выводят текущие unit states, HEAD и backup; скрытого запуска нет.
-После отключения stdin на финальном подтверждении код остаётся установленным,
-бот/watcher — остановленными, что явно указано в итоговом сообщении.
-Двойной deploy сразу завершается: «Deployment уже выполняется».
-
-## Логи и dry run
-
-Логи: `/var/log/shpakdnd-deploy/deploy_YYYYMMDD_HHMMSS_PID.log` (root, mode 600).
-Записываются timestamps, SHA, backup, checks, startup и rollback. Поток console/log
-проходит redaction значений `.env` и Telegram token pattern; `.env` никогда не
-печатается. Git credentials не следует помещать в URL remote.
-
-Hotfix V1.3.3: все приглашения подтверждения и выбора rollback завершаются
-newline до `read`, чтобы построчный redactor сразу показал вопрос пользователю.
-Defaults и EOF semantics сохранены. После получения hotfix повторите installer
-выше: установленный bundle вне checkout автоматически не обновляется.
-
-```bash
-sudo deploy-shpakdnd --dry-run
-```
-
-Проверяет project/env/Python/DB/unit configuration, clean Git, выполняет fetch,
-показывает current/target и states. Не отправляет Telegram, не останавливает
-службы, не checkout, не запускает tests/migrations, не меняет DB. Создаются только
-lock и временная read-only для shpakbot копия helper bundle (удаляется при exit);
-fetch обновляет remote refs.
-
-Пути/user/unit constants имеют готовые production defaults. Переменные
-`SHPAKDND_PROJECT`, `SHPAKDND_PYTHON`, `SHPAKDND_BACKUPS`, `SHPAKDND_LOGS`,
-`SHPAKDND_LOCK`, `SHPAKDND_RUNTIME_DIR`, `SHPAKDND_START_WAIT` и unit/user overrides
-существуют для изолированной тестовой среды; обычный deploy их не требует.
-Локальные regression tests выполняют реальный Bash с fake Git/systemd/Telegram
-и временными paths. Linux permissions, реальный flock и systemd/Telegram
-подтверждаются dry run и первым контролируемым deployment на сервере.
+`--dry-run` проверяет setup/fetch/clean paths/units и показывает SHA; он не
+выполняет preflight и не разрешает deployment. Override paths/user/units,
+`SHPAKDND_PREFLIGHT_EVIDENCE` и `SHPAKDND_PREFLIGHT_WORK` предназначены для
+изолированных тестов. Evidence/work должны быть вне watched production paths.
+Tests используют только временные Git/SQLite и fake systemd/Telegram, включая
+fault injection, parallel lock, WAL, SIGTERM, evidence tampering и bootstrap.
+Реальные production операции в разработке и CI не выполняются.

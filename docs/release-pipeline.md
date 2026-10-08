@@ -8,8 +8,8 @@ Workflow: `.github/workflows/release-checks.yml`, job **Linux release checks**.
 
 ## Порядок работы
 
-1. Начать отдельную ветку от актуального `origin/main`; для этапа A —
-   `codex/v1.4.1`. Не использовать shared/live checkout для проверок.
+1. Продолжать существующую `codex/v1.4.1`, сохраняя stage A.
+   Не пересоздавать её от main и не использовать shared/live checkout для проверок.
 2. Установить зависимости из `requirements.txt`. На disposable checkout:
 
    ```bash
@@ -130,3 +130,49 @@ code/диагностику. Покрываются Events service/test file/tes
 JSON и entry point, удаление в предыдущем dev commit, корректное точное
 разрешение, malformed/missing allowlist, wildcards, причины/дубликаты/stale,
 невалидный AST и отсутствующий baseline. Никаких live БД/Telegram вызовов.
+
+## Этап B: production preflight и infrastructure guard
+
+Работа продолжается в существующей `codex/v1.4.1` и draft PR #1; stage A
+`49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1` не сбрасывается. Baseline game checks,
+Events/routers и все старые test IDs остаются обязательными.
+
+Guard дополнительно сравнивает infrastructure с **отдельным неизменяемым stage A
+SHA**, проверяя его ancestor и inventory. Защищены deploy shell/Python helpers,
+service/service.example/path, release_checks/release_guard/test_inventory и
+workflow. Для новых B helpers существует explicit required HEAD inventory.
+Удаление этих файлов нельзя разрешить game-removal allowlist. Workflow обязан
+сохранять Linux job, triggers codex push/main PR, Python 3.13, fetch-depth=0,
+read-only permissions и вызов общего runner; отключающие if, continue-on-error
+и `|| true` блокируются. Guard не заменяет независимый review изменения
+содержимого infrastructure или обязательную branch protection в GitHub.
+
+`deploy/release_preflight.py` использует **тот же** TARGET release runner, а не
+второй набор validators/tests. До release checks проверяется отдельный snapshot
+реальной DB: Online Backup API через существующий deploy_helpers включает WAL;
+штатный check_bot применяет миграции дважды, generic row/schema inventory
+доказывает сохранность всех существующих таблиц/данных. Служебные изменения
+ограничены явно перечисленными presentation/config fields SERVICE_METADATA;
+экономические значения, ownership и state JSON сравниваются строго. Повторная
+миграция и OLD compatibility сравнивают также service metadata строго.
+
+Temporary TARGET/OLD clones, отдельный target venv, migration snapshot,
+rollback copy и обычная тестовая DB физически отделены от production. Перед
+writer сверяются Git SHA и actual app.config DB_PATH; symlinks/hardlink aliases
+запрещены. Настоящий token/env не копируются. Root evidence содержит hashes,
+SHA, counts, phases, schema и rollback true/false/unknown; неполный report FAIL.
+Обычный deploy всегда запускает новый preflight и валидирует evidence перед
+maintenance/checkout. Live rows могут изменяться во время работающего бота;
+финальный backup и короткие runtime checks остаются обязательными.
+
+После остановки отсутствуют full unittest/compileall/catalog validators,
+включая rollback. Bootstrap installed executable выполняется из отдельной
+проверенной копии и атомарно обновляет полный versioned tooling bundle.
+Фактические пути, порядок команд и recovery описаны в
+[deployment.md](deployment.md). Этап B не обновляет watcher units, не внедряет
+last-known-good stage C и не делает merge/production deployment.
+
+Для stage B source общего release_checks.py, test_inventory.py и workflow
+обязана точно совпадать с reviewed stage A. No-op executor или изменение
+семантики discovery/CI требует отдельного явного изменения guard и review;
+одного сохранения имени файла недостаточно.

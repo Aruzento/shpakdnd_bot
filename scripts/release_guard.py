@@ -10,6 +10,9 @@ import subprocess
 import sys
 
 BASELINE_SHA = "f06c0d129fdad0fef4fde0889915faac26b94f4a"
+INFRASTRUCTURE_BASELINE_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
+INFRASTRUCTURE_REQUIRED = {"scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"}
+INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py"}
 ALLOWLIST_PATH = "docs/release/approved-removals.json"
 HANDLERS_PATH = "app/handlers/__init__.py"
 
@@ -34,8 +37,38 @@ def source(repo: Path, revision: str, path: str) -> str:
     return git(repo, "show", f"{revision}:{path}").lstrip("\ufeff")
 
 
+def infrastructure(path: str) -> bool:
+    return (path in INFRASTRUCTURE_REQUIRED or path.startswith("deploy/") and
+            path.endswith((".sh", ".py", ".service", ".path", ".service.example")))
+
+
+def validate_workflow(text: str):
+    # Conservative contract for this workflow: changes to these critical lines
+    # must update guard + its independent tests under protected-main review.
+    required = ("name: Release checks", "  push:", "    branches: ['codex/**']", "  pull_request:",
+                "    branches: [main]", "  contents: read", "    name: Linux release checks",
+                "    runs-on: ubuntu-latest", "    timeout-minutes: 20", "      BOT_TOKEN: ci-test-token",
+                "          fetch-depth: 0", "          python-version: '3.13'",
+                '        run: python scripts/release_checks.py --report "$RUNNER_TEMP/release-checks.json"')
+    lines = text.splitlines()
+    if any(line not in lines for line in required):
+        raise GuardError("required CI workflow protection is missing/disabled")
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("if:") and stripped != "if: always()":
+            raise GuardError("required CI workflow conditional may disable checks")
+        if (stripped.startswith("continue-on-error:") and stripped != "continue-on-error: false") or "|| true" in line:
+            raise GuardError("required CI workflow ignores failures")
+    if not any("uses: actions/checkout@" in line for line in lines) or not any("uses: actions/setup-python@" in line for line in lines):
+        raise GuardError("required official CI setup actions are missing")
+
+
+def infrastructure_inventory(repo: Path, revision: str) -> set[str]:
+    return {path for path in tree_files(repo, revision) if infrastructure(path)}
+
+
 def protected(path: str) -> bool:
-    return (path == "bot.py" or path.endswith(".json") and path != ALLOWLIST_PATH
+    return (infrastructure(path) or path == "bot.py" or path.endswith(".json") and path != ALLOWLIST_PATH
             or path.endswith(".py") and path.startswith(("app/", "tests/")))
 
 
@@ -156,7 +189,7 @@ def load_allowlist(text: str, missing: set[tuple[str, str, str]]) -> dict:
     return approved
 
 
-def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD") -> dict:
+def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD", *, infrastructure_baseline: str = INFRASTRUCTURE_BASELINE_SHA) -> dict:
     if not re.fullmatch(r"[0-9a-f]{40}", baseline):
         raise GuardError("baseline must be an explicit full stable-release SHA")
     try:
@@ -168,6 +201,25 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD") -> dic
     before, after = inventory(repo, baseline), inventory(repo, head)
     if not before["tests"] or not before["files"] or not before["routers"]:
         raise GuardError("baseline inventory is incomplete: application, tests and ROUTERS required")
+    if not re.fullmatch(r"[0-9a-f]{40}", infrastructure_baseline):
+        raise GuardError("infrastructure baseline must be an explicit full SHA")
+    try:
+        git(repo, "cat-file", "-e", f"{infrastructure_baseline}^{{commit}}")
+    except GuardError as error:
+        raise GuardError(f"infrastructure baseline unavailable: {infrastructure_baseline}") from error
+    git(repo, "merge-base", "--is-ancestor", infrastructure_baseline, head)
+    infra = infrastructure_inventory(repo, infrastructure_baseline)
+    if not INFRASTRUCTURE_REQUIRED <= infra:
+        raise GuardError("infrastructure baseline inventory is incomplete")
+    missing_infra = (infra | INFRASTRUCTURE_HEAD_REQUIRED) - tree_files(repo, head)
+    if missing_infra:
+        raise GuardError("critical infrastructure removed: " + ", ".join(sorted(missing_infra)))
+    validate_workflow(source(repo, head, ".github/workflows/release-checks.yml"))
+    # Stage B does not alter the CI executor or discovery semantics. Keeping
+    # their exact reviewed source prevents a no-op runner passing the inventory.
+    for path in ("scripts/release_checks.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"):
+        if source(repo, head, path) != source(repo, infrastructure_baseline, path):
+            raise GuardError("reviewed CI executor/workflow changed or disabled: " + path)
     missing = removals(before, after)
     try:
         allowlist_text = source(repo, head, ALLOWLIST_PATH)
@@ -178,7 +230,7 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD") -> dic
     if unexplained:
         detail = "\n".join(f"  {kind}: {path}" + (f"::{symbol}" if symbol else "") for kind, path, symbol in unexplained)
         raise GuardError(f"unapproved removals from stable baseline {baseline}:\n{detail}")
-    return {"baseline": baseline, "head": head, "approved_removals": len(approved),
+    return {"baseline": baseline, "infrastructure_baseline": infrastructure_baseline, "head": head, "approved_removals": len(approved),
             "baseline_test_symbols": sum(map(len, before["tests"].values())),
             "head_test_symbols": sum(map(len, after["tests"].values())),
             "protected_files": len(after["files"])}
@@ -189,9 +241,10 @@ def main(argv=None) -> int:
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--baseline", default=BASELINE_SHA, help="explicit stable SHA; override for synthetic fixtures only")
     parser.add_argument("--target", default="HEAD")
+    parser.add_argument("--infrastructure-baseline", default=INFRASTRUCTURE_BASELINE_SHA, help="immutable stage A SHA; fixture override only")
     args = parser.parse_args(argv)
     try:
-        report = check(args.repo, args.baseline, args.target)
+        report = check(args.repo, args.baseline, args.target, infrastructure_baseline=args.infrastructure_baseline)
     except (GuardError, OSError) as error:
         print(f"ERROR: release guard: {error}", file=sys.stderr)
         return 1

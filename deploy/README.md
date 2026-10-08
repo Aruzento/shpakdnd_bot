@@ -1,4 +1,4 @@
-# Production release deployment V1.4
+# Production release deployment V1.4.1
 
 Интерактивная команда `sudo deploy-shpakdnd`: установка, dry run, backup, проверки и rollback
 описаны в [docs/deployment.md](../docs/deployment.md). Она отдельна от filesystem watcher ниже.
@@ -48,3 +48,16 @@ DB, .env и __pycache__ не перечисляются в watch paths.
 watcher по инструкции выше. Изменения этих unit-файлов сами по себе не изменяют
 установленный service на сервере. Runtime-проверку systemd выполняй на Linux;
 локально проверяется структура unit и её покрытие файлов проекта.
+
+## V1.4.1 stage B
+
+Release manager теперь поддерживает `sudo deploy-shpakdnd --preflight` и
+обязательный preflight до downtime при обычном запуске. Установленный executable
+обновляется отдельным atomic installer из checkout вне watch paths; правка
+repository deploy files сама installed bundle не меняет. Полная инструкция:
+[Production preflight и bootstrap](../docs/deployment.md).
+
+Legacy watcher и инструкции его ручной установки выше сохранены. Они не входят
+в новый preflight manager; автоматическое безопасное обновление watcher/units
+и last-known-good относятся к stage C. В рамках разработки stage B эти команды
+на production не выполняются.

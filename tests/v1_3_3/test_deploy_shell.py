@@ -30,7 +30,9 @@ if [[ "$name" != runuser && "$name" != install ]]; then printf '%s %s\n' "$name"
 case "$name" in
 id) echo 0 ;;
 runuser) shift 3; exec "$@" ;;
-flock) [[ "${FAKE_LOCKED:-0}" != 1 ]] ;;
+flock)
+    [[ "${FAKE_LOCKED:-0}" != 1 ]] || exit 1
+    if [[ "${FAKE_CONCURRENT_LOCK:-0}" == 1 ]]; then mkdir "$FAKE_STATE/lock-owner" 2>/dev/null; fi ;;
 install)
     directory=0;args=()
     while (($#)); do
@@ -41,10 +43,10 @@ git)
     shift 2
     case "$1" in
         status) [[ "${FAKE_DIRTY:-0}" != 1 ]] || printf ' M app/local.py\n' ;;
-        fetch) : ;;
+        fetch) [[ "${FAKE_FETCH_FAIL:-0}" != 1 ]] ;;
         rev-parse)
             if [[ "$*" == *--show-toplevel* ]]; then printf '%s\n' "$SHPAKDND_PROJECT"
-            elif [[ "$*" == *origin/main* ]]; then cat "$FAKE_STATE/target"
+            elif [[ "$*" == *origin/main* ]]; then [[ "${FAKE_TARGET_MISSING:-0}" != 1 ]] || exit 1; cat "$FAKE_STATE/target"
             else cat "$FAKE_STATE/head"; fi ;;
         ls-tree) printf 'bot.py\napp/config.py\n.env.example\n' ;;
         switch) printf '%s\n' "${@: -1}" > "$FAKE_STATE/head" ;;
@@ -61,6 +63,7 @@ systemctl)
                 WorkingDirectory) echo "$SHPAKDND_PROJECT" ;;
                 ExecStart) echo "$SHPAKDND_PYTHON bot.py" ;;
                 Triggers) echo shpakdnd-bot-update.service ;;
+                ActiveState) cat "$FAKE_STATE/$unit" ;;
                 MainPID) echo 123 ;;
                 NRestarts) echo 0 ;;
                 *) exit 9 ;;
@@ -85,11 +88,31 @@ python)
         if [[ -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
         exec cat
     fi
-    if [[ "$*" == *telegram-deploy-notice.py* ]]; then
+    if [[ "$*" == *release_preflight.py*' run '* ]]; then
+        while [[ "$1" != --evidence ]]; do shift; done
+        evidence="$2"; echo RUNNING > "$evidence"
+        printf 'python -m compileall TARGET\ncheck_bot.py SNAPSHOT\nvalidators TARGET\npython -m unittest TARGET\ngit diff --check BASE TARGET\n' >> "$FAKE_STATE/trace"
+        [[ "${FAKE_PREFLIGHT_WAIT:-0}" == 0 ]] || sleep "$FAKE_PREFLIGHT_WAIT"
+        if [[ "${FAKE_PREFLIGHT_SIGNAL:-0}" == 1 ]]; then kill -TERM "$PPID"; sleep 1; exit 143; fi
+        [[ "${FAKE_PREFLIGHT_FAIL:-0}" == 0 ]] || { echo FAIL > "$evidence"; exit 1; }
+        echo PASS > "$evidence"
+        if [[ "${FAKE_TARGET_CHANGED:-0}" == 1 ]]; then printf '%040d\n' 2 > "$FAKE_STATE/target"; fi
+        if [[ "${FAKE_OLD_CHANGED:-0}" == 1 ]]; then printf '%040d\n' 1 > "$FAKE_STATE/head"; fi
+    elif [[ "$*" == *release_preflight.py*' validate '* ]]; then
+        [[ "${FAKE_EVIDENCE_BAD:-0}" != 1 ]] || exit 1
+        if [[ "$*" == *--rollback-db* && "${FAKE_ROLLBACK_INCOMPATIBLE:-0}" == 1 ]]; then exit 1; fi
+        echo 'Preflight evidence: PASS; tests=3; rollback_compatible=True'
+    elif [[ "$*" == *release_preflight.py*' invalidate '* ]]; then
+        while [[ "$1" != --evidence ]]; do shift; done
+        echo FAIL > "$2"
+    elif [[ "$*" == *release_preflight.py*' runtime '* ]]; then
+        if [[ "${FAKE_RUNTIME_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
+    elif [[ "$*" == *telegram-deploy-notice.py* ]]; then
         count="$(cat "$FAKE_STATE/notices")"; count=$((count+1));echo "$count" > "$FAKE_STATE/notices"
         if [[ "${FAKE_NOTICE_FAIL:-0}" == "$count" ]]; then echo 'fake Telegram failure' >&2; exit 1; fi
     elif [[ "$*" == *sqlite-deploy.py*' backup '* ]]; then
         while [[ "$1" != --destination ]]; do shift; done
+        [[ "${FAKE_BACKUP_FAIL:-0}" != 1 ]] || exit 1
         touch "$2"
         if [[ "${FAKE_SIGNAL:-0}" == 1 ]]; then kill -TERM "$PPID"; fi
     elif [[ "$*" == *check_bot.py* ]]; then
@@ -149,12 +172,13 @@ class DeployShellTests(unittest.TestCase):
         self.env=dict(os.environ,FAKE_STATE=shell_path(self.state),
             SHPAKDND_PROJECT=shell_path(self.project),SHPAKDND_PYTHON=shell_path(self.bin/'python'),
             SHPAKDND_BACKUPS=shell_path(self.root/'backups'),SHPAKDND_LOGS=shell_path(self.root/'logs'),
-            SHPAKDND_LOCK=shell_path(self.root/'lock'),SHPAKDND_RUNTIME_DIR=shell_path(runtime),SHPAKDND_START_WAIT='0')
+            SHPAKDND_LOCK=shell_path(self.root/'lock'),SHPAKDND_RUNTIME_DIR=shell_path(runtime),SHPAKDND_START_WAIT='0',
+            SHPAKDND_PREFLIGHT_EVIDENCE=shell_path(self.root/'evidence'),SHPAKDND_PREFLIGHT_WORK=shell_path(self.root/'preflight-work'))
 
-    def run_deploy(self,answers='',dry=False,**flags):
+    def run_deploy(self,answers='',dry=False,preflight=False,**flags):
         env=dict(self.env,**{k:str(v) for k,v in flags.items()})
         # Set PATH within Bash to avoid MSYS Windows PATH conversion ambiguity.
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'+(' --dry-run' if dry else '')
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'+(' --dry-run' if dry else ' --preflight' if preflight else '')
         result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60)
         result.stdout=result.stdout.decode('utf-8');result.stderr=result.stderr.decode('utf-8')
         trace=(self.state/'trace').read_text(encoding='utf-8') if (self.state/'trace').exists() else ''
@@ -188,7 +212,7 @@ class DeployShellTests(unittest.TestCase):
     def test_success_orders_fetch_notice_stop_backup_checkout_checks_start(self):
         result,trace=self.run_deploy('y\ny\ny\n')
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        markers=[' fetch origin','telegram-deploy-notice.py','systemctl stop shpakdnd-bot-watch.path','systemctl stop shpakdnd-bot-update.service','systemctl stop shpakdnd-bot.service',' backup ',' switch ','-m compileall','check_bot.py','-m unittest',' check --db',' diff --check','systemctl start shpakdnd-bot.service','systemctl start shpakdnd-bot-watch.path']
+        markers=[' fetch origin','-m compileall','check_bot.py','validators TARGET','-m unittest','release_preflight.py validate','telegram-deploy-notice.py','systemctl stop shpakdnd-bot-watch.path','systemctl stop shpakdnd-bot-update.service','systemctl stop shpakdnd-bot.service',' backup ',' switch ','runtime --short',' check --db','systemctl start shpakdnd-bot.service','systemctl start shpakdnd-bot-watch.path']
         positions=[trace.index(marker) for marker in markers]
         self.assertEqual(positions,sorted(positions))
         self.assertEqual((self.state/'head').read_text().strip(),TARGET)
@@ -198,14 +222,14 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual(len(list((self.root/'logs').glob('*.log'))),1)
 
     def test_check_failure_does_not_start_and_code_rollback_requires_choice(self):
-        result,trace=self.run_deploy('y\ny\n1\n',FAKE_CHECK_FAIL=1)
+        result,trace=self.run_deploy('y\ny\n1\n',FAKE_RUNTIME_FAIL=1)
         self.assertNotEqual(result.returncode,0);self.assert_stopped()
-        self.assertNotIn('systemctl start',trace);self.assertNotIn('-m unittest',trace)
-        self.assertIn('Проверка не пройдена: check_bot',result.stdout)
+        self.assertNotIn('systemctl start',trace);self.assertNotIn('-m unittest',trace[trace.index('systemctl stop'):])
+        self.assertIn('Проверка не пройдена: runtime_init',result.stdout)
         self.assertEqual((self.state/'notices').read_text().strip(),'1')
 
     def test_confirmed_code_rollback_never_restores_database(self):
-        result,trace=self.run_deploy('y\ny\n2\n',FAKE_CHECK_FAIL=1)
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_RUNTIME_FAIL=1)
         self.assertEqual(result.returncode,1,result.stdout+result.stderr)
         self.assertEqual((self.state/'head').read_text().strip(),OLD)
         self.assertIn('Предыдущая версия восстановлена',result.stdout)
@@ -239,6 +263,8 @@ class DeployShellTests(unittest.TestCase):
         for flag in ('FAKE_START_FAIL','FAKE_JOURNAL_FAIL'):
             with self.subTest(flag=flag):
                 (self.state/'notices').write_text('0\n')
+                for unit in ('shpakdnd-bot.service','shpakdnd-bot-watch.path'):
+                    (self.state/unit).write_text('active\n')
                 (self.state/'trace').unlink(missing_ok=True)
                 result,trace=self.run_deploy('y\ny\ny\n1\n',**{flag:1})
                 self.assertEqual(result.returncode,1,result.stdout+result.stderr);self.assert_stopped()
@@ -315,7 +341,95 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual((self.state/'shpakdnd-bot-watch.path').read_text().strip(),'active')
 
     def test_failure_choice_visible_before_answer_and_eof_never_rolls_back(self):
-        code=self.prompt_before_answer('Выбор [1]:',prefix='y\ny\n',FAKE_CHECK_FAIL=1)
+        code=self.prompt_before_answer('Выбор [1]:',prefix='y\ny\n',FAKE_RUNTIME_FAIL=1)
         self.assertEqual(code,1);self.assert_stopped()
         self.assertEqual((self.state/'head').read_text().strip(),TARGET)
         self.assertNotIn('systemctl start',(self.state/'trace').read_text())
+
+
+    def test_preflight_only_never_notices_stops_switches_or_writes_live_db(self):
+        result,trace=self.run_deploy(preflight=True)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        for forbidden in ('systemctl stop','systemctl start',' switch ','telegram-deploy-notice.py',' backup ','runtime --short'):
+            self.assertNotIn(forbidden,trace)
+        self.assertIn('-m unittest TARGET',trace)
+        self.assertEqual((self.state/'head').read_text().strip(),OLD)
+        self.assertEqual((self.project/'shpakdnd.db').read_bytes(),b'unchanged fake database')
+        self.assertEqual((self.state/'shpakdnd-bot.service').read_text().strip(),'active')
+        self.assertEqual((self.state/'shpakdnd-bot-watch.path').read_text().strip(),'active')
+
+    def test_every_preflight_gate_failure_keeps_services_running(self):
+        for flag in ('FAKE_PREFLIGHT_FAIL','FAKE_FETCH_FAIL','FAKE_TARGET_MISSING','FAKE_DIRTY','FAKE_EVIDENCE_BAD'):
+            with self.subTest(flag=flag):
+                (self.state/'trace').unlink(missing_ok=True)
+                result,trace=self.run_deploy('y\ny\ny\n',**{flag:1})
+                self.assertNotEqual(result.returncode,0)
+                self.assertNotIn('systemctl stop',trace);self.assertNotIn('telegram-deploy-notice.py',trace)
+                self.assertEqual((self.state/'head').read_text().strip(),OLD)
+                for unit in ('shpakdnd-bot.service','shpakdnd-bot-watch.path'):
+                    self.assertEqual((self.state/unit).read_text().strip(),'active')
+                self.assertEqual((self.project/'shpakdnd.db').read_bytes(),b'unchanged fake database')
+
+    def test_sigterm_during_preflight_cleans_fail_evidence_without_stop(self):
+        result,trace=self.run_deploy(preflight=True,FAKE_PREFLIGHT_SIGNAL=1)
+        self.assertEqual(result.returncode,143,result.stdout+result.stderr)
+        self.assertNotIn('systemctl stop',trace);self.assertNotIn(' switch ',trace)
+        self.assertEqual((self.state/'shpakdnd-bot.service').read_text().strip(),'active')
+        evidence=list((self.root/'evidence').glob('*.json'))
+        self.assertEqual(len(evidence),1);self.assertEqual(evidence[0].read_text().strip(),'FAIL')
+
+    def test_old_sha_changed_during_checks_blocks_maintenance(self):
+        result,trace=self.run_deploy('y\n',FAKE_OLD_CHANGED=1)
+        self.assertNotEqual(result.returncode,0)
+        self.assertNotIn('systemctl stop',trace);self.assertNotIn('telegram-deploy-notice.py',trace)
+
+    def test_new_origin_main_cannot_replace_pinned_verified_target(self):
+        result,trace=self.run_deploy('y\ny\ny\n',FAKE_TARGET_CHANGED=1)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertNotEqual((self.state/'target').read_text().strip(),TARGET)
+        self.assertEqual((self.state/'head').read_text().strip(),TARGET)
+        self.assertIn(' switch --no-overwrite-ignore -C main '+TARGET,trace)
+
+    def test_final_backup_failure_blocks_checkout_and_invalidates_pass(self):
+        result,trace=self.run_deploy('y\n1\n',FAKE_BACKUP_FAIL=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn(' switch ',trace);self.assertNotIn('systemctl start',trace)
+        self.assertIn(' backup ',trace)
+        self.assertEqual(next((self.root/'evidence').glob('*.json')).read_text().strip(),'FAIL')
+
+    def test_incompatible_rollback_cannot_switch_or_restart_even_with_consent(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_RUNTIME_FAIL=1,FAKE_ROLLBACK_INCOMPATIBLE=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertEqual(trace.count(' switch '),1);self.assertEqual((self.state/'head').read_text().strip(),TARGET)
+        self.assertIn('Rollback запрещён',result.stdout)
+        after_stop=trace[trace.index('systemctl stop'):]
+        for long_check in ('-m unittest','compileall','check_bot.py','validators'):
+            self.assertNotIn(long_check,after_stop)
+
+    def test_repeated_preflight_reruns_checks_and_cannot_skip_gate(self):
+        first,_=self.run_deploy(preflight=True)
+        second,trace=self.run_deploy(preflight=True)
+        self.assertEqual(first.returncode,0);self.assertEqual(second.returncode,0)
+        self.assertEqual(trace.count('-m unittest TARGET'),2)
+        self.assertNotIn('systemctl stop',trace)
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --skip-preflight'
+        result=subprocess.run([BASH,'-c',command],env=self.env,capture_output=True,timeout=15)
+        self.assertEqual(result.returncode,2)
+
+    def test_concurrent_preflight_and_deploy_share_single_lock(self):
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'" --preflight'
+        env=dict(self.env,FAKE_CONCURRENT_LOCK='1',FAKE_PREFLIGHT_WAIT='3')
+        first=subprocess.Popen([BASH,'-c',command],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        try:
+            deadline=time.monotonic()+15
+            while not list((self.root/'evidence').glob('*.json')):
+                if first.poll() is not None:self.fail('First preflight exited before locking')
+                if time.monotonic()>deadline:self.fail('First preflight never began')
+                time.sleep(0.02)
+            result,trace=self.run_deploy('y\n',FAKE_CONCURRENT_LOCK=1)
+            self.assertNotEqual(result.returncode,0)
+            self.assertNotIn('systemctl stop',trace)
+            output,error=first.communicate(timeout=15)
+            self.assertEqual(first.returncode,0,(output+error).decode('utf-8'))
+        finally:
+            if first.poll() is None:first.kill();first.communicate()

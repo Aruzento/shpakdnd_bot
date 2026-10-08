@@ -59,6 +59,13 @@ class ReleaseGuardCLITests(unittest.TestCase):
         self.write("app/mini/events/handlers.py", "router = object()\n")
         self.write(guard.HANDLERS_PATH, IMPORT + "\nROUTERS = [mini_events_router]\n")
         self.write(TESTS, "import unittest\nclass MiniEvents(unittest.TestCase):\n    def test_restart(self): pass\n    def test_rewards(self): pass\n")
+        # Stage B extends the fixture with the immutable infrastructure contract.
+        root = SCRIPT.parents[1]
+        for path in guard.INFRASTRUCTURE_HEAD_REQUIRED:
+            self.write(path, (root / path).read_text(encoding="utf-8-sig"))
+        self.write("deploy/deploy-shpakdnd.sh", "#!/usr/bin/env bash\nexit 0\n")
+        self.write("deploy/deploy_helpers.py", "# stable helper\n")
+        self.write("deploy/shpakdnd-bot-watch.path", "[Path]\nUnit=bot.service\n")
         self.commit("V1.4 stable fixture")
         self.baseline = self.git("rev-parse", "HEAD").strip()
         self.write(guard.ALLOWLIST_PATH, '{"removals": []}\n')
@@ -81,7 +88,8 @@ class ReleaseGuardCLITests(unittest.TestCase):
 
     def run_guard(self, *, baseline=None):
         result = subprocess.run([sys.executable, str(SCRIPT), "--repo", str(self.repo),
-                                 "--baseline", self.baseline if baseline is None else baseline],
+                                 "--baseline", self.baseline if baseline is None else baseline,
+                                 "--infrastructure-baseline", self.baseline],
                                 capture_output=True, text=True, encoding="utf-8")
         return result.returncode, result.stdout + result.stderr
 
@@ -93,7 +101,7 @@ class ReleaseGuardCLITests(unittest.TestCase):
 
     def test_no_removals_pass_both_api_and_cli(self):
         self.assert_guard(0, "OK: release guard")
-        report = guard.check(self.repo, self.baseline)
+        report = guard.check(self.repo, self.baseline, infrastructure_baseline=self.baseline)
         self.assertEqual(report["baseline_test_symbols"], 2)
         self.assertEqual(report["approved_removals"], 0)
 
@@ -201,6 +209,46 @@ class ReleaseGuardCLITests(unittest.TestCase):
         self.commit()
         self.assert_guard(1, "invalid Python")
 
+    def test_deleted_critical_infrastructure_fails(self):
+        for path in ("deploy/deploy-shpakdnd.sh", "deploy/deploy_helpers.py", "deploy/shpakdnd-bot-watch.path",
+                     "scripts/release_checks.py", ".github/workflows/release-checks.yml"):
+            with self.subTest(path=path):
+                content = (self.repo / path).read_text(encoding="utf-8")
+                (self.repo / path).unlink()
+                self.commit()
+                self.assert_guard(1, "critical infrastructure removed")
+                self.write(path, content)
+                self.commit()
+
+    def test_disabled_ci_step_and_ignored_failure_are_detected(self):
+        path = ".github/workflows/release-checks.yml"
+        original = (self.repo / path).read_text(encoding="utf-8")
+        for change in (original.replace("run: python scripts/release_checks.py", "run: echo disabled"),
+                       original + "\n        if: false\n", original + "\n        continue-on-error: true\n"):
+            with self.subTest(change=change[-40:]):
+                self.write(path, change); self.commit()
+                self.assert_guard(1, "required CI workflow")
+
+    def test_stage_a_added_file_is_preserved_against_separate_baseline(self):
+        # Infrastructure appears after stable game baseline; deleting it must
+        # still fail. This proves the two baseline inventories are independent.
+        path = "deploy/stage_a_new_helper.py"
+        self.write(path, "# new infrastructure\n"); self.commit()
+        infrastructure = self.git("rev-parse", "HEAD").strip()
+        (self.repo / path).unlink(); self.commit()
+        with self.assertRaisesRegex(guard.GuardError, "critical infrastructure removed"):
+            guard.check(self.repo, self.baseline, infrastructure_baseline=infrastructure)
+
+
+    def test_no_op_ci_executor_and_discovery_script_are_rejected(self):
+        for path in ('scripts/release_checks.py','scripts/test_inventory.py'):
+            with self.subTest(path=path):
+                original=(self.repo/path).read_text()
+                self.write(path, '# disabled executor\n')
+                self.commit()
+                with self.assertRaisesRegex(guard.GuardError,'changed or disabled'):
+                    guard.check(self.repo,self.baseline,infrastructure_baseline=self.baseline)
+                self.write(path,original);self.commit()
 
 if __name__ == "__main__":
     unittest.main()

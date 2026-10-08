@@ -137,3 +137,16 @@ class DeployHelperTests(unittest.TestCase):
         script="import importlib.util; s=importlib.util.spec_from_file_location('helper',__import__('sys').argv[1]); h=importlib.util.module_from_spec(s);s.loader.exec_module(h);c=h.runtime_config(__import__('sys').argv[2]); assert c.TOKEN==__import__('sys').argv[3]; print(c.DB_PATH)"
         result=subprocess.run([sys.executable,'-c',script,str(spec.origin),str(self.root),self.token],env=env,capture_output=True,text=True,timeout=20)
         self.assertEqual(result.returncode,0,result.stderr);self.assertIn('shpakdnd.db',result.stdout);self.assertNotIn(self.token,result.stdout+result.stderr)
+
+    def test_online_backup_deadline_removes_only_partial_destination(self):
+        destination=self.root/'partial.db';before=self.db.read_bytes()
+        with self.assertRaises(helpers.DeployError):
+            helpers.backup_database(self.db,destination,max_seconds=0)
+        self.assertFalse(destination.exists());self.assertEqual(self.db.read_bytes(),before)
+
+    def test_interrupted_online_backup_removes_reserved_destination(self):
+        destination=self.root/'partial.db';before=self.db.read_bytes()
+        source=Mock();source.backup.side_effect=KeyboardInterrupt('SIGTERM fixture')
+        with patch.object(helpers,'readonly_db',return_value=source),self.assertRaises(KeyboardInterrupt):
+            helpers.backup_database(self.db,destination)
+        self.assertFalse(destination.exists());self.assertEqual(self.db.read_bytes(),before)
