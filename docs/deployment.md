@@ -274,7 +274,7 @@ preservation, validators, shell syntax, compileall и полный discovery/uni
 именно baseline. Старый SHA не обязан содержать runner этапа A: используется
 зафиксированный общий C runner/inventory/network guard, а baseline preservation
 обоснован точным immutable SHA. Это отдельный явно помеченный evidence kind
-PINNED_LEGACY_BASELINE; произвольный legacy HEAD не допускается.
+PINNED_LEGACY_BASELINE; произвольный legacy HEAD не допускается. Unchanged baseline-тесты используют свою pinned topic configuration; общий network guard запрещает внешние API. Современный runner продолжает использовать test isolation этапа A.
 
 Проверки идут до остановки. Далее действуют все обычные подтверждения, final
 backup/SOURCE/TARGET journal и короткий контролируемый stop/start того же SHA.

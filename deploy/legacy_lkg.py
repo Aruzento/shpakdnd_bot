@@ -40,7 +40,9 @@ class LegacyVerification(pref.Preflight):
         runner=shared_runner(self.tools)
         test_checkout=self.checkout(self.temp/'legacy-tests',pref.BASELINE_SHA)
         env=pref.safe_environment(self.temp,network=self.network,project=test_checkout)
-        env['RELEASE_TEST_ISOLATED_TOPICS']='1'
+        # Unchanged V1.4 tests rely on the pinned topic configuration. Keep
+        # that contract; shared NETWORK_GUARD still blocks all external APIs.
+        env.pop('RELEASE_TEST_ISOLATED_TOPICS',None)
         checks=dict.fromkeys(runner.CHECK_NAMES,'NOT RUN')
         checks['release guard']='OK'  # Strict immutable SHA + clean Git/fsck above, no C runner at old SHA.
         commands={
