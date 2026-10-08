@@ -124,6 +124,8 @@ sudo deploy-shpakdnd
 только проверенный SHA: `git switch --no-overwrite-ignore -C main <SHA>`.
 Ignored env/venv/DB защищены, dirty worktree и tracked production files запрещены.
 
+Backup/runtime helper commands ограничены timeout 60 секунд (+5 на kill);
+Online Backup дополнительно имеет deadline 30 секунд.
 После checkout выполняются только DB_PATH/SHA checks, init_db/init_mini_db/
 init_boss_db и SQLite integrity/FK, clean worktree/evidence schema validation.
 Полный check_bot с каталогами, unittest, compileall и validators уже закончены

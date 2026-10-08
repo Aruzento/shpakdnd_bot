@@ -64,8 +64,14 @@ systemctl)
                 ExecStart) echo "$SHPAKDND_PYTHON bot.py" ;;
                 Triggers) echo shpakdnd-bot-update.service ;;
                 ActiveState) cat "$FAKE_STATE/$unit" ;;
-                MainPID) echo 123 ;;
-                NRestarts) echo 0 ;;
+                MainPID)
+                    count=0;[[ ! -f "$FAKE_STATE/pid-queries" ]] || count="$(cat "$FAKE_STATE/pid-queries")"
+                    count=$((count+1));echo "$count" > "$FAKE_STATE/pid-queries"
+                    if [[ "${FAKE_PID_CHANGED:-0}" == 1 && "$count" -ge 2 ]]; then echo 124;else echo 123;fi ;;
+                NRestarts)
+                    count=0;[[ ! -f "$FAKE_STATE/restart-queries" ]] || count="$(cat "$FAKE_STATE/restart-queries")"
+                    count=$((count+1));echo "$count" > "$FAKE_STATE/restart-queries"
+                    if [[ "${FAKE_RESTART_CHANGED:-0}" == 1 && "$count" -ge 2 ]]; then echo 1;else echo 0;fi ;;
                 *) exit 9 ;;
             esac ;;
         is-active)
@@ -74,6 +80,7 @@ systemctl)
             [[ "$status" == active ]] ;;
         stop) echo inactive > "$FAKE_STATE/$unit" ;;
         start)
+            if [[ "$unit" == shpakdnd-bot-watch.path && "${FAKE_WATCH_START_FAIL:-0}" == 1 ]]; then exit 1; fi
             if [[ "$unit" == shpakdnd-bot.service && "${FAKE_START_FAIL:-0}" == 1 ]]; then
                 echo inactive > "$FAKE_STATE/$unit"
             else echo active > "$FAKE_STATE/$unit"; fi ;;
@@ -82,6 +89,7 @@ systemctl)
     esac ;;
 journalctl)
     [[ "${FAKE_JOURNAL_FAIL:-0}" != 1 ]] || echo 'Traceback: fake startup failure'
+    if [[ "${FAKE_LATE_JOURNAL_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/shpakdnd-bot-watch.path")" == active ]]; then echo 'RuntimeError: late startup failure';fi
     echo 'fake startup journal' ;;
 python)
     if [[ "$*" == *--redact-env* ]]; then
@@ -433,3 +441,14 @@ class DeployShellTests(unittest.TestCase):
             self.assertEqual(first.returncode,0,(output+error).decode('utf-8'))
         finally:
             if first.poll() is None:first.kill();first.communicate()
+
+    def test_pid_restarts_watcher_and_late_journal_failures_stop_unhealthy_stack(self):
+        for flag in ('FAKE_PID_CHANGED','FAKE_RESTART_CHANGED','FAKE_WATCH_START_FAIL','FAKE_LATE_JOURNAL_FAIL'):
+            with self.subTest(flag=flag):
+                for name in ('trace','pid-queries','restart-queries'):(self.state/name).unlink(missing_ok=True)
+                for unit in ('shpakdnd-bot.service','shpakdnd-bot-watch.path'):(self.state/unit).write_text('active\n')
+                (self.state/'notices').write_text('0\n');(self.state/'head').write_text(OLD+'\n')
+                result,trace=self.run_deploy('y\ny\ny\n1\n',**{flag:1})
+                self.assertNotEqual(result.returncode,0,result.stdout+result.stderr);self.assert_stopped()
+                self.assertEqual((self.state/'notices').read_text().strip(),'1')
+                self.assertNotIn('-m unittest',trace[trace.index('systemctl stop'):])

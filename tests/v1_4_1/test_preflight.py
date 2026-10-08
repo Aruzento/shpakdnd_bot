@@ -303,6 +303,7 @@ with tempfile.TemporaryDirectory() as directory:
         operation = self.operation(); operation.workspace = self.project / "unsafe-work"
         with self.assertRaisesRegex(DeployError, "outside production"):
             operation.perform()
+        self.assertFalse(operation.workspace.exists())
 
     def test_actual_config_cannot_write_to_live_db(self):
         original = pref.Preflight.checkout

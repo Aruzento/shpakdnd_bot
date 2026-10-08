@@ -54,3 +54,8 @@ class ToolingBootstrapTests(unittest.TestCase):
     def test_locked_deployment_prevents_bootstrap(self):
         failed=self.install(FAKE_LOCKED='1');self.assertNotEqual(failed.returncode,0)
         self.assertFalse(self.dest.exists());self.assertFalse(self.entry.exists())
+
+    def test_unsafe_versions_path_is_rejected_without_replacing_it(self):
+        self.dest.mkdir();file=self.dest/'versions';file.write_text('existing unrelated file')
+        failed=self.install();self.assertNotEqual(failed.returncode,0)
+        self.assertEqual(file.read_text(),'existing unrelated file');self.assertFalse(self.entry.exists())

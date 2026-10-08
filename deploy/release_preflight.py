@@ -350,14 +350,17 @@ class Preflight:
                            baseline_discovered_tests=data["baseline_discovered_tests"], release_checks=data["checks"])
 
     def perform(self):
+        # Resolve containment before mkdir/chmod or creating any temporary file.
+        for directory in (self.workspace, self.evidence.parent):
+            physical=directory.resolve()
+            if physical == self.project or self.project in physical.parents or physical in self.project.parents:
+                raise DeployError("Preflight workspace/evidence must be outside production/watcher project")
         private_directory(self.evidence.parent)
         if not self.workspace.exists():
             self.workspace.mkdir(parents=True, mode=0o711)
         info = self.workspace.lstat()
         if self.workspace.is_symlink() or not stat.S_ISDIR(info.st_mode) or (os.name == "posix" and (info.st_uid != os.geteuid() or info.st_mode & 0o022)):
             raise DeployError("Unsafe preflight workspace ownership/permissions")
-        if self.workspace.resolve() == self.project or self.project in self.workspace.resolve().parents:
-            raise DeployError("Preflight workspace must be outside production/watcher project")
         self.log = self.evidence.with_suffix(".log")
         write_private(self.log, "Preflight started; secrets are redacted.\n")
         self.report["log_path"] = str(self.log.resolve())

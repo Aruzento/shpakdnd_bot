@@ -11,8 +11,10 @@ STAGING="" LINK=""
 exec 9>"$LOCK"
 flock -n 9 || { echo 'Deployment уже выполняется.'; exit 1; }
 [[ "$DEST" == /* && "$BIN" == /* && ! -L "$DEST" && ! -L "$BIN" ]] || exit 1
-install -d -o root -g root -m 755 "$DEST/versions" "$BIN"
+[[ ! -L "$DEST/versions" && ( ! -e "$DEST/versions" || -d "$DEST/versions" ) ]] || exit 1
+install -d -o root -g root -m 755 "$DEST" "$DEST/versions" "$BIN"
 DEST="$(cd "$DEST" && pwd -P)"; BIN="$(cd "$BIN" && pwd -P)"
+[[ "$(cd "$DEST/versions" && pwd -P)" == "$DEST/versions" ]] || exit 1
 cleanup() {
     if [[ -n "$STAGING" && "$STAGING" == "$DEST"/versions/.install.* && ! -L "$STAGING" ]]; then rm -rf -- "$STAGING"; fi
     [[ -z "$LINK" ]] || rm -f -- "$LINK"

@@ -21,6 +21,7 @@ TOOLS="" OLD_HEAD="unknown" TARGET_HEAD="unknown" BACKUP="не создан" LOG
 MAINTENANCE=0 DRY_RUN=0 PREFLIGHT_ONLY=0 FAILED_STEP="" TEST_COUNT="unknown" EVIDENCE="" PREFLIGHT_PID=""
 
 as_bot() { runuser -u "$BOT_USER" -- "$@"; }
+runtime_bot() { timeout --kill-after=5 60 runuser -u "$BOT_USER" -- "$@"; }
 git_bot() { as_bot git -C "$PROJECT" "$@"; }
 state() { systemctl is-active "$1" 2>/dev/null || true; }
 head_now() { git_bot rev-parse HEAD 2>/dev/null || printf 'unknown\n'; }
@@ -70,6 +71,12 @@ verify_head() { [[ "$(head_now)" == "$1" ]]; }
 unit_loaded() { [[ "$(systemctl show -p LoadState --value "$1")" == loaded ]]; }
 preflight() {
     [[ -d "$PROJECT" && -x "$PYTHON" && -f "$DB" && -f "$PROJECT/.env" ]] || { printf '❌ Отсутствует project/python/DB/.env.\n'; return 1; }
+    local physical_project physical_directory directory
+    physical_project="$(readlink -f -- "$PROJECT")" || return 1
+    for directory in "$PREFLIGHT_DIR" "$WORK_DIR" "$RUNTIME_DIR"; do
+        physical_directory="$(readlink -m -- "$directory")" || return 1
+        [[ "$physical_directory" != "$physical_project" && "$physical_directory" != "$physical_project/"* && "$physical_project" != "$physical_directory/"* ]] || { printf '❌ Temporary/evidence paths intersect production.\n'; return 1; }
+    done
     id "$BOT_USER" >/dev/null || return 1
     as_bot test -r "$DB" || return 1
     as_bot test -r "$PROJECT/.env" || return 1
@@ -146,9 +153,9 @@ checks() {
     local expected="$1"
     # Only bounded runtime/schema/integrity checks during maintenance. All
     # compileall, check_bot, validators, guard and unittest ran on copied TARGET.
-    check_step runtime_DB as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
-    check_step runtime_init as_bot "$PYTHON" "$TOOLS/release_preflight.py" runtime --short --project "$PROJECT" --db "$DB" --sha "$expected" || return 1
-    check_step database as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" check --db "$DB" || return 1
+    check_step runtime_DB runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
+    check_step runtime_init runtime_bot "$PYTHON" "$TOOLS/release_preflight.py" runtime --short --project "$PROJECT" --db "$DB" --sha "$expected" || return 1
+    check_step database runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" check --db "$DB" || return 1
     check_step HEAD verify_head "$expected" || return 1
     check_step worktree require_clean || return 1
 }
@@ -213,7 +220,7 @@ main() {
     esac
     [[ "$#" -le 1 ]] || return 2
     [[ "$(id -u)" == 0 ]] || { printf 'Запусти через sudo deploy-shpakdnd.\n'; return 1; }
-    for command in git flock runuser systemctl journalctl install mktemp tee; do command -v "$command" >/dev/null || return 1; done
+    for command in git flock runuser systemctl journalctl install mktemp tee timeout readlink; do command -v "$command" >/dev/null || return 1; done
     exec 9>"$LOCK"
     if ! flock -n 9; then printf 'Deployment уже выполняется.\n'; return 1; fi
     preflight || return 1
@@ -258,7 +265,7 @@ main() {
     stop_stack || return 1
     install -d -o root -g "$BOT_USER" -m 770 "$BACKUP_DIR"
     BACKUP="$BACKUP_DIR/shpakdnd_$(date '+%Y%m%d_%H%M%S').db"
-    if ! check_step backup as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" backup --db "$DB" --destination "$BACKUP"; then failure_choice || true; return 1; fi
+    if ! check_step backup runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" backup --db "$DB" --destination "$BACKUP"; then failure_choice || true; return 1; fi
     printf '\nCurrent: %s\nTarget: %s\nBackup: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$BACKUP"
     if ! confirm "Установить версию ${TARGET_HEAD:0:7} из origin/main?"; then
         printf 'Код не изменён.\n'
