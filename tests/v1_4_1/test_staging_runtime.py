@@ -16,7 +16,7 @@ class StagingRuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.game=self.root/'game';self.game.mkdir();self.runtime=self.root/'runtime';self.runtime.mkdir()
-        self.config=self.runtime/'topics.json';self.config.write_text(json.dumps({'chat_id':-100999111,'thread_id':17}))
+        self.config=self.runtime/'topics.json';self.config.write_text(json.dumps({'chat_id':-100999111,'thread_id':17}));self.config.chmod(0o600)
         (self.runtime/'staging_topics.py').write_bytes((ROOT/'deploy/staging_topics.py').read_bytes())
         self.hook=self.runtime/'sitecustomize.py';self.hook.write_text('from staging_topics import install; install()')
         self.binding={'project':str(self.game),'units':list(units.UNIT_NAMES)}

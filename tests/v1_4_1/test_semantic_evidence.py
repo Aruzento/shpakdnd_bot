@@ -89,11 +89,11 @@ class AttestationTests(unittest.TestCase):
         patch.object(units,'verify_installed',return_value={'project':str(self.project)}).start()
         patch.object(units,'staging_identity',return_value={'environment_kind':'isolated_staging'}).start()
         self.api=patch.object(semantic,'telegram_identity',return_value={'status':'PASS','method':'getMe','real':True,'bot_identity_hash':'b'*64}).start()
-        self.artifact=self.root/'artifact.txt';self.artifact.write_text('Anonymized observation fixture')
+        self.artifact=self.root/'artifact.txt';self.artifact.write_text('Anonymized observation fixture');self.artifact.chmod(0o600)
         self.checklist=self.root/'checklist.json'
         self.raw={'sha':self.sha,'operator_sha':self.sha,'source':'operator_observed_real_telegram','environment_kind':'isolated_staging','environment_id':'fixture-vm',
             'cases':{name:dict(status='PASS',artifact=str(self.artifact),initial='fixture',action='observed',expected='expected',actual='observed',date=store.utc_now(),executor='fixture') for name in semantic.STAGING_CASES}}
-        self.checklist.write_text(json.dumps(self.raw));self.output=self.root/'private'/'staging.json'
+        self.checklist.write_text(json.dumps(self.raw));self.checklist.chmod(0o600);self.output=self.root/'private'/'staging.json'
     def attest(self):return semantic.attest(self.project,self.sha,self.checklist,self.output,kind='staging',environment='isolated_staging',operator_sha=self.sha)
     def test_complete_observations_and_api_bound_to_hashes(self):
         value=self.attest();self.assertEqual(value['scope'],'FULL_STAGING');self.assertEqual(semantic.validate_staging(self.output,self.sha),value)

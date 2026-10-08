@@ -1,5 +1,6 @@
 """Unit and real CLI regression probes in a disposable Git checkout."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -284,6 +285,9 @@ class SquashGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             clone=Path(directory)/'squashed'
             root=SCRIPT.parents[1]
+            if not (root/'.git').exists():
+                root=Path(os.environ['GITHUB_WORKSPACE'])
+                self.assertEqual((root/'scripts/release_guard.py').read_bytes(),SCRIPT.read_bytes())
             source_sha=guard.git(root,'rev-parse','HEAD').strip()
             for args in (['clone','--quiet','--shared',str(root),str(clone)],
                          ['-C',str(clone),'config','user.name','Fixture'],

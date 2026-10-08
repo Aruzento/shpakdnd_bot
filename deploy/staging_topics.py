@@ -17,7 +17,9 @@ def configuration(path):
     path=Path(path)
     for part in (path,*path.parents):
         info=part.lstat()
-        if part.is_symlink() or (os.name=='posix' and (info.st_uid!=TRUSTED_UID or info.st_mode & 0o022)):
+        sticky_tmp=part!=path and part.is_dir() and info.st_mode & 0o1000 and info.st_uid in {0,TRUSTED_UID}
+        owner_bad=info.st_uid!=TRUSTED_UID if part==path else info.st_uid not in {0,TRUSTED_UID}
+        if part.is_symlink() or (os.name=='posix' and (owner_bad or info.st_mode & 0o022) and not sticky_tmp):
             raise RuntimeError('Untrusted staging topic configuration')
     raw=json.loads(path.read_text(encoding='utf-8'))
     if set(raw)!={'chat_id','thread_id'} or type(raw['chat_id']) is not int or raw['chat_id']>=0 or type(raw['thread_id']) is not int or raw['thread_id']<=0:

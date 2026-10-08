@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -21,8 +22,8 @@ class ReadonlySmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp=tempfile.TemporaryDirectory();cls.root=Path(cls.temp.name);cls.project=cls.root/'code';cls.project.mkdir()
-        archive=subprocess.check_output(['git','-C',str(ROOT),'archive','HEAD'])
-        with tarfile.open(fileobj=io.BytesIO(archive)) as tar:tar.extractall(cls.project,filter='data')
+        # The shared release runner intentionally archives code without .git.
+        shutil.copytree(ROOT,cls.project,dirs_exist_ok=True,ignore=shutil.ignore_patterns('.git','.env','.venv','__pycache__','*.db','*.db-wal','*.db-shm'))
         for args in [('init','-q'),('config','user.name','SmokeFixture'),('config','user.email','smoke@example.invalid'),('config','core.autocrlf','false'),('config','commit.gpgsign','false'),('add','.'),('commit','-qm','Exact game source fixture')]:
             subprocess.run(['git','-C',str(cls.project),*args],check=True,capture_output=True)
         cls.sha=subprocess.check_output(['git','-C',str(cls.project),'rev-parse','HEAD'],text=True).strip()
