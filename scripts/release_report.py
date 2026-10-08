@@ -39,7 +39,8 @@ def protected(path,sha,kind,*,age=7*86400):
     try:
         value=store.read_record(path)
         if value.get('sha',value.get('target_sha'))!=sha:return item('STALE',reason='Evidence belongs to another SHA'),None
-        if value.get('kind')!=kind or value.get('status')!='PASS':return item('UNKNOWN',reason='Unconfirmed '+kind),None
+        if value.get('kind')!=kind:return item('UNKNOWN',reason='Unexpected evidence kind '+kind),None
+        if value.get('status')!='PASS':return item(value.get('status') if value.get('status') in STATUSES else 'UNKNOWN',reason='Unconfirmed '+kind),None
         if not 0<=time.time()-datetime.fromisoformat(value['finished_at']).timestamp()<=age:return item('STALE',reason='Evidence expired'),None
         return item('PASS',{'evidence_hash':store.file_hash(path),'kind':kind}),value
     except Exception:return item('UNKNOWN',reason='Protected evidence invalid/corrupt'),None
@@ -116,7 +117,7 @@ def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None
     checks['staging'],stage=protected(staging,sha,'REAL_TELEGRAM_STAGING')
     if stage:
         try:semantic.validate_staging(staging,sha)
-        except Exception:checks['staging']=item('NOT_RUN',reason='Full real Telegram/game/recovery/staging matrix incomplete or invalid')
+        except Exception:checks['staging']=item('UNKNOWN',reason='Full real Telegram/game/recovery/staging matrix incomplete or invalid')
     for name,path,kind in (('independent_review',review,'INDEPENDENT_REVIEW'),('production_decision',approval,'PRODUCTION_DECISION')):
         checks[name],value=protected(path,sha,kind)
         if value and (value.get('operator_confirmed') is not True or value.get('source')!='explicit_operator_attestation' or not value.get('artifact_hash')):
@@ -175,10 +176,13 @@ def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None
                         if not 0<=time.time()-datetime.fromisoformat(health['finished_at']).timestamp()<=300:raise DeployError('Health stale')
                         checks['startup_health']=item('PASS',{'health_hash':store.file_hash(health_path)})
                         deployment['production_status']='TECHNICAL_HEALTH_PASS_SEMANTIC_UNCONFIRMED'
+                        checks['real_telegram_postdeploy'],semantic_record=protected(Path(preflight).with_suffix('.semantic.json'),sha,'REAL_TELEGRAM_POSTDEPLOY',age=1800)
                         try:
+                            if checks['real_telegram_postdeploy']['status']!='PASS':raise DeployError('Real semantic evidence missing or invalid')
                             semantic.validate_for_lkg(preflight,project,sha,health)
                             checks['real_telegram_postdeploy']=item('PASS',{'semantic_hash':store.file_hash(Path(preflight).with_suffix('.semantic.json'))})
-                        except Exception:checks['real_telegram_postdeploy']=item('NOT_RUN',reason='Real postdeploy Telegram smoke NOT VERIFIED')
+                        except Exception:
+                            if checks['real_telegram_postdeploy']['status']=='PASS':checks['real_telegram_postdeploy']=item('UNKNOWN',reason='Real postdeploy Telegram smoke NOT VERIFIED')
                     if current and current['sha']==sha and current['deployment_id']==Path(preflight).stem and current.get('version')==2:
                         checks['lkg_promotion']=item('PASS',{'lkg_hash':store.file_hash(report['lkg_binding']['path'])})
                         deployment.update(promotion=True,promotion_reason='Explicit operator and technical/semantic proofs confirmed')
@@ -201,9 +205,16 @@ def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None
         deployment['production_status']='RELEASE_CONFIRMED'
     result=dict(version=1,release_version='V1.4.1',sha=sha,git=git_info,pr=PR,created_at_utc=store.utc_now(),checks=checks,
                 automatic=release,github_protection=protection,staging={'status':checks['staging']['status'],'real_telegram':checks['staging']['status'],
-                'execution_date':stage.get('finished_at') if stage else None,'environment_hash':stage.get('environment_hash') if stage else None},
+                'execution_date':stage.get('finished_at') if stage else None,'environment_hash':stage.get('environment_hash') if stage else None,
+                'operator_confirmed':stage.get('operator_confirmed',False) if stage else False,
+                'scenarios':{name:{k:case[k] for k in ('status','artifact_hash','observed_at') if k in case}
+                             for name,case in stage.get('cases',{}).items()} if stage else {}},
                 deployment=deployment,tooling_version_hash=store.digest([store.file_hash(Path(__file__)),pref.tooling_hash(Path(pref.__file__).parent)]))
+    result['automatic_semantic']={k:automatic[k] for k in ('kind','sha','status','real_telegram','data_preserved','schema','probe_log_hash') if k in automatic} if automatic else {'status':'NOT_RUN','real_telegram':False}
     result['readiness']=readiness(checks,on_main=on_main)
+    result['risks']={'open_error_audit':'NOT_RUN','unverified_checks':[name for name,check in checks.items() if check['status']!='PASS'],
+                     'manual_confirmation_required':['staging','independent_review','production_decision','real_telegram_postdeploy'],
+                     'blockers':result['readiness']['blockers']}
     return result
 
 
@@ -211,7 +222,15 @@ def markdown(report):
     lines=['# D&D Mini V1.4.1 release report','', 'SHA: `'+report['sha']+'`','', 'UTC: '+report['created_at_utc'],'',
            'Status: **'+report['readiness']['version_status']+'**','', '| Check | Status | Evidence/reason |','|---|---|---|']
     for name,value in report['checks'].items():lines.append('| '+name+' | '+value['status']+' | '+(value.get('reason') or json.dumps(value.get('source'),sort_keys=True)) .replace('|','/').replace('\n',' ')+' |')
-    lines+=['','## Blockers','']
+    lines+=['','## Git and tooling','', 'Branch: `'+str(report['git']['branch'])+'`', '', 'Baseline: `'+report['git']['baseline_sha']+'`', '', 'Tooling hash: `'+report['tooling_version_hash']+'`', '', 'PR: '+report['pr'], '', 'Changed files:', '']
+    lines.extend('- `'+path+'`' for path in report['git']['changed_files'])
+    release=report.get('automatic') or {}
+    lines+=['', '## Automatic checks', '', 'Tests: '+json.dumps(release.get('tests',{'status':'NOT_RUN'}),sort_keys=True), '', '| Command/check | Status |', '|---|---|']
+    lines.extend('| '+name+' | '+status+' |' for name,status in release.get('checks',{}).items())
+    lines+=['', 'Automatic semantic: '+json.dumps(report['automatic_semantic'],sort_keys=True), '', '## Staging scenarios', '', '| Scenario | Status | Evidence hash |', '|---|---|---|']
+    lines.extend('| '+name+' | '+case.get('status','UNKNOWN')+' | '+case.get('artifact_hash','NOT_RUN')+' |' for name,case in report['staging']['scenarios'].items())
+    if not report['staging']['scenarios']:lines+=['| All real scenarios | NOT_RUN | No operator staging evidence |']
+    lines+=['', 'Open error audit: '+report['risks']['open_error_audit'], '', '## Blockers','']
     for gate,blockers in report['readiness']['blockers'].items():
         lines+=['### '+gate,'']
         lines.extend('- '+v['check']+': '+v['status']+' — '+v['reason']+'. '+v['next_action'] for v in blockers)

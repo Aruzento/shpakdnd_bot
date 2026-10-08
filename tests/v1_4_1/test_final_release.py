@@ -91,6 +91,18 @@ class FinalReportTests(unittest.TestCase):
         data=ci();del data['jobs']['Linux release checks']['log_hash']
         self.assertEqual(self.generate(data)['checks']['ci']['status'],'UNKNOWN')
 
+    def test_failed_evidence_keeps_fail_not_pass_or_not_run(self):
+        path=self.root/'state'/'review.json';store.save_record(path,{'sha':SHA,'kind':'INDEPENDENT_REVIEW','status':'FAIL'})
+        self.assertEqual(self.generate(review=path)['checks']['independent_review']['status'],'FAIL')
+
+    def test_staging_scenarios_publish_hashes_without_private_observations(self):
+        path=self.root/'state'/'staging.json'
+        store.save_record(path,{'sha':SHA,'kind':'REAL_TELEGRAM_STAGING','status':'PASS','finished_at':store.utc_now(),
+            'operator_confirmed':True,'cases':{'menu':{'status':'PASS','artifact_hash':'a'*64,'actual':'SENSITIVE_SENTINEL'}}})
+        with patch.object(report.semantic,'validate_staging',return_value={}):value=self.generate(staging=path)
+        self.assertEqual(value['staging']['scenarios']['menu']['status'],'PASS')
+        self.assertNotIn('SENSITIVE_SENTINEL',json.dumps(value))
+
     def test_independent_review_requires_explicit_artifact_and_sha(self):
         artifact=self.root/'review.txt';artifact.write_text('Actual independent review fixture')
         with self.assertRaises(DeployError):report.review_attestation(self.root/'game',SHA,artifact,self.root/'state'/'review.json','b'*40,'INDEPENDENT_REVIEW')
