@@ -67,7 +67,8 @@ def handler_inventory(text: str) -> tuple[set[str], set[str]]:
         tree = ast.parse(text, filename=HANDLERS_PATH)
     except SyntaxError as error:
         raise GuardError(f"invalid handlers AST: {error}") from error
-    for node in ast.walk(tree):
+    assignments = 0
+    for node in tree.body:
         if isinstance(node, ast.ImportFrom):
             module = "." * node.level + (node.module or "")
             for alias in node.names:
@@ -83,6 +84,9 @@ def handler_inventory(text: str) -> tuple[set[str], set[str]]:
         elif isinstance(node, (ast.AnnAssign, ast.AugAssign)) and isinstance(node.target, ast.Name) and node.target.id == "ROUTERS":
             value = node.value
         if value is not None:
+            assignments += 1
+            if assignments > 1 or isinstance(node, ast.AugAssign):
+                raise GuardError("ROUTERS must have exactly one explicit assignment")
             if not isinstance(value, (ast.List, ast.Tuple)) or not all(isinstance(item, ast.Name) for item in value.elts):
                 raise GuardError("ROUTERS must be an explicit list/tuple of router names for review")
             routers.update(item.id for item in value.elts)

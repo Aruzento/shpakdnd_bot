@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import os
 from pathlib import Path
@@ -13,13 +14,13 @@ import tarfile
 import tempfile
 
 if __package__:
-    from .release_guard import BASELINE_SHA, git, tree_files
+    from .release_guard import BASELINE_SHA, ALLOWLIST_PATH, git, tree_files
 else:
-    from release_guard import BASELINE_SHA, git, tree_files
+    from release_guard import BASELINE_SHA, ALLOWLIST_PATH, git, tree_files
 
 CHECK_NAMES = ("release guard", "git diff --check", "deploy shell syntax", "compileall",
                "check_bot (disposable DB)", "hero abilities", "boss abilities", "tower",
-               "JSON and content validators", "full unittest")
+               "JSON and content validators", "unittest discovery preservation", "full unittest")
 NETWORK_GUARD = '''import os
 import socket
 _original_connect = socket.socket.connect
@@ -38,8 +39,27 @@ def _connect_ex(self, address):
 socket.socket.connect = _connect
 socket.socket.connect_ex = _connect_ex
 if os.environ.get("RELEASE_TEST_ISOLATED_TOPICS") == "1":
-    import app.topics
-    app.topics.TOPIC_SETTINGS = {}
+    # Do not preload app: subprocess fixtures may select their own app package.
+    import importlib.abc
+    import importlib.machinery
+    import sys
+    class _TopicsLoader(importlib.abc.Loader):
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+        def create_module(self, spec):
+            return self.wrapped.create_module(spec)
+        def exec_module(self, module):
+            self.wrapped.exec_module(module)
+            module.TOPIC_SETTINGS = {}
+    class _TopicsFinder(importlib.abc.MetaPathFinder):
+        def find_spec(self, fullname, path, target=None):
+            if fullname != "app.topics":
+                return None
+            spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)
+            if spec is not None:
+                spec.loader = _TopicsLoader(spec.loader)
+            return spec
+    sys.meta_path.insert(0, _TopicsFinder())
 '''
 CONTENT_CHECK = '''import json
 from pathlib import Path
@@ -94,7 +114,7 @@ def run_checks(repo: Path, report_path: Path) -> int:
                                    "failures": value("failures"), "errors": value("errors"),
                                    "skips": value("skipped"), "expected_failures": value("expected failures"),
                                    "unexpected_successes": value("unexpected successes")}
-                if not count or int(count.group(1)) == 0:
+                if not count or int(count.group(1)) != report.get("head_discovered_tests") or int(count.group(1)) == 0:
                     code = 1
                 if report["tests"]["expected_failures"] or report["tests"]["unexpected_successes"]:
                     print("ERROR: unexplained expected failure/unexpected success", flush=True)
@@ -145,13 +165,57 @@ def run_checks(repo: Path, report_path: Path) -> int:
             step("tower", [[sys.executable, "-m", "app.mini.tower.validate"]], checkout, env)
             step("JSON and content validators", [[sys.executable, "-c", CONTENT_CHECK]], checkout, env)
             test_env = dict(env, RELEASE_TEST_ISOLATED_TOPICS="1")
+            baseline_checkout = root / "baseline"
+            baseline_checkout.mkdir()
+            git(repo, "archive", "--format=tar", f"--output={archive}", BASELINE_SHA)
+            with tarfile.open(archive) as tar:
+                tar.extractall(baseline_checkout, filter="data")
+            baseline_env = dict(test_env, PYTHONPATH=str(network) + os.pathsep + str(baseline_checkout))
+            baseline_inventory, head_inventory = root / "baseline-tests.json", root / "head-tests.json"
+            discovery_script = str(repo / "scripts/test_inventory.py")
+            step("unittest discovery preservation", [
+                [sys.executable, discovery_script, str(baseline_inventory)]], baseline_checkout, baseline_env)
+            # Keep RUNNING until both inventories and their identities are compared.
+            report["checks"]["unittest discovery preservation"] = "RUNNING"
+            save()
+            code, _ = execute([sys.executable, discovery_script, str(head_inventory)], checkout, test_env)
+            if code:
+                raise RuntimeError("candidate unittest discovery failed")
+            before = json.loads(baseline_inventory.read_text(encoding="utf-8"))
+            after = json.loads(head_inventory.read_text(encoding="utf-8"))
+            verify_discovery(before, after, json.loads((checkout / ALLOWLIST_PATH).read_text(encoding="utf-8-sig"))["removals"])
+            report["baseline_discovered_tests"] = len(before)
+            report["head_discovered_tests"] = len(after)
+            report["checks"]["unittest discovery preservation"] = "OK"
+            save()
             step("full unittest", [[sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"]], checkout, test_env)
         return 0
     except (RuntimeError, OSError, ValueError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         report["error"] = str(error)
+        for name, status in report["checks"].items():
+            if status == "RUNNING":
+                report["checks"][name] = "FAIL"
         save()
         return 1
+
+
+def verify_discovery(before: list[dict], after: list[dict], approvals: list[dict]):
+    """Preserve runnable IDs/multiplicity as well as AST declarations."""
+    remaining = Counter(test["id"] for test in after)
+    missing = []
+    for test in before:
+        if remaining[test["id"]]:
+            remaining[test["id"]] -= 1
+            continue
+        approved = any(entry["path"] == test["path"] and (
+            entry["kind"] == "file" or entry["kind"] == "test" and entry["symbol"] == test["symbol"])
+            for entry in approvals)
+        if not approved:
+            missing.append(test["id"])
+    if missing:
+        raise RuntimeError("missing discovered baseline tests: " + ", ".join(missing))
+    print(f"OK: discovered baseline tests preserved: {len(before)} -> {len(after)}", flush=True)
 
 
 def summary(report_path: Path, output: Path):

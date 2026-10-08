@@ -48,6 +48,25 @@ class ReleaseCheckSafetyTests(unittest.TestCase):
             self.assertIn("c"*40, text)
             self.assertNotIn("| full unittest | OK |", text)
 
+    def test_discovery_rejects_missing_ids_even_when_total_count_matches(self):
+        before = [{"id": "Events.test_restart", "path": "tests/test_events.py", "symbol": "Events.test_restart"}]
+        after = [{"id": "Events.test_new", "path": "tests/test_events.py", "symbol": "Events.test_new"}]
+        with self.assertRaisesRegex(RuntimeError, "missing discovered baseline tests"):
+            release_checks.verify_discovery(before, after, [])
+
+    def test_discovery_rejects_loss_of_duplicate_test_execution(self):
+        record = {"id": "Events.test_restart", "path": "tests/test_events.py", "symbol": "Events.test_restart"}
+        with self.assertRaisesRegex(RuntimeError, "missing discovered baseline tests"):
+            release_checks.verify_discovery([record, record], [record], [])
+
+    def test_discovery_allows_only_exact_reviewed_removal(self):
+        record = {"id": "Events.test_restart", "path": "tests/test_events.py", "symbol": "Events.test_restart"}
+        approval = {"kind": "test", "path": record["path"], "symbol": record["symbol"], "reason": "Moved to reviewed replacement suite."}
+        release_checks.verify_discovery([record], [], [approval])
+        approval["symbol"] = "Events.test_other"
+        with self.assertRaisesRegex(RuntimeError, "missing discovered baseline tests"):
+            release_checks.verify_discovery([record], [], [approval])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,10 @@ class InventoryTests(unittest.TestCase):
         with self.assertRaisesRegex(guard.GuardError, "explicit list"):
             guard.handler_inventory("ROUTERS = build_routers()")
 
+    def test_router_reassignment_cannot_hide_removal(self):
+        with self.assertRaisesRegex(guard.GuardError, "exactly one explicit assignment"):
+            guard.handler_inventory("ROUTERS = [mini_events_router]\nROUTERS = []")
+
     def test_bad_allowlist_structure_and_placeholder_reasons_fail(self):
         key = ("file", EVENTS, "")
         entry = {"kind": "file", "path": EVENTS, "reason": "TODO"}

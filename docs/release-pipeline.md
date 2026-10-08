@@ -30,7 +30,11 @@ Workflow: `.github/workflows/release-checks.yml`, job **Linux release checks**.
    boss abilities, tower), JSON parse всех JSON и штатные валидаторы
    shop/heroes/combat safety/village. `check_bot` дополнительно валидирует
    boss/items/equipment/tower balances, SQLite integrity и FK.
-5. Полный `python -m unittest discover -s tests -q` запускается без урезания.
+5. Перед запуском полных tests отдельно сравнивается фактический unittest
+   discovery V1.4 и HEAD: IDs и кратность запусков каждого baseline test.
+   Исчезновение обнаруженного test требует того же точного approved-removal.
+   Итоговое число выполненных tests обязано совпасть с HEAD discovery.
+   Полный `python -m unittest discover -s tests -q` запускается без урезания.
    Во время unittest реальные `app.topics.TOPIC_SETTINGS` обнулены только
    в отдельном процессе: каждый зависимый тест обязан использовать
    `tests/topic_fixtures.py::isolated_topics()` и временную SQLite.
