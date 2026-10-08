@@ -219,15 +219,23 @@ def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollb
     return report
 
 
+def verify_lock_identity(lock_info, db):
+    """FD9 must identify the configured single lock, not any root-owned file."""
+    from release_state import trusted_path
+    lock=Path(os.environ.get("SHPAKDND_LOCK","/run/lock/shpakdnd-deploy.lock"))
+    trusted_path(lock)
+    actual=lock.stat();db_info=Path(db).stat()
+    uid=getattr(os,"geteuid",lambda:0)()
+    if (not stat.S_ISREG(lock_info.st_mode) or lock_info.st_uid!=uid or lock_info.st_mode & 0o022
+            or (actual.st_dev,actual.st_ino)!=(lock_info.st_dev,lock_info.st_ino)
+            or (lock_info.st_dev,lock_info.st_ino)==(db_info.st_dev,db_info.st_ino)):
+        raise DeployError("Deployment lock identity/ownership/permissions or DB alias is unsafe")
+
+
 def require_deployment_lock(db):
     """The manager owns the same inherited lock before any journal transition."""
-    if os.name != "posix" or not stat.S_ISREG(os.fstat(9).st_mode):
-        raise DeployError("Preflight requires the inherited deployment lock")
-    lock_info=os.fstat(9)
-    db_info=Path(db).stat()
-    if (lock_info.st_uid!=os.geteuid() or lock_info.st_mode & 0o022
-            or (lock_info.st_dev,lock_info.st_ino)==(db_info.st_dev,db_info.st_ino)):
-        raise DeployError("Deployment lock ownership/permissions or DB alias is unsafe")
+    if os.name != "posix":raise DeployError("Preflight requires the inherited deployment lock")
+    verify_lock_identity(os.fstat(9),db)
     import fcntl
     fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
 

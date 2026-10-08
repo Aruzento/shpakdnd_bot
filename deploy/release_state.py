@@ -36,7 +36,7 @@ def trusted_path(path, *, private=False, directory=False):
         if os.name=='posix' and ((info.st_uid!=TRUSTED_UID if ancestor==path else info.st_uid not in {0,TRUSTED_UID}) or info.st_mode & 0o022):
             # Sticky /tmp is allowed only as an ancestor of private root fixtures/staging.
             if ancestor==path or not (stat.S_ISDIR(info.st_mode) and info.st_mode & stat.S_ISVTX and info.st_uid in {0,TRUSTED_UID}):
-                raise DeployError('Unsafe trusted owner/permissions')
+                raise DeployError('Unsafe trusted owner/permissions: '+str(ancestor))
         if ancestor==path and private and os.name=='posix' and info.st_mode & 0o077:
             raise DeployError('Private state permissions required')
     return path
@@ -150,7 +150,12 @@ def main(argv=None):
                 outside_project(value,args.source)
                 path=Path(value)
                 existing=next(p for p in (path,*path.parents) if p.exists() or p.is_symlink())
-                trusted_path(existing,directory=existing.is_dir())
+                info=existing.lstat()
+                sticky_lock_parent=(value==args.lock and existing!=path and not existing.is_symlink()
+                                    and stat.S_ISDIR(info.st_mode) and info.st_mode & stat.S_ISVTX
+                                    and getattr(info,'st_uid',TRUSTED_UID)==TRUSTED_UID)
+                if sticky_lock_parent:trusted_path(existing.parent,directory=True)
+                else:trusted_path(existing,directory=existing.is_dir())
         import release_preflight as pref
         names=tuple('deploy/'+n for n in pref.BUNDLE)+tuple('scripts/'+n for n in pref.SHARED_SCRIPTS)+('deploy/install-deploy-shpakdnd.sh','deploy/install-systemd-units.sh',*__import__('systemd_state').SOURCE_NAMES)
         verify_source(args.source,args.sha,names)

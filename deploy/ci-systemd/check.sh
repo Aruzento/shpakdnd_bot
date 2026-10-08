@@ -9,6 +9,7 @@ for attempt in $(seq 1 30); do
     sleep 1
 done
 cp -r /source /opt/reviewed
+chmod -R go-w /opt/reviewed
 [[ "$(git -C /opt/reviewed rev-parse HEAD)" == "$1" ]]
 git -C /opt/reviewed remote set-url origin https://github.com/Aruzento/shpakdnd_bot.git
 useradd --system --home-dir /nonexistent shpaktest

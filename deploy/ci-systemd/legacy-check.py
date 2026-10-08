@@ -3,7 +3,7 @@ import hashlib,json,os
 from pathlib import Path
 import subprocess,sys,tempfile
 ROOT=Path(__file__).resolve().parents[2]
-sys.path.insert(0,str(ROOT/'deploy'))
+sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'deploy'))
 import release_preflight as pref
 from legacy_lkg import LegacyVerification
 from scripts.release_checks import NETWORK_GUARD

@@ -80,3 +80,14 @@ class ToolingBootstrapTests(unittest.TestCase):
         lock=self.root/'lock';lock.write_text('existing lock metadata')
         result=self.install();self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertEqual(lock.read_text(),'existing lock metadata')
+
+    def test_committed_invalid_auxiliary_helper_fails_compile_without_publication(self):
+        result=self.install();self.assertEqual(result.returncode,0,result.stderr)
+        before=(self.entry/'deploy-shpakdnd').read_bytes()
+        (self.source/'telegram-deploy-notice.py').write_text('def invalid(\n')
+        subprocess.run(['git','-C',str(self.checkout),'add','.'],check=True,capture_output=True)
+        subprocess.run(['git','-C',str(self.checkout),'commit','-qm','Invalid reviewed syntax fixture'],check=True,capture_output=True)
+        self.sha=subprocess.check_output(['git','-C',str(self.checkout),'rev-parse','HEAD'],text=True).strip()
+        failed=self.install();self.assertNotEqual(failed.returncode,0)
+        self.assertEqual((self.entry/'deploy-shpakdnd').read_bytes(),before)
+        self.assertFalse(list((self.dest/'versions').glob('.install.*')))
