@@ -74,7 +74,9 @@ print(json.dumps({'status':'PASS','routers':sorted(names),'events_games':['rps',
 
 def run(project, sha, db, output,*,staging=None):
     import release_preflight as pref
-    project=Path(project).resolve();db=Path(db).resolve();output=Path(output)
+    project=Path(project).resolve();db=Path(db);output=Path(output)
+    if db.is_symlink():raise DeployError('Smoke source must not be symlink')
+    db=db.resolve()
     store.full_sha(sha)
     if store.command(['git','-C',project,'rev-parse','HEAD'])!=sha or store.command(['git','-C',project,'status','--porcelain','--untracked-files=all']):
         raise DeployError('Smoke requires exact clean checkout SHA')

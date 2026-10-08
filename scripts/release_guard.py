@@ -14,7 +14,7 @@ INFRASTRUCTURE_BASELINE_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 INFRASTRUCTURE_REQUIRED = {"scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"}
 INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py", "deploy/release_state.py",
     "deploy/systemd_state.py", "deploy/release_lkg.py", "deploy/legacy_lkg.py", "deploy/install-systemd-units.sh", ".github/workflows/systemd-staging.yml", "deploy/ci-systemd/check.sh", "deploy/ci-systemd/Dockerfile", "deploy/ci-systemd/legacy-check.py"}
-D_TEST_INVENTORY_HASH = "1638b5ad4a0eb22dadfb794776b07d41211d117b8ac7ec4c9dbc489843f0ccc7"
+D_TEST_INVENTORY_HASH = "fd8c5319fd8a28f7637e34b01da2182ad6f239cfb6a77ba2764a58a5f6188ca1"
 D_TEST_INVENTORY = "docs/release/mandatory-d-tests.json"
 STAGE_C_SHA = "436b0cda31887f87ca8a2f627c4b5a8baf4ec6d8"
 INFRASTRUCTURE_HEAD_REQUIRED |= {"deploy/staging_topics.py", "deploy/semantic_smoke.py", "deploy/semantic_evidence.py", "scripts/release_report.py", "scripts/github_release.py", "scripts/semantic_smoke_ci.py", "docs/staging-v1.4.1.md", D_TEST_INVENTORY}
@@ -90,6 +90,7 @@ def validate_mandatory_gates(lkg_text,deploy_text,semantic_text):
         fresh=next(n for n in semantic_ast.body if isinstance(n,ast.FunctionDef) and n.name=='fresh')
         required=('STALE','Real Telegram','operator','confirmation hash')
         if not all(word in ast.unparse(fresh) for word in required) or 'if not 0 <= age <= max_age:' not in ast.unparse(fresh):raise ValueError('semantic stale/operator gate disabled')
+        if '    (( ! INITIALIZE_LKG )) || readiness_action=gate-legacy-bootstrap' not in deploy_text.splitlines():raise ValueError('pinned legacy gate missing')
         if '    local readiness_action=gate' not in deploy_text.splitlines() or '"$TOOLS/shared/release_report.py" "$readiness_action"' not in deploy_text or deploy_text.index('"$TOOLS/shared/release_report.py" "$readiness_action"')>deploy_text.index('    MAINTENANCE=1'):
             raise ValueError('final readiness gate missing before maintenance')
     except (SyntaxError,StopIteration,ValueError) as error:raise GuardError('mandatory release/LKG semantic gate disabled: '+str(error)) from error

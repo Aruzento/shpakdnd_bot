@@ -102,7 +102,7 @@ python)
     if [[ "$*" == *systemd_state.py* ]]; then
         [[ "${FAKE_UNIT_DRIFT:-0}" != 1 ]] || exit 1
         if [[ "${FAKE_UNIT_DRIFT_AFTER:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
-    elif [[ "$*" == *release_report.py*' gate '* || "$*" == *release_report.py*' gate-staging '* ]]; then
+    elif [[ "$*" == *release_report.py*' gate '* || "$*" == *release_report.py*' gate-staging '* || "$*" == *release_report.py*' gate-legacy-bootstrap '* ]]; then
         [[ "${FAKE_FINAL_GATE_FAIL:-0}" != 1 ]] || exit 1
     elif [[ "$*" == *release_lkg.py* ]]; then
         case "$2" in

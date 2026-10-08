@@ -223,9 +223,57 @@ def markdown(report):
     return '\n'.join(lines)+'\n'
 
 
+def legacy_bootstrap(project,sha,preflight,staging,review,approval,*,provider=None):
+    """Pinned V1.4 initialization only. Never authorize a new code release.
+
+    V1.4 has no A runner/workflow. Its fresh strict adapter proves its exact
+    tests; CI instead attests the installed D tooling SHA. Real gameplay and
+    explicit operator proofs remain mandatory. Full infra/LKG staging would
+    be circular before the first LKG, so only GAMEPLAY scope is accepted here.
+    """
+    if sha!=BASELINE:raise DeployError('Legacy bootstrap only supports immutable V1.4')
+    project=Path(project).resolve()
+    raw=json.loads(Path(preflight).read_text(encoding='utf-8'))
+    if raw.get('kind')!='PINNED_LEGACY_BASELINE' or raw.get('old_sha')!=sha:raise DeployError('Pinned legacy adapter evidence required')
+    report=pref.validate_evidence(preflight,old=sha,target=sha,tools=Path(pref.__file__).parent,live_db=project/'shpakdnd.db',expected_schema='source')
+    if store.command(['git','-C',project,'rev-parse','HEAD'])!=sha or store.command(['git','-C',project,'status','--porcelain','--untracked-files=all']):
+        raise DeployError('Exact clean legacy checkout required')
+    if pref.deployment_path(preflight).exists():raise DeployError('Legacy initialization already started; fresh operation required')
+    tests=report['tests']
+    if tests['count']!=979 or report['head_discovered_tests']!=979 or report['baseline_discovered_tests']!=979:
+        raise DeployError('All immutable legacy tests required')
+    try:from scripts.release_checks import CHECK_NAMES
+    except ImportError:from release_checks import CHECK_NAMES
+    if set(report.get('release_checks',{}))!=set(CHECK_NAMES) or any(v!='OK' for v in report['release_checks'].values()):
+        raise DeployError('Legacy release checks incomplete')
+    import systemd_state as units
+    import release_lkg as lkg
+    installed=report['installed_systemd'];units.verify_binding(installed,active=True)
+    if lkg.verify_binding(report['lkg_binding'],project) is not None:raise DeployError('Confirmed LKG already exists; no initialization override')
+    if installed['tooling_hash']!=report['tooling_hash']:raise DeployError('Installed tooling differs from verified preflight')
+    tools_sha=store.full_sha(installed['source_sha'])
+    ci=(provider or github_release.collect)(tools_sha)
+    for name in github_release.REQUIRED_CHECKS:
+        proof=ci.get('jobs',{}).get(name,{})
+        if proof.get('status')!='PASS' or proof.get('checkout_sha')!=tools_sha or not proof.get('log_hash'):
+            raise DeployError('Exact installed tooling CI not verified')
+    if ci.get('protection',{}).get('status')!='PASS':raise DeployError('Actual mandatory CI enforcement not verified')
+    if ci.get('automatic_smoke',{}).get('sha')!=tools_sha or ci['automatic_smoke'].get('status')!='PASS':
+        raise DeployError('Installed D tooling smoke not verified')
+    semantic.validate_staging(staging,sha,full=False)
+    for path,kind in ((review,'INDEPENDENT_REVIEW'),(approval,'PRODUCTION_DECISION')):
+        check,value=protected(path,sha,kind)
+        if (check['status']!='PASS' or value.get('operator_confirmed') is not True
+                or value.get('source')!='explicit_operator_attestation' or not value.get('artifact_hash')):
+            raise DeployError('Explicit reviewed legacy bootstrap/operator decision required')
+    return {'status':'PASS','kind':'PINNED_LEGACY_BOOTSTRAP_READY','sha':sha,'tooling_sha':tools_sha,
+            'evidence_hash':store.file_hash(preflight),'new_release_ready':False,
+            'reason':'Initialization only; startup, real postdeploy semantic and explicit promotion still required'}
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['report','gate','gate-staging','attest-review','attest-production'])
+    parser.add_argument('action',choices=['report','gate','gate-staging','gate-legacy-bootstrap','attest-review','attest-production'])
     parser.add_argument('--project',default=str(ROOT));parser.add_argument('--sha',required=True)
     for name in ('preflight','staging','review','approval','output','artifact'):parser.add_argument('--'+name)
     args=parser.parse_args()
@@ -234,15 +282,18 @@ def main():
             store.require_root()
             answer=input('Record explicit independent review/production decision for full SHA:\n').strip()
             review_attestation(args.project,args.sha,args.artifact,args.output,answer,'INDEPENDENT_REVIEW' if args.action=='attest-review' else 'PRODUCTION_DECISION');return 0
-        if args.action in {'gate','gate-staging'}:
+        if args.action in {'gate','gate-staging','gate-legacy-bootstrap'}:
             store.require_root();pref.require_deployment_lock(Path(args.project)/'shpakdnd.db')
+        if args.action=='gate-legacy-bootstrap':
+            print(json.dumps(legacy_bootstrap(args.project,args.sha,args.preflight,args.staging,args.review,args.approval)))
+            return 0
         report=generate(args.project,args.sha,preflight=args.preflight,staging=args.staging,review=args.review,approval=args.approval)
         if args.output:
             output=Path(args.output);output.parent.mkdir(parents=True,exist_ok=True)
             output.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
             output.with_suffix('.md').write_text(markdown(report),encoding='utf-8')
         print(report['readiness']['version_status'])
-        if args.action in {'gate','gate-staging'}:
+        if args.action in {'gate','gate-staging','gate-legacy-bootstrap'}:
             if args.action=='gate-staging':
                 import systemd_state as units
                 binding=units.verify_installed(project=args.project,active=True)

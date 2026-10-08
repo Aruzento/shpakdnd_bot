@@ -145,4 +145,58 @@ class GitHubProtectionTests(unittest.TestCase):
             value=github.collect(SHA)
         self.assertTrue(all(job['status']=='NOT_RUN' for job in value['jobs'].values()))
 
+
+
+class LegacyBootstrapGateTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.project=Path(self.temp.name)/'game';self.project.mkdir()
+        self.sha=report.BASELINE;self.tools_sha='d'*40;self.path=Path(self.temp.name)/'legacy.json'
+        self.raw={'kind':'PINNED_LEGACY_BASELINE','old_sha':self.sha,'target_sha':self.sha,'tooling_hash':'e'*64,
+            'tests':{'count':979},'head_discovered_tests':979,'baseline_discovered_tests':979,'release_checks':dict.fromkeys(CHECK_NAMES,'OK'),
+            'installed_systemd':{'source_sha':self.tools_sha,'tooling_hash':'e'*64},'lkg_binding':{'sha':None}}
+        self.data=ci(self.tools_sha);self.path.write_text(json.dumps(self.raw))
+        self.addCleanup(patch.stopall)
+        patch.object(pref,'validate_evidence',side_effect=lambda *a,**kw:self.raw).start()
+        patch.object(store,'command',side_effect=lambda args,**kw:self.sha if 'rev-parse' in args else '').start()
+        import systemd_state as units,release_lkg as lkg
+        self.binding=patch.object(units,'verify_binding').start()
+        self.lkg=patch.object(lkg,'verify_binding',return_value=None).start()
+        self.staging=patch.object(report.semantic,'validate_staging',return_value={'status':'PASS'}).start()
+        self.manual=patch.object(report,'protected',return_value=(report.item('PASS',{'artifact_hash':'a'*64}),
+            {'operator_confirmed':True,'source':'explicit_operator_attestation','artifact_hash':'a'*64})).start()
+    def gate(self):return report.legacy_bootstrap(self.project,self.sha,self.path,'staging','review','approval',provider=lambda sha:self.data)
+    def test_pinned_legacy_adapter_and_exact_tooling_ci_allow_initialization_only(self):
+        value=self.gate();self.assertEqual(value['sha'],self.sha);self.assertFalse(value['new_release_ready'])
+        self.staging.assert_called_once_with('staging',self.sha,full=False);self.binding.assert_called_once_with(self.raw['installed_systemd'],active=True)
+    def test_nonbaseline_sha_cannot_use_initialization_exception(self):
+        self.sha='b'*40
+        with self.assertRaises(DeployError):self.gate()
+    def test_normal_preflight_cannot_impersonate_legacy(self):
+        self.raw['kind']='NORMAL';self.path.write_text(json.dumps(self.raw))
+        with self.assertRaises(DeployError):self.gate()
+    def test_existing_lkg_cannot_be_replaced_by_bootstrap(self):
+        self.lkg.return_value={'sha':'b'*40}
+        with self.assertRaises(DeployError):self.gate()
+    def test_incomplete_legacy_tests_block_initialization(self):
+        self.raw['tests']['count']=978
+        with self.assertRaises(DeployError):self.gate()
+    def test_missing_installed_tooling_ci_blocks_initialization(self):
+        self.data['jobs']['systemd-staging']['status']='NOT_RUN'
+        with self.assertRaises(DeployError):self.gate()
+    def test_wrong_tooling_ci_sha_blocks_initialization(self):
+        self.data['jobs']['Linux release checks']['checkout_sha']='f'*40
+        with self.assertRaises(DeployError):self.gate()
+    def test_missing_required_ci_blocks_initialization(self):
+        self.data['protection']['status']='FAIL'
+        with self.assertRaises(DeployError):self.gate()
+    def test_no_operator_review_or_decision_blocks_initialization(self):
+        self.manual.return_value=(report.item('NOT_RUN'),None)
+        with self.assertRaises(DeployError):self.gate()
+    def test_unverified_real_gameplay_blocks_initialization(self):
+        self.staging.side_effect=DeployError('Real Telegram NOT_RUN')
+        with self.assertRaises(DeployError):self.gate()
+    def test_started_operation_cannot_replay_initialization(self):
+        pref.deployment_path(self.path).touch()
+        with self.assertRaises(DeployError):self.gate()
+
 if __name__=='__main__':unittest.main()

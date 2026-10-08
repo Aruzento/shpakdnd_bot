@@ -315,6 +315,7 @@ main() {
     validate_preflight || return 1
     # Exact main CI, actual required checks, real staging/review and operator decision.
     local readiness_action=gate
+    (( ! INITIALIZE_LKG )) || readiness_action=gate-legacy-bootstrap
     [[ -z "$STAGING_SHA" ]] || readiness_action=gate-staging
     "$PYTHON" "$TOOLS/shared/release_report.py" "$readiness_action" --project "$PROJECT" --sha "$TARGET_HEAD" --preflight "$EVIDENCE" \
         --staging "${SHPAKDND_STAGING_PROOF:-/var/lib/shpakdnd-release/staging.json}" \

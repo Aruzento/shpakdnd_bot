@@ -222,13 +222,13 @@ TARGET фиксируется только после exit 0, строго TARGE
 Полный check_bot с каталогами, unittest, compileall и validators уже закончены
 до downtime; они не запускаются при deployment или rollback после остановки.
 Перед startup проверяется installed configuration. После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
-проверяются до watcher и ещё раз после него. Fresh /proc process identity и весь invocation journal проверяются также до watcher, включая rollback. После bot startup read-only SQLite smoke проверяет integrity/FK, обязательные таблицы, миры и подтверждённую схему до watcher. После watcher выполняются дополнительные stable process/journal/smoke checks. Только здоровый bot + watcher разрешают финальный notice. LKG требует отдельного ввода полного SHA оператором. Ошибка финального notice — warning с сохранением
+проверяются до watcher и ещё раз после него. Fresh /proc process identity и весь invocation journal проверяются также до watcher, включая rollback. После bot startup read-only SQLite smoke проверяет integrity/FK, обязательные таблицы, миры и подтверждённую схему до watcher. После watcher выполняются дополнительные stable process/journal/smoke checks. Только здоровый bot + watcher разрешают финальный notice. LKG требует реальный semantic smoke и отдельный ввод полного SHA оператором. Ошибка финального notice — warning с сохранением
 здорового состояния. EOF никогда не считается подтверждением.
 
 ## Last-Known-Good: формат и подтверждение
 
 `/var/lib/shpakdnd-release/last-known-good.json` — root-only checksum envelope
-с payload version=1/status=CONFIRMED, full SHA, UTC timestamp, deployment_id,
+с payload version=2/status=CONFIRMED (исторические C version=1 сохраняются), full SHA, UTC timestamp, deployment_id,
 repository identity, tooling/systemd hashes, всеми результатами release checks,
 health/process/operator proof, SQLite schema/integrity/FK/smoke и previous link.
 История хранится в `history/<record hash>.json`; проверяются checksum текущей записи и связь с предыдущей записью.
@@ -244,7 +244,7 @@ Checkout/runtime-init/is-active сами не меняют LKG. Для прод�
 units, два health samples и read-only SQLite smoke. `.health.json` связывает
 эти доказательства с evidence и DB operation journal. Confirmation действует
 5 минут и повторно проверяет process/config/DB. Последний шаг — полный TARGET
-SHA, введённый оператором. Enter/EOF оставляет прежнюю LKG, даже если deployment
+SHA, введённый оператором, после bound real semantic proof и staging gameplay proof. Enter/EOF оставляет прежнюю LKG, даже если deployment
 здоров. Повтор уже подтверждённой операции ничего не переписывает.
 
 Failed deployment/rollback никогда не продвигает TARGET. До atomic replace
@@ -257,7 +257,7 @@ identity блокируют rollback. Historical LKG может отличать
 
 Если LKG отсутствует, rollback запрещён. Нельзя объявлять current HEAD здоровым
 по одному совпадению файлов/схемы. Для современного C-кода подтверждение происходит
-через обычный полный deployment и health/operator confirmation.
+через обычный полный deployment, health, real semantic smoke и operator confirmation.
 
 Для существующей V1.4 есть только pinned baseline procedure:
 
@@ -392,3 +392,9 @@ Read-only audit: `gh api repos/Aruzento/shpakdnd_bot/branches/main/protection` �
 До stop FAIL final gate сохраняет bot/HEAD/DB. После stop действуют C SOURCE/TARGET/UNKNOWN и LKG-only consent rollback. Failed Telegram API/semantic не превращает unsafe DB в безопасную и не меняет LKG. Healthy running code без promotion указывается отдельно, watcher остаётся read-only. UNKNOWN/STARTED/изменённые данные/нет compatible LKG — stop и private forensic snapshots/journal/WAL; никакого автоматического backup restore.
 
 Manual recovery фиксировать отдельным incident artifact (actual SHA, UTC, identity, причины, snapshots/log hashes, принятое пользователем решение, фактические операции и новый verification результат), не менять phase/checksum для обхода. После recovery нужны новые exact-SHA preflight/health/semantic/operator proofs.
+
+### Pinned legacy initialization после этапа D
+
+`--initialize-lkg` сохраняет отдельный `gate-legacy-bootstrap`, только для immutable V1.4 SHA. Он не присваивает V1.4.1 release readiness: проверяет свежий строгий PINNED_LEGACY_BASELINE preflight, все 979 старых тестов/validators, actual SOURCE SQLite, installed units и exact-SHA CI **установленного D tooling**. V1.4 не обязан иметь отсутствовавшие A workflows. Наличие уже confirmed LKG запрещает повторную initial override. Требуются actual required CI enforcement, independent review/explicit operator bootstrap decision для baseline SHA и GAMEPLAY staging proof именно baseline. Полная infra matrix с initial LKG была бы circular; она завершается после первого успешного подтверждения. Обычный V1.4.1 deployment продолжает требовать полный final gate, LKG compatibility и всю FULL_STAGING matrix.
+
+До выполнения этих условий initialization остаётся заблокированной. После согласованного stop/start fresh backup и B journal обязательны; только real postdeploy semantic + technical health + полный baseline SHA публикуют initial LKG. Это не разрешение Codex выполнять операцию на production.
