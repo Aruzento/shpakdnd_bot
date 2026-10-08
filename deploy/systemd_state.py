@@ -49,7 +49,7 @@ def loaded_config(manifest):
         raise DeployError('Bot User/WorkingDirectory drift')
     expected_python=manifest['python'];bot_command=expected_python+' '+manifest['project']+'/bot.py'
     if exec_command(show(bot,'ExecStart'))!=[expected_python,bot_command]:raise DeployError('Bot effective ExecStart drift')
-    config[bot].update(User=manifest['bot_user'],WorkingDirectory=manifest['project'],ExecStart=bot_command)
+    config[bot].update(Environment=show(bot,'Environment'),User=manifest['bot_user'],WorkingDirectory=manifest['project'],ExecStart=bot_command)
     if show(update,'User')!=manifest['bot_user'] or show(update,'WorkingDirectory')!=manifest['project']:
         raise DeployError('Observer user/working directory drift')
     helper=manifest['helper']
@@ -68,7 +68,28 @@ def loaded_config(manifest):
         raise DeployError('Watcher paths/Unit/Triggers drift')
     config[update].update(User=manifest['bot_user'],WorkingDirectory=manifest['project'],ExecStart=helper,**HARDENING)
     config[watch].update(Paths=sorted(paths),Unit=update)
+    staging=staging_identity(manifest)
+    if staging:config['staging']=staging
     return config
+
+
+def staging_identity(binding):
+    import shlex
+    values={entry.split('=',1)[0]:entry.split('=',1)[1] for entry in shlex.split(show(binding['units'][0],'Environment')) if '=' in entry}
+    if values.get('SHPAKDND_STAGING_ONLY')!='1':return None
+    project=Path(binding['project']).resolve()
+    if project==Path('/opt/shpakdnd-bot').resolve():raise DeployError('Staging cannot target default production checkout')
+    config=Path(values.get('SHPAKDND_STAGING_TOPICS',''))
+    runtime=Path(values.get('PYTHONPATH',''))
+    store.outside_project(runtime,project);store.trusted_path(runtime,directory=True)
+    store.outside_project(config,project);store.trusted_path(config)
+    import staging_topics
+    settings=staging_topics.configuration(config)
+    helper=runtime/'staging_topics.py';hook=runtime/'sitecustomize.py'
+    store.trusted_path(helper);store.trusted_path(hook)
+    if store.file_hash(helper)!=store.file_hash(Path(__file__).parent/'staging_topics.py') or hook.read_text().strip()!='from staging_topics import install; install()':
+        raise DeployError('Staging runtime hook differs from reviewed helper')
+    return {'environment_kind':'isolated_staging','topics_path':str(config),'runtime_hash':store.file_hash(helper),'hook_hash':store.file_hash(hook),'topics_hash':store.digest(settings)}
 
 
 def verify_installed(path=DEFAULT_MANIFEST, *, project=None, units=None, active=False):

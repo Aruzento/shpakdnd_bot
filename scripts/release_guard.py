@@ -14,6 +14,8 @@ INFRASTRUCTURE_BASELINE_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 INFRASTRUCTURE_REQUIRED = {"scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"}
 INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py", "deploy/release_state.py",
     "deploy/systemd_state.py", "deploy/release_lkg.py", "deploy/legacy_lkg.py", "deploy/install-systemd-units.sh", ".github/workflows/systemd-staging.yml", "deploy/ci-systemd/check.sh", "deploy/ci-systemd/Dockerfile", "deploy/ci-systemd/legacy-check.py"}
+STAGE_C_SHA = "436b0cda31887f87ca8a2f627c4b5a8baf4ec6d8"
+INFRASTRUCTURE_HEAD_REQUIRED |= {"deploy/staging_topics.py", "deploy/semantic_smoke.py", "deploy/semantic_evidence.py", "scripts/release_report.py", "scripts/github_release.py", "scripts/semantic_smoke_ci.py", "docs/staging-v1.4.1.md"}
 ALLOWLIST_PATH = "docs/release/approved-removals.json"
 HANDLERS_PATH = "app/handlers/__init__.py"
 
@@ -46,11 +48,12 @@ def infrastructure(path: str) -> bool:
 def validate_workflow(text: str):
     # Conservative contract for this workflow: changes to these critical lines
     # must update guard + its independent tests under protected-main review.
-    required = ("name: Release checks", "  push:", "    branches: ['codex/**']", "  pull_request:",
+    required = ("name: Release checks", "  push:", "    branches: ['main', 'codex/**']", "  pull_request:",
                 "    branches: [main]", "  contents: read", "    name: Linux release checks",
                 "    runs-on: ubuntu-latest", "    timeout-minutes: 20", "      BOT_TOKEN: ci-test-token",
                 "          fetch-depth: 0", "          python-version: '3.13'",
-                '        run: python scripts/release_checks.py --report "$RUNNER_TEMP/release-checks.json"')
+                '        run: python scripts/release_checks.py --report "$RUNNER_TEMP/release-checks.json"',
+                '        run: sudo -E "$(which python)" scripts/semantic_smoke_ci.py')
     lines = text.splitlines()
     if any(line not in lines for line in required):
         raise GuardError("required CI workflow protection is missing/disabled")
@@ -65,13 +68,29 @@ def validate_workflow(text: str):
 
 
 def validate_systemd_workflow(text):
-    required=("name: Isolated systemd staging", "  push:", "    branches: ['codex/**']", "  pull_request:",
+    required=("name: Isolated systemd staging", "  push:", "    branches: ['main', 'codex/**']", "  pull_request:",
               "    branches: [main]", "    runs-on: ubuntu-latest", "          fetch-depth: 0",
               "      - run: python deploy/ci-systemd/legacy-check.py",
               '          docker exec shpakdnd-systemd-stage bash /source/deploy/ci-systemd/check.sh "$SOURCE_SHA"')
     if any(line not in text.splitlines() for line in required):raise GuardError("required systemd staging disabled")
     if any(line.strip().startswith(("if:","continue-on-error:")) or "|| true" in line for line in text.splitlines()):
         raise GuardError("systemd staging cannot bypass failures")
+
+
+def validate_mandatory_gates(lkg_text,deploy_text,semantic_text):
+    try:
+        tree=ast.parse(lkg_text)
+        promote=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='promote')
+        direct=[n for n in promote.body if isinstance(n,ast.Assign) and any(isinstance(c,ast.Call) and isinstance(c.func,ast.Attribute)
+                and isinstance(c.func.value,ast.Name) and c.func.value.id=='semantic' and c.func.attr=='validate_for_lkg' for c in ast.walk(n))]
+        if len(direct)!=1:raise ValueError('mandatory direct semantic validation missing')
+        semantic_ast=ast.parse(semantic_text)
+        fresh=next(n for n in semantic_ast.body if isinstance(n,ast.FunctionDef) and n.name=='fresh')
+        required=('STALE','Real Telegram','operator','confirmation hash')
+        if not all(word in ast.unparse(fresh) for word in required) or 'if not 0 <= age <= max_age:' not in ast.unparse(fresh):raise ValueError('semantic stale/operator gate disabled')
+        if '    local readiness_action=gate' not in deploy_text.splitlines() or '"$TOOLS/shared/release_report.py" "$readiness_action"' not in deploy_text or deploy_text.index('"$TOOLS/shared/release_report.py" "$readiness_action"')>deploy_text.index('    MAINTENANCE=1'):
+            raise ValueError('final readiness gate missing before maintenance')
+    except (SyntaxError,StopIteration,ValueError) as error:raise GuardError('mandatory release/LKG semantic gate disabled: '+str(error)) from error
 
 
 def infrastructure_inventory(repo: Path, revision: str) -> set[str]:
@@ -218,7 +237,8 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD", *, inf
         git(repo, "cat-file", "-e", f"{infrastructure_baseline}^{{commit}}")
     except GuardError as error:
         raise GuardError(f"infrastructure baseline unavailable: {infrastructure_baseline}") from error
-    git(repo, "merge-base", "--is-ancestor", infrastructure_baseline, head)
+    # Inventory baseline is immutable, not necessarily an ancestor after squash.
+    # Game V1.4 ancestry remains mandatory above.
     infra = infrastructure_inventory(repo, infrastructure_baseline)
     if not INFRASTRUCTURE_REQUIRED <= infra:
         raise GuardError("infrastructure baseline inventory is incomplete")
@@ -227,11 +247,25 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD", *, inf
         raise GuardError("critical infrastructure removed: " + ", ".join(sorted(missing_infra)))
     validate_workflow(source(repo, head, ".github/workflows/release-checks.yml"))
     validate_systemd_workflow(source(repo, head, ".github/workflows/systemd-staging.yml"))
+    # Stage D explicitly adds main push and isolated automatic smoke. All other
+    # A executor/discovery semantics remain byte-for-byte reviewed.
     # Stage B does not alter the CI executor or discovery semantics. Keeping
     # their exact reviewed source prevents a no-op runner passing the inventory.
     for path in ("scripts/release_checks.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"):
-        if source(repo, head, path) != source(repo, infrastructure_baseline, path):
+        text=source(repo, head, path)
+        if path==".github/workflows/release-checks.yml":
+            text=text.replace("branches: ['main', 'codex/**']", "branches: ['codex/**']").replace('      - name: Automatic read-only semantic smoke\n        run: sudo -E "$(which python)" scripts/semantic_smoke_ci.py\n','')
+        baseline_text=source(repo,infrastructure_baseline,path)
+        if path==".github/workflows/release-checks.yml":
+            baseline_text=baseline_text.replace("branches: ['main', 'codex/**']", "branches: ['codex/**']").replace('      - name: Automatic read-only semantic smoke\n        run: sudo -E "$(which python)" scripts/semantic_smoke_ci.py\n','')
+        if text != baseline_text:
             raise GuardError("reviewed CI executor/workflow changed or disabled: " + path)
+    if infrastructure_baseline==INFRASTRUCTURE_BASELINE_SHA:
+        git(repo,"cat-file","-e",STAGE_C_SHA+"^{commit}")
+        previous=inventory(repo,STAGE_C_SHA)
+        missing_stage_c=removals(previous,after)
+        if missing_stage_c:raise GuardError("reviewed A/B/C functionality or tests removed: "+str(sorted(missing_stage_c)))
+    validate_mandatory_gates(source(repo,head,"deploy/release_lkg.py"),source(repo,head,"deploy/deploy-shpakdnd.sh"),source(repo,head,"deploy/semantic_evidence.py"))
     missing = removals(before, after)
     try:
         allowlist_text = source(repo, head, ALLOWLIST_PATH)

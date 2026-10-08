@@ -29,12 +29,12 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 STAGING="$(mktemp -d "$DEST/versions/.install.XXXXXXXX")"
-for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py release_preflight.py preflight_data.py release_state.py systemd_state.py release_lkg.py legacy_lkg.py; do
+for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py release_preflight.py preflight_data.py release_state.py systemd_state.py release_lkg.py legacy_lkg.py semantic_smoke.py semantic_evidence.py staging_topics.py; do
     install -o root -g root -m 644 "$SOURCE/$helper" "$STAGING/$helper"
 done
 install -o root -g root -m 755 "$SOURCE/deploy-shpakdnd.sh" "$STAGING/deploy-shpakdnd.sh"
 install -d -o root -g root -m 755 "$STAGING/shared"
-for shared in release_checks.py release_guard.py test_inventory.py; do
+for shared in release_checks.py release_guard.py test_inventory.py release_report.py github_release.py; do
     install -o root -g root -m 644 "$SOURCE/../scripts/$shared" "$STAGING/shared/$shared"
 done
 bash -n "$STAGING/deploy-shpakdnd.sh"

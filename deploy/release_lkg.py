@@ -11,6 +11,8 @@ from deploy_helpers import DeployError,check_database
 from preflight_data import schema_digest,inventory_database
 import release_state as store
 import systemd_state as units
+import semantic_evidence as semantic
+import semantic_smoke as automatic_smoke
 
 DEFAULT_LKG='/var/lib/shpakdnd-release/last-known-good.json'
 
@@ -24,7 +26,7 @@ def read_lkg(path, project, *, optional=False):
     record=store.read_record(path)
     required={'version','status','sha','confirmed_at','deployment_id','repository','tooling_hash','systemd_hash',
               'release_checks','health','sqlite','previous'}
-    if not required<=record.keys() or record['version']!=1 or record['status']!='CONFIRMED':raise DeployError('LKG is incomplete/unconfirmed')
+    if not required<=record.keys() or record['version'] not in {1,2} or record['status']!='CONFIRMED':raise DeployError('LKG is incomplete/unconfirmed')
     sha=store.full_sha(record['sha'])
     if record['repository']!=store.repository_id(project):raise DeployError('LKG repository mismatch')
     store.command(['git','-C',project,'cat-file','-e',sha+'^{commit}'])
@@ -40,6 +42,7 @@ def read_lkg(path, project, *, optional=False):
     if record['health'].get('operator_confirmed') is not True:raise DeployError('LKG operator confirmation missing')
     if record['health'].get('status')!='PASS' or record['sqlite'].get('integrity')!='OK' or record['sqlite'].get('foreign_keys')!='OK':
         raise DeployError('LKG health/SQLite proof missing')
+    if record['version']==2 and (record.get('semantic',{}).get('status')!='PASS' or record['semantic'].get('sha')!=sha or record['semantic'].get('deployment_id')!=record['deployment_id']):raise DeployError('LKG semantic proof missing')
     previous=record['previous']
     if previous:
         previous_path=Path(path).parent/'history'/previous['record']
@@ -128,9 +131,10 @@ def postdeploy_health(evidence, *, project, db, old, target, tools, since, wait=
     database=smoke(db)
     if database['schema']!=report['target_schema']:raise DeployError('Postdeploy TARGET schema drift')
     if store.command(['git','-C',project,'status','--porcelain','--untracked-files=all']):raise DeployError('Postdeploy worktree dirty')
+    automatic=automatic_smoke.run(project,target,db,Path(evidence).with_suffix('.automatic-smoke.json'),staging=units.staging_identity(installed))
     proof={'version':1,'status':'PASS','sha':target,'project':str(Path(project).resolve()),
            'evidence_hash':store.file_hash(evidence),'deployment_state_hash':store.file_hash(pref.deployment_path(evidence)),
-           'systemd':installed,'process':second,'sqlite':database,'since':since,'finished_at':store.utc_now()}
+           'automatic_smoke_hash':store.file_hash(Path(evidence).with_suffix('.automatic-smoke.json')),'systemd':installed,'process':second,'sqlite':database,'since':since,'finished_at':store.utc_now()}
     store.save_record(Path(evidence).with_suffix('.health.json'),proof)
     return proof
 
@@ -139,7 +143,7 @@ def promote(evidence, *, project, db, old, target, tools, lkg_path=DEFAULT_LKG, 
     import release_preflight as pref
     store.outside_project(Path(lkg_path).parent,project)
     existing=read_lkg(lkg_path,project,optional=True)
-    if existing and existing['deployment_id']==Path(evidence).stem and existing['sha']==target:
+    if existing and existing['version']==2 and existing['deployment_id']==Path(evidence).stem and existing['sha']==target:
         return existing  # Non-mutating retry of an already operator-confirmed release.
     report=pref.validate_evidence(evidence,old=old,target=target,tools=tools)
     proof=store.read_record(Path(evidence).with_suffix('.health.json'))
@@ -156,6 +160,10 @@ def promote(evidence, *, project, db, old, target, tools, lkg_path=DEFAULT_LKG, 
     units.health(proof['systemd'],since=proof['since'],previous=proof['process'])
     current_db=smoke(db)
     if current_db['schema']!=proof['sqlite']['schema']:raise DeployError('LKG SQLite drift')
+    automatic_path=Path(evidence).with_suffix('.automatic-smoke.json')
+    automatic_smoke.validate(automatic_path,target)
+    if store.file_hash(automatic_path)!=proof.get('automatic_smoke_hash'):raise DeployError('Automatic smoke proof changed')
+    semantic_proof=semantic.validate_for_lkg(evidence,project,target,proof)
     store.private_directory(Path(lkg_path).parent)
     previous=read_lkg(lkg_path,project,optional=True)
     deployment_id=Path(evidence).stem
@@ -168,18 +176,51 @@ def promote(evidence, *, project, db, old, target, tools, lkg_path=DEFAULT_LKG, 
         name=store.digest(previous)+'.json'
         store.save_record(folder/name,previous)
         history={'record':name,'hash':store.digest(previous),'sha':previous['sha']}
-    record={'version':1,'status':'CONFIRMED','sha':target,'confirmed_at':store.utc_now(),
+    record={'version':2,'status':'CONFIRMED','sha':target,'confirmed_at':store.utc_now(),
             'deployment_id':deployment_id,'repository':store.repository_id(project),
             'tooling_hash':pref.tooling_hash(tools),'systemd_hash':proof['systemd']['config_hash'],
             'release_checks':report['release_checks'],'health':{'status':'PASS','process':proof['process'],
-             'operator_confirmed':True,'proof_hash':store.digest(proof)},'sqlite':current_db,'previous':history}
+             'operator_confirmed':True,'proof_hash':store.digest(proof)},'sqlite':current_db,'previous':history,'semantic':semantic_proof,'completed_preflight_hash':store.file_hash(evidence)}
     store.save_record(lkg_path,record)
     return record
 
 
+def deployment_outcome(evidence,project,target,lkg_path=DEFAULT_LKG,*,reason=None):
+    current=read_lkg(lkg_path,project,optional=True)
+    promoted=bool(current and current['version']==2 and current['sha']==target and current['deployment_id']==Path(evidence).stem)
+    path=Path(evidence).with_suffix('.outcome.json')
+    if path.exists() and reason is None:
+        old=store.read_record(path);reason=old.get('promotion_reason')
+    report=json.loads(Path(evidence).read_text(encoding='utf-8'))
+    compat=report.get('lkg_compatibility',{})
+    technical=False;semantic_status='NOT_RUN';db_stage='UNKNOWN';actual_head='UNKNOWN'
+    try:
+        actual_head=store.command(['git','-C',project,'rev-parse','HEAD'])
+        import release_preflight as pref
+        state=pref.read_deployment(evidence,old=report['old_sha'],target=target,tools=Path(__file__).parent)
+        db_stage=state['phase']
+        health=store.read_record(Path(evidence).with_suffix('.health.json'))
+        units.health(health['systemd'],since=health['since'],previous=health['process'])
+        technical=actual_head==target and health['sha']==target and health['status']=='PASS' and db_stage=='TARGET'
+        if technical:
+            try:semantic.validate_for_lkg(evidence,project,target,health);semantic_status='PASS'
+            except Exception:semantic_status='UNKNOWN' if Path(evidence).with_suffix('.semantic.json').exists() else 'NOT_RUN'
+    except Exception:pass
+    release_status='RELEASE_CONFIRMED' if promoted and technical and semantic_status=='PASS' else 'CODE_RUNNING_RELEASE_UNCONFIRMED' if technical else 'UNKNOWN'
+    value=dict(version=1,kind='DEPLOYMENT_OUTCOME',status='PASS',sha=target,evidence_hash=store.file_hash(evidence),
+               actual_checkout_sha=actual_head,technical_health='PASS' if technical else 'UNKNOWN',semantic_smoke=semantic_status,db_stage=db_stage,
+               lkg_path=str(Path(lkg_path).resolve()),lkg_sha=current['sha'] if current else None,lkg_status='CONFIRMED' if current else 'NOT_RUN',
+               promotion=promoted,promotion_reason=reason or 'No semantic/operator promotion proof',release_status=release_status,
+               rollback_compatibility={'sha':compat.get('sha'),'source':compat.get('source'),'target':compat.get('target')},
+               rollback_available=bool(db_stage in {'SOURCE','TARGET'} and current and compat.get('sha')==current['sha'] and compat.get(db_stage.lower()) is True),
+               operator_action=None if release_status=='RELEASE_CONFIRMED' else 'Complete real Telegram smoke, refresh technical health, explicitly confirm full TARGET SHA',finished_at=store.utc_now())
+    store.save_record(path,value)
+    return value
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['target','health','confirm','smoke','startup-health','rollback-health'])
+    parser.add_argument('action',choices=['target','health','confirm','smoke','startup-health','rollback-health','status'])
     for name in ('evidence','project','db','old','target'):parser.add_argument('--'+name,required=True)
     parser.add_argument('--lkg',default=os.environ.get('SHPAKDND_LKG',DEFAULT_LKG))
     parser.add_argument('--since');parser.add_argument('--wait',type=int,default=5)
@@ -191,8 +232,10 @@ def main(argv=None):
         common=dict(project=args.project,db=args.db,old=args.old,target=args.target,tools=Path(__file__).parent)
         if args.action=='confirm':
             existing=read_lkg(args.lkg,args.project,optional=True)
-            if existing and existing['deployment_id']==Path(args.evidence).stem and existing['sha']==args.target:
+            if existing and existing['version']==2 and existing['deployment_id']==Path(args.evidence).stem and existing['sha']==args.target:
                 print('LKG уже подтверждена для этого deployment; запись не изменена');return 0
+        if args.action=='status':
+            print(json.dumps(deployment_outcome(args.evidence,args.project,args.target,args.lkg),ensure_ascii=False));return 0
         pref.validate_evidence(args.evidence,old=args.old,target=args.target,tools=Path(__file__).parent)
         if args.action=='target':
             print(rollback_target(args.evidence,args.project))
@@ -215,11 +258,16 @@ def main(argv=None):
             postdeploy_health(args.evidence,since=args.since,wait=args.wait,**common)
             print('Postdeploy health/smoke PASS; LKG not yet promoted')
         else:
+            if not Path(args.evidence).with_suffix('.semantic.json').exists():
+                deployment_outcome(args.evidence,args.project,args.target,args.lkg,reason='Real Telegram semantic smoke NOT_RUN; previous LKG retained')
+                print('Code running; technical health PASS. Real Telegram NOT_RUN. Previous LKG retained; release NOT CONFIRMED.');return 0
             try:answer=input('Подтвердить успешный релиз: введите полный TARGET SHA для LKG (Enter сохраняет прежнюю LKG):\n').strip()
             except EOFError:answer=''
             if answer!=args.target:
-                print('LKG не изменена: явное подтверждение TARGET не получено');return 0
+                deployment_outcome(args.evidence,args.project,args.target,args.lkg,reason='Operator declined/EOF; previous LKG retained')
+                print('LKG не изменена: явное подтверждение TARGET не получено; новая версия НЕ release-confirmed');return 0
             promote(args.evidence,lkg_path=args.lkg,operator_sha=answer,**common)
+            deployment_outcome(args.evidence,args.project,args.target,args.lkg,reason='Technical + real Telegram smoke + operator confirmed')
             print('LKG CONFIRMED: '+args.target)
         return 0
     except Exception as error:

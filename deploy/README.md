@@ -33,3 +33,6 @@ CI, независимый Linux стенд и пошаговый production rol
 [release-pipeline.md](../docs/release-pipeline.md).
 
 В рамках задачи Codex production deployment, units, LKG и main не изменяются.
+
+
+Этап D: final gate перед maintenance, JSON/Markdown release report, automatic readonly smoke отдельно от реального Telegram, LKG version=2 только с semantic/operator proof. Старые LKG сохраняются при отказе/NOT_RUN. Full staging checklist: [staging-v1.4.1.md](../docs/staging-v1.4.1.md). Required CI фактически проверяется через API; недостающие checks блокируют merge. После squash main SHA обязательно повторить gate. Изолированный --staging-sha требует approved runtime/отдельный project path и не разрешает production. Полные команды и блокеры описаны в docs/deployment.md.

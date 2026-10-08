@@ -63,7 +63,7 @@ class ReleaseGuardCLITests(unittest.TestCase):
         root = SCRIPT.parents[1]
         for path in guard.INFRASTRUCTURE_HEAD_REQUIRED:
             self.write(path, (root / path).read_text(encoding="utf-8-sig"))
-        self.write("deploy/deploy-shpakdnd.sh", "#!/usr/bin/env bash\nexit 0\n")
+        self.write("deploy/deploy-shpakdnd.sh", (root/"deploy/deploy-shpakdnd.sh").read_text(encoding="utf-8"))
         self.write("deploy/deploy_helpers.py", "# stable helper\n")
         self.write("deploy/shpakdnd-bot-watch.path", "[Path]\nUnit=bot.service\n")
         self.commit("V1.4 stable fixture")
@@ -261,6 +261,42 @@ class ReleaseGuardCLITests(unittest.TestCase):
         self.write(name,(self.repo/name).read_text().replace('    timeout-minutes: 15','    timeout-minutes: 15\n    if: false'))
         self.commit();self.assert_guard(1,'systemd staging cannot bypass')
 
+
+    def test_deleted_semantic_smoke_blocks_guard(self):
+        (self.repo/'deploy/semantic_smoke.py').unlink();self.commit();self.assert_guard(1,'critical infrastructure removed')
+
+    def test_disabled_lkg_semantic_confirmation_blocks_guard(self):
+        name='deploy/release_lkg.py';self.write(name,(self.repo/name).read_text().replace('semantic_proof=semantic.validate_for_lkg(evidence,project,target,proof)',"semantic_proof={'status':'PASS'}"));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+    def test_stale_smoke_policy_cannot_be_disabled(self):
+        name='deploy/semantic_evidence.py';self.write(name,(self.repo/name).read_text().replace("if not 0<=age<=max_age:raise DeployError('Semantic evidence is STALE')",'pass'));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+    def test_mandatory_final_release_gate_cannot_be_removed(self):
+        name='deploy/deploy-shpakdnd.sh';self.write(name,(self.repo/name).read_text().replace('local readiness_action=gate','local readiness_action=disabled'));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+
+class SquashGuardTests(unittest.TestCase):
+    def test_squashed_sha_still_protects_immutable_a_c_inventory(self):
+        # Disposable clone only; never change the developer branch or GitHub main.
+        with tempfile.TemporaryDirectory() as directory:
+            clone=Path(directory)/'squashed'
+            root=SCRIPT.parents[1]
+            for args in (['clone','--quiet','--shared',str(root),str(clone)],
+                         ['-C',str(clone),'config','user.name','Fixture'],
+                         ['-C',str(clone),'config','user.email','fixture@example.invalid'],
+                         ['-C',str(clone),'config','commit.gpgsign','false'],
+                         ['-C',str(clone),'checkout','-qb','fixture-squash',guard.BASELINE_SHA],
+                         ['-C',str(clone),'merge','--squash','origin/codex/v1.4.1'],
+                         ['-C',str(clone),'commit','-qm','Squash only in disposable fixture']):
+                result=subprocess.run(['git',*args],capture_output=True,text=True,encoding='utf-8')
+                self.assertEqual(result.returncode,0,result.stderr)
+            candidate=guard.git(clone,'rev-parse','HEAD').strip()
+            self.assertNotEqual(candidate,guard.git(root,'rev-parse','HEAD').strip())
+            result=guard.check(clone)
+            self.assertEqual(result['approved_removals'],0);self.assertEqual(result['baseline_test_symbols'],979)
 
 if __name__ == "__main__":
     unittest.main()

@@ -102,13 +102,17 @@ python)
     if [[ "$*" == *systemd_state.py* ]]; then
         [[ "${FAKE_UNIT_DRIFT:-0}" != 1 ]] || exit 1
         if [[ "${FAKE_UNIT_DRIFT_AFTER:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
+    elif [[ "$*" == *release_report.py*' gate '* || "$*" == *release_report.py*' gate-staging '* ]]; then
+        [[ "${FAKE_FINAL_GATE_FAIL:-0}" != 1 ]] || exit 1
     elif [[ "$*" == *release_lkg.py* ]]; then
         case "$2" in
             target)
                 [[ "${FAKE_LKG_ABSENT:-0}" != 1 && "${FAKE_LKG_CORRUPT:-0}" != 1 && "${FAKE_LKG_COMMIT_MISSING:-0}" != 1 ]] || exit 1
                 if [[ "${FAKE_LKG_DIFFERENT:-0}" == 1 ]]; then printf 'cccccccccccccccccccccccccccccccccccccccc\n';else cat "$FAKE_STATE/lkg";fi ;;
             smoke|health|startup-health|rollback-health) [[ "${FAKE_SMOKE_FAIL:-0}" != 1 ]] || exit 1 ;;
+            status) echo 'TARGET installed; current LKG:';cat "$FAKE_STATE/lkg";echo 'Semantic/LKG promotion reported separately' ;;
             confirm)
+                if [[ "${FAKE_SEMANTIC_ABSENT:-0}" == 1 ]]; then echo 'Real Telegram NOT_RUN; previous LKG retained; release NOT CONFIRMED';exit 0;fi
                 IFS= read -r answer || answer=""
                 if [[ "$answer" == "$(cat "$FAKE_STATE/target")" ]]; then cat "$FAKE_STATE/target" > "$FAKE_STATE/lkg";echo 'LKG CONFIRMED';fi ;;
             *) exit 9 ;;

@@ -2,7 +2,7 @@ name: Release checks
 
 on:
   push:
-    branches: ['codex/**']
+    branches: ['main', 'codex/**']
   pull_request:
     branches: [main]
 
@@ -39,6 +39,8 @@ jobs:
       - name: Stable release preservation and disposable checks
         id: checks
         run: python scripts/release_checks.py --report "$RUNNER_TEMP/release-checks.json"
+      - name: Automatic read-only semantic smoke
+        run: sudo -E "$(which python)" scripts/semantic_smoke_ci.py
       - name: Job summary
         if: always()
         env:

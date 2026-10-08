@@ -312,3 +312,19 @@ Production rollout после одобрения и отдельного реш�
 legacy helper из forensic archive. Этап D дополнит человекочитаемый final
 release report и функциональный postdeploy smoke; C оставляет для него hash-bound
 health/confirmation interface.
+
+## Этап D: финальный release gate
+
+JSON и Markdown создаёт `python scripts/release_report.py report --project <CLEAN_CHECKOUT> --sha <FULL_SHA> --output <OUTSIDE_CHECKOUT>/release.json`. Каждый PASS связан с GitHub run/job/log hash, командным hash или root-private evidence. Нет успешного run точного SHA, потерян test ID, errors/skips/validators, invalid SHA/evidence — В разработке. Auto CI PASS без реального оператора — Готово к тестовому стенду. Mock/import smoke не заменяет real Telegram.
+
+До merge нужны actual required checks, полный REAL_TELEGRAM_STAGING (45 ID), независимое review exact SHA. Actual audit main: только Linux release checks required; systemd-staging/legacy-baseline отсутствуют — merge заблокирован. Codex settings не меняет. Read API: branches/main/protection и rules/branches/main; deny=UNKNOWN. Exact manual Settings/Rulesets steps и командный operator attestation — [deployment.md](deployment.md#этап-d-final-gate-и-semantic-release-confirmation).
+
+Оба workflows выполняются на push main. Squash merge создаёт новый SHA: повторить Linux release checks, systemd-staging, legacy-baseline, staging/review applicability и fresh production preflight. Feature proofs новому main SHA не засчитываются. До production нужны actual main SHA и отдельное пользовательское решение, SQLite/migration/backup/LKG compatibility/installed configuration. `release_report.py gate` вызывается manager до notice/stop; отсутствующие proofs блокируют maintenance.
+
+Technical health, read-only import/route/catalog snapshot smoke и real UI observations различны. Full gameplay только на independent staging. Production smoke — безопасные меню/просмотр/права, getMe, artifacts оператора, без ставок/Gacha/Boss/Duel/Tower attempts. LKG v2 требует technical + automatic + real semantic + staging gameplay + explicit full SHA. Отказ/EOF/API failure сохраняет previous LKG и RELEASE_UNCONFIRMED; `.outcome.json` отдельно показывает running/health/semantic/promotion/rollback.
+
+[Официальный staging checklist](staging-v1.4.1.md) содержит начальные NOT_RUN и описание всех игровых/аварийных/infrastructure сценариев. Gameplay scope может предшествовать первой LKG; FULL_STAGING/merge требует завершить recovery. `--staging-sha FULL_SHA` работает только с effective isolated VM runtime/approved hook/private topic config и отдельным project, сохраняет весь preflight, не разрешает production. Hook config/helper hashes входят в loaded manifest. Dummy real-systemd CI подтверждает лишь технические свойства, не Telegram/gameplay.
+
+Полный Linux release pipeline этапа A сохранён (runner/inventory неизменны), D добавляет отдельный automatic semantic step, main push и mandatory Guard inventory/gate contracts. CI shared report всегда относится к одному SHA; 979 baseline IDs/multiplicity и A/B/C tests защищены. Количество HEAD tests не закреплено константой. Root/checksums — граница доверия, не внешняя цифровая подпись. Human observation/review нельзя доказать одним техническим getMe или самописным Tests: OK.
+
+Immutable A/C inventory SHA используется как источник защиты, а не ancestry requirement: при squash эти commits могут не быть предками нового main SHA. Полная история с baseline objects требуется; игровые V1.4 ancestry и сохранность исходных файлов/tests/routers остаются обязательными. Отдельный тест делает squash в disposable clone и повторяет Guard.

@@ -322,3 +322,73 @@ recovery shortcut.
 [release-pipeline.md](release-pipeline.md#стенд-и-план-rollout).
 Этап C фиксирует технические health/confirmation proofs; этап D дополнит итоговый
 release report и семантический smoke. Game schema/catalog/balance не изменяются.
+
+
+## Этап D: final gate и semantic release confirmation
+
+Release report создаётся для одного полного SHA, JSON и Markdown из одного набора proofs:
+
+```bash
+python scripts/release_report.py report --project /path/to/reviewed/checkout \
+  --sha <FULL_SHA> --output /private/reports/v1.4.1.json
+```
+
+Generator читает GitHub API (read-only gh authentication в том же root context для gate; credentials хранить отдельно от игровой .env, не выводить в logs), exact-SHA push jobs/log hashes, фактическую branch protection/effective rules и ancestry/clean checkout. Самоподтверждённые Tests: OK/PASS файлы не принимаются. Deployment/manual inputs принимаются только как protected checksummed records, созданные доверенными tooling/operator commands. Не передавать .env/token/SQLite/player rows в report. PASS содержит run/job ID+log hash, командный hash или protected evidence hash. NOT_RUN/UNKNOWN/STALE не становятся PASS; NOT_APPLICABLE требует явного обоснования.
+
+Ключи readiness: merge_ready, deployment_start_ready, production_release_confirmed. Формальный статус: В разработке → Готово к тестовому стенду → Готово к объединению с main → Можно в прод. Последний требует проверенного actual main SHA, всех prerequisites и отдельного production decision. Он разрешает только начало процедуры; успешный production релиз до startup/real smoke/LKG утверждать нельзя.
+
+Обычный manager после полного preflight и до notice/stop вызывает final gate. Требуются successful CI точного TARGET, actual required checks, полный real staging, independent review, production approval, SQLite/migrations/snapshot, actual installed units и LKG SOURCE/TARGET compatibility. Отсутствующий proof/gh/tooling/UNKNOWN DB блокирует maintenance. --skip-preflight или --force-release нет.
+
+### Изолированный staging до merge
+
+На независимой VM для final feature SHA используется `sudo deploy-shpakdnd --staging-sha <FULL_SHA>`. Он сохраняет полный preflight, lock, backup, SOURCE/STARTED/TARGET и startup checks. Разрешён только при root-owned approved runtime hook, effective bot Environment=SHPAKDND_STAGING_ONLY=1, независимом project path (не /opt/shpakdnd-bot) и полном exact-SHA CI. Это не production разрешение. Отсутствующая initial LKG явно означает недоступный rollback; оператор работает только с disposable staging DB.
+
+Runtime topic injection: root создаёт отдельный `/srv/shpakdnd-stage-runtime`, копирует exact reviewed `deploy/staging_topics.py`, создаёт `sitecustomize.py` с **ровно** `from staging_topics import install; install()`, и root-owned readable config `{ "chat_id": <NEGATIVE_STAGING_GROUP>, "thread_id": <POSITIVE_TOPIC> }`. Paths вне checkout, permissions без group/world write. Bot unit на VM задаёт PYTHONPATH, SHPAKDND_STAGING_ONLY=1, SHPAKDND_STAGING_TOPICS=/srv/.../topics.json и PYTHONDONTWRITEBYTECODE=1. Effective config/helper/hook/topics hashes входят в manifest. Production gate отвергает такой runtime. Injection меняет только topic settings на стенде, не игровые правила; production configured group запрещена. Ни одного второго polling с production token.
+
+Full gameplay/fault matrix, privacy-safe artifacts, scope GAMEPLAY/FULL_STAGING и read-only production cases: [staging-v1.4.1.md](staging-v1.4.1.md). Все реальные сценарии до выполнения оператором NOT_RUN.
+
+### Реальный postdeploy smoke и LKG
+
+Automatic import/router/catalog/SQLite smoke работает на независимом Online Backup и exact archive с dummy token, query_only SQLite и запрещённой сетью/polling. Он не меняет live DB, не создаёт attempts и не доказывает Telegram API/UI. Proof kind=AUTOMATIC_READONLY_SMOKE; технический postdeploy сохраняет .automatic-smoke.json и protected probe log.
+
+Real smoke требует operator-observed UI artifacts по конкретным read-only cases + реальный getMe. getMe один не подтверждает UI. Full gameplay/платные сценарии — только staging, production только безопасные меню/просмотр/права/старый read-only callback. SHA/deployment/process/config/staging hashes и срок (30 минут, staging 7 суток) обязательны; новый SHA или другой deployment требует новых proofs.
+
+После startup без real semantic proof manager сохраняет healthy code и прежнюю LKG, сообщает RELEASE_UNCONFIRMED; это не полностью подтверждённый релиз. EOF/отказ тоже сохраняет прежнюю LKG. Вывод/`.outcome.json` показывает actual TARGET/checkout, current LKG SHA/status, promotion/reason, DB stage, SOURCE/TARGET compatibility, доступность rollback и нужное действие оператора. UNKNOWN/failed state не объявляется running/PASS.
+
+После реальных наблюдений оператор использует **установленный versioned bundle** под тем же FD9 lock; пути и SHA берутся из protected preflight, а не подставляются произвольно:
+
+```bash
+# Выполнять только после отдельного решения оператора. Ниже TEMPLATE.
+sudo bash -c 'exec 9>>/run/lock/shpakdnd-deploy.lock; flock -n 9 || exit 1
+  PYTHON=/opt/shpakdnd-bot/.venv/bin/python
+  TOOLS=/usr/local/lib/shpakdnd-deploy/versions/<INSTALLED_TOOLING>
+  EVIDENCE=/var/lib/shpakdnd-preflight/<EXACT_PREFLIGHT>.json
+  OLD=<FULL_OLD_SHA>; TARGET=<FULL_TARGET_SHA>
+  "$PYTHON" "$TOOLS/semantic_evidence.py" postdeploy --project /opt/shpakdnd-bot --sha "$TARGET" \
+    --environment production --checklist /var/lib/shpakdnd-release/readonly-checklist.json \
+    --staging /var/lib/shpakdnd-release/staging.json --evidence "$EVIDENCE" --output "${EVIDENCE%.json}.semantic.json" || exit 1
+  "$PYTHON" "$TOOLS/release_lkg.py" health --evidence "$EVIDENCE" --project /opt/shpakdnd-bot --db /opt/shpakdnd-bot/shpakdnd.db \
+    --old "$OLD" --target "$TARGET" --since "$(date -u +%Y-%m-%dT%H:%M:%SZ)" || exit 1
+  "$PYTHON" "$TOOLS/release_lkg.py" confirm --evidence "$EVIDENCE" --project /opt/shpakdnd-bot --db /opt/shpakdnd-bot/shpakdnd.db --old "$OLD" --target "$TARGET"
+  "$PYTHON" "$TOOLS/release_lkg.py" status --evidence "$EVIDENCE" --project /opt/shpakdnd-bot --db /opt/shpakdnd-bot/shpakdnd.db --old "$OLD" --target "$TARGET"'
+```
+
+Attester и confirm отдельно требуют full SHA. Обновление health не допускает смену process/invocation для прежнего semantic proof. LKG version=2 содержит semantic/source/hash и completed_preflight_hash. Старые confirmed C version=1 остаются историческими rollback records, но не позволяют новое D promotion без semantic. Completed-report binding используется только для чтения уже confirmed операции; runtime CLI не имеет обходного флага и не сбрасывает journal.
+
+### Independent review и production decision
+
+После фактического независимого ревью root оператор сохраняет private review artifact и выполняет `release_report.py attest-review --project ... --sha FULL_SHA --artifact /private/actual-review.md --output /var/lib/shpakdnd-release/review.json`. Команда не утверждает, что ChatGPT review состоялось самостоятельно: нужен существующий artifact и explicit SHA оператора. `attest-production` аналогично фиксирует отдельное решение пользователя в production-decision.json. Не создавать эти proofs заранее ради зелёного отчёта. Generator только читает их hashes/source, без приватного содержимого.
+
+### Required checks и squash merge
+
+Фактический audit 2026-10-08: main требует только Linux release checks. systemd-staging и legacy-baseline **не required**; merge readiness заблокирована. PR/1 approval/dismiss stale reviews/strict up-to-date/enforce admins/no force push/no deletion включены, effective rulesets отсутствуют. Настройки Codex не менял.
+
+Read-only audit: `gh api repos/Aruzento/shpakdnd_bot/branches/main/protection` и `gh api repos/Aruzento/shpakdnd_bot/rules/branches/main`. Если API denied — UNKNOWN/NOT VERIFIED. Оператор в GitHub Settings → Branches/Rulesets → main проверяет PR+approval, exact required names Linux release checks/systemd-staging/legacy-baseline, strict up-to-date, dismiss stale reviews, no force push/deletion и отсутствие bypass actors/admin bypass. Изменение settings требует отдельного решения пользователя.
+
+Оба workflows теперь выполняются и на push main. Squash/rebase merge создаёт новый SHA: feature CI/staging/review не автоматически подтверждают merged code. После merge повторить все Linux gates для exact main SHA, report, real staging proofs/review applicability и fresh production preflight; только затем отдельное production decision. Codex merge не выполняет.
+
+### Ошибки и ручное восстановление
+
+До stop FAIL final gate сохраняет bot/HEAD/DB. После stop действуют C SOURCE/TARGET/UNKNOWN и LKG-only consent rollback. Failed Telegram API/semantic не превращает unsafe DB в безопасную и не меняет LKG. Healthy running code без promotion указывается отдельно, watcher остаётся read-only. UNKNOWN/STARTED/изменённые данные/нет compatible LKG — stop и private forensic snapshots/journal/WAL; никакого автоматического backup restore.
+
+Manual recovery фиксировать отдельным incident artifact (actual SHA, UTC, identity, причины, snapshots/log hashes, принятое пользователем решение, фактические операции и новый verification результат), не менять phase/checksum для обхода. После recovery нужны новые exact-SHA preflight/health/semantic/operator proofs.

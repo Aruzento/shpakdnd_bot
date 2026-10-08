@@ -27,8 +27,8 @@ BASELINE_SHA = "f06c0d129fdad0fef4fde0889915faac26b94f4a"
 STAGE_A_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 BUNDLE = ("deploy-shpakdnd.sh", "deploy_helpers.py", "sqlite-deploy.py",
           "telegram-deploy-notice.py", "release_preflight.py", "preflight_data.py",
-          "release_state.py", "systemd_state.py", "release_lkg.py", "legacy_lkg.py")
-SHARED_SCRIPTS=("release_checks.py","release_guard.py","test_inventory.py")
+          "release_state.py", "systemd_state.py", "release_lkg.py", "legacy_lkg.py", "semantic_smoke.py", "semantic_evidence.py", "staging_topics.py")
+SHARED_SCRIPTS=("release_checks.py","release_guard.py","test_inventory.py","release_report.py","github_release.py")
 
 
 def shared_scripts(directory):
@@ -151,7 +151,7 @@ def save_evidence(path, report):
     write_private(str(path) + ".sha256", hashlib.sha256(data.encode()).hexdigest() + "\n")
 
 
-def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollback_db=None, live_db=None, expected_schema=None):
+def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollback_db=None, live_db=None, expected_schema=None, completed_lkg=None):
     full_sha(old); full_sha(target)
     if live_db and rollback_db:
         raise DeployError("Select exactly one live or rollback database")
@@ -206,7 +206,16 @@ def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollb
             from systemd_state import verify_binding
             verify_binding(report["installed_systemd"])
             from release_lkg import verify_binding as verify_lkg
-            verify_lkg(report["lkg_binding"],report["installed_systemd"]["project"])
+            if completed_lkg is None:
+                verify_lkg(report["lkg_binding"],report["installed_systemd"]["project"])
+            else:
+                # Read-only report of this already confirmed operation, never a
+                # CLI switch/initialization/rollback bypass. Default stays strict.
+                from release_lkg import read_lkg
+                current=read_lkg(report["lkg_binding"]["path"],report["installed_systemd"]["project"])
+                if (current!=completed_lkg or current.get('version')!=2 or current['sha']!=target
+                        or current['deployment_id']!=path.stem or current.get('completed_preflight_hash')!=hashlib.sha256(data).hexdigest()):
+                    raise DeployError('Completed LKG does not attest this exact preflight')
         if rollback_db and report.get("lkg_binding"):
             compatibility=report.get("lkg_compatibility",{})
             if not report["lkg_binding"]["sha"] or compatibility.get("sha")!=report["lkg_binding"]["sha"] or compatibility.get(expected_schema) is not True:

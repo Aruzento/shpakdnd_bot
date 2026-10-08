@@ -11,6 +11,7 @@ from scripts.release_checks import CHECK_NAMES
 import release_lkg as lkg
 import release_state as store
 import systemd_state as units
+import semantic_evidence as semantic
 from deploy_helpers import DeployError
 pref=fixture_tests.pref
 
@@ -40,6 +41,14 @@ class LastKnownGoodTests(unittest.TestCase):
                            python='fixture-python',bot_user='fixture-bot',tooling_hash=pref.tooling_hash(self.fixture.tools))
         self.unit_verify=patch.object(units,'verify_binding',return_value=self.installed).start()
         self.health=patch.object(units,'health',return_value=self.process).start()
+        self.api={'status':'PASS','method':'getMe','real':True,'bot_identity_hash':'b'*64}
+        patch.object(semantic,'telegram_identity',return_value=self.api).start()
+        self.automatic_path=self.fixture.evidence.with_suffix('.automatic-smoke.json')
+        def automatic(project,sha,db,output,**kwargs):
+            proof={'version':1,'kind':'AUTOMATIC_READONLY_SMOKE','status':'PASS','sha':sha,'real_telegram':False,'data_preserved':True,'probe_log_hash':'a'*64,'checks':{'status':'PASS','routers':sorted(lkg.automatic_smoke.ROUTERS)}}
+            store.save_record(output,proof);return proof
+        patch.object(lkg.automatic_smoke,'run',side_effect=automatic).start()
+        patch.object(units,'staging_identity',return_value=None).start()
         record=self.record(self.old);store.save_record(self.path,record);self.before=self.path.read_bytes()
         self.fixture.report.update(old_sha=self.old,target_sha=self.target,release_checks=dict.fromkeys(CHECK_NAMES,'OK'),
             installed_systemd=self.installed,lkg_binding=lkg.binding(self.path,self.project),
@@ -73,6 +82,22 @@ class LastKnownGoodTests(unittest.TestCase):
             launch_requested_monotonic=1,launch_requested_at=store.utc_now())
         pref.save_deployment(self.fixture.evidence,state)
         lkg.postdeploy_health(self.fixture.evidence,since=store.utc_now(),wait=0,**self.common)
+        self.semantic_ready()
+
+    def semantic_ready(self):
+        staging_path=self.fixture.root/'state'/'staging.json'
+        stage=dict(version=1,kind='REAL_TELEGRAM_STAGING',status='PASS',sha=self.target,source='operator_observed_real_telegram',
+                   environment_kind='isolated_staging',environment_hash='e'*64,operator_confirmed=True,finished_at=store.utc_now(),api=dict(self.api,bot_identity_hash='c'*64),
+                   cases={name:{'status':'PASS','artifact_hash':'a'*64} for name in semantic.STAGING_CASES})
+        stage['confirmation_hash']=store.digest(stage);store.save_record(staging_path,stage)
+        health=store.read_record(self.fixture.evidence.with_suffix('.health.json'))
+        proof=dict(version=1,kind='REAL_TELEGRAM_POSTDEPLOY',status='PASS',sha=self.target,source='operator_observed_real_telegram',
+                   environment_kind='production',operator_confirmed=True,finished_at=store.utc_now(),api=self.api,
+                   cases={name:{'status':'PASS','artifact_hash':'a'*64} for name in semantic.READONLY_CASES},
+                   deployment_id=self.fixture.evidence.stem,evidence_hash=store.file_hash(self.fixture.evidence),
+                   project_hash=store.digest(str(self.project.resolve())),process=health['process'],systemd_hash=health['systemd']['config_hash'],
+                   tooling_hash=health['systemd']['tooling_hash'],staging_path=str(staging_path),staging_hash=store.file_hash(staging_path))
+        proof['confirmation_hash']=store.digest(proof);store.save_record(self.fixture.evidence.with_suffix('.semantic.json'),proof)
 
     def promote(self,operator=None):
         return lkg.promote(self.fixture.evidence,lkg_path=self.path,operator_sha=operator or self.target,**self.common)
@@ -227,6 +252,7 @@ import release_state as s,systemd_state as units,release_lkg as lkg
 v=json.loads(Path(sys.argv[2]).read_text());s.TRUSTED_UID=getattr(os,'geteuid',lambda:0)()
 units.verify_binding=lambda *a,**kw:v['installed']
 units.health=lambda *a,**kw:v['process']
+units.staging_identity=lambda *a,**kw:None
 original=s.os.replace
 def pause(src,dst):
  if Path(dst)==Path(v['lkg_path']):
@@ -234,6 +260,7 @@ def pause(src,dst):
   time.sleep(60)
  return original(src,dst)
 s.os.replace=pause
+lkg.semantic.telegram_identity=lambda project:{'status':'PASS','method':'getMe','real':True,'bot_identity_hash':'b'*64}
 lkg.promote(v['evidence'],lkg_path=v['lkg_path'],operator_sha=v['operator_sha'],**v['common'])
 """,encoding='utf-8')
         process=subprocess.Popen([sys.executable,str(child),str(self.fixture.tools),str(values)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
