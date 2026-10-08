@@ -49,7 +49,9 @@ git)
             elif [[ "$*" == *origin/main* ]]; then [[ "${FAKE_TARGET_MISSING:-0}" != 1 ]] || exit 1; cat "$FAKE_STATE/target"
             else cat "$FAKE_STATE/head"; fi ;;
         ls-tree) printf 'bot.py\napp/config.py\n.env.example\n' ;;
-        switch) printf '%s\n' "${@: -1}" > "$FAKE_STATE/head" ;;
+        switch)
+            if [[ "${@: -1}" == "$(cat "$FAKE_STATE/target")" && "${FAKE_CHECKOUT_FAIL:-0}" == 1 ]]; then exit 1; fi
+            printf '%s\n' "${@: -1}" > "$FAKE_STATE/head" ;;
         diff) [[ "${FAKE_DIFF_FAIL:-0}" != 1 ]] ;;
         *) echo "unknown git $*" >&2; exit 9 ;;
     esac ;;
@@ -114,6 +116,35 @@ python)
     elif [[ "$*" == *release_preflight.py*' invalidate '* ]]; then
         while [[ "$1" != --evidence ]]; do shift; done
         echo FAIL > "$2"
+    elif [[ "$*" == *release_preflight.py*' deployment-init '* ]]; then
+        [[ "${FAKE_SOURCE_SCHEMA_BAD:-0}" != 1 ]] || exit 1
+        echo SOURCE > "$FAKE_STATE/db-stage"
+        echo 'DB_STAGE SOURCE' >> "$FAKE_STATE/trace"
+    elif [[ "$*" == *release_preflight.py*' live-runtime '* ]]; then
+        [[ "$(cat "$FAKE_STATE/db-stage")" == SOURCE ]] || exit 1
+        echo MIGRATION_STARTED > "$FAKE_STATE/db-stage"
+        printf 'DB_STAGE MIGRATION_STARTED\npython runtime --short TARGET\n' >> "$FAKE_STATE/trace"
+        if [[ "${FAKE_MIGRATION_SIGNAL:-0}" == 1 ]]; then kill -TERM "$FAKE_DEPLOY_PID"; sleep 2; exit 143; fi
+        if [[ "${FAKE_RUNTIME_FAIL:-0}" == 1 || "${FAKE_TARGET_SCHEMA_BAD:-0}" == 1 || "${FAKE_MIGRATION_DATA_CHANGED:-0}" == 1 ]]; then
+            echo UNKNOWN > "$FAKE_STATE/db-stage";exit 1
+        fi
+        echo TARGET > "$FAKE_STATE/db-stage"
+        echo 'DB_STAGE TARGET' >> "$FAKE_STATE/trace"
+    elif [[ "$*" == *release_preflight.py*' deployment-check '* || "$*" == *release_preflight.py*' deployment-startup '* ]]; then
+        stage="$(cat "$FAKE_STATE/db-stage")"
+        [[ "$stage" == SOURCE || "$stage" == TARGET ]] || exit 1
+        if [[ "$*" == *'--expected-schema source'* ]]; then [[ "$stage" == SOURCE ]] || exit 1; fi
+        if [[ "$*" == *'--expected-schema target'* ]]; then
+            [[ "$stage" == TARGET && "${FAKE_TARGET_POSTCHECK_FAIL:-0}" != 1 ]] || exit 1
+        fi
+        [[ "${FAKE_SOURCE_DATA_CHANGED:-0}" != 1 ]] || exit 1
+        if [[ "$*" == *--rollback* ]]; then
+            [[ "${FAKE_ROLLBACK_UNKNOWN:-0}" != 1 ]] || exit 1
+            if [[ "$stage" == TARGET && "${FAKE_ROLLBACK_INCOMPATIBLE:-0}" == 1 ]]; then exit 1; fi
+        fi
+        if [[ "$*" == *' deployment-startup '* ]]; then touch "$FAKE_STATE/startup-attempted"; fi
+    elif [[ "$*" == *release_preflight.py*' deployment-abort '* ]]; then
+        if [[ -f "$FAKE_STATE/db-stage" ]] && { [[ "$(cat "$FAKE_STATE/db-stage")" == MIGRATION_STARTED ]] || [[ -f "$FAKE_STATE/startup-attempted" ]]; }; then echo UNKNOWN > "$FAKE_STATE/db-stage"; fi
     elif [[ "$*" == *release_preflight.py*' runtime '* ]]; then
         if [[ "${FAKE_RUNTIME_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
     elif [[ "$*" == *telegram-deploy-notice.py* ]]; then
@@ -230,6 +261,73 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual(len(list((self.root/'backups').glob('*.db'))),1)
         self.assertEqual(len(list((self.root/'logs').glob('*.log'))),1)
 
+    def test_confirmed_states_are_recorded_in_order_before_writes_and_startup(self):
+        result,trace=self.run_deploy('y\ny\ny\n')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        markers=['-m unittest','systemctl stop shpakdnd-bot.service',' backup ',
+                 'DB_STAGE SOURCE',' switch ','DB_STAGE MIGRATION_STARTED','runtime --short',
+                 'DB_STAGE TARGET','deployment-check','deployment-startup','systemctl start shpakdnd-bot.service']
+        # There is a SOURCE check before checkout, and a TARGET check afterwards.
+        positions=[trace.index(m) if m!='deployment-check' else trace.index(m,trace.index('DB_STAGE TARGET')) for m in markers]
+        self.assertEqual(positions,sorted(positions))
+        self.assertEqual((self.state/'db-stage').read_text().strip(),'TARGET')
+
+    def test_checkout_failure_allows_source_rollback_only_with_consent(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_CHECKOUT_FAIL=1,FAKE_ROLLBACK_INCOMPATIBLE=1)
+        self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+        self.assertEqual((self.state/'head').read_text().strip(),OLD)
+        self.assertIn('Предыдущая версия восстановлена',result.stdout)
+        self.assertNotIn('MIGRATION_STARTED',trace)
+        self.assertNotIn('runtime --short',trace)
+        self.assertIn('deployment-check',trace);self.assertIn('--rollback',trace)
+        self.assertEqual((self.project/'shpakdnd.db').read_bytes(),b'unchanged fake database')
+
+    def test_checkout_failure_without_consent_never_starts_old(self):
+        result,trace=self.run_deploy('y\ny\n1\n',FAKE_CHECKOUT_FAIL=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn('systemctl start',trace);self.assertNotIn('MIGRATION_STARTED',trace)
+
+    def test_failed_migration_blocks_requested_old_rollback(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_RUNTIME_FAIL=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertEqual((self.state/'db-stage').read_text().strip(),'UNKNOWN')
+        self.assertEqual((self.state/'head').read_text().strip(),TARGET)
+        self.assertNotIn('systemctl start',trace)
+        self.assertIn('Rollback запрещён',result.stdout)
+        self.assertEqual(trace.count(' switch '),1)
+
+    def test_target_schema_failure_after_runtime_blocks_start_and_rollback(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_TARGET_SCHEMA_BAD=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn('systemctl start',trace)
+        self.assertEqual((self.state/'db-stage').read_text().strip(),'UNKNOWN')
+        self.assertNotIn('DB_STAGE TARGET',trace)
+
+    def test_same_schema_data_mutation_blocks_start_and_rollback(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_MIGRATION_DATA_CHANGED=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn('systemctl start',trace)
+        self.assertEqual((self.state/'db-stage').read_text().strip(),'UNKNOWN')
+
+    def test_sigterm_during_live_migration_never_starts_and_invalidates_evidence(self):
+        result,trace=self.run_deploy('y\ny\n',FAKE_MIGRATION_SIGNAL=1)
+        self.assertEqual(result.returncode,143,result.stdout+result.stderr);self.assert_stopped()
+        self.assertNotIn('systemctl start',trace)
+        self.assertEqual((self.state/'db-stage').read_text().strip(),'UNKNOWN')
+        reports=list((self.root/'evidence').glob('*.json'))
+        self.assertEqual(len(reports),1)
+        self.assertEqual(reports[0].read_text().strip(),'FAIL')
+
+    def test_unconfirmed_source_data_blocks_checkout_failure_rollback(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_SOURCE_DATA_CHANGED=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn(' switch ',trace);self.assertNotIn('systemctl start',trace)
+
+    def test_unknown_compatibility_blocks_even_source_rollback(self):
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_CHECKOUT_FAIL=1,FAKE_ROLLBACK_UNKNOWN=1)
+        self.assertNotEqual(result.returncode,0);self.assert_stopped()
+        self.assertNotIn('systemctl start',trace);self.assertNotIn('MIGRATION_STARTED',trace)
+
     def test_check_failure_does_not_start_and_code_rollback_requires_choice(self):
         result,trace=self.run_deploy('y\ny\n1\n',FAKE_RUNTIME_FAIL=1)
         self.assertNotEqual(result.returncode,0);self.assert_stopped()
@@ -238,7 +336,7 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual((self.state/'notices').read_text().strip(),'1')
 
     def test_confirmed_code_rollback_never_restores_database(self):
-        result,trace=self.run_deploy('y\ny\n2\n',FAKE_RUNTIME_FAIL=1)
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_TARGET_POSTCHECK_FAIL=1)
         self.assertEqual(result.returncode,1,result.stdout+result.stderr)
         self.assertEqual((self.state/'head').read_text().strip(),OLD)
         self.assertIn('Предыдущая версия восстановлена',result.stdout)
@@ -407,7 +505,7 @@ class DeployShellTests(unittest.TestCase):
         self.assertEqual(next((self.root/'evidence').glob('*.json')).read_text().strip(),'FAIL')
 
     def test_incompatible_rollback_cannot_switch_or_restart_even_with_consent(self):
-        result,trace=self.run_deploy('y\ny\n2\n',FAKE_RUNTIME_FAIL=1,FAKE_ROLLBACK_INCOMPATIBLE=1)
+        result,trace=self.run_deploy('y\ny\n2\n',FAKE_TARGET_POSTCHECK_FAIL=1,FAKE_ROLLBACK_INCOMPATIBLE=1)
         self.assertNotEqual(result.returncode,0);self.assert_stopped()
         self.assertEqual(trace.count(' switch '),1);self.assertEqual((self.state/'head').read_text().strip(),TARGET)
         self.assertIn('Rollback запрещён',result.stdout)

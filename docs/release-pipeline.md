@@ -176,3 +176,26 @@ last-known-good stage C и не делает merge/production deployment.
 обязана точно совпадать с reviewed stage A. No-op executor или изменение
 семантики discovery/CI требует отдельного явного изменения guard и review;
 одного сохранения имени файла недостаточно.
+
+
+### Уточнение этапа B: подтверждённые SOURCE/TARGET
+
+Preflight evidence не означает успешность live migration. Отдельный защищённый
+журнал запуска фиксирует SOURCE → MIGRATION_STARTED → TARGET. После начала
+миграции ошибка/сигнал/неподтверждённый результат означает UNKNOWN; состояние
+STARTED после аварийного убийства тоже блокируется. TARGET требует exit 0,
+строгого target schema fingerprint, integrity/FK и сравнения всех исходных
+данных с final stopped-service backup. Одинаковая SOURCE/TARGET schema не
+отменяет проверку выполнения и сохранности строк.
+
+SOURCE rollback требует согласия, отсутствия миграций/startup writes и полного
+логического совпадения с backup; TARGET rollback дополнительно требует
+preflight compatibility=true и неизменного подтверждённого target содержимого.
+Unknown compatibility или состояние блокируют запуск. Автоматического restore
+нет. Подробный порядок и bootstrap установленного bundle — в deployment.md.
+
+Tests используют две реально отличающиеся SQLite схемы, изменения строк без
+DDL, partial DDL, SIGTERM, checkout failure, защищённую историю и порядок Bash.
+Прежний тест согласованного rollback теперь вводит ошибку после подтверждения
+TARGET, сохраняя assertions OLD startup/no DB restore; failed initializer имеет
+отдельный тест обязательного запрета rollback. Baseline test IDs сохраняются.

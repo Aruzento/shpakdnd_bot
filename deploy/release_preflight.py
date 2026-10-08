@@ -1,4 +1,4 @@
-"""Exact-SHA preflight controller. No service mutation, polling or live migration."""
+"""Exact-SHA isolated preflight and journal-guarded short live migrations."""
 from __future__ import annotations
 
 import argparse
@@ -137,8 +137,10 @@ def save_evidence(path, report):
     write_private(str(path) + ".sha256", hashlib.sha256(data.encode()).hexdigest() + "\n")
 
 
-def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollback_db=None, live_db=None):
+def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollback_db=None, live_db=None, expected_schema=None):
     full_sha(old); full_sha(target)
+    if live_db and rollback_db:
+        raise DeployError("Select exactly one live or rollback database")
     path = Path(path)
     secure_path(path.parent, directory=True)
     secure_path(path)
@@ -179,19 +181,172 @@ def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollb
             raise DeployError("Rollback compatibility result is invalid")
         if report["migration"].get("integrity")!="OK" or report["migration"].get("foreign_keys")!="OK":
             raise DeployError("SQLite migration checks are incomplete")
-        if live_db:
-            check_database(live_db)
-            if schema_digest(live_db) not in {report["source_schema"], report["target_schema"]}:
-                raise DeployError("Live schema differs from preflight; new preflight is required")
+        if live_db or rollback_db:
+            if expected_schema not in {"source", "target"}:
+                raise DeployError("Explicit expected schema is required for live/rollback validation")
+            database = live_db or rollback_db
+            check_database(database)
+            if schema_digest(database) != report[expected_schema + "_schema"]:
+                raise DeployError("Live schema differs from expected " + expected_schema.upper())
         if rollback_db:
-            if report["rollback_compatible"] is not True:
+            if report["rollback_compatible"] == "unknown" or (expected_schema == "target" and report["rollback_compatible"] is not True):
                 raise DeployError("Rollback is blocked: compatibility is false or unknown")
-            check_database(rollback_db)
-            if schema_digest(rollback_db) != report["target_schema"]:
-                raise DeployError("Rollback is blocked: live schema differs from verified migration")
     except (KeyError, TypeError, ValueError, OSError) as error:
         raise DeployError("Preflight evidence has invalid fields") from error
     return report
+
+
+def require_deployment_lock(db):
+    """The manager owns the same inherited lock before any journal transition."""
+    if os.name != "posix" or not stat.S_ISREG(os.fstat(9).st_mode):
+        raise DeployError("Preflight requires the inherited deployment lock")
+    lock_info=os.fstat(9)
+    db_info=Path(db).stat()
+    if (lock_info.st_uid!=os.geteuid() or lock_info.st_mode & 0o022
+            or (lock_info.st_dev,lock_info.st_ino)==(db_info.st_dev,db_info.st_ino)):
+        raise DeployError("Deployment lock ownership/permissions or DB alias is unsafe")
+    import fcntl
+    fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def logical_digest(db):
+    """Hash complete logical contents, including metadata; never store user rows."""
+    return hashlib.sha256(json.dumps(inventory_database(db, strict=True), sort_keys=True,
+                                     separators=(",", ":")).encode()).hexdigest()
+
+
+def deployment_path(evidence):
+    return Path(evidence).with_suffix(".deployment.json")
+
+
+def save_deployment(evidence, state):
+    # File and containing directory are durable before any live writer starts.
+    save_evidence(deployment_path(evidence), state)
+    if os.name == "posix":
+        fd = os.open(Path(evidence).parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+
+def read_deployment(evidence, *, old, target, tools):
+    path = deployment_path(evidence)
+    secure_path(path.parent, directory=True); secure_path(path)
+    checksum = secure_path(str(path) + ".sha256")
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != checksum.read_text().strip():
+        raise DeployError("Deployment state checksum mismatch")
+    state = json.loads(raw)
+    if (state.get("version") != 1 or state.get("old_sha") != old or state.get("target_sha") != target
+            or state.get("tooling_hash") != tooling_hash(tools)
+            or state.get("evidence_sha256") != hashlib.sha256(Path(evidence).read_bytes()).hexdigest()):
+        raise DeployError("Deployment state evidence/SHA/tooling mismatch")
+    phase = state.get("phase")
+    histories = {"SOURCE": ["SOURCE"], "MIGRATION_STARTED": ["SOURCE", "MIGRATION_STARTED"],
+                 "TARGET": ["SOURCE", "MIGRATION_STARTED", "TARGET"]}
+    if phase not in histories or state.get("history") != histories[phase]:
+        raise DeployError("Deployment DB is UNKNOWN/FAILED or has invalid operation history")
+    if phase == "TARGET" and (state.get("runtime_success") is not True or not state.get("preserved")):
+        raise DeployError("TARGET is not confirmed by successful runtime migration/preservation")
+    if phase == "SOURCE" and state.get("runtime_success"):
+        raise DeployError("SOURCE has invalid migration history")
+    return state
+
+
+def initialize_deployment(evidence, *, old, target, tools, db, backup):
+    validate_evidence(evidence, old=old, target=target, tools=tools, live_db=db, expected_schema="source")
+    if deployment_path(evidence).exists() or Path(str(deployment_path(evidence)) + ".sha256").exists():
+        raise DeployError("Deployment state already exists; cannot reset migration history")
+    backup, db = Path(backup), Path(db)
+    if backup.is_symlink() or not backup.is_file() or backup.samefile(db):
+        raise DeployError("Final backup must be an independent regular database")
+    check_database(backup)
+    compare_copy(inventory_database(backup, strict=True), db, strict=True)
+    if schema_digest(backup) != schema_digest(db) or logical_digest(backup) != logical_digest(db):
+        raise DeployError("Fresh final backup does not match SOURCE database")
+    state = {"version": 1, "phase": "SOURCE", "history": ["SOURCE"], "old_sha": old,
+             "target_sha": target, "tooling_hash": tooling_hash(tools), "db": str(db.resolve()),
+             "backup": str(backup.resolve()), "backup_sha256": hashlib.sha256(backup.read_bytes()).hexdigest(),
+             "source_data": logical_digest(backup), "runtime_success": False, "preserved": False,
+             "startup_attempted": False, "evidence_sha256": hashlib.sha256(Path(evidence).read_bytes()).hexdigest()}
+    save_deployment(evidence, state)
+    return state
+
+
+def verify_deployment(evidence, *, old, target, tools, db, expected_schema=None, rollback=False):
+    state = read_deployment(evidence, old=old, target=target, tools=tools)
+    phase = state["phase"]
+    if phase not in {"SOURCE", "TARGET"} or (expected_schema and phase.lower() != expected_schema):
+        raise DeployError("Deployment DB stage does not match expected confirmed state")
+    db, backup = Path(db), Path(state["backup"])
+    if db.is_symlink() or str(db.resolve()) != state["db"] or backup.is_symlink() or not backup.is_file() or backup.samefile(db):
+        raise DeployError("Deployment DB/backup path mismatch")
+    if hashlib.sha256(backup.read_bytes()).hexdigest() != state["backup_sha256"]:
+        raise DeployError("Final backup integrity mismatch")
+    validate_evidence(evidence, old=old, target=target, tools=tools,
+                      **({"rollback_db": db} if rollback else {"live_db": db}), expected_schema=phase.lower())
+    if phase == "SOURCE":
+        if state["startup_attempted"]:
+            raise DeployError("SOURCE rollback blocked: startup may have written to live DB")
+        if logical_digest(db) != state["source_data"]:
+            raise DeployError("SOURCE data changed; migration/write history is not confirmed")
+    else:
+        # Revalidate both critical old data and the sealed post-migration state.
+        compare_copy(inventory_database(backup, strict=True), db, strict=True)
+        if logical_digest(db) != state["target_data"]:
+            raise DeployError("TARGET data changed after verified runtime migration")
+    return state
+
+
+def execute_live_runtime(project, db, target, tools, python, bot_user):
+    command = [str(python), str(Path(tools) / "release_preflight.py"), "runtime", "--short",
+               "--project", str(project), "--db", str(db), "--sha", target]
+    if bot_user:
+        command = ["runuser", "-u", bot_user, "--", *command]
+    process = subprocess.Popen(command, start_new_session=os.name == "posix")
+    try:
+        if process.wait(timeout=50):
+            raise DeployError("Runtime migration process failed")
+    except BaseException:
+        if process.poll() is None:
+            if os.name == "posix": os.killpg(process.pid, signal.SIGTERM)
+            else: process.terminate()
+            try: process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                if os.name == "posix": os.killpg(process.pid, signal.SIGKILL)
+                else: process.kill()
+                process.wait()
+        raise
+
+
+def migrate_live(evidence, *, old, target, tools, db, project, python=sys.executable, bot_user=None, runner=None):
+    state = verify_deployment(evidence, old=old, target=target, tools=tools, db=db, expected_schema="source")
+    state.update(phase="MIGRATION_STARTED", history=["SOURCE", "MIGRATION_STARTED"])
+    save_deployment(evidence, state)  # Must finish durably before starting child.
+    try:
+        (runner or execute_live_runtime)(project, db, target, tools, python, bot_user)
+        validate_evidence(evidence, old=old, target=target, tools=tools, live_db=db, expected_schema="target")
+        compare_copy(inventory_database(state["backup"], strict=True), db, strict=True)
+        state.update(phase="TARGET", history=["SOURCE", "MIGRATION_STARTED", "TARGET"],
+                     runtime_success=True, preserved=True, target_data=logical_digest(db))
+        save_deployment(evidence, state)
+    except BaseException:
+        state.update(phase="UNKNOWN", runtime_success=False, preserved=False)
+        save_deployment(evidence, state)
+        raise
+    return state
+
+
+def abort_deployment(evidence):
+    # Only unsafe downgrade is possible here; no CLI can mark runtime success.
+    path = deployment_path(evidence)
+    if not path.exists(): return
+    secure_path(path.parent, directory=True); secure_path(path)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    if state["phase"] == "MIGRATION_STARTED" or state.get("startup_attempted"):
+        state.update(phase="UNKNOWN", runtime_success=False, preserved=False)
+        save_deployment(evidence, state)
 
 
 class Interrupted(DeployError):
@@ -480,10 +635,26 @@ def main(argv=None):
     validation = commands.add_parser("validate")
     for name in ("old", "target", "evidence"):
         validation.add_argument("--" + name, required=True)
-    validation.add_argument("--rollback-db")
-    validation.add_argument("--live-db")
+    database = validation.add_mutually_exclusive_group()
+    database.add_argument("--rollback-db")
+    database.add_argument("--live-db")
+    validation.add_argument("--expected-schema", choices=("source", "target"))
     invalidation = commands.add_parser("invalidate")
     invalidation.add_argument("--evidence", required=True)
+    for name in ("deployment-init", "live-runtime", "deployment-check", "deployment-startup"):
+        command = commands.add_parser(name)
+        for field in ("evidence", "old", "target", "db"):
+            command.add_argument("--" + field, required=True)
+        if name == "deployment-init": command.add_argument("--backup", required=True)
+        if name == "live-runtime":
+            command.add_argument("--project", required=True)
+            command.add_argument("--python", default=sys.executable)
+            command.add_argument("--bot-user", required=True)
+        if name == "deployment-check":
+            command.add_argument("--expected-schema", choices=("source", "target"))
+            command.add_argument("--rollback", action="store_true")
+    abort = commands.add_parser("deployment-abort")
+    abort.add_argument("--evidence", required=True)
     runtime = commands.add_parser("runtime")
     for name in ("project", "db", "sha"):
         runtime.add_argument("--" + name, required=True)
@@ -492,17 +663,29 @@ def main(argv=None):
     args = parser.parse_args(argv)
     tools = Path(__file__).resolve().parent
     try:
-        if args.action == "run":
-            # shell's FD 9 holds the one deployment lock throughout run/validation.
-            if os.name != "posix" or not stat.S_ISREG(os.fstat(9).st_mode):
-                raise DeployError("Preflight requires the inherited deployment lock")
-            lock_info=os.fstat(9)
-            db_info=Path(args.db).stat()
-            if (lock_info.st_uid!=os.geteuid() or lock_info.st_mode & 0o022
-                    or (lock_info.st_dev,lock_info.st_ino)==(db_info.st_dev,db_info.st_ino)):
-                raise DeployError("Deployment lock ownership/permissions or DB alias is unsafe")
-            import fcntl
-            fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if args.action == "live-runtime":
+            def runtime_interrupted(signum, frame):
+                raise Interrupted(f"Live migration interrupted by signal {signum}")
+            signal.signal(signal.SIGTERM, runtime_interrupted)
+            signal.signal(signal.SIGINT, runtime_interrupted)
+        if args.action in {"deployment-init", "live-runtime", "deployment-check", "deployment-startup"}:
+            require_deployment_lock(args.db)
+            common = dict(old=args.old, target=args.target, tools=tools, db=args.db)
+            if args.action == "deployment-init":
+                state = initialize_deployment(args.evidence, backup=args.backup, **common)
+            elif args.action == "live-runtime":
+                state = migrate_live(args.evidence, project=args.project, python=args.python, bot_user=args.bot_user, **common)
+            else:
+                state = verify_deployment(args.evidence, expected_schema=getattr(args, "expected_schema", None),
+                                          rollback=getattr(args, "rollback", False), **common)
+                if args.action == "deployment-startup":
+                    state["startup_attempted"] = True
+                    save_deployment(args.evidence, state)
+            print("Deployment DB stage: " + state["phase"])
+        elif args.action == "deployment-abort":
+            abort_deployment(args.evidence)
+        elif args.action == "run":
+            require_deployment_lock(args.db)
             def interrupted(signum, frame):
                 raise Interrupted(f"Preflight interrupted by signal {signum}")
             signal.signal(signal.SIGTERM, interrupted)
@@ -522,8 +705,14 @@ def main(argv=None):
             report["error"] = "Deployment/preflight command interrupted or failed; evidence invalidated"
             save_evidence(path, report)
         elif args.action == "validate":
+            if args.live_db or args.rollback_db:
+                if args.expected_schema not in {"source", "target"}:
+                    raise DeployError("Live DB validation requires explicit expected schema")
+                verify_deployment(args.evidence, old=args.old, target=args.target, tools=tools,
+                                  db=args.live_db or args.rollback_db, expected_schema=args.expected_schema,
+                                  rollback=bool(args.rollback_db))
             report = validate_evidence(args.evidence, old=args.old, target=args.target, tools=tools,
-                                       rollback_db=args.rollback_db, live_db=args.live_db)
+                                       rollback_db=args.rollback_db, live_db=args.live_db, expected_schema=args.expected_schema)
             print(f"Preflight evidence: PASS; tests={report['tests']['count']}; rollback_compatible={report['rollback_compatible']}")
         else:
             runtime_probe(args.project, args.db, args.sha, args.forbid_db, short=args.short)

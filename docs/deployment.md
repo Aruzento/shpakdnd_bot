@@ -106,7 +106,8 @@ checksums report/log, полный PASS, совпадение SHA/tooling и в�
 часа. RUNNING, NOT RUN, FAIL, отсутствующий/прерванный report недействительны.
 Обычный deploy всегда проводит **новый** preflight; reuse/skip flag отсутствует.
 Записи игроков не входят в условие актуальности evidence: перед checkout
-проверяется fingerprint schema свежей live DB, а не hash её содержимого.
+проверяется SOURCE schema свежей live DB. После остановки содержимое сравнивается
+со свежим final backup: последующие записи уже не считаются нормальным traffic.
 Изменение OLD/TARGET/tooling требует нового preflight. Новый origin/main не
 подменяет уже зафиксированный SHA.
 
@@ -122,14 +123,27 @@ sudo deploy-shpakdnd
 
 После stop watcher → update oneshot → bot все units должны быть inactive.
 Создаётся **свежий** эксклюзивный final SQLite Online Backup с integrity/FK
-в `/opt/shpakdnd-backups`, до checkout. Второе подтверждение разрешает установить
+в `/opt/shpakdnd-backups`, до checkout. Проверяются SOURCE schema и полное
+логическое совпадение backup/live. Защищённый журнал `<evidence>.deployment.json`
+(0600, checksum, fsync файла и каталога) фиксирует SOURCE, SHA, tooling,
+evidence hash, пути и hashes backup/логических данных, без пользовательских строк.
+Второе подтверждение разрешает установить
 только проверенный SHA: `git switch --no-overwrite-ignore -C main <SHA>`.
 Ignored env/venv/DB защищены, dirty worktree и tracked production files запрещены.
 
-Backup/runtime helper commands ограничены timeout 60 секунд (+5 на kill);
+Backup helper ограничен timeout 60 секунд (+5 на kill);
+root runtime controller ограничивает дочернюю миграцию 50 секундами, при ошибке
+или сигнале завершает всю группу процессов, с 3 секундами до SIGKILL;
 Online Backup дополнительно имеет deadline 30 секунд.
 После checkout выполняются только DB_PATH/SHA checks, init_db/init_mini_db/
 init_boss_db и SQLite integrity/FK, clean worktree/evidence schema validation.
+Перед дочерним initializer журнал **durably** фиксирует MIGRATION_STARTED.
+TARGET фиксируется только после exit 0, строго TARGET schema, integrity/FK
+и сохранности всех прежних строк/колонок относительно final backup. SOURCE
+не принимается вместо отличающейся TARGET. Даже одинаковые schema hashes
+не обходят initializer и сравнение данных. Сбой, timeout, SIGTERM или
+неподтверждённый результат оставляет UNKNOWN; журнал STARTED после SIGKILL
+также запрещает запуск. До запуска bot отдельно фиксируется риск новых записей.
 Полный check_bot с каталогами, unittest, compileall и validators уже закончены
 до downtime; они не запускаются при deployment или rollback после остановки.
 После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
@@ -147,13 +161,27 @@ init_boss_db и SQLite integrity/FK, clean worktree/evidence schema validation.
 не активируется ради сокращения простоя. Summary содержит OLD/TARGET/current
 SHA, backup и states. Автоматический code rollback отсутствует. Пользователь
 может оставить всё остановленным либо явно выбрать rollback; последний
-разрешён только при актуальном evidence, rollback_compatible=true и точном
-совпадении live schema с проверенной мигрированной schema. false/unknown
-запрещают переключение и запуск. Повторные долгие checks при rollback отсутствуют;
-выполняются только короткие runtime checks. Deployment target остаётся FAIL
-даже после успешного возврата OLD. Ошибочное/прерванное завершение инвалидирует
-PASS этого запуска. При отказе от TARGET до checkout OLD запускается только
-после отдельного подтверждения; проверенный старый HEAD обязан совпадать.
+разрешён при актуальном evidence, точном OLD SHA, целостности backup,
+integrity/FK и подтверждённой истории:
+
+- SOURCE: live migrations не запускались, startup ещё не мог писать, SOURCE
+  schema и полное логическое содержимое совпадают со свежим backup. Ошибка
+  checkout или отказ от TARGET не требуют TARGET schema. Доказанная
+  несовместимость OLD с *TARGET* здесь не мешает исходному коду; unknown
+  compatibility блокируется консервативно.
+- TARGET: initializer успешно завершён, TARGET schema/сохранность проверены,
+  rollback_compatible=true, live критичные данные сохранены, полное логическое
+  состояние совпадает с зафиксированным после миграции. Новые записи после
+  startup блокируют rollback; UNKNOWN/STARTED/частичные изменения всегда запрещены.
+
+Полный unittest и валидаторы при rollback не выполняются. Также не запускается
+повторный OLD initializer: после read-only config/integrity/SHA checks повторно
+проверяется журнал/данные, затем отмечается startup attempt и запускается OLD.
+Deployment target остаётся FAIL даже после успешного возврата OLD.
+Ошибка/прерывание инвалидирует PASS этого запуска; начатая миграция или риск
+записей startup переводят аварийный журнал в UNKNOWN. CLI не может выбирать
+SOURCE для обхода STARTED/TARGET истории или принудительно подтверждать TARGET.
+При отказе от установки OLD требует отдельного согласия и тех же SOURCE checks.
 
 Никогда не восстанавливайте backup поверх live DB автоматически: после запуска
 могли появиться новые транзакции. Разбор failed runtime, dependency upgrade,

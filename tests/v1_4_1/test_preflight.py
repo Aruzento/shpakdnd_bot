@@ -275,8 +275,17 @@ with tempfile.TemporaryDirectory() as directory:
         self.flag("incompatible")
         report = self.operation().perform()
         self.assertEqual(report["status"], "PASS"); self.assertIs(report["rollback_compatible"], False)
+        copy = self.root / "incompatible-rollback.db"
+        backup_database(self.db, copy)
+        with connect(copy) as conn:
+            conn.execute("ALTER TABLE mini_players ADD COLUMN extra TEXT DEFAULT ''")
+            conn.execute("CREATE TABLE target_marker(id INTEGER PRIMARY KEY)")
+            conn.execute("CREATE TABLE incompatible_marker(id INTEGER)")
+            conn.commit()
+        self.assertEqual(data.schema_digest(copy), report["target_schema"])
         with self.assertRaisesRegex(DeployError, "Rollback is blocked"):
-            pref.validate_evidence(self.evidence, old=self.old, target=self.target, tools=self.tools, rollback_db=self.db)
+            pref.validate_evidence(self.evidence, old=self.old, target=self.target, tools=self.tools,
+                                   rollback_db=copy, expected_schema="target")
         with connect(self.db) as conn:
             self.assertIsNone(conn.execute("SELECT 1 FROM sqlite_master WHERE name='incompatible_marker'").fetchone())
 
@@ -367,7 +376,7 @@ with tempfile.TemporaryDirectory() as directory:
         self.operation().perform()
         with connect(self.db) as conn:
             conn.execute("UPDATE mini_players SET coins=coins+5"); conn.commit()
-        report = pref.validate_evidence(self.evidence, old=self.old, target=self.target, tools=self.tools, live_db=self.db)
+        report = pref.validate_evidence(self.evidence, old=self.old, target=self.target, tools=self.tools, live_db=self.db, expected_schema="source")
         self.assertEqual(report["status"], "PASS")
 
     def test_sigterm_handler_cleans_real_controller_and_never_leaves_pass(self):
@@ -418,7 +427,206 @@ except pref.Interrupted:raise SystemExit(143)
         report=self.operation().perform()
         report['rollback_compatible']='unknown';pref.save_evidence(self.evidence,report)
         with self.assertRaisesRegex(DeployError,'compatibility is false or unknown'):
-            pref.validate_evidence(self.evidence,old=self.old,target=self.target,tools=self.tools,rollback_db=self.db)
+            pref.validate_evidence(self.evidence,old=self.old,target=self.target,tools=self.tools,rollback_db=self.db,expected_schema="source")
+
+
+class DeploymentStateTests(unittest.TestCase):
+    """Real, different SQLite schemas and a sealed stopped-service backup."""
+    def setUp(self):
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
+        self.root=Path(temp.name);self.root.chmod(0o700)
+        self.db=self.root/'live.db';self.backup=self.root/'final.db'
+        self.evidence=self.root/'preflight.json';self.tools=ROOT/'deploy'
+        self.common=dict(old='a'*40,target='b'*40,tools=self.tools,db=self.db)
+        with connect(self.db) as conn:
+            conn.execute('CREATE TABLE mini_players(id INTEGER PRIMARY KEY,coins INTEGER)')
+            conn.execute('INSERT INTO mini_players VALUES(1,123)');conn.commit()
+        backup_database(self.db,self.backup)
+        target=self.root/'target.db';backup_database(self.db,target)
+        self.add_target(target)
+        log=self.root/'protected.log';pref.write_private(log,'fixture checks\n')
+        self.report=dict(version=1,old_sha=self.common['old'],target_sha=self.common['target'],
+            baseline_sha=pref.BASELINE_SHA,stage_a_sha=pref.STAGE_A_SHA,tooling_hash=pref.tooling_hash(self.tools),
+            started_at=pref.utc_now(),finished_at=pref.utc_now(),checks=dict.fromkeys(pref.PHASES,'OK'),
+            tests=dict(count=2,failures=0,errors=0,skips=0,expected_failures=0,unexpected_successes=0),
+            migration=dict(status='OK',repeat_preserved=True,integrity='OK',foreign_keys='OK'),
+            rollback_compatible=True,log_path=str(log),log_sha256=hashlib.sha256(log.read_bytes()).hexdigest(),
+            status='PASS',source_schema=data.schema_digest(self.db),target_schema=data.schema_digest(target),
+            head_discovered_tests=2,baseline_discovered_tests=1)
+        pref.save_evidence(self.evidence,self.report)
+
+    @staticmethod
+    def add_target(db):
+        with connect(db) as conn:
+            conn.execute('ALTER TABLE mini_players ADD COLUMN reviewed_extra TEXT')
+            conn.execute('CREATE TABLE reviewed_target(id INTEGER PRIMARY KEY)');conn.commit()
+
+    def init(self):
+        return pref.initialize_deployment(self.evidence,backup=self.backup,**self.common)
+
+    def migrate(self,runner=None):
+        return pref.migrate_live(self.evidence,project=self.root,runner=runner or self.successful_runner,**self.common)
+
+    def successful_runner(self,project,db,*args):
+        state=pref.read_deployment(self.evidence,**{k:v for k,v in self.common.items() if k!='db'})
+        self.assertEqual(state['phase'],'MIGRATION_STARTED')
+        self.assertFalse(state['runtime_success'])
+        self.add_target(db)
+
+    def raw_state(self):
+        return json.loads(pref.deployment_path(self.evidence).read_text(encoding='utf-8'))
+
+    def verify(self,**kwargs):
+        return pref.verify_deployment(self.evidence,**self.common,**kwargs)
+
+    def assert_unknown_blocked(self):
+        self.assertEqual(self.raw_state()['phase'],'UNKNOWN')
+        self.assertFalse(self.raw_state()['runtime_success'])
+        with self.assertRaisesRegex(DeployError,'UNKNOWN/FAILED'):
+            self.verify(rollback=True)
+        with self.assertRaises(DeployError):self.verify(expected_schema='target')
+
+    def test_distinct_source_and_target_require_explicit_expected_schema(self):
+        self.assertNotEqual(self.report['source_schema'],self.report['target_schema'])
+        args={k:v for k,v in self.common.items() if k!='db'}
+        pref.validate_evidence(self.evidence,live_db=self.db,expected_schema='source',**args)
+        with self.assertRaisesRegex(DeployError,'expected TARGET'):
+            pref.validate_evidence(self.evidence,live_db=self.db,expected_schema='target',**args)
+        with self.assertRaisesRegex(DeployError,'Explicit expected schema'):
+            pref.validate_evidence(self.evidence,live_db=self.db,**args)
+        self.add_target(self.db)
+        pref.validate_evidence(self.evidence,live_db=self.db,expected_schema='target',**args)
+        with self.assertRaisesRegex(DeployError,'expected SOURCE'):
+            pref.validate_evidence(self.evidence,live_db=self.db,expected_schema='source',**args)
+
+    def test_success_durably_records_history_and_compatible_rollback(self):
+        self.init();self.verify(expected_schema='source')
+        state=self.migrate()
+        self.assertEqual(state['history'],['SOURCE','MIGRATION_STARTED','TARGET'])
+        self.assertTrue(state['runtime_success']);self.assertTrue(state['preserved'])
+        self.verify(expected_schema='target');self.verify(rollback=True)
+        with self.assertRaisesRegex(DeployError,'stage'):
+            self.verify(expected_schema='source')
+        with connect(self.db) as conn:self.assertEqual(conn.execute('SELECT coins FROM mini_players').fetchone()[0],123)
+
+    def test_source_rollback_uses_source_and_unchanged_data_even_if_target_incompatible(self):
+        self.report['rollback_compatible']=False;pref.save_evidence(self.evidence,self.report)
+        self.init();self.assertEqual(self.verify(rollback=True)['phase'],'SOURCE')
+        with connect(self.db) as conn:conn.execute('UPDATE mini_players SET coins=0');conn.commit()
+        self.assertEqual(data.schema_digest(self.db),self.report['source_schema'])
+        with self.assertRaisesRegex(DeployError,'SOURCE data changed'):self.verify(rollback=True)
+
+    def test_unknown_compatibility_blocks_source_rollback(self):
+        self.report['rollback_compatible']='unknown';pref.save_evidence(self.evidence,self.report)
+        self.init()
+        with self.assertRaisesRegex(DeployError,'compatibility'):self.verify(rollback=True)
+
+    def test_false_compatibility_blocks_target_rollback(self):
+        self.report['rollback_compatible']=False;pref.save_evidence(self.evidence,self.report)
+        self.init();self.migrate()
+        with self.assertRaisesRegex(DeployError,'compatibility'):self.verify(rollback=True)
+
+    def test_successful_exit_without_target_schema_is_unknown(self):
+        self.init()
+        with self.assertRaisesRegex(DeployError,'expected TARGET'):
+            self.migrate(lambda *args:None)
+        self.assert_unknown_blocked()
+
+    def test_partial_schema_change_then_failure_is_unknown(self):
+        self.init()
+        def broken(*args):
+            with connect(self.db) as conn:conn.execute('CREATE TABLE partial(id INTEGER)');conn.commit()
+            raise DeployError('partial migration')
+        with self.assertRaisesRegex(DeployError,'partial migration'):self.migrate(broken)
+        self.assertNotIn(data.schema_digest(self.db),{self.report['source_schema'],self.report['target_schema']})
+        self.assert_unknown_blocked()
+
+    def test_row_change_then_failure_is_unknown_despite_source_schema(self):
+        self.init()
+        def broken(*args):
+            with connect(self.db) as conn:conn.execute('UPDATE mini_players SET coins=0');conn.commit()
+            raise DeployError('rows changed')
+        with self.assertRaisesRegex(DeployError,'rows changed'):self.migrate(broken)
+        self.assertEqual(data.schema_digest(self.db),self.report['source_schema'])
+        self.assert_unknown_blocked()
+
+    def test_equal_schemas_still_require_success_and_preserved_data(self):
+        self.report['target_schema']=self.report['source_schema'];pref.save_evidence(self.evidence,self.report)
+        self.init()
+        def changed(*args):
+            with connect(self.db) as conn:conn.execute('UPDATE mini_players SET coins=0');conn.commit()
+        with self.assertRaisesRegex(DeployError,'user data changed/lost'):self.migrate(changed)
+        self.assert_unknown_blocked()
+
+    def test_equal_schemas_success_keeps_confirmed_migration_history(self):
+        self.report['target_schema']=self.report['source_schema'];pref.save_evidence(self.evidence,self.report)
+        self.init();state=self.migrate(lambda *args:None)
+        self.assertTrue(state['runtime_success']);self.assertEqual(state['phase'],'TARGET')
+        self.verify(rollback=True)
+
+    def test_equal_schemas_failed_initializer_cannot_become_target(self):
+        self.report['target_schema']=self.report['source_schema'];pref.save_evidence(self.evidence,self.report)
+        self.init()
+        with self.assertRaisesRegex(DeployError,'initializer failure'):
+            self.migrate(lambda *args:(_ for _ in ()).throw(DeployError('initializer failure')))
+        self.assert_unknown_blocked()
+
+    def test_target_rows_changed_after_success_block_rollback(self):
+        self.init();self.migrate()
+        with connect(self.db) as conn:conn.execute('UPDATE mini_players SET reviewed_extra=?',('new write',));conn.commit()
+        with self.assertRaisesRegex(DeployError,'TARGET data changed'):self.verify(rollback=True)
+
+    def test_sigterm_during_committed_row_write_leaves_unknown(self):
+        import signal
+        self.init();previous=signal.getsignal(signal.SIGTERM)
+        def handler(*args):raise pref.Interrupted('SIGTERM runtime fixture')
+        signal.signal(signal.SIGTERM,handler)
+        try:
+            def interrupted(*args):
+                with connect(self.db) as conn:conn.execute('UPDATE mini_players SET coins=7');conn.commit()
+                signal.raise_signal(signal.SIGTERM)
+            with self.assertRaisesRegex(pref.Interrupted,'SIGTERM'):self.migrate(interrupted)
+        finally:signal.signal(signal.SIGTERM,previous)
+        self.assert_unknown_blocked()
+
+    def test_killed_controller_started_journal_cannot_reset_or_restart(self):
+        state=self.init();state.update(phase='MIGRATION_STARTED',history=['SOURCE','MIGRATION_STARTED'])
+        pref.save_deployment(self.evidence,state)
+        with self.assertRaisesRegex(DeployError,'stage'):self.verify(rollback=True)
+        with self.assertRaisesRegex(DeployError,'already exists'):self.init()
+        pref.abort_deployment(self.evidence);self.assert_unknown_blocked()
+
+    def test_unknown_schema_before_migration_blocks_both_stages(self):
+        self.init()
+        with connect(self.db) as conn:conn.execute('CREATE TABLE unreviewed(id INTEGER)');conn.commit()
+        with self.assertRaisesRegex(DeployError,'expected SOURCE'):self.verify(rollback=True)
+        with self.assertRaisesRegex(DeployError,'stage'):self.verify(expected_schema='target')
+
+    def test_state_evidence_sha_backup_and_history_tampering_are_blocked(self):
+        state=self.init();original=pref.deployment_path(self.evidence).read_bytes()
+        pref.deployment_path(self.evidence).write_bytes(original+b' ')
+        with self.assertRaisesRegex(DeployError,'checksum'):self.verify()
+        pref.save_deployment(self.evidence,state)
+        with self.assertRaisesRegex(DeployError,'evidence/SHA/tooling'):
+            pref.verify_deployment(self.evidence,**dict(self.common,target='c'*40))
+        forged=dict(state,phase='TARGET',history=['SOURCE','MIGRATION_STARTED','TARGET'],runtime_success=False)
+        pref.save_deployment(self.evidence,forged)
+        with self.assertRaisesRegex(DeployError,'not confirmed'):self.verify()
+        pref.save_deployment(self.evidence,state)
+        with connect(self.backup) as conn:conn.execute('UPDATE mini_players SET coins=0');conn.commit()
+        with self.assertRaisesRegex(DeployError,'backup integrity'):self.verify(rollback=True)
+
+    def test_startup_write_risk_is_recorded_before_launch(self):
+        state=self.init();state['startup_attempted']=True;pref.save_deployment(self.evidence,state)
+        with self.assertRaisesRegex(DeployError,'startup may have written'):self.verify(rollback=True)
+        pref.abort_deployment(self.evidence);self.assert_unknown_blocked()
+
+    def test_cli_cannot_select_source_to_bypass_started_history(self):
+        state=self.init();state.update(phase='MIGRATION_STARTED',history=['SOURCE','MIGRATION_STARTED'])
+        pref.save_deployment(self.evidence,state)
+        args=['validate','--evidence',str(self.evidence),'--old',self.common['old'],'--target',self.common['target'],
+              '--live-db',str(self.db),'--expected-schema','source']
+        self.assertEqual(pref.main(args),1)
 
 
 if __name__ == "__main__":

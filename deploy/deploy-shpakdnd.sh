@@ -30,6 +30,7 @@ head_now() { git_bot rev-parse HEAD 2>/dev/null || printf 'unknown\n'; }
 
 summary() {
     printf '\nPrevious HEAD: %s\nTarget HEAD: %s\nCurrent HEAD: %s\nBackup: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$(head_now)" "$BACKUP"
+    if [[ -n "$EVIDENCE" ]]; then printf 'DB operation journal: %s\n' "${EVIDENCE%.json}.deployment.json"; fi
     printf 'Bot service: %s\nWatcher: %s\nUpdate helper: %s\nLog: %s\n' "$(state "$SERVICE")" "$(state "$WATCHER")" "$(state "$UPDATE_SERVICE")" "${LOG:-не создан}"
 }
 on_exit() {
@@ -40,6 +41,7 @@ on_exit() {
         summary
     fi
     if (( code != 0 )) && [[ -n "$EVIDENCE" && -f "$EVIDENCE" ]]; then
+        "$PYTHON" "$TOOLS/release_preflight.py" deployment-abort --evidence "$EVIDENCE" || true
         "$PYTHON" "$TOOLS/release_preflight.py" invalidate --evidence "$EVIDENCE" || true
     fi
     # This directory was created by mktemp for this process, contains only helper copies.
@@ -155,19 +157,39 @@ full_preflight() {
 validate_preflight() {
     "$PYTHON" "$TOOLS/release_preflight.py" validate --evidence "$EVIDENCE" --old "$OLD_HEAD" --target "$TARGET_HEAD" "$@"
 }
-checks() {
+database_step() {
+    local action="$1"; shift
+    if [[ "$action" == live-runtime ]]; then
+        "$PYTHON" "$TOOLS/release_preflight.py" "$action" --evidence "$EVIDENCE" \
+            --old "$OLD_HEAD" --target "$TARGET_HEAD" --db "$DB" "$@" &
+        PREFLIGHT_PID=$!
+        local result=0
+        wait "$PREFLIGHT_PID" || result=$?
+        PREFLIGHT_PID=""
+        return "$result"
+    fi
+    "$PYTHON" "$TOOLS/release_preflight.py" "$action" --evidence "$EVIDENCE" \
+        --old "$OLD_HEAD" --target "$TARGET_HEAD" --db "$DB" "$@"
+}
+readonly_checks() {
     local expected="$1"
-    # Only bounded runtime/schema/integrity checks during maintenance. All
-    # compileall, check_bot, validators, guard and unittest ran on copied TARGET.
     check_step runtime_DB runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
-    check_step runtime_init runtime_bot "$PYTHON" "$TOOLS/release_preflight.py" runtime --short --project "$PROJECT" --db "$DB" --sha "$expected" || return 1
     check_step database runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" check --db "$DB" || return 1
     check_step HEAD verify_head "$expected" || return 1
     check_step worktree require_clean || return 1
 }
+checks() {
+    # The root controller durably records MIGRATION_STARTED before its bot-user
+    # child runs any live initializer. Failure/signals never revert it to SOURCE.
+    check_step runtime_DB runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
+    check_step runtime_init database_step live-runtime --project "$PROJECT" --python "$PYTHON" --bot-user "$BOT_USER" || return 1
+    readonly_checks "$TARGET_HEAD" || return 1
+    check_step target_database database_step deployment-check --expected-schema target || return 1
+}
 start_stack() {
     local started pid restarts journal
     started="$(date '+%Y-%m-%d %H:%M:%S')"
+    database_step deployment-startup || return 1
     systemctl start "$SERVICE" || return 1
     pid="$(systemctl show -p MainPID --value "$SERVICE")" || return 1
     restarts="$(systemctl show -p NRestarts --value "$SERVICE")" || return 1
@@ -196,11 +218,12 @@ failed_start() {
     stop_stack || return 1
 }
 rollback() {
-    validate_preflight --rollback-db "$DB" || { printf '❌ Rollback запрещён: совместимость/схема не подтверждена.\n'; return 1; }
-    printf 'Code rollback: %s. DB НЕ восстанавливается из backup.\n' "$OLD_HEAD"
     stop_stack || return 1
+    database_step deployment-check --rollback || { printf '❌ Rollback запрещён: история миграции/данные/совместимость не подтверждены.\n'; return 1; }
+    printf 'Code rollback: %s. DB НЕ восстанавливается из backup.\n' "$OLD_HEAD"
     if ! verify_head "$OLD_HEAD"; then checkout_head "$OLD_HEAD" || return 1; fi
-    checks "$OLD_HEAD" || return 1
+    readonly_checks "$OLD_HEAD" || return 1
+    database_step deployment-check --rollback || return 1
     if ! start_stack; then failed_start; return 1; fi
     finished_notice
     printf '✅ Предыдущая версия восстановлена и запущена.\n'
@@ -274,21 +297,22 @@ main() {
     install -d -o root -g "$BOT_USER" -m 770 "$BACKUP_DIR"
     BACKUP="$BACKUP_DIR/shpakdnd_$(date '+%Y%m%d_%H%M%S').db"
     if ! check_step backup runtime_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" backup --db "$DB" --destination "$BACKUP"; then failure_choice || true; return 1; fi
+    if ! check_step source_database database_step deployment-init --backup "$BACKUP"; then failure_choice || true; return 1; fi
     printf '\nCurrent: %s\nTarget: %s\nBackup: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$BACKUP"
     if ! confirm "Установить версию ${TARGET_HEAD:0:7} из origin/main?"; then
         printf 'Код не изменён.\n'
         if confirm 'Снова запустить прежнюю версию?' Y; then
-            if ! verify_head "$OLD_HEAD" || ! start_stack; then failed_start; return 1; fi
+            if ! verify_head "$OLD_HEAD" || ! readonly_checks "$OLD_HEAD" || ! database_step deployment-check --rollback || ! start_stack; then failed_start; return 1; fi
             finished_notice
             summary
             return 0
         fi
         printf 'Бот и watcher оставлены остановленными по выбору пользователя.\n'; summary; return 2
     fi
-    if ! validate_preflight --live-db "$DB"; then FAILED_STEP=evidence; failure_choice || true; return 1; fi
+    if ! database_step deployment-check --expected-schema source; then FAILED_STEP=evidence; failure_choice || true; return 1; fi
     if ! checkout_head "$TARGET_HEAD"; then FAILED_STEP=checkout; failure_choice || true; return 1; fi
-    if ! checks "$TARGET_HEAD"; then failure_choice || true; return 1; fi
-    if ! validate_preflight --live-db "$DB"; then FAILED_STEP=evidence; failure_choice || true; return 1; fi
+    if ! checks; then failure_choice || true; return 1; fi
+    if ! database_step deployment-check --expected-schema target; then FAILED_STEP=evidence; failure_choice || true; return 1; fi
     printf '\n✅ Все проверки пройдены.\nHEAD: %s\nTests: %s tests, OK\nDB: OK\n' "$TARGET_HEAD" "$TEST_COUNT"
     if ! confirm 'Запустить новую версию?' Y; then
         printf 'Проверенный код установлен; bot и watcher остаются остановленными.\n'; summary; return 2

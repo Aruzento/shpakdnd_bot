@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 from tests.v1_3.support import MiniCase
 from tests.v1_4_1.test_preflight import pref, data, backup_database, ROOT, NETWORK_GUARD
+from tests.v1_4_1 import test_preflight as preflight_tests
 from app.mini.boss.schema import init_boss_db
 from app.mini.boss.catalog import get_boss_template
 from app.mini.boss.service import create_boss_event, register_player, close_registration
@@ -97,3 +98,29 @@ class RealMigrationSnapshotTests(MiniCase):
         old,old_sha=self.checkout('old');backup_database(copy,old/'shpakdnd.db')
         self.probe(old,old_sha);data.compare_copy(migrated,old/'shpakdnd.db',strict=True)
         self.assertEqual(self.db.read_bytes(),before_live)
+
+    def test_confirmed_distinct_schemas_preserve_real_game_data_and_allow_old_code(self):
+        self.seed_states()
+        live=Path(self.tmp.name)/'live-distinct';live.mkdir()
+        destination=live/'shpakdnd.db';self.db.replace(destination);self.db=destination
+        fixture=preflight_tests.DeploymentStateTests(methodName='test_success_durably_records_history_and_compatible_rollback')
+        fixture.setUp();self.addCleanup(fixture.doCleanups)
+        fixture.db.unlink();fixture.backup.unlink()
+        backup_database(self.db,fixture.db);backup_database(self.db,fixture.backup)
+        target=fixture.root/'different-game-target.db';backup_database(self.db,target)
+        fixture.add_target(target)
+        fixture.report.update(source_schema=data.schema_digest(fixture.db),target_schema=data.schema_digest(target))
+        pref.save_evidence(fixture.evidence,fixture.report)
+        self.assertNotEqual(fixture.report['source_schema'],fixture.report['target_schema'])
+        before=data.inventory_database(fixture.db,strict=True)
+        fixture.init();fixture.verify(expected_schema='source')
+        fixture.migrate();fixture.verify(expected_schema='target');fixture.verify(rollback=True)
+        data.compare_copy(before,fixture.db,strict=True)
+        for table in ('mini_event_sessions','mini_bosses','mini_wallet_transactions','mini_tower_progress',
+                      'mini_equipment_slots','mini_duels','mini_villages','mini_mythic_fragments','mini_shadow_rolls'):
+            self.assertGreater(before[table]['count'],0,table)
+        old_before=data.inventory_database(fixture.db)
+        old,sha=self.checkout('old-compatible-distinct')
+        backup_database(fixture.db,old/'shpakdnd.db')
+        self.probe(old,sha)
+        data.compare_copy(old_before,old/'shpakdnd.db')
