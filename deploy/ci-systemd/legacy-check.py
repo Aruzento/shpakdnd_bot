@@ -16,11 +16,13 @@ with tempfile.TemporaryDirectory(prefix='legacy-lkg-ci-') as tmp:
     env=dict(os.environ,BOT_TOKEN='ci-test-token',PYTHONDONTWRITEBYTECODE='1',PYTHONPATH=str(guard),RELEASE_TEST_ISOLATED_TOPICS='1')
     seed="""from app.config import DB_PATH
 import check_bot
-check_bot.main()
+from tests.topic_fixtures import isolated_topics
+with isolated_topics():
+ check_bot.main()
 from app.mini.players import create_mini_player
 from app.mini.worlds import sync_configured_mini_worlds
 from app.mini.wallet import add_coins
-world=sync_configured_mini_worlds(DB_PATH)[0]
+with isolated_topics():world=sync_configured_mini_worlds(DB_PATH)[0]
 p=create_mini_player(world['id'],900123,'@fixture','Baseline fixture',DB_PATH)
 add_coins(p['id'],100,'Legacy LKG isolated fixture',db_path=DB_PATH)
 """
