@@ -11,6 +11,13 @@ class FinalDeploymentFlowTests(unittest.TestCase):
         result,trace=self.f.run_deploy('y\n',FAKE_FINAL_GATE_FAIL=1)
         self.assertNotEqual(result.returncode,0);self.assertNotIn('systemctl stop',trace);self.assertNotIn('telegram-deploy-notice.py',trace)
         self.assertEqual((self.f.state/'head').read_text().strip(),shell.OLD)
+    def test_report_evidence_rejection_preserves_live_files_after_green_preflight(self):
+        before=(self.f.state/'head').read_bytes()
+        result,trace=self.f.run_deploy('y\n',FAKE_FINAL_GATE_FAIL=1)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('-m unittest',trace);self.assertIn('release_report.py gate',trace)
+        self.assertNotIn('systemctl stop',trace);self.assertNotIn('telegram-deploy-notice.py',trace)
+        self.assertNotIn('checkout --detach',trace);self.assertEqual((self.f.state/'head').read_bytes(),before)
     def test_preflight_then_final_gate_before_maintenance(self):
         result,trace=self.f.run_deploy('y\ny\ny\n')
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)

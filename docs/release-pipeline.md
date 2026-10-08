@@ -327,3 +327,42 @@ Technical health, read-only import/route/catalog snapshot smoke и real UI obser
 Полный Linux release pipeline этапа A сохранён (runner/inventory неизменны), D добавляет отдельный automatic semantic step, main push и mandatory Guard inventory/gate contracts. CI shared report всегда относится к одному SHA; 979 baseline IDs/multiplicity и A/B/C tests защищены. Количество HEAD tests не закреплено константой. Root/checksums — граница доверия, не внешняя цифровая подпись. Human observation/review нельзя доказать одним техническим getMe или самописным Tests: OK.
 
 Immutable A/C inventory SHA используется как источник защиты, а не ancestry requirement: при squash эти commits могут не быть предками нового main SHA. Полная история с baseline objects требуется; игровые V1.4 ancestry и сохранность исходных файлов/tests/routers остаются обязательными. Отдельный тест делает squash в disposable clone и повторяет Guard.
+
+
+## D-FIX: зависимости статусов deployment evidence
+
+Report собирает локальные pending результаты и публикует каждую группу после
+проверки её обязательных источников. Это read-only attestation, не новый
+pipeline/CLI bypass. Ошибка соседней группы не отменяет independently verified
+GitHub CI/inventory/automatic CI smoke. Исторический preflight PASS не означает
+PASS текущей SQLite, backup или startup. Outcome — проверяемая projection; он
+никогда не создаёт health/semantic/promotion PASS.
+
+| Статус | Обязательные доказательства | Эффект ошибки |
+|---|---|---|
+| preflight | Private JSON/checksum/log/time/exact SHA/tooling; bound unit/LKG; completed operation exception только actual v2 LKG/hash | Неаутентифицированные зависимые deployment результаты UNKNOWN/STALE; CI не меняется |
+| installed_systemd | Аутентифицированный preflight binding + actual active installed config/manifest/hashes | Startup/semantic/promotion не подтверждены; независимо проверенная SQLite сохраняется |
+| sqlite | Аутентифицированный preflight; валидный journal/path/SOURCE или TARGET, если journal существует; actual integrity/FK и строго ожидаемая schema | Migration/rollback/backup readiness/startup/semantic/promotion не PASS; valid final backup может сохраняться |
+| migration | Valid preflight/live SQLite; при начатом deployment валидный SOURCE/TARGET journal/runtime/preservation + проверенный final backup | Не делает UNKNOWN/STARTED безопасным; rollback/startup не подтверждаются |
+| rollback | Migration + actual confirmed LKG + exact LKG SOURCE/TARGET compatibility; при journal B stage/data verification на current DB | Missing LKG NOT_RUN; false compatibility FAIL; unknown/corrupt proof UNKNOWN; current data changes блокируют |
+| backup_readiness | Preflight snapshot proof + actual SQLite; при journal дополнительно confirmed final backup | Повреждённый backup блокирует deployment; retrospective CI остаётся PASS |
+| deployment_window | Подтверждённые SQLite/migration/backup readiness; operation отсутствует либо SOURCE без startup; existing outcome согласован | TARGET/started FAIL; UNKNOWN history/outcome блокирует повтор операции |
+| final_backup | Valid journal binding; independent regular SQLite; exact sealed hash, integrity/FK, SOURCE schema/logical digest | Не PASS при corruption/hash/read error; migration/rollback/readiness/startup/semantic/promotion не PASS |
+| startup_health | Actual installed units + SQLite/migration/final backup; private health exact SHA/project/preflight/journal hashes/TARGET startup; fresh time/process/journal + bound automatic proof/SQLite schema | Missing NOT_RUN; damaged UNKNOWN; known validation failure FAIL; wrong SHA/deployment/expired STALE |
+| real_telegram_postdeploy | Private semantic kind/SHA/time/status + startup health; real semantic validator exact deployment/process/config/staging/API | Missing NOT_RUN; wrong SHA/deployment STALE; mock/invalid proof не PASS; health/automatic CI не отменяются |
+| lkg_promotion | Actual confirmed v2 LKG this SHA/deployment/completed_preflight_hash + currently validated health/semantic; existing outcome valid | Not promoted NOT_RUN; unconfirmed dependencies UNKNOWN/STALE; outcome не восстанавливает ложный PASS |
+
+Corrupt/unreadable journal означает отсутствие подтверждённой стадии, поэтому
+SQLite/migration/rollback и downstream не PASS. Отсутствующий journal до stop
+допускает SOURCE preflight readiness, но final backup/health/promotion не считаются
+выполненными. Existing journal checksum без journal — UNKNOWN, не fresh operation.
+Final backup проверяется независимо от live SQLite; после health ошибки могут
+сохраняться ранее независимо подтверждённые preflight/units/SQLite/backup PASS.
+Отсутствующий health не становится PASS из соседнего semantic/outcome.
+
+Safe diagnostics содержит check/status/group/affected/reason code/next action.
+Exception text, private paths, tokens, .env, player rows и DB content не печатаются.
+FAIL означает выполненную неуспешную валидацию (например integrity/FK/schema/hash);
+UNKNOWN — нечитабельный/неполный proof; STALE — чужой SHA/binding/время.
+Любой обязательный non-PASS остаётся blocker соответствующего gate; invalid final
+backup через backup_readiness/deployment_window блокирует начало deployment.

@@ -14,7 +14,7 @@ INFRASTRUCTURE_BASELINE_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 INFRASTRUCTURE_REQUIRED = {"scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"}
 INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py", "deploy/release_state.py",
     "deploy/systemd_state.py", "deploy/release_lkg.py", "deploy/legacy_lkg.py", "deploy/install-systemd-units.sh", ".github/workflows/systemd-staging.yml", "deploy/ci-systemd/check.sh", "deploy/ci-systemd/Dockerfile", "deploy/ci-systemd/legacy-check.py"}
-D_TEST_INVENTORY_HASH = "3312f5c52a90786cfa479b520865ad5df8d5f5ae9472e1b842133c66bd5f6116"
+D_TEST_INVENTORY_HASH = "662c54fd358137074abbff92532067e500f1e553b0386115e5a8b90f5f6cbca1"
 D_TEST_INVENTORY = "docs/release/mandatory-d-tests.json"
 STAGE_C_SHA = "436b0cda31887f87ca8a2f627c4b5a8baf4ec6d8"
 INFRASTRUCTURE_HEAD_REQUIRED |= {"deploy/staging_topics.py", "deploy/semantic_smoke.py", "deploy/semantic_evidence.py", "scripts/release_report.py", "scripts/github_release.py", "scripts/semantic_smoke_ci.py", "docs/staging-v1.4.1.md", D_TEST_INVENTORY}

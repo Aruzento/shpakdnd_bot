@@ -62,13 +62,201 @@ def readiness(checks,*,on_main=False):
     confirmation=('startup_health','real_telegram_postdeploy','lkg_promotion')
     requirements={'staging':auto,'merge':merge,'deployment':deploy,'production_confirmation':tuple(n for n in deploy if n!='deployment_window')+('final_backup',)+confirmation}
     blockers={gate:[{'check':name,'status':checks[name]['status'],'reason':checks[name].get('reason','Required proof not PASS'),
-                    'next_action':'Complete '+name+' on the exact SHA/environment; do not override the gate'}
+                    'next_action':checks[name].get('next_action','Complete '+name+' on the exact SHA/environment; do not override the gate')}
                    for name in names if checks[name]['status']!='PASS'] for gate,names in requirements.items()}
     status='В разработке' if blockers['staging'] else 'Готово к тестовому стенду'
     if not blockers['merge']:status='Готово к объединению с main'
     if not blockers['deployment'] and on_main:status='Можно в прод'
     return {'version_status':status,'merge_ready':not blockers['merge'],'deployment_start_ready':not blockers['deployment'],
             'production_release_confirmed':not blockers['production_confirmation'],'blockers':blockers}
+
+
+# Dependencies describe independently validated evidence, not execution order.
+DEPLOYMENT_CHECKS=('preflight','installed_systemd','sqlite','migration','rollback','backup_readiness',
+                   'deployment_window','final_backup','startup_health','real_telegram_postdeploy','lkg_promotion')
+
+
+class ProofFailure(Exception):
+    def __init__(self,status,code):self.status=status;self.code=code
+
+
+def deployment_evidence(project,sha,evidence,checkout_sha):
+    """Publish each dependency group atomically; outcomes never manufacture PASS."""
+    import release_lkg as lkg
+    import systemd_state as units
+    from deploy_helpers import check_database
+    from preflight_data import schema_digest
+    checks={name:item('NOT_RUN',reason='Evidence absent') for name in DEPLOYMENT_CHECKS}
+    details={};diagnostics=[]
+    def failed(name,error,affected=()):
+        # No exception text, paths, rows or secret-bearing evidence are published.
+        status=error.status if isinstance(error,ProofFailure) else 'UNKNOWN'
+        code=error.code if isinstance(error,ProofFailure) else 'unreadable_or_invalid_evidence'
+        reason=name+': '+code
+        checks[name]=item(status,reason=reason)
+        for dependent in affected:checks[dependent]=item('STALE' if status=='STALE' else 'UNKNOWN',reason='Depends on '+reason)
+        diagnostics.append({'check':name,'status':status,'group':name,'affected':list(affected),
+                            'reason':code,'next_action':'Verify '+name+' evidence and its listed dependencies for this SHA; regenerate after repair'})
+    def known(error,code):
+        # Recognize only constant validator messages; never print their contents.
+        text=str(error)
+        import sqlite3
+        if isinstance(error,sqlite3.DatabaseError) and any(v in text for v in ('not a database','malformed')):return ProofFailure('FAIL',code+'_sqlite_corrupt')
+        if isinstance(error,DeployError) and any(v in text for v in ('STALE','stale','SHA/tooling mismatch','another deployment/process/configuration','Telegram bot identity changed','Semantic environment differs')):
+            return ProofFailure('STALE',code+'_stale')
+        if isinstance(error,DeployError) and any(v in text for v in ('integrity_check failed','foreign_key_check failed','schema differs','schema drift',
+                'configuration drift','unit/helper drift','PID/restart/invocation changed','journal has unexplained','Unhealthy bot/watcher/observer state','SOURCE data changed','TARGET data changed','user data changed/lost','Telegram getMe failed')):
+            return ProofFailure('FAIL',code+'_validation_failed')
+        return error
+    if not evidence:return checks,details,diagnostics
+    path=Path(evidence)
+    followers=tuple(n for n in DEPLOYMENT_CHECKS if n!='preflight')
+    preflight_step='preflight_document'
+    try:
+        if not path.exists():return checks,details,diagnostics
+        raw=json.loads(path.read_text(encoding='utf-8'))
+        if raw.get('target_sha')!=sha:raise ProofFailure('STALE','target_sha_differs')
+        # Candidate must be read before the completed-operation exception can apply.
+        preflight_step='bound_lkg_record'
+        candidate=lkg.read_lkg(raw['lkg_binding']['path'],project,optional=True)
+        completed=candidate if candidate and candidate.get('version')==2 and candidate['sha']==sha and candidate['deployment_id']==path.stem else None
+        preflight_step='preflight_authentication'
+        report=pref.validate_evidence(path,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent,completed_lkg=completed)
+        if checkout_sha not in {raw['old_sha'],sha}:raise ProofFailure('STALE','checkout_sha_differs')
+        binding=report['installed_systemd']
+        source={'evidence_hash':store.file_hash(path),'tooling_hash':report['tooling_hash']}
+        # Historical preflight is independently confirmed, not a live DB verdict.
+        checks.update({'preflight':item('PASS',source)})
+    except Exception as error:
+        error=known(error,'preflight')
+        if not isinstance(error,ProofFailure):error=ProofFailure('UNKNOWN',preflight_step+'_unavailable_or_invalid')
+        failed('preflight',error,followers);return checks,details,diagnostics
+    try:
+        units.verify_binding(binding,active=True)
+        checks.update({'installed_systemd':item('PASS',source)})
+        details.update(tooling_hash=report['tooling_hash'],systemd_hash=binding['config_hash'],
+                       lkg_sha=candidate['sha'] if candidate else None,lkg_status='CONFIRMED' if candidate else 'NOT_RUN')
+    except Exception as error:
+        failed('installed_systemd',known(error,'systemd'),('startup_health','real_telegram_postdeploy','lkg_promotion'))
+    state=None
+    db_dependents=('sqlite','migration','rollback','backup_readiness','deployment_window','final_backup','startup_health','real_telegram_postdeploy','lkg_promotion')
+    try:
+        state_path=pref.deployment_path(path)
+        if state_path.exists():
+            state=pref.read_deployment(path,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent)
+            if state['phase'] not in {'SOURCE','TARGET'}:raise ProofFailure('UNKNOWN','migration_not_confirmed')
+            if state['db']!=str((project/'shpakdnd.db').resolve()):raise ProofFailure('UNKNOWN','journal_database_binding_differs')
+            details['db_stage']=state['phase']
+        elif Path(str(state_path)+'.sha256').exists():raise ProofFailure('UNKNOWN','journal_missing_with_checksum')
+    except Exception as error:
+        failed('migration',error,tuple(n for n in db_dependents if n!='migration'));return checks,details,diagnostics
+    expected=state['phase'].lower() if state else 'source'
+    try:
+        check_database(project/'shpakdnd.db')
+        if schema_digest(project/'shpakdnd.db')!=report[expected+'_schema']:raise ProofFailure('FAIL','live_schema_differs_from_'+expected)
+        checks.update({'sqlite':item('PASS',source)})
+        details['sqlite_schema']=report[expected+'_schema']
+    except Exception as error:
+        failed('sqlite',known(error,'sqlite'),('migration','rollback','backup_readiness','deployment_window','startup_health','real_telegram_postdeploy','lkg_promotion'))
+    backup_valid=not state
+    if state:
+        try:
+            backup=Path(state['backup'])
+            if backup.is_symlink() or backup.samefile(project/'shpakdnd.db'):raise ProofFailure('FAIL','backup_alias_or_symlink')
+            if store.file_hash(backup)!=state['backup_sha256']:raise ProofFailure('FAIL','backup_hash_differs')
+            check_database(backup)
+            if schema_digest(backup)!=report['source_schema'] or pref.logical_digest(backup)!=state['source_data']:raise ProofFailure('FAIL','backup_source_state_differs')
+            checks.update({'final_backup':item('PASS',{'journal_hash':store.file_hash(state_path),'backup_hash':state['backup_sha256']})})
+            backup_valid=True
+        except Exception as error:
+            failed('final_backup',known(error,'backup'),('migration','rollback','backup_readiness','deployment_window','startup_health','real_telegram_postdeploy','lkg_promotion'))
+    if checks['sqlite']['status']=='PASS' and backup_valid:
+        # SOURCE preflight migration proof and TARGET runtime journal are distinct.
+        pending={'migration':item('PASS',source),'backup_readiness':item('PASS',source)}
+        pending['deployment_window']=item('PASS',source) if not state or (state['phase']=='SOURCE' and not state['startup_attempted']) else item('FAIL',reason='Deployment already migrated/started; create a new preflight operation')
+        checks.update(pending)
+        try:
+            current=completed or lkg.verify_binding(report['lkg_binding'],project)
+            compat=report.get('lkg_compatibility',{})
+            details.update(rollback_compatibility={'source':compat.get('source'),'target':compat.get('target')},
+                           lkg_sha=current['sha'] if current else None,lkg_status='CONFIRMED' if current else 'NOT_RUN')
+            if not current:raise ProofFailure('NOT_RUN','confirmed_lkg_absent')
+            if compat.get('sha')!=current['sha']:raise ProofFailure('UNKNOWN','compatibility_for_another_lkg')
+            if any(compat.get(k) is False for k in ('source','target')):raise ProofFailure('FAIL','lkg_incompatible')
+            if not all(compat.get(k) is True for k in ('source','target')):raise ProofFailure('UNKNOWN','lkg_compatibility_unknown')
+            if state:
+                pref.verify_deployment(path,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent,db=project/'shpakdnd.db',rollback=True)
+            checks.update({'rollback':item('PASS',source)})
+        except Exception as error:failed('rollback',known(error,'rollback'))
+    else:current=None
+    # Health absent stays NOT_RUN. Existing health requires all live dependencies.
+    health_path=path.with_suffix('.health.json');health=None
+    try:health_exists=health_path.exists()
+    except Exception as error:
+        health_exists=False;failed('startup_health',error,('real_telegram_postdeploy','lkg_promotion'))
+    if health_exists:
+        if any(checks[n]['status']!='PASS' for n in ('installed_systemd','sqlite','migration','final_backup')):
+            failed('startup_health',ProofFailure('UNKNOWN','health_dependencies_unconfirmed'),('real_telegram_postdeploy','lkg_promotion'))
+        else:
+            try:
+                health=store.read_record(health_path)
+                if health.get('sha')!=sha:raise ProofFailure('STALE','health_sha_differs')
+                if health.get('status')!='PASS':raise ProofFailure(health.get('status') if health.get('status') in STATUSES else 'UNKNOWN','health_not_successful')
+                if (health.get('evidence_hash')!=store.file_hash(path) or health.get('deployment_state_hash')!=store.file_hash(state_path)
+                        or health.get('systemd')!=binding or health.get('project')!=str(project)
+                        or not state or state['phase']!='TARGET' or state.get('startup_sha')!=sha):
+                    raise ProofFailure('STALE','health_deployment_binding_differs')
+                if not 0<=time.time()-datetime.fromisoformat(health['finished_at']).timestamp()<=300:raise ProofFailure('STALE','health_expired')
+                import semantic_smoke as automatic_smoke
+                automatic_path=path.with_suffix('.automatic-smoke.json')
+                automatic_smoke.validate(automatic_path,sha)
+                if store.file_hash(automatic_path)!=health.get('automatic_smoke_hash'):raise ProofFailure('UNKNOWN','automatic_smoke_hash_differs')
+                if health.get('sqlite',{}).get('schema')!=report['target_schema']:raise ProofFailure('FAIL','health_sqlite_schema_differs')
+                units.health(binding,since=health['since'],previous=health['process'])
+                checks.update({'startup_health':item('PASS',{'health_hash':store.file_hash(health_path)})})
+                details['production_status']='TECHNICAL_HEALTH_PASS_SEMANTIC_UNCONFIRMED'
+            except Exception as error:failed('startup_health',known(error,'health'),('real_telegram_postdeploy','lkg_promotion'))
+    semantic_path=path.with_suffix('.semantic.json')
+    try:semantic_exists=semantic_path.exists()
+    except Exception as error:
+        semantic_exists=False;failed('real_telegram_postdeploy',error,('lkg_promotion',))
+    if semantic_exists:
+        check,value=protected(semantic_path,sha,'REAL_TELEGRAM_POSTDEPLOY',age=1800)
+        if check['status']!='PASS':failed('real_telegram_postdeploy',ProofFailure(check['status'],'semantic_evidence_'+check['status'].lower()),('lkg_promotion',))
+        elif checks['startup_health']['status']!='PASS':failed('real_telegram_postdeploy',ProofFailure('UNKNOWN','technical_health_unconfirmed'),('lkg_promotion',))
+        else:
+            try:
+                semantic.validate_for_lkg(path,project,sha,health)
+                checks.update({'real_telegram_postdeploy':item('PASS',{'semantic_hash':store.file_hash(semantic_path)})})
+            except Exception as error:failed('real_telegram_postdeploy',known(error,'semantic'),('lkg_promotion',))
+    # Validate projection separately. It may invalidate a claim, never certify it.
+    outcome_valid=True;outcome_path=path.with_suffix('.outcome.json')
+    try:outcome_exists=outcome_path.exists()
+    except Exception as error:
+        outcome_exists=False;outcome_valid=False;failed('lkg_promotion',error)
+        checks['deployment_window']=item('UNKNOWN',reason='Deployment outcome unavailable; reconcile operation before a new deployment')
+    if outcome_exists:
+        try:
+            check,value=protected(outcome_path,sha,'DEPLOYMENT_OUTCOME',age=86400)
+            if check['status']!='PASS':raise ProofFailure(check['status'],'outcome_unconfirmed')
+            if value['evidence_hash']!=store.file_hash(path):raise ProofFailure('STALE','outcome_preflight_differs')
+            actual=lkg.read_lkg(value['lkg_path'],project,optional=True)
+            if (actual['sha'] if actual else None)!=value['lkg_sha']:raise ProofFailure('UNKNOWN','outcome_lkg_drift')
+            if value['lkg_path']!=report['lkg_binding']['path']:raise ProofFailure('STALE','outcome_lkg_binding_differs')
+        except Exception as error:
+            outcome_valid=False;failed('lkg_promotion',error)
+            checks['deployment_window']=item('UNKNOWN',reason='Deployment outcome is unconfirmed; reconcile operation before a new deployment')
+    promoted=bool(completed)
+    if promoted:
+        if outcome_valid and all(checks[n]['status']=='PASS' for n in ('startup_health','real_telegram_postdeploy')):
+            # Actual LKG, not an outcome flag, attests this completed preflight.
+            try:
+                if completed['completed_preflight_hash']!=store.file_hash(path):raise ProofFailure('STALE','promotion_preflight_differs')
+                checks.update({'lkg_promotion':item('PASS',{'lkg_hash':store.file_hash(report['lkg_binding']['path'])})})
+                details.update(promotion=True,promotion_reason='Explicit operator and technical/semantic proofs confirmed',production_status='RELEASE_CONFIRMED')
+            except Exception as error:failed('lkg_promotion',error)
+        elif checks['lkg_promotion']['status']=='NOT_RUN':failed('lkg_promotion',ProofFailure('UNKNOWN','promotion_dependencies_unconfirmed'))
+    return checks,details,diagnostics
 
 
 def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None,provider=None):
@@ -129,80 +317,8 @@ def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None
         checks['merged_main_sha']=item('PASS',{'github_main_sha':actual}) if on_main else item('STALE',reason='Feature SHA is not final main SHA; repeat gate after merge/squash')
     except Exception:checks['merged_main_sha']=item('UNKNOWN',reason='Actual main SHA unavailable')
     deployment={'target_sha':sha,'production_status':'NOT_RUN','lkg_sha':None,'lkg_status':'NOT_RUN','promotion':False,'promotion_reason':'No production evidence'}
-    if preflight and Path(preflight).exists():
-        try:
-            raw=json.loads(Path(preflight).read_text(encoding='utf-8'))
-            if raw.get('target_sha')!=sha:checks['preflight']=item('STALE',reason='Preflight TARGET SHA differs')
-            else:
-                import release_lkg as lkg
-                candidate=lkg.read_lkg(raw['lkg_binding']['path'],project,optional=True)
-                completed=candidate if candidate and candidate.get('version')==2 and candidate['sha']==sha and candidate['deployment_id']==Path(preflight).stem else None
-                state_path=pref.deployment_path(preflight)
-                state=pref.read_deployment(preflight,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent) if state_path.exists() else None
-                expected=state['phase'].lower() if state else 'source'
-                report=pref.validate_evidence(preflight,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent,live_db=project/'shpakdnd.db',expected_schema=expected,completed_lkg=completed)
-                if git_info.get('checkout_sha') not in {raw['old_sha'],sha}:raise DeployError('Preflight checkout SHA differs')
-                binding=report.get('installed_systemd')
-                if not binding:raise DeployError('Installed systemd proof absent')
-                import systemd_state as units
-                units.verify_binding(binding,active=True)
-                source={'evidence_hash':store.file_hash(preflight),'tooling_hash':report['tooling_hash']}
-                checks['preflight']=item('PASS',source);checks['installed_systemd']=item('PASS',source)
-                checks['sqlite']=item('PASS',source);checks['migration']=item('PASS',source)
-                checks['backup_readiness']=item('PASS',source)
-                checks['deployment_window']=item('PASS',source) if not state or (state['phase']=='SOURCE' and not state['startup_attempted']) else item('FAIL',reason='Deployment already migrated/started; create a new preflight operation')
-                import release_lkg as lkg
-                current=completed or lkg.verify_binding(report['lkg_binding'],project)
-                compat=report.get('lkg_compatibility',{})
-                rollback=bool(current and compat.get('sha')==current['sha'] and compat.get('source') is True and compat.get('target') is True)
-                checks['rollback']=item('PASS' if rollback else 'UNKNOWN',source,'Exact LKG SOURCE/TARGET compatibility missing' if not rollback else None)
-                deployment.update(tooling_hash=report['tooling_hash'],systemd_hash=binding['config_hash'],sqlite_schema=report['target_schema'],
-                                  rollback_compatibility={'source':compat.get('source'),'target':compat.get('target')},
-                                  lkg_sha=current['sha'] if current else None,lkg_status='CONFIRMED' if current else 'NOT_RUN')
-                state_path=pref.deployment_path(preflight)
-                if state_path.exists():
-                    state=pref.read_deployment(preflight,old=raw['old_sha'],target=sha,tools=Path(pref.__file__).parent)
-                    deployment['db_stage']=state['phase']
-                    backup=Path(state['backup'])
-                    if backup.is_symlink() or store.file_hash(backup)!=state['backup_sha256']:raise DeployError('Final backup changed')
-                    from deploy_helpers import check_database
-                    check_database(backup)
-                    checks['final_backup']=item('PASS',{'journal_hash':store.file_hash(state_path),'backup_hash':state['backup_sha256']})
-                    health_path=Path(preflight).with_suffix('.health.json')
-                    if health_path.exists():
-                        health=store.read_record(health_path)
-                        if health['sha']!=sha:raise DeployError('Health SHA differs')
-                        units.health(health['systemd'],since=health['since'],previous=health['process'])
-                        if not 0<=time.time()-datetime.fromisoformat(health['finished_at']).timestamp()<=300:raise DeployError('Health stale')
-                        checks['startup_health']=item('PASS',{'health_hash':store.file_hash(health_path)})
-                        deployment['production_status']='TECHNICAL_HEALTH_PASS_SEMANTIC_UNCONFIRMED'
-                        checks['real_telegram_postdeploy'],semantic_record=protected(Path(preflight).with_suffix('.semantic.json'),sha,'REAL_TELEGRAM_POSTDEPLOY',age=1800)
-                        try:
-                            if checks['real_telegram_postdeploy']['status']!='PASS':raise DeployError('Real semantic evidence missing or invalid')
-                            semantic.validate_for_lkg(preflight,project,sha,health)
-                            checks['real_telegram_postdeploy']=item('PASS',{'semantic_hash':store.file_hash(Path(preflight).with_suffix('.semantic.json'))})
-                        except Exception:
-                            if checks['real_telegram_postdeploy']['status']=='PASS':checks['real_telegram_postdeploy']=item('UNKNOWN',reason='Real postdeploy Telegram smoke NOT VERIFIED')
-                    if current and current['sha']==sha and current['deployment_id']==Path(preflight).stem and current.get('version')==2:
-                        checks['lkg_promotion']=item('PASS',{'lkg_hash':store.file_hash(report['lkg_binding']['path'])})
-                        deployment.update(promotion=True,promotion_reason='Explicit operator and technical/semantic proofs confirmed')
-        except Exception:
-            checks['preflight']=item('UNKNOWN',reason='Preflight/systemd/LKG/DB history invalid, stale or unavailable')
-    if preflight:
-        outcome_path=Path(preflight).with_suffix('.outcome.json')
-        summary,value=protected(outcome_path,sha,'DEPLOYMENT_OUTCOME',age=86400)
-        if value and value.get('evidence_hash')==store.file_hash(preflight):
-            try:
-                import release_lkg as lkg
-                actual=lkg.read_lkg(value['lkg_path'],project,optional=True)
-                if (actual['sha'] if actual else None)!=value['lkg_sha']:raise DeployError('LKG outcome drift')
-                deployment.update(lkg_sha=value['lkg_sha'],lkg_status=value['lkg_status'],promotion=value['promotion'],
-                                  promotion_reason=value['promotion_reason'],production_status=value['release_status'])
-                if value['promotion'] and actual and actual['sha']==sha and actual['deployment_id']==Path(preflight).stem:
-                    checks['lkg_promotion']=item('PASS',summary['source'])
-            except Exception:checks['lkg_promotion']=item('UNKNOWN',reason='LKG differs from durable outcome')
-    if checks['startup_health']['status']=='PASS'  and checks['real_telegram_postdeploy']['status']=='PASS' and checks['lkg_promotion']['status']=='PASS':
-        deployment['production_status']='RELEASE_CONFIRMED'
+    server_checks,server_details,diagnostics=deployment_evidence(project,sha,preflight,git_info.get('checkout_sha'))
+    checks.update(server_checks);deployment.update(server_details)
     result=dict(version=1,release_version='V1.4.1',sha=sha,git=git_info,pr=PR,created_at_utc=store.utc_now(),checks=checks,
                 automatic=release,github_protection=protection,staging={'status':checks['staging']['status'],'real_telegram':checks['staging']['status'],
                 'execution_date':stage.get('finished_at') if stage else None,'environment_hash':stage.get('environment_hash') if stage else None,
@@ -212,6 +328,7 @@ def generate(project,sha,*,preflight=None,staging=None,review=None,approval=None
                 deployment=deployment,tooling_version_hash=store.digest([store.file_hash(Path(__file__)),pref.tooling_hash(Path(pref.__file__).parent)]))
     result['automatic_semantic']={k:automatic[k] for k in ('kind','sha','status','real_telegram','data_preserved','schema','probe_log_hash') if k in automatic} if automatic else {'status':'NOT_RUN','real_telegram':False}
     result['readiness']=readiness(checks,on_main=on_main)
+    result['deployment_diagnostics']=diagnostics
     result['risks']={'open_error_audit':'NOT_RUN','unverified_checks':[name for name,check in checks.items() if check['status']!='PASS'],
                      'manual_confirmation_required':['staging','independent_review','production_decision','real_telegram_postdeploy'],
                      'blockers':result['readiness']['blockers']}
@@ -236,7 +353,9 @@ def markdown(report):
         lines.extend('- '+v['check']+': '+v['status']+' — '+v['reason']+'. '+v['next_action'] for v in blockers)
         if not blockers:lines.append('No blockers.')
         lines.append('')
-    lines+=['LKG: '+str(report['deployment']['lkg_sha'])+' ('+report['deployment']['lkg_status']+').',
+    lines+=['## Deployment evidence diagnostics','']
+    lines.extend('- '+d['check']+': '+d['status']+'; affected: '+', '.join(d['affected'])+'; '+d['reason']+'. '+d['next_action'] for d in report.get('deployment_diagnostics',[]))
+    lines+=['', 'LKG: '+str(report['deployment']['lkg_sha'])+' ('+report['deployment']['lkg_status']+').',
             'Promotion: '+str(report['deployment']['promotion'])+'. '+report['deployment']['promotion_reason'],
             'Production status: '+report['deployment']['production_status'], '', 'Real Telegram is distinct from import/router/mock and systemd smoke.']
     return '\n'.join(lines)+'\n'
