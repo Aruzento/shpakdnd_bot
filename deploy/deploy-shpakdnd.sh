@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Interactive release deploy. The filesystem watcher remains a separate tool.
 set -Eeuo pipefail
+# Read-only config/import probes must not create caches in watched code/venv.
+export PYTHONDONTWRITEBYTECODE=1
 
 PROJECT="${SHPAKDND_PROJECT:-/opt/shpakdnd-bot}"
 SERVICE="${SHPAKDND_SERVICE:-shpakdnd-bot.service}"

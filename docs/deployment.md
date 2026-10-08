@@ -85,6 +85,8 @@ sudo deploy-shpakdnd --preflight
     завершения дочерних процессов, включая SIGTERM/error. PASS публикуется
     только после всех проверок и успешного cleanup.
 
+Config/import probes выполняются с PYTHONDONTWRITEBYTECODE=1, чтобы не
+создавать cache в watched production code или установленном venv.
 В окружение TARGET не попадают настоящий `.env`, BOT_TOKEN, proxy credentials
 или произвольные environment values. Используется `ci-test-token`; сохраняется
 только проверяемый timezone setting. Общий sitecustomize release runner запрещает

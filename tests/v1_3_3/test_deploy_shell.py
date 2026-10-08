@@ -92,6 +92,7 @@ journalctl)
     if [[ "${FAKE_LATE_JOURNAL_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/shpakdnd-bot-watch.path")" == active ]]; then echo 'RuntimeError: late startup failure';fi
     echo 'fake startup journal' ;;
 python)
+    [[ "${PYTHONDONTWRITEBYTECODE:-0}" == 1 ]] || { echo "Bytecode writes were not disabled" >&2;exit 1; }
     if [[ "$*" == *--redact-env* ]]; then
         if [[ -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
         exec cat
