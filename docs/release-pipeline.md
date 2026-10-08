@@ -296,22 +296,21 @@ Production rollout после одобрения и отдельного реш�
 1. Сверить полный final SHA, independent review и оба Linux CI gates. FAIL — остановиться.
 2. Выполнить независимый стенд и проверить journal/timings. Недостаточные доказательства — не rollout.
 3. Сохранить existing units/drop-ins/helper и настройки вне watched paths с private permissions. Не публиковать .env.
-4. Bootstrap C tooling из root-owned exact checkout. Ошибка оставляет installed command прежней, live HEAD/DB нетронутыми.
+4. Bootstrap D tooling из root-owned exact checkout. Ошибка оставляет installed command прежней, live HEAD/DB нетронутыми.
 5. Отдельно разрешить unit installer: карантин legacy → безопасный observer. Ошибка оставляет healthy bot и watcher disabled.
 6. Проверить фактический manifest/units/helper/permissions/drop-ins и event без restart. Drift — release запрещён.
 7. Если нет LKG и live code — pinned V1.4, отдельно разрешить strict `--initialize-lkg` со stop/start и полной проверкой. Недостаточные доказательства — LKG отсутствует, rollback unavailable.
-8. Убедиться, что reviewed C code утверждён для main отдельной процедурой. Bootstrap не делает merge и не подменяет TARGET.
+8. Убедиться, что reviewed final code утверждён для main отдельной процедурой. Bootstrap не делает merge и не подменяет TARGET.
 9. Выполнить полный `--preflight`; PASS только для pinned TARGET. FAIL до stop не меняет healthy production.
 10. Обычный deployment снова делает полный preflight; consent → maintenance → final backup → SOURCE → checkout → STARTED → TARGET.
 11. Startup/health/SQLite smoke → observer → stable /proc/journal/units. Ошибка после stop требует stage-specific consent recovery либо manual analysis.
-12. Оператор после smoke вводит full SHA для новой LKG. Отказ/EOF сохраняет прежнюю LKG; failed target никогда не подтверждается.
+12. Оператор после technical health, staging gameplay proof и real read-only semantic smoke вводит full SHA для новой LKG. Отказ/EOF сохраняет прежнюю LKG; failed target никогда не подтверждается.
 
 При UNKNOWN или повреждённой LKG сохранить журналы/текущую DB и WAL, работать
 на независимых snapshots, установить фактическую совместимость/данные и получить
 отдельное решение. Не править phase/checksum для обхода gate и не возвращать
-legacy helper из forensic archive. Этап D дополнит человекочитаемый final
-release report и функциональный postdeploy smoke; C оставляет для него hash-bound
-health/confirmation interface.
+legacy helper из forensic archive. Этап D использует hash-bound health/confirmation interface этапа C для final
+release report и real semantic postdeploy smoke; полный gate описан ниже.
 
 ## Этап D: финальный release gate
 
