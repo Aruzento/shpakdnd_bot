@@ -107,7 +107,7 @@ python)
             target)
                 [[ "${FAKE_LKG_ABSENT:-0}" != 1 && "${FAKE_LKG_CORRUPT:-0}" != 1 && "${FAKE_LKG_COMMIT_MISSING:-0}" != 1 ]] || exit 1
                 if [[ "${FAKE_LKG_DIFFERENT:-0}" == 1 ]]; then printf 'cccccccccccccccccccccccccccccccccccccccc\n';else cat "$FAKE_STATE/lkg";fi ;;
-            smoke|health) [[ "${FAKE_SMOKE_FAIL:-0}" != 1 ]] || exit 1 ;;
+            smoke|health|startup-health|rollback-health) [[ "${FAKE_SMOKE_FAIL:-0}" != 1 ]] || exit 1 ;;
             confirm)
                 IFS= read -r answer || answer=""
                 if [[ "$answer" == "$(cat "$FAKE_STATE/target")" ]]; then cat "$FAKE_STATE/target" > "$FAKE_STATE/lkg";echo 'LKG CONFIRMED';fi ;;

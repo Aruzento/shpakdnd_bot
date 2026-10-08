@@ -76,6 +76,15 @@ ENDED="$(date +%s%N)"
 # Reinstallation performs no replacement or reload.
 bash /opt/reviewed/deploy/install-systemd-units.sh "$1"
 python3 /opt/reviewed/deploy/systemd_state.py verify --project /opt/stage-bot
+python3 - <<'PY'
+import sys
+sys.path.insert(0,'/opt/reviewed/deploy')
+import systemd_state as u
+binding=u.verify_installed(project='/opt/stage-bot',active=True)
+first=u.health(binding,since='unused')
+u.health(binding,since='unused',previous=first)
+print('REAL_PROCESS_INVOCATION_HEALTH=PASS')
+PY
 for file in bot.py app/extra.py app/mini/content/fixture.json; do
     printf '\n# deliberately dirty stand event\n' >> "/opt/stage-bot/$file"
     sleep 1

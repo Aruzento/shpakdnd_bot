@@ -112,13 +112,15 @@ def process_identity(binding):
     return {'pid':pid,'restarts':restarts,'invocation':invocation,'started_monotonic':started}
 
 
-def health(binding, *, since, previous=None):
-    verify_binding(binding,active=True)
+def health(binding, *, since, previous=None, before_watcher=False):
+    verify_binding(binding,active=not before_watcher)
+    if before_watcher and show(binding["units"][1],"ActiveState")!="inactive":
+        raise DeployError("Watcher must remain inactive until startup health passes")
     current=process_identity(binding)
     if previous is not None and current!=previous:raise DeployError('PID/restart/invocation changed during health window')
     # No truncation: every message from the confirmed invocation is inspected.
     text=store.command(['journalctl','--no-pager','-o','cat','_SYSTEMD_INVOCATION_ID='+current['invocation']])
-    if re.search(r'Traceback|ModuleNotFoundError|ImportError|RuntimeError|SyntaxError|Main process exited|Scheduled restart job|Failed to start',text):
+    if re.search(r'\b(?:ERROR|CRITICAL|FATAL)\b|Traceback|ModuleNotFoundError|ImportError|RuntimeError|SyntaxError|OperationalError|IntegrityError|Main process exited|Scheduled restart job|Failed to start|Start request repeated too quickly',text):
         raise DeployError('Bot journal has unexplained startup/restart errors')
     return current
 

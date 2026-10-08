@@ -222,7 +222,7 @@ TARGET фиксируется только после exit 0, строго TARGE
 Полный check_bot с каталогами, unittest, compileall и validators уже закончены
 до downtime; они не запускаются при deployment или rollback после остановки.
 Перед startup проверяется installed configuration. После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
-проверяются до watcher и ещё раз после него. После bot startup read-only SQLite smoke проверяет integrity/FK, обязательные таблицы, миры и подтверждённую схему до watcher. После watcher выполняются дополнительные stable process/journal/smoke checks. Только здоровый bot + watcher разрешают финальный notice. LKG требует отдельного ввода полного SHA оператором. Ошибка финального notice — warning с сохранением
+проверяются до watcher и ещё раз после него. Fresh /proc process identity и весь invocation journal проверяются также до watcher, включая rollback. После bot startup read-only SQLite smoke проверяет integrity/FK, обязательные таблицы, миры и подтверждённую схему до watcher. После watcher выполняются дополнительные stable process/journal/smoke checks. Только здоровый bot + watcher разрешают финальный notice. LKG требует отдельного ввода полного SHA оператором. Ошибка финального notice — warning с сохранением
 здорового состояния. EOF никогда не считается подтверждением.
 
 ## Last-Known-Good: формат и подтверждение
@@ -231,7 +231,7 @@ TARGET фиксируется только после exit 0, строго TARGE
 с payload version=1/status=CONFIRMED, full SHA, UTC timestamp, deployment_id,
 repository identity, tooling/systemd hashes, всеми результатами release checks,
 health/process/operator proof, SQLite schema/integrity/FK/smoke и previous link.
-История хранится в `history/<record hash>.json`; цепочка проверяется при чтении.
+История хранится в `history/<record hash>.json`; проверяются checksum текущей записи и связь с предыдущей записью.
 Запись атомарна, fsync файла и каталога. Секреты и пользовательские SQLite
 строки не записываются. Checksums обнаруживают повреждение; root и его private
 каталоги являются границей доверия. Публичной команды `set-lkg <sha>` нет.

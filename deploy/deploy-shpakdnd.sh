@@ -207,6 +207,7 @@ start_stack() {
     fi
     "$PYTHON" "$TOOLS/systemd_state.py" verify --configuration-only --project "$PROJECT" || return 1
     "$PYTHON" "$TOOLS/release_lkg.py" smoke --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD" || return 1
+    "$PYTHON" "$TOOLS/release_lkg.py" startup-health --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD" || return 1
     systemctl start "$WATCHER" || return 1
     systemctl is-active --quiet "$WATCHER" || return 1
     sleep "$START_WAIT"
@@ -236,6 +237,7 @@ rollback() {
     database_step deployment-check --rollback || return 1
     START_SHA="$LKG_HEAD"
     if ! start_stack; then failed_start; return 1; fi
+    if ! "$PYTHON" "$TOOLS/release_lkg.py" rollback-health --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD"; then failed_start; return 1; fi
     finished_notice
     printf '✅ Предыдущая версия восстановлена и запущена.\n'
     summary

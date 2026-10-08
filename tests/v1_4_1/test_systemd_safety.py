@@ -268,3 +268,15 @@ u.install(**v['kwargs'])
             with self.assertRaisesRegex(DeployError,'untrusted version parent'):self.install()
         self.assertFalse((versions/self.sha).exists())
         self.assertFalse([a for a in self.trace if a[0]=='systemctl'])
+
+    def test_whole_invocation_journal_errors_block_startup_health(self):
+        self.install();value=self.binding();process=dict(pid='123',restarts='0',invocation='a'*32,started_monotonic='123456')
+        for error in ('ERROR: database failure','sqlite3.OperationalError: locked','Start request repeated too quickly'):
+            with patch.object(units,'verify_binding'),patch.object(units,'process_identity',return_value=process),patch.object(store,'command',return_value='ok\n'*150+error) as call:
+                with self.assertRaisesRegex(DeployError,'journal'):units.health(value,since='ignored')
+                self.assertNotIn('-n',call.call_args.args[0]);self.assertNotIn('--since',call.call_args.args[0])
+
+    def test_before_watcher_health_rejects_premature_activation(self):
+        self.install();value=self.binding()
+        with patch.object(units,'verify_binding'):
+            with self.assertRaisesRegex(DeployError,'Watcher must remain inactive'):units.health(value,since='ignored',before_watcher=True)

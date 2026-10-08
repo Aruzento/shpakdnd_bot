@@ -262,3 +262,23 @@ lkg.promote(v['evidence'],lkg_path=v['lkg_path'],operator_sha=v['operator_sha'],
         proof['finished_at']='2020-01-01T00:00:00+00:00';store.save_record(path,proof)
         with self.assertRaisesRegex(DeployError,'stale'):self.promote()
         self.assertEqual(self.path.read_bytes(),self.before)
+
+    def test_target_startup_health_requires_fresh_process_and_clean_sha(self):
+        self.ready();proof=lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
+        self.assertEqual(proof['sha'],self.target);self.assertEqual(proof['stage'],'TARGET')
+        self.health.assert_called_with(self.installed,since=unittest.mock.ANY,before_watcher=True)
+        self.health.return_value=dict(self.process,started_monotonic='0')
+        with self.assertRaisesRegex(DeployError,'predates'):lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
+
+    def test_source_recovery_startup_health_uses_actual_lkg(self):
+        self.fixture.init();self.git('checkout','--detach',self.old)
+        state=self.fixture.raw_state();state.update(startup_attempted=True,startup_sha=self.old,launch_requested_monotonic=1,launch_requested_at=store.utc_now())
+        pref.save_deployment(self.fixture.evidence,state)
+        proof=lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
+        self.assertEqual(proof['sha'],self.old);self.assertEqual(proof['stage'],'SOURCE')
+        self.assertEqual(self.path.read_bytes(),self.before)
+
+    def test_unknown_state_cannot_be_healthy_startup(self):
+        self.ready();pref.abort_deployment(self.fixture.evidence)
+        with self.assertRaisesRegex(DeployError,'confirmed SOURCE/TARGET'):lkg.startup_health(self.fixture.evidence,project=self.project,old=self.old,target=self.target,tools=self.fixture.tools,before_watcher=True)
+        self.assertEqual(self.path.read_bytes(),self.before)

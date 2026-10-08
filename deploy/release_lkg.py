@@ -86,6 +86,31 @@ def smoke(db):
             'required_tables':sorted(required)}
 
 
+def startup_health(evidence, *, project, old, target, tools, before_watcher=False):
+    """Fresh process and whole invocation checks also cover SOURCE/LKG recovery."""
+    import release_preflight as pref
+    report=pref.validate_evidence(evidence,old=old,target=target,tools=tools)
+    state=pref.read_deployment(evidence,old=old,target=target,tools=tools)
+    sha=state.get('startup_sha')
+    if state['phase'] not in {'SOURCE','TARGET'} or not state.get('startup_attempted'):
+        raise DeployError('No confirmed SOURCE/TARGET startup attempt')
+    if sha==target and state['phase']=='TARGET':
+        if not state['runtime_success'] or not state['preserved']:raise DeployError('Unconfirmed TARGET migration')
+    else:
+        record=verify_binding(report['lkg_binding'],project)
+        compatibility=report.get('lkg_compatibility',{})
+        if not record or sha!=record['sha'] or compatibility.get('sha')!=sha or compatibility.get(state['phase'].lower()) is not True:
+            raise DeployError('Startup lacks exact stage-specific LKG proof')
+    if store.command(['git','-C',project,'rev-parse','HEAD'])!=sha or store.command(['git','-C',project,'status','--porcelain','--untracked-files=all']):
+        raise DeployError('Startup checkout differs from confirmed code')
+    process=units.health(report['installed_systemd'],since=state['launch_requested_at'],before_watcher=before_watcher)
+    if int(process['started_monotonic'])<state['launch_requested_monotonic']:
+        raise DeployError('Startup process predates confirmed checkout')
+    return dict(version=1,status='PASS',sha=sha,stage=state['phase'],process=process,
+                evidence_hash=store.file_hash(evidence),deployment_state_hash=store.file_hash(pref.deployment_path(evidence)),
+                finished_at=store.utc_now())
+
+
 def postdeploy_health(evidence, *, project, db, old, target, tools, since, wait=5):
     import release_preflight as pref
     report=pref.validate_evidence(evidence,old=old,target=target,tools=tools)
@@ -154,7 +179,7 @@ def promote(evidence, *, project, db, old, target, tools, lkg_path=DEFAULT_LKG, 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['target','health','confirm','smoke'])
+    parser.add_argument('action',choices=['target','health','confirm','smoke','startup-health','rollback-health'])
     for name in ('evidence','project','db','old','target'):parser.add_argument('--'+name,required=True)
     parser.add_argument('--lkg',default=os.environ.get('SHPAKDND_LKG',DEFAULT_LKG))
     parser.add_argument('--since');parser.add_argument('--wait',type=int,default=5)
@@ -171,6 +196,13 @@ def main(argv=None):
         pref.validate_evidence(args.evidence,old=args.old,target=args.target,tools=Path(__file__).parent)
         if args.action=='target':
             print(rollback_target(args.evidence,args.project))
+        elif args.action in {'startup-health','rollback-health'}:
+            proof=startup_health(args.evidence,project=args.project,old=args.old,target=args.target,
+                                 tools=Path(__file__).parent,before_watcher=args.action=='startup-health')
+            if args.action=='rollback-health':
+                if proof['sha']!=rollback_target(args.evidence,args.project):raise DeployError('Recovery is not exact LKG')
+                store.save_record(Path(args.evidence).with_suffix('.rollback-health.json'),proof)
+            print('Fresh process/whole invocation health PASS: '+proof['sha'])
         elif args.action=='smoke':
             state=pref.read_deployment(args.evidence,old=args.old,target=args.target,tools=Path(__file__).parent)
             result=smoke(args.db)
