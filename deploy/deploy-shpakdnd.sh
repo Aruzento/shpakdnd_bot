@@ -19,7 +19,9 @@ START_WAIT="${SHPAKDND_START_WAIT:-5}"
 PREFLIGHT_DIR="${SHPAKDND_PREFLIGHT_EVIDENCE:-/var/lib/shpakdnd-preflight}"
 WORK_DIR="${SHPAKDND_PREFLIGHT_WORK:-/var/tmp/shpakdnd-preflight}"
 SOURCE_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+LKG_HEAD="" START_SHA=""
 TOOLS="" OLD_HEAD="unknown" TARGET_HEAD="unknown" BACKUP="не создан" LOG=""
+INITIALIZE_LKG=0
 MAINTENANCE=0 DRY_RUN=0 PREFLIGHT_ONLY=0 FAILED_STEP="" TEST_COUNT="unknown" EVIDENCE="" PREFLIGHT_PID=""
 
 as_bot() { runuser -u "$BOT_USER" -- "$@"; }
@@ -140,7 +142,9 @@ full_preflight() {
     install -d -o root -g root -m 700 "$PREFLIGHT_DIR"
     install -d -o root -g root -m 711 "$WORK_DIR"
     EVIDENCE="$PREFLIGHT_DIR/preflight_$(date '+%Y%m%d_%H%M%S')_$$_${TARGET_HEAD:0:12}.json"
-    "$PYTHON" "$TOOLS/release_preflight.py" run --project "$PROJECT" --db "$DB" \
+    local helper="$TOOLS/release_preflight.py" action=run
+    if (( INITIALIZE_LKG )); then helper="$TOOLS/legacy_lkg.py"; action=""; fi
+    "$PYTHON" "$helper" ${action:+"$action"} --project "$PROJECT" --db "$DB" \
         --old "$OLD_HEAD" --target "$TARGET_HEAD" --evidence "$EVIDENCE" --workspace "$WORK_DIR" \
         --python "$PYTHON" --bot-user "$BOT_USER" --service "$SERVICE" --watcher "$WATCHER" --update-service "$UPDATE_SERVICE" &
     PREFLIGHT_PID=$!
@@ -188,8 +192,9 @@ checks() {
 }
 start_stack() {
     local started pid restarts journal
+    "$PYTHON" "$TOOLS/systemd_state.py" verify --configuration-only --project "$PROJECT" || return 1
     started="$(date '+%Y-%m-%d %H:%M:%S')"
-    database_step deployment-startup || return 1
+    database_step deployment-startup --startup-sha "${START_SHA:-$TARGET_HEAD}" || return 1
     systemctl start "$SERVICE" || return 1
     pid="$(systemctl show -p MainPID --value "$SERVICE")" || return 1
     restarts="$(systemctl show -p NRestarts --value "$SERVICE")" || return 1
@@ -200,6 +205,8 @@ start_stack() {
     if printf '%s\n' "$journal" | grep -Eq 'Traceback|ModuleNotFoundError|ImportError|RuntimeError|SyntaxError|Failed to start|Main process exited|Scheduled restart job|Start request repeated too quickly'; then
         printf '❌ Startup failure найден в свежем journal.\n%s\n' "$journal"; return 1
     fi
+    "$PYTHON" "$TOOLS/systemd_state.py" verify --configuration-only --project "$PROJECT" || return 1
+    "$PYTHON" "$TOOLS/release_lkg.py" smoke --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD" || return 1
     systemctl start "$WATCHER" || return 1
     systemctl is-active --quiet "$WATCHER" || return 1
     sleep "$START_WAIT"
@@ -220,10 +227,14 @@ failed_start() {
 rollback() {
     stop_stack || return 1
     database_step deployment-check --rollback || { printf '❌ Rollback запрещён: история миграции/данные/совместимость не подтверждены.\n'; return 1; }
-    printf 'Code rollback: %s. DB НЕ восстанавливается из backup.\n' "$OLD_HEAD"
-    if ! verify_head "$OLD_HEAD"; then checkout_head "$OLD_HEAD" || return 1; fi
-    readonly_checks "$OLD_HEAD" || return 1
+    LKG_HEAD="$("$PYTHON" "$TOOLS/release_lkg.py" target --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD")" || return 1
+    [[ "$LKG_HEAD" =~ ^[0-9a-f]{40}$ ]] || return 1
+    protected_target "$LKG_HEAD" || return 1
+    printf 'Code rollback to confirmed LKG: %s. DB НЕ восстанавливается из backup.\n' "$LKG_HEAD"
+    if ! verify_head "$LKG_HEAD"; then checkout_head "$LKG_HEAD" || return 1; fi
+    readonly_checks "$LKG_HEAD" || return 1
     database_step deployment-check --rollback || return 1
+    START_SHA="$LKG_HEAD"
     if ! start_stack; then failed_start; return 1; fi
     finished_notice
     printf '✅ Предыдущая версия восстановлена и запущена.\n'
@@ -232,7 +243,7 @@ rollback() {
 failure_choice() {
     local choice
     summary
-    printf '\n[1] Оставить бот остановленным\n[2] Вернуть предыдущий Git HEAD и запустить предыдущую версию\nВыбор [1]:\n'
+    printf '\n[1] Оставить бот остановленным\n[2] Вернуть подтверждённую LKG и запустить её\nВыбор [1]:\n'
     IFS= read -r choice || choice=1
     if [[ "$choice" == 2 ]]; then
         if ! rollback; then printf '❌ Rollback не завершён; нужен ручной разбор.\n'; return 1; fi
@@ -244,7 +255,8 @@ main() {
         '') ;;
         --dry-run) DRY_RUN=1 ;;
         --preflight) PREFLIGHT_ONLY=1 ;;
-        --help) printf 'sudo deploy-shpakdnd [--dry-run|--preflight]\n'; return 0 ;;
+        --initialize-lkg) INITIALIZE_LKG=1 ;;
+        --help) printf 'sudo deploy-shpakdnd [--dry-run|--preflight|--initialize-lkg]\n'; return 0 ;;
         *) printf 'Неизвестный аргумент. Используй --dry-run, --preflight или --help.\n'; return 2 ;;
     esac
     [[ "$#" -le 1 ]] || return 2
@@ -259,9 +271,12 @@ main() {
     # Freeze the small helper bundle: it also survives a rollback to older code.
     TOOLS="$(mktemp -d "$RUNTIME_DIR/shpakdnd-deploy.XXXXXXXX")"
     chmod 755 "$TOOLS"
-    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py release_preflight.py preflight_data.py deploy-shpakdnd.sh; do
+    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py release_preflight.py preflight_data.py deploy-shpakdnd.sh release_state.py systemd_state.py release_lkg.py legacy_lkg.py; do
         install -m 644 "$SOURCE_DIR/$helper" "$TOOLS/$helper"
     done
+    install -d -m 755 "$TOOLS/shared"
+    SHARED="$SOURCE_DIR/shared"; [[ -d "$SHARED" ]] || SHARED="$SOURCE_DIR/../scripts"
+    for shared in release_checks.py release_guard.py test_inventory.py; do install -m 644 "$SHARED/$shared" "$TOOLS/shared/$shared"; done
     as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
     if (( ! DRY_RUN )); then
         install -d -m 700 "$LOG_DIR"
@@ -275,6 +290,11 @@ main() {
     require_clean || return 1
     OLD_HEAD="$(git_bot rev-parse --verify HEAD)" || return 1
     TARGET_HEAD="$(git_bot rev-parse --verify 'origin/main^{commit}')" || return 1
+    if (( INITIALIZE_LKG )); then
+        [[ "$OLD_HEAD" == f06c0d129fdad0fef4fde0889915faac26b94f4a ]] || { printf 'Legacy LKG требует точный reviewed V1.4 baseline. Для нового кода используйте обычный deployment.\n'; return 1; }
+        TARGET_HEAD="$OLD_HEAD"
+        printf 'Первичная LKG: полный baseline gate, затем согласованный stop/start для доказательства process identity.\n'
+    fi
     protected_target "$OLD_HEAD" || return 1
     protected_target "$TARGET_HEAD" || return 1
     printf '\nТекущий HEAD: %s\norigin/main: %s\nBot: %s; watcher: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$(state "$SERVICE")" "$(state "$WATCHER")"
@@ -287,7 +307,8 @@ main() {
     else confirm 'Обновить production до origin/main?' || return 0; fi
     validate_preflight || return 1
     require_clean && verify_head "$OLD_HEAD" || return 1
-    [[ "$(state "$SERVICE")" == active && "$(state "$WATCHER")" == active && "$(state "$UPDATE_SERVICE")" == inactive ]] || return 1
+    [[ "$(state "$SERVICE")" == active && "$(state "$WATCHER")" == active ]] || return 1
+    "$PYTHON" "$TOOLS/systemd_state.py" verify --project "$PROJECT" || return 1
     if ! notice '🛠 Технический перерыв'; then
         printf 'WARNING: Не удалось отправить сообщение в Telegram.\n'
         confirm 'Продолжить deployment?' || return 0
@@ -302,9 +323,7 @@ main() {
     if ! confirm "Установить версию ${TARGET_HEAD:0:7} из origin/main?"; then
         printf 'Код не изменён.\n'
         if confirm 'Снова запустить прежнюю версию?' Y; then
-            if ! verify_head "$OLD_HEAD" || ! readonly_checks "$OLD_HEAD" || ! database_step deployment-check --rollback || ! start_stack; then failed_start; return 1; fi
-            finished_notice
-            summary
+            if ! rollback; then failed_start; return 1; fi
             return 0
         fi
         printf 'Бот и watcher оставлены остановленными по выбору пользователя.\n'; summary; return 2
@@ -318,6 +337,10 @@ main() {
         printf 'Проверенный код установлен; bot и watcher остаются остановленными.\n'; summary; return 2
     fi
     if ! start_stack; then failed_start; failure_choice || true; return 1; fi
+    if ! check_step postdeploy_smoke "$PYTHON" "$TOOLS/release_lkg.py" health --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD" --since "$(date '+%Y-%m-%d %H:%M:%S')"; then failed_start; failure_choice || true; return 1; fi
+    if ! "$PYTHON" "$TOOLS/release_lkg.py" confirm --evidence "$EVIDENCE" --project "$PROJECT" --db "$DB" --old "$OLD_HEAD" --target "$TARGET_HEAD"; then
+        printf 'LKG не подтверждена; требуется разбор оператором.\n'; return 1
+    fi
     finished_notice
     printf '\n✅ Deployment завершён.\n'
     summary

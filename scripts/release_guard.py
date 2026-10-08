@@ -12,7 +12,8 @@ import sys
 BASELINE_SHA = "f06c0d129fdad0fef4fde0889915faac26b94f4a"
 INFRASTRUCTURE_BASELINE_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 INFRASTRUCTURE_REQUIRED = {"scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"}
-INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py"}
+INFRASTRUCTURE_HEAD_REQUIRED = INFRASTRUCTURE_REQUIRED | {"deploy/release_preflight.py", "deploy/preflight_data.py", "deploy/release_state.py",
+    "deploy/systemd_state.py", "deploy/release_lkg.py", "deploy/legacy_lkg.py", "deploy/install-systemd-units.sh", ".github/workflows/systemd-staging.yml", "deploy/ci-systemd/check.sh", "deploy/ci-systemd/Dockerfile", "deploy/ci-systemd/legacy-check.py"}
 ALLOWLIST_PATH = "docs/release/approved-removals.json"
 HANDLERS_PATH = "app/handlers/__init__.py"
 
@@ -61,6 +62,16 @@ def validate_workflow(text: str):
             raise GuardError("required CI workflow ignores failures")
     if not any("uses: actions/checkout@" in line for line in lines) or not any("uses: actions/setup-python@" in line for line in lines):
         raise GuardError("required official CI setup actions are missing")
+
+
+def validate_systemd_workflow(text):
+    required=("name: Isolated systemd staging", "  push:", "    branches: ['codex/**']", "  pull_request:",
+              "    branches: [main]", "    runs-on: ubuntu-latest", "          fetch-depth: 0",
+              "      - run: python deploy/ci-systemd/legacy-check.py",
+              '          docker exec shpakdnd-systemd-stage bash /source/deploy/ci-systemd/check.sh "$SOURCE_SHA"')
+    if any(line not in text.splitlines() for line in required):raise GuardError("required systemd staging disabled")
+    if any(line.strip().startswith(("if:","continue-on-error:")) or "|| true" in line for line in text.splitlines()):
+        raise GuardError("systemd staging cannot bypass failures")
 
 
 def infrastructure_inventory(repo: Path, revision: str) -> set[str]:
@@ -215,6 +226,7 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD", *, inf
     if missing_infra:
         raise GuardError("critical infrastructure removed: " + ", ".join(sorted(missing_infra)))
     validate_workflow(source(repo, head, ".github/workflows/release-checks.yml"))
+    validate_systemd_workflow(source(repo, head, ".github/workflows/systemd-staging.yml"))
     # Stage B does not alter the CI executor or discovery semantics. Keeping
     # their exact reviewed source prevents a no-op runner passing the inventory.
     for path in ("scripts/release_checks.py", "scripts/test_inventory.py", ".github/workflows/release-checks.yml"):

@@ -1,6 +1,28 @@
 [Unit]
-Description=Update Shpak DnD Bot after project change
+Description=Read-only Shpak DnD project observer
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/update-shpakdnd-bot.sh
+User=shpakbot
+WorkingDirectory=/opt/shpakdnd-bot
+ExecStart=/usr/local/lib/shpakdnd-observer/versions/@SOURCE_SHA@/update-shpakdnd-bot.sh
+Environment=GIT_OPTIONAL_LOCKS=0
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+ReadOnlyPaths=/opt/shpakdnd-bot
+InaccessiblePaths=-/opt/shpakdnd-bot/.env -/opt/shpakdnd-bot/.venv -/opt/shpakdnd-bot/shpakdnd.db -/opt/shpakdnd-bot/shpakdnd.db-wal -/opt/shpakdnd-bot/shpakdnd.db-shm -/opt/shpakdnd-bot/timers.db
+UMask=0077
+TimeoutStartSec=30
+StandardOutput=journal
+StandardError=journal

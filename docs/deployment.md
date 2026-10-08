@@ -1,38 +1,113 @@
-# Production deployment D&D Mini V1.4.1 — этап B
+# Production deployment D&D Mini V1.4.1 — этап C
 
 Production defaults: `/opt/shpakdnd-bot`, `shpakbot`, `.venv/bin/python`,
 `shpakdnd.db`; units `shpakdnd-bot.service`, `shpakdnd-bot-watch.path`,
 `shpakdnd-bot-update.service`. Этот документ описывает release manager.
-Обновление legacy watcher/units относится к этапу C.
+Watcher является read-only observer; tooling, units и игровые релизы устанавливаются отдельными контролируемыми операциями. Ни одна команда ниже не выполняется Codex на production.
 
-## Bootstrap нового установленного tooling
+## Bootstrap из проверенного SHA
 
-Правка repository scripts не обновляет `/usr/local/bin/deploy-shpakdnd`.
-Новый installer получает весь bundle из отдельного checkout проверенного
-commit **вне production и watch paths**, без копирования `.env` или SQLite.
-После независимого одобрения этапа B оператор может выполнить:
+Оператор сначала проверяет независимое ревью и Linux CI полного SHA этапа C.
+Используется отдельный root-owned чистый checkout вне production/watch paths.
+`.env`, `.venv` и SQLite из production туда не копируются. Пример после одобрения:
 
 ```bash
-# В отдельной директории, например /var/tmp/shpakdnd-tooling-source:
-git clone https://github.com/Aruzento/shpakdnd_bot.git /var/tmp/shpakdnd-tooling-source
-cd /var/tmp/shpakdnd-tooling-source
-git checkout --detach <FULL_REVIEWED_STAGE_B_SHA>
-sudo bash deploy/install-deploy-shpakdnd.sh
+# FULL_REVIEWED_SHA — полный SHA, подтверждённый ревью и CI.
+sudo git clone https://github.com/Aruzento/shpakdnd_bot.git /opt/shpakdnd-tooling-source
+sudo git -C /opt/shpakdnd-tooling-source checkout --detach "$FULL_REVIEWED_SHA"
+sudo bash /opt/shpakdnd-tooling-source/deploy/install-deploy-shpakdnd.sh "$FULL_REVIEWED_SHA"
+# Отдельное решение оператора: следующая команда меняет watcher configuration.
+sudo bash /opt/shpakdnd-tooling-source/deploy/install-systemd-units.sh "$FULL_REVIEWED_SHA"
 sudo deploy-shpakdnd --dry-run
 ```
 
-Не переключайте работающий `/opt/shpakdnd-bot` ради bootstrap. Installer
-использует тот же `/run/lock/shpakdnd-deploy.lock`, копирует helper bundle в
-защищённый staging, проверяет Python/shell syntax, затем атомарно переключает
-symlink на `/usr/local/lib/shpakdnd-deploy/versions/tooling_<HASH>`.
-При ошибке прежняя команда сохраняется; старые bundles остаются для разбора.
-Installer не пишет в игровую директорию/DB и не меняет systemd units/services.
-Нужны root, Bash, Git, coreutils, util-linux (`flock`, `runuser`), systemd,
-production Python с dotenv/pip/venv и доступ к зависимостям requirements.
+Первый installer проверяет root ownership/permissions, clean Git, origin, полный
+SHA и точные Git blobs. Проверки syntax выполняются в собственном staging.
+Полный bundle и копии общего runner/guard/inventory устанавливаются в
+`/usr/local/lib/shpakdnd-deploy/versions/tooling_<HASH>`, затем атомарно заменяется
+`/usr/local/bin/deploy-shpakdnd`. Existing version проверяется перед reuse.
+Данные и directory entries fsync; прерывание до переключения сохраняет старую
+команду. Повреждённая ранее установленная версия не переиспользуется.
+Рабочий checkout, SQLite и services не изменяются этим installer.
 
-Deployment по-прежнему получает TARGET из `origin/main`: до одобренного
-включения stage B в main preflight намеренно отклонит старый TARGET без
-обязательной infrastructure. Bootstrap сам ничего не merge/deploy.
+Второй installer отдельно устанавливает observer/units. Обе операции и release
+manager используют один FD9 lock `/run/lock/shpakdnd-deploy.lock`; recursive
+acquisition отсутствует. Root-only Linux helpers проверяют фактический lock.
+Control paths не могут пересекаться с source/live checkout или alias SQLite.
+Нужны Bash, Git, Python3, coreutils, util-linux, systemd/systemd-analyze; release
+preflight дополнительно требует рабочий Python с dotenv/pip/venv и packages.
+
+Bootstrap не меняет `origin/main`, live HEAD или игровую DB. Пока main не содержит
+утверждённую C infrastructure, обычный preflight намеренно отклоняет старый TARGET.
+Отдельная процедура legacy LKG ниже поддерживает только pinned V1.4 baseline.
+
+## Безопасная установка watcher units
+
+`install-systemd-units.sh <FULL_REVIEWED_SHA>` не останавливает игровой bot.
+Источник и все helper/shared blobs проверяются до изменения services. Существующий
+root-owned bot fragment сохраняется и включается в manifest, его конфигурация
+не переписывается installer. Project, user и Python должны соответствовать
+существующему bot unit. Defaults: `/opt/shpakdnd-bot`, `shpakbot`, `.venv/bin/python`.
+Для независимого стенда используются SHPAKDND_PROJECT/BOT_USER/PYTHON внутри
+отдельной systemd namespace; реальные production units не переименовываются.
+
+Порядок установки:
+
+1. Зафиксировать source SHA, получить единый lock; сохранить RUNNING report.
+2. Durably установить root-owned `shpakdnd-quarantine.conf` с отрицательным
+   ConditionPathExists на существующий private quarantine marker. Этот запрет
+   сохраняется после перезагрузки, в отличие от runtime mask.
+3. Mask/stop update, disable/stop watcher. Проверить quiescence и отсутствие
+   посторонних drop-ins. Здоровый bot PID/NRestarts сохраняется.
+4. Архивировать прежние units и legacy helper (helper только как 0600 текст).
+   В private staging проверить shell syntax и systemd-analyze verify.
+5. Установить immutable observer в
+   `/usr/local/lib/shpakdnd-observer/versions/<SHA>/update-shpakdnd-bot.sh`;
+   атомарно заменить два units и старый `/usr/local/bin/update-shpakdnd-bot.sh`
+   безопасной ссылкой через wrapper на observer.
+6. Daemon-reload, проверить hashes всех установленых файлов и эффективные
+   overrides. Удалить только собственный quarantine drop-in после проверки
+   безопасного набора. Unmask update, daemon-reload, проверить loaded properties.
+7. Enable/start watcher, однократно вызвать observer, проверить неизменный bot
+   PID/NRestarts, journal/loaded properties. Атомарно сохранить CONFIRMED manifest.
+
+Manifest: `/var/lib/shpakdnd-release/systemd-installation.json` (root 0700/0600),
+checksum envelope, source SHA, tooling hash, file hashes, project/user/interpreter,
+exact helper, unit names, watched paths и normalized loaded config hash.
+Installation reports/forensic backups: `.../installations/<UTC_SHA>/`.
+Повторная подтверждённая установка ничего не заменяет и не делает reload.
+
+Ошибка оставляет watcher отключённым, update masked, persistent quarantine
+сохранённым, healthy bot работающим. RUNNING/FAIL report не разрешает release.
+После SIGKILL/power loss частично заменённые units не дают PASS; durable
+quarantine блокирует legacy update и после reboot. Повторить installer можно
+только из того же или нового отдельно одобренного source SHA. Посторонние
+root overrides требуют ручного разбора. Архивированный legacy helper никогда
+не восстанавливается и не включается автоматически.
+
+## Observer и проверка фактически загруженной конфигурации
+
+Observer читает только Git HEAD/status: optional index writes и fsmonitor hooks
+отключены. Dirty state фиксируется без исправления. Файлы/секреты не выводятся;
+не вызываются Git write commands, Python/game imports, SQLite, chown, compileall,
+deploy или systemctl. WinSCP, повторный event, checkout и event во время preflight
+требуют дальнейшего решения оператора и не управляют ботом.
+
+Update service запускает non-root observer из стабильного root-owned пути:
+ProtectSystem=strict, read-only project, inaccessible env/venv/DB/WAL/SHM,
+PrivateNetwork/AF_UNIX, empty capabilities, NoNewPrivileges и другие sandbox
+restrictions. PathModified явно перечисляет все каталоги app Python/JSON:
+оно не рекурсивно. `.env`, DB, caches, venv, временные и control directories
+не перечисляются. Observer не создаёт собственных events. Burst limit при
+аномальном потоке прекращает watcher, а не перезапускает bot.
+
+Preflight и startup повторно проверяют systemctl show: FragmentPath, effective
+ExecStart/extra commands, User/WorkingDirectory, DropInPaths, NeedDaemonReload,
+Paths/Unit/Triggers, hardening и states. Root ownership, ancestors, permissions,
+symlinks, hashes observer/units/legacy alias/bot fragment также проверяются.
+Нормализованный config hash не включает transient PID/время read-only oneshot.
+Unit/helper/override drift после preflight инвалидирует gate; наличие безопасных
+файлов в Git и зелёный CI не заменяют эту серверную проверку.
 
 ## Preflight при работающем боте
 
@@ -48,7 +123,7 @@ sudo deploy-shpakdnd --preflight
    изменения game code/catalog/schema относительно stage A запрещены.
 3. Отдельный clone с полной историей и detached точным TARGET создаётся в
    `/var/tmp/shpakdnd-preflight/shpakdnd-preflight-*`, вне production/watch paths.
-   Production HEAD не переключается. Отдельный clone OLD нужен для rollback.
+   Production HEAD не переключается. Отдельный clone OLD сохраняет диагностическую совместимость этапа B; rollback target берётся только из LKG.
 4. В private окружении пользователя бота создаётся новый venv, устанавливаются
    TARGET requirements, выполняется pip check. Отдельно проверяется, что
    установленный production venv удовлетворяет TARGET requirements; он не
@@ -74,7 +149,7 @@ sudo deploy-shpakdnd --preflight
    уже мигрированные данные строго, включая metadata.
 8. На отдельную копию мигрированной DB запускается OLD check_bot с прежним
    production interpreter и фиктивной конфигурацией. Проверяются integrity/FK
-   и строгая сохранность данных. Это только compatibility probe, не rollback.
+   и строгая сохранность данных. Это только compatibility probe, не rollback. Отдельно создаются два checkout фактического LKG SHA и копии SOURCE/TARGET DB: initializer LKG должен сохранять схему и все строки строго. OLD compatibility не заменяет эти результаты.
 9. На TARGET запускается общий `scripts/release_checks.py`: полный unittest,
    discovery preservation, release guard, diff --check, compileall, check_bot
    на другой disposable DB, все content/ability/tower validators и bash -n.
@@ -99,7 +174,7 @@ JSON, SHA256 sidecar и redacted log хранятся в `/var/lib/shpakdnd-pref
 (root:root 0700; files 0600). Evidence включает SHA, оба baseline, hash полного
 замороженного installed bundle, UTC times, phases, discovery/executed counts,
 migration preservation/integrity/FK, schema fingerprints, dependency result,
-rollback compatible true/false/unknown и hash защищённого log.
+rollback compatible true/false/unknown и hash защищённого log. Дополнительно: installed systemd binding, LKG binding и независимые source/target compatibility именно LKG SHA.
 
 Validation требует owner/private permissions, regular files без symlinks,
 checksums report/log, полный PASS, совпадение SHA/tooling и возраст не более
@@ -108,7 +183,7 @@ checksums report/log, полный PASS, совпадение SHA/tooling и в�
 Записи игроков не входят в условие актуальности evidence: перед checkout
 проверяется SOURCE schema свежей live DB. После остановки содержимое сравнивается
 со свежим final backup: последующие записи уже не считаются нормальным traffic.
-Изменение OLD/TARGET/tooling требует нового preflight. Новый origin/main не
+Изменение OLD/TARGET/tooling/installed units/LKG требует нового preflight. Новый origin/main не
 подменяет уже зафиксированный SHA.
 
 ## Короткий deployment
@@ -146,56 +221,104 @@ TARGET фиксируется только после exit 0, строго TARGE
 также запрещает запуск. До запуска bot отдельно фиксируется риск новых записей.
 Полный check_bot с каталогами, unittest, compileall и validators уже закончены
 до downtime; они не запускаются при deployment или rollback после остановки.
-После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
-проверяются до watcher и ещё раз после него. Только здоровый bot + watcher
-разрешают финальный notice. Ошибка финального notice — warning с сохранением
+Перед startup проверяется installed configuration. После подтверждения запускается bot; active/MainPID/NRestarts и свежий journal
+проверяются до watcher и ещё раз после него. После bot startup read-only SQLite smoke проверяет integrity/FK, обязательные таблицы, миры и подтверждённую схему до watcher. После watcher выполняются дополнительные stable process/journal/smoke checks. Только здоровый bot + watcher разрешают финальный notice. LKG требует отдельного ввода полного SHA оператором. Ошибка финального notice — warning с сохранением
 здорового состояния. EOF никогда не считается подтверждением.
 
-## Ошибки и rollback
+## Last-Known-Good: формат и подтверждение
 
-До остановки: команда возвращает nonzero, production остаётся в исходном
-состоянии, notice/checkout/migrations/restart не выполняются. Защищённый log
-объясняет сбой; устраните причину и запустите полный preflight заново.
+`/var/lib/shpakdnd-release/last-known-good.json` — root-only checksum envelope
+с payload version=1/status=CONFIRMED, full SHA, UTC timestamp, deployment_id,
+repository identity, tooling/systemd hashes, всеми результатами release checks,
+health/process/operator proof, SQLite schema/integrity/FK/smoke и previous link.
+История хранится в `history/<record hash>.json`; цепочка проверяется при чтении.
+Запись атомарна, fsync файла и каталога. Секреты и пользовательские SQLite
+строки не записываются. Checksums обнаруживают повреждение; root и его private
+каталоги являются границей доверия. Публичной команды `set-lkg <sha>` нет.
 
-После остановки: fail-closed, неисправные services останавливаются, watcher
-не активируется ради сокращения простоя. Summary содержит OLD/TARGET/current
-SHA, backup и states. Автоматический code rollback отсутствует. Пользователь
-может оставить всё остановленным либо явно выбрать rollback; последний
-разрешён при актуальном evidence, точном OLD SHA, целостности backup,
-integrity/FK и подтверждённой истории:
+Checkout/runtime-init/is-active сами не меняют LKG. Для продвижения нужны:
+актуальный exact-SHA release evidence, успешные TARGET migrations/preservation,
+зафиксированный startup attempt, текущий exact clean checkout, свежий процесс
+после checkout, совпадающие /proc cwd/cmdline и systemd InvocationID/start time,
+стабильные PID/NRestarts, весь journal этой invocation без ошибок, installed
+units, два health samples и read-only SQLite smoke. `.health.json` связывает
+эти доказательства с evidence и DB operation journal. Confirmation действует
+5 минут и повторно проверяет process/config/DB. Последний шаг — полный TARGET
+SHA, введённый оператором. Enter/EOF оставляет прежнюю LKG, даже если deployment
+здоров. Повтор уже подтверждённой операции ничего не переписывает.
 
-- SOURCE: live migrations не запускались, startup ещё не мог писать, SOURCE
-  schema и полное логическое содержимое совпадают со свежим backup. Ошибка
-  checkout или отказ от TARGET не требуют TARGET schema. Доказанная
-  несовместимость OLD с *TARGET* здесь не мешает исходному коду; unknown
-  compatibility блокируется консервативно.
-- TARGET: initializer успешно завершён, TARGET schema/сохранность проверены,
-  rollback_compatible=true, live критичные данные сохранены, полное логическое
-  состояние совпадает с зафиксированным после миграции. Новые записи после
-  startup блокируют rollback; UNKNOWN/STARTED/частичные изменения всегда запрещены.
+Failed deployment/rollback никогда не продвигает TARGET. До atomic replace
+SIGTERM/SIGKILL сохраняет прежнюю запись; orphan `.new`/history не является LKG.
+Повреждённый JSON/checksum/history, отсутствующий commit или другая repository
+identity блокируют rollback. Historical LKG может отличаться от current HEAD;
+это повод для двух независимых compatibility probes, не для перезаписи LKG.
 
-Полный unittest и валидаторы при rollback не выполняются. Также не запускается
-повторный OLD initializer: после read-only config/integrity/SHA checks повторно
-проверяется журнал/данные, затем отмечается startup attempt и запускается OLD.
-Deployment target остаётся FAIL даже после успешного возврата OLD.
-Ошибка/прерывание инвалидирует PASS этого запуска; начатая миграция или риск
-записей startup переводят аварийный журнал в UNKNOWN. CLI не может выбирать
-SOURCE для обхода STARTED/TARGET истории или принудительно подтверждать TARGET.
-При отказе от установки OLD требует отдельного согласия и тех же SOURCE checks.
+## Первичная инициализация
 
-Никогда не восстанавливайте backup поверх live DB автоматически: после запуска
-могли появиться новые транзакции. Разбор failed runtime, dependency upgrade,
-ручной recovery и согласование downtime требуют оператора. Закреплённый
-last-known-good и модернизация legacy watcher — этап C; расширенный итоговый
-release report — этап D. Legacy update script пока не использует этот pipeline;
-этап B не объявляет его автоматическое обновление безопасным.
+Если LKG отсутствует, rollback запрещён. Нельзя объявлять current HEAD здоровым
+по одному совпадению файлов/схемы. Для современного C-кода подтверждение происходит
+через обычный полный deployment и health/operator confirmation.
 
-## Dry run и проверка разработки
+Для существующей V1.4 есть только pinned baseline procedure:
 
-`--dry-run` проверяет setup/fetch/clean paths/units и показывает SHA; он не
-выполняет preflight и не разрешает deployment. Override paths/user/units,
-`SHPAKDND_PREFLIGHT_EVIDENCE` и `SHPAKDND_PREFLIGHT_WORK` предназначены для
-изолированных тестов. Evidence/work должны быть вне watched production paths.
-Tests используют только временные Git/SQLite и fake systemd/Telegram, включая
-fault injection, parallel lock, WAL, SIGTERM, evidence tampering и bootstrap.
-Реальные production операции в разработке и CI не выполняются.
+```bash
+# Только после одобрения, установки безопасных units и решения о stop/start.
+sudo deploy-shpakdnd --initialize-lkg
+```
+
+Команда принимает исключительно full baseline
+`f06c0d129fdad0fef4fde0889915faac26b94f4a` как текущий clean OLD/TARGET. Adapter
+из установленного C bundle проверяет origin/fsck/exact code/catalog/test blobs
+по immutable Git SHA, dependencies, реальный SQLite snapshot, migrations twice,
+preservation, validators, shell syntax, compileall и полный discovery/unittest
+именно baseline. Старый SHA не обязан содержать runner этапа A: используется
+зафиксированный общий C runner/inventory/network guard, а baseline preservation
+обоснован точным immutable SHA. Это отдельный явно помеченный evidence kind
+PINNED_LEGACY_BASELINE; произвольный legacy HEAD не допускается.
+
+Проверки идут до остановки. Далее действуют все обычные подтверждения, final
+backup/SOURCE/TARGET journal и короткий контролируемый stop/start того же SHA.
+Без такого startup невозможно доказать, что Python-процесс загрузил именно
+эти исходники. После stable process/units/smoke checks оператор вводит полный
+baseline SHA. До этого LKG отсутствует/UNCONFIRMED; ошибка или недостаточные
+доказательства не дают безопасный rollback target. Codex эту процедуру на
+production не запускает.
+
+## Ошибки и rollback только к LKG
+
+До остановки любой FAIL возвращает nonzero; healthy bot/watcher сохраняются,
+notice/checkout/live migration отсутствуют. Исправить причину и повторить полный
+preflight. После stop неисправный bot останавливается, watcher не активируется.
+Оператор выбирает оставить всё остановленным либо явно разрешает возврат.
+Сервисная конфигурация и LKG должны соответствовать frozen preflight binding.
+Полный Git commit LKG должен существовать в том же repository.
+
+| Состояние DB | Требования к rollback |
+|---|---|
+| SOURCE | migrations/startup не запускались; SOURCE schema и все данные совпадают с fresh final backup; LKG SOURCE compatibility=true для точного LKG SHA; integrity/FK проходят |
+| TARGET | runtime exit 0, TARGET schema и preservation подтверждены; LKG TARGET compatibility=true для точного LKG SHA; текущее логическое содержимое совпадает с sealed TARGET state; integrity/FK проходят |
+| MIGRATION_STARTED/UNKNOWN/FAILED | rollback/startup запрещены, даже при совпадении schema hash с SOURCE |
+
+OLD preflight compatibility не разрешает LKG rollback, включая случай LKG≠OLD.
+При false/unknown/missing compatibility возврат запрещён. Неизвестные изменения,
+частичная миграция и новые live transactions после startup блокируют автоматизированный
+возврат: схема одна не доказывает данные. Watcher/update останавливаются перед
+checkout. Только проверенный LKG получает read-only config/SHA/DB checks и
+startup; повторного initializer, полного unittest/validators после stop нет.
+Startup+journal/smoke должны пройти до watcher и сообщения об успешном возврате.
+Неудачный TARGET остаётся FAIL, прежняя LKG не меняется.
+
+При UNKNOWN вручную сохранить evidence/journal/final backup/текущую DB и WAL,
+разобрать реальные операции и транзакции на отдельных snapshots. Определить
+совместимый код и отдельный план восстановления данных, получить новое решение
+оператора. Не удалять journal и не подменять его фазу/схему; не восстанавливать
+backup поверх live DB с возможными новыми транзакциями. Карантин units снимается
+только проверенным installer; архив legacy configuration не является безопасным
+recovery shortcut.
+
+## Независимый Linux стенд и production rollout
+
+Подробные последовательности и ограничения измерений —
+[release-pipeline.md](release-pipeline.md#стенд-и-план-rollout).
+Этап C фиксирует технические health/confirmation proofs; этап D дополнит итоговый
+release report и семантический smoke. Game schema/catalog/balance не изменяются.

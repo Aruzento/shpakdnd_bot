@@ -26,13 +26,26 @@ from preflight_data import inventory_database, compare_copy, schema_digest, isol
 BASELINE_SHA = "f06c0d129fdad0fef4fde0889915faac26b94f4a"
 STAGE_A_SHA = "49cd326dc7283f0d29b26a5f9307f4dfa6dec3c1"
 BUNDLE = ("deploy-shpakdnd.sh", "deploy_helpers.py", "sqlite-deploy.py",
-          "telegram-deploy-notice.py", "release_preflight.py", "preflight_data.py")
+          "telegram-deploy-notice.py", "release_preflight.py", "preflight_data.py",
+          "release_state.py", "systemd_state.py", "release_lkg.py", "legacy_lkg.py")
+SHARED_SCRIPTS=("release_checks.py","release_guard.py","test_inventory.py")
+
+
+def shared_scripts(directory):
+    path=Path(directory)/"shared"
+    if not path.is_dir() and Path(directory).name == "deploy" and all((Path(directory).parent/"scripts"/name).is_file() for name in SHARED_SCRIPTS):
+        path=Path(directory).parent/"scripts"
+    return path
+
+
 REQUIRED = ("bot.py", "app/config.py", "check_bot.py", "requirements.txt",
             "scripts/release_checks.py", "scripts/release_guard.py", "scripts/test_inventory.py",
             ".github/workflows/release-checks.yml", "deploy/deploy-shpakdnd.sh",
-            "deploy/release_preflight.py", "deploy/preflight_data.py")
+            "deploy/release_preflight.py", "deploy/preflight_data.py", "deploy/release_state.py",
+            "deploy/systemd_state.py", "deploy/release_lkg.py", "deploy/legacy_lkg.py",
+            "deploy/install-systemd-units.sh")
 PHASES = ("source", "services", "tooling", "target_checkout", "dependencies", "snapshot",
-          "migration", "preservation", "repeat_migration", "release_checks", "source_recheck")
+          "migration", "preservation", "repeat_migration", "lkg", "release_checks", "source_recheck")
 
 
 PRODUCTION_DEPENDENCIES = """import importlib.metadata, sys
@@ -65,8 +78,9 @@ def full_sha(value):
 
 def tooling_hash(directory):
     digest = hashlib.sha256()
-    for name in BUNDLE:
-        file = Path(directory) / name
+    files=[(name,Path(directory)/name) for name in BUNDLE]
+    files.extend(("shared/"+name,shared_scripts(directory)/name) for name in SHARED_SCRIPTS)
+    for name,file in files:
         if not file.is_file() or file.is_symlink():
             raise DeployError(f"Incomplete installed tooling: {name}")
         info=file.stat()
@@ -188,7 +202,16 @@ def validate_evidence(path, *, old, target, tools, max_age=3600, now=None, rollb
             check_database(database)
             if schema_digest(database) != report[expected_schema + "_schema"]:
                 raise DeployError("Live schema differs from expected " + expected_schema.upper())
-        if rollback_db:
+        if report.get("installed_systemd"):
+            from systemd_state import verify_binding
+            verify_binding(report["installed_systemd"])
+            from release_lkg import verify_binding as verify_lkg
+            verify_lkg(report["lkg_binding"],report["installed_systemd"]["project"])
+        if rollback_db and report.get("lkg_binding"):
+            compatibility=report.get("lkg_compatibility",{})
+            if not report["lkg_binding"]["sha"] or compatibility.get("sha")!=report["lkg_binding"]["sha"] or compatibility.get(expected_schema) is not True:
+                raise DeployError("LKG compatibility for actual schema is false or unknown")
+        elif rollback_db:
             if report["rollback_compatible"] == "unknown" or (expected_schema == "target" and report["rollback_compatible"] is not True):
                 raise DeployError("Rollback is blocked: compatibility is false or unknown")
     except (KeyError, TypeError, ValueError, OSError) as error:
@@ -355,12 +378,13 @@ class Interrupted(DeployError):
 
 class Preflight:
     def __init__(self, *, project, db, old, target, evidence, workspace, tools, python=sys.executable,
-                 bot_user=None, services=None, timeout=1200):
+                 bot_user=None, services=None, timeout=1200, lkg_path=None):
         self.project, self.db = Path(project).resolve(), Path(db).resolve()
         self.old, self.target = full_sha(old), full_sha(target)
         self.evidence, self.workspace = Path(evidence), Path(workspace)
         self.tools, self.python, self.bot_user = Path(tools).resolve(), str(python), bot_user
         self.services, self.timeout = services, timeout
+        self.lkg_path=lkg_path or (os.environ.get("SHPAKDND_LKG","/var/lib/shpakdnd-release/last-known-good.json") if services else None)
         self.temp = None
         self.report = {"version": 1, "old_sha": old, "target_sha": target, "baseline_sha": BASELINE_SHA,
                        "stage_a_sha": STAGE_A_SHA, "started_at": utc_now(), "finished_at": None,
@@ -445,10 +469,16 @@ class Preflight:
                   for unit in (service, watcher)}
         if any(value != "active" for value in states.values()):
             raise DeployError("Bot and watcher must remain active during preflight")
-        # is-active returns 3 for the expected inactive oneshot; use show instead.
-        if show(update, "ActiveState") != "inactive":
-            raise DeployError("Legacy update service is running; retry when it is inactive")
-        current = {**states, update: "inactive", "pid": show(service, "MainPID"), "restarts": show(service, "NRestarts")}
+        from systemd_state import verify_installed
+        installed=verify_installed(os.environ.get("SHPAKDND_SYSTEMD_MANIFEST","/var/lib/shpakdnd-release/systemd-installation.json"),
+                                   project=self.project,units=self.services,active=True)
+        if installed["tooling_hash"]!=tooling_hash(self.tools):
+            raise DeployError("Installed units/tooling versions differ")
+        if "installed_systemd" in self.report and self.report["installed_systemd"]!=installed:
+            raise DeployError("Installed systemd/helper changed during preflight")
+        self.report["installed_systemd"]=installed
+        # An approved read-only observer may run while preflight holds the lock.
+        current = {**states, update: "safe observer", "pid": show(service, "MainPID"), "restarts": show(service, "NRestarts")}
         if not current["pid"].isdigit() or int(current["pid"]) <= 0:
             raise DeployError("Bot has no running PID during preflight")
         if "service_states" in self.report and self.report["service_states"] != current:
@@ -491,6 +521,34 @@ class Preflight:
         self.run_command([python, str(self.tools / "release_preflight.py"), "runtime", "--project", checkout,
                           "--db", db, "--forbid-db", self.db, "--sha", self.git("rev-parse", "HEAD", cwd=checkout),
                           *( ["--short"] if short else [])], cwd=checkout, env=env)
+
+    def check_lkg(self, source_db, target_db):
+        if not self.lkg_path:
+            # Library-only fixture; CLI always supplies production units/LKG path.
+            return
+        from release_lkg import binding, verify_binding
+        value=binding(self.lkg_path,self.project)
+        self.report["lkg_binding"]=value
+        result={"sha":value["sha"],"source":"unknown","target":"unknown"}
+        self.report["lkg_compatibility"]=result
+        if not value["sha"]:
+            self.report["lkg_status"]="UNAVAILABLE; rollback blocked"
+            return
+        for stage,snapshot in (("source",source_db),("target",target_db)):
+            checkout=self.checkout(self.temp/("lkg-"+stage),value["sha"])
+            copy=checkout/"shpakdnd.db";backup_database(snapshot,copy);self.chown(copy)
+            before=inventory_database(copy,strict=True);expected=schema_digest(copy)
+            try:
+                self.probe(checkout,copy,self.python)
+                compare_copy(before,copy,strict=True)
+                if schema_digest(copy)!=expected:raise DeployError("LKG initializer changes actual schema")
+                result[stage]=True
+            except Interrupted:raise
+            except DeployError:result[stage]=False
+        verify_binding(value,self.project)
+
+    def network_guard(self,checkout):
+        return network_source(checkout)
 
     def release_checks(self, checkout, python):
         report = self.temp / "release-checks.json"
@@ -538,10 +596,12 @@ class Preflight:
             python = self.step("dependencies", lambda: self.dependencies(target))
             self.network = self.temp / "network"
             self.network.mkdir()
-            (self.network / "sitecustomize.py").write_text(network_source(target), encoding="utf-8")
+            (self.network / "sitecustomize.py").write_text(self.network_guard(target), encoding="utf-8")
             db = target / "shpakdnd.db"
             self.step("snapshot", lambda: backup_database(self.db, db))
             self.chown(db)
+            source_copy=self.temp/"source-snapshot.db"
+            backup_database(db,source_copy)
             before = inventory_database(db)
             if not {"mini_players", "mini_worlds", "mini_wallet_transactions", "mini_event_sessions"} <= before.keys():
                 raise DeployError("Snapshot is not an initialized production Mini database")
@@ -567,6 +627,7 @@ class Preflight:
             except DeployError:
                 self.report["rollback_compatible"] = False
                 self.report["rollback_status"] = "INCOMPATIBLE; code rollback blocked"
+            self.step("lkg",lambda:self.check_lkg(source_copy,db))
             self.step("release_checks", lambda: self.release_checks(target, python))
             self.step("source_recheck", lambda: (self.source_check(), self.inspect_services()))
             if self.git("status", "--porcelain", "--untracked-files=all", cwd=target):
@@ -646,6 +707,7 @@ def main(argv=None):
         for field in ("evidence", "old", "target", "db"):
             command.add_argument("--" + field, required=True)
         if name == "deployment-init": command.add_argument("--backup", required=True)
+        if name == "deployment-startup": command.add_argument("--startup-sha",required=True)
         if name == "live-runtime":
             command.add_argument("--project", required=True)
             command.add_argument("--python", default=sys.executable)
@@ -670,6 +732,9 @@ def main(argv=None):
             signal.signal(signal.SIGINT, runtime_interrupted)
         if args.action in {"deployment-init", "live-runtime", "deployment-check", "deployment-startup"}:
             require_deployment_lock(args.db)
+            gate=validate_evidence(args.evidence,old=args.old,target=args.target,tools=tools)
+            if not gate.get("installed_systemd") or not gate.get("lkg_binding"):
+                raise DeployError("Installed systemd/LKG verification missing")
             common = dict(old=args.old, target=args.target, tools=tools, db=args.db)
             if args.action == "deployment-init":
                 state = initialize_deployment(args.evidence, backup=args.backup, **common)
@@ -679,7 +744,15 @@ def main(argv=None):
                 state = verify_deployment(args.evidence, expected_schema=getattr(args, "expected_schema", None),
                                           rollback=getattr(args, "rollback", False), **common)
                 if args.action == "deployment-startup":
-                    state["startup_attempted"] = True
+                    report=validate_evidence(args.evidence,**{k:v for k,v in common.items() if k!="db"})
+                    full_sha(args.startup_sha)
+                    if args.startup_sha!=args.target or state["phase"]!="TARGET":
+                        from release_lkg import rollback_target
+                        if rollback_target(args.evidence,Path(args.db).parent)!=args.startup_sha:
+                            raise DeployError("Startup is not the confirmed LKG")
+                        verify_deployment(args.evidence,rollback=True,**common)
+                    state.update(startup_attempted=True,startup_sha=args.startup_sha,
+                                 launch_requested_monotonic=time.monotonic_ns()//1000,launch_requested_at=utc_now())
                     save_deployment(args.evidence, state)
             print("Deployment DB stage: " + state["phase"])
         elif args.action == "deployment-abort":
@@ -705,6 +778,9 @@ def main(argv=None):
             report["error"] = "Deployment/preflight command interrupted or failed; evidence invalidated"
             save_evidence(path, report)
         elif args.action == "validate":
+            initial=validate_evidence(args.evidence,old=args.old,target=args.target,tools=tools)
+            if not initial.get("installed_systemd") or not initial.get("lkg_binding"):
+                raise DeployError("Installed systemd/LKG verification missing")
             if args.live_db or args.rollback_db:
                 if args.expected_schema not in {"source", "target"}:
                     raise DeployError("Live DB validation requires explicit expected schema")

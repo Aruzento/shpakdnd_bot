@@ -169,10 +169,9 @@ maintenance/checkout. Live rows могут изменяться во время 
 включая rollback. Bootstrap installed executable выполняется из отдельной
 проверенной копии и атомарно обновляет полный versioned tooling bundle.
 Фактические пути, порядок команд и recovery описаны в
-[deployment.md](deployment.md). Этап B не обновляет watcher units, не внедряет
-last-known-good stage C и не делает merge/production deployment.
+[deployment.md](deployment.md). Этап C отдельно устанавливает observer units и вводит подтверждённую LKG; merge/production deployment не выполняются в задаче Codex.
 
-Для stage B source общего release_checks.py, test_inventory.py и workflow
+Для stages B/C source общего release_checks.py, test_inventory.py и workflow
 обязана точно совпадать с reviewed stage A. No-op executor или изменение
 семантики discovery/CI требует отдельного явного изменения guard и review;
 одного сохранения имени файла недостаточно.
@@ -197,5 +196,119 @@ Unknown compatibility или состояние блокируют запуск.
 Tests используют две реально отличающиеся SQLite схемы, изменения строк без
 DDL, partial DDL, SIGTERM, checkout failure, защищённую историю и порядок Bash.
 Прежний тест согласованного rollback теперь вводит ошибку после подтверждения
-TARGET, сохраняя assertions OLD startup/no DB restore; failed initializer имеет
+TARGET, сохраняя исходное покрытие startup/no DB restore; actual rollback target теперь LKG; failed initializer имеет
 отдельный тест обязательного запрета rollback. Baseline test IDs сохраняются.
+
+
+## Этап C: единый release gate и LKG
+
+Observer не является release manager. Все его действия — read-only HEAD/status
+с Git optional locks/fsmonitor disabled и журналом. Никаких unattended
+restart/deploy/migrations; installed legacy command также заменяется observer.
+Контролируемый systemd installer имеет один deployment lock, точный проверенный
+source SHA, private forensic backups, persistent quarantine, syntax/staging,
+atomic file replacement, daemon-reload, effective properties verification и
+observer activation без остановки bot. Drift loaded units/helpers/drop-ins
+блокирует preflight, startup и LKG confirmation.
+
+Immutable A workflow/runner/test_inventory сохранены. C добавляет отдельный
+`.github/workflows/systemd-staging.yml`: Ubuntu container с настоящим systemd
+и dummy process без Telegram. Guard требует оба CI paths и C инфраструктуру;
+удаление installer/LKG/стендовых файлов и отключение C job обнаруживается.
+Отдельный legacy-baseline job проверяет pinned V1.4 adapter: реальный game schema
+с player/wallet fixture, snapshot/preservation и полный baseline unittest.
+Он не публикует LKG и не меняет настоящий процесс/units.
+
+Preflight evidence связывает exact OLD/TARGET, frozen tooling, installed systemd
+manifest/config/helper hashes и текущий LKG record. Логические снимки независимы
+от unittest. На двух отдельных копиях SOURCE/TARGET проверяется именно LKG-код;
+результат OLD compatibility остаётся диагностикой. Изменение binding требует
+нового preflight. Нормальные записи игроков до maintenance его не отменяют.
+
+Разрешённая последовательность: TARGET/release gate → installed config/LKG
+probes → согласие → maintenance → fresh final backup/SOURCE → exact checkout →
+MIGRATION_STARTED → short init/strict TARGET+preservation → startup/journal/DB
+smoke → observer → stable process/units/smoke → полный SHA оператора → LKG.
+UNKNOWN/STARTED не угадываются по HEAD или schema hash. SOURCE/TARGET rollback
+требует согласия и своей LKG compatibility; live DB backup автоматически не
+восстанавливается. Никакие длительные tests/validators после stop не выполняются.
+
+LKG — atomically fsynced root-private checksum record/history, outside watched
+paths. Только complete exact-SHA release + migrations + process identity +
+health/journal/units + smoke + operator confirmation могут заменить прежнюю
+CONFIRMED запись. Current HEAD/is-active/checkout недостаточны. Незавершённая
+операция, SIGTERM/SIGKILL/power loss не публикуют ложный PASS. Missing/corrupt
+LKG/lost commit блокируют recovery. Full report этапа D будет использовать эти
+technical proofs; C не добавляет новые игровые migrations, экономику или UI.
+
+## Стенд и план rollout
+
+Все шаги здесь предназначены оператору после ревью. Production в задаче Codex
+не используется. Стенд — отдельная Linux VM либо disposable Docker/systemd
+namespace с независимыми checkout, dummy/test token, SQLite, service units,
+backup/evidence/log/workspace и `/var/lib/shpakdnd-release`. Не монтировать
+production DB/token или host systemd socket в контейнер. Имена units могут
+сохраняться внутри namespace, не затрагивая services host.
+
+Автоматизированный real-systemd stand запускается командами из C workflow
+(`deploy/ci-systemd/Dockerfile`, `check.sh`). Dummy bot — local sleeping Python,
+не Telegram client. Проверяется source SHA, полный installed bootstrap, units
+syntax, реальный loaded systemd, три изменения Python/JSON, стабильный PID и
+zero restarts, unchanged SQLite, journal dirty diagnostics, repeat installation,
+override drift, failed repair и persistent condition после потери runtime mask.
+Вывод SYSTEMD_STAND_RESULT содержит фактическую длительность установки. Это
+не измерение production downtime: installation не останавливает bot. Watcher
+неактивен от quarantine до проверенной activation; длительность зависит от
+host/filesystem/systemd. На сервере повторить замер monotonic timestamps; не
+обещать фиксированную длительность. Полные автоматические release tests и
+fault-injection flow отдельно выполняются на final CI SHA.
+
+Дополнительная матрица отдельного операторского стенда:
+
+| Шаг/сценарий | Проверка и безопасный исход |
+|---|---|
+| 1. Tooling/units bootstrap | exact reviewed SHA, root permissions, single lock, syntax, effective manifest; bot PID не меняется |
+| 2. Изменения файлов/repeated events | journal HEAD/dirty; no restart/migration/deploy/DB write |
+| 3. Полный preflight | отдельные clones и Online Backup включая WAL; bot active, исходный HEAD/DB не меняются |
+| 4. Успешный deployment | полные tests до stop, fresh backup до checkout, explicit stages, runtime/init/health/smoke, observer после bot |
+| 5. Observer после checkout | event только diagnostic, не повторный deploy |
+| 6. Ошибка preflight | unchanged working bot/HEAD, no maintenance |
+| 7. Ошибка units/override | persistent quarantine, watcher disabled, healthy bot preserved |
+| 8. Неуспешный startup | bot stopped, watcher off, TARGET не становится LKG |
+| 9. Нет LKG | rollback unavailable, OLD не заменяет record |
+| 10. Первичная LKG | pinned baseline full gate, controlled confirmed restart, /proc invocation, operator full SHA |
+| 11. Failed TARGET + compatible LKG | explicit consent, stage-specific snapshot proof, fresh data verification, exact LKG checkout/startup |
+| 12. Incompatible LKG/partial DB | rollback blocked, no backup restore, forensic analysis |
+| 13. Kill/reboot between writes | RUNNING/UNKNOWN не PASS, old LKG retained, persistent observer quarantine |
+| 14. Повторная операция | lock rejects overlap, verified unit install/confirmed LKG idempotent |
+| 15. Unit/LKG drift | stale binding blocks gate and confirmation |
+
+Для whole release flow использовать fake Telegram/Git/systemd harness из
+`tests/v1_3_3/test_deploy_shell.py` и `tests/v1_4_1/test_lkg_deploy_flow.py` плюс
+реальные Git/SQLite fixtures `test_lkg_preflight.py`, `test_last_known_good.py`,
+`test_preflight_real_schema.py`. На реальном Linux проверить journal/loaded
+properties и timing; production Telegram credentials недопустимы. Fault tests
+включают реальное убийство дочерних процессов между unit replacements и LKG
+publication. Baseline tests не удаляются и не пропускаются.
+
+Production rollout после одобрения и отдельного решения оператора:
+
+1. Сверить полный final SHA, independent review и оба Linux CI gates. FAIL — остановиться.
+2. Выполнить независимый стенд и проверить journal/timings. Недостаточные доказательства — не rollout.
+3. Сохранить existing units/drop-ins/helper и настройки вне watched paths с private permissions. Не публиковать .env.
+4. Bootstrap C tooling из root-owned exact checkout. Ошибка оставляет installed command прежней, live HEAD/DB нетронутыми.
+5. Отдельно разрешить unit installer: карантин legacy → безопасный observer. Ошибка оставляет healthy bot и watcher disabled.
+6. Проверить фактический manifest/units/helper/permissions/drop-ins и event без restart. Drift — release запрещён.
+7. Если нет LKG и live code — pinned V1.4, отдельно разрешить strict `--initialize-lkg` со stop/start и полной проверкой. Недостаточные доказательства — LKG отсутствует, rollback unavailable.
+8. Убедиться, что reviewed C code утверждён для main отдельной процедурой. Bootstrap не делает merge и не подменяет TARGET.
+9. Выполнить полный `--preflight`; PASS только для pinned TARGET. FAIL до stop не меняет healthy production.
+10. Обычный deployment снова делает полный preflight; consent → maintenance → final backup → SOURCE → checkout → STARTED → TARGET.
+11. Startup/health/SQLite smoke → observer → stable /proc/journal/units. Ошибка после stop требует stage-specific consent recovery либо manual analysis.
+12. Оператор после smoke вводит full SHA для новой LKG. Отказ/EOF сохраняет прежнюю LKG; failed target никогда не подтверждается.
+
+При UNKNOWN или повреждённой LKG сохранить журналы/текущую DB и WAL, работать
+на независимых snapshots, установить фактическую совместимость/данные и получить
+отдельное решение. Не править phase/checksum для обхода gate и не возвращать
+legacy helper из forensic archive. Этап D дополнит человекочитаемый final
+release report и функциональный postdeploy smoke; C оставляет для него hash-bound
+health/confirmation interface.

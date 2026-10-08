@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import shlex
 import tempfile
 import unittest
 from tests.v1_3_3.test_deploy_shell import BASH, ROOT, DISPATCH, shell_path
@@ -12,20 +13,35 @@ from tests.v1_3_3.test_deploy_shell import BASH, ROOT, DISPATCH, shell_path
 class ToolingBootstrapTests(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
-        self.root=Path(temp.name);self.source=self.root/'source';self.source.mkdir()
-        for name in ('install-deploy-shpakdnd.sh','deploy-shpakdnd.sh','deploy_helpers.py','sqlite-deploy.py',
-                     'telegram-deploy-notice.py','release_preflight.py','preflight_data.py'):
-            shutil.copy2(ROOT/'deploy'/name,self.source/name)
+        self.root=Path(temp.name);self.checkout=self.root/'reviewed';self.checkout.mkdir()
+        self.source=self.checkout/'deploy';self.source.mkdir();(self.checkout/'scripts').mkdir()
+        from tests.v1_4_1.test_preflight import pref
+        names=set(pref.BUNDLE)|{'install-deploy-shpakdnd.sh','install-systemd-units.sh',
+            'update-shpakdnd-bot.sh','shpakdnd-bot-update.service','shpakdnd-bot-watch.path'}
+        for name in names:shutil.copy2(ROOT/'deploy'/name,self.source/name)
+        for name in pref.SHARED_SCRIPTS:shutil.copy2(ROOT/'scripts'/name,self.checkout/'scripts'/name)
+        (self.checkout/'.gitignore').write_text('__pycache__/\n*.pyc\n')
+        for args in [('init','-q'),('config','user.name','Fixture'),('config','user.email','fixture@example.invalid'),
+                     ('config','core.autocrlf','false'),('config','commit.gpgsign','false'),
+                     ('remote','add','origin','https://github.com/Aruzento/shpakdnd_bot.git'),('add','.'),('commit','-qm','Reviewed tooling')]:
+            subprocess.run(['git','-C',str(self.checkout),*args],check=True,capture_output=True)
+        self.sha=subprocess.check_output(['git','-C',str(self.checkout),'rev-parse','HEAD'],text=True).strip()
         self.bin=self.root/'fake-bin';self.bin.mkdir();self.state=self.root/'state';self.state.mkdir()
         for name in ('id','flock','install'):
             file=self.bin/name;file.write_text(DISPATCH,encoding='utf-8',newline='\n');file.chmod(0o755)
         self.dest=self.root/'installed';self.entry=self.root/'commands'
+        # Emulate root ownership ONLY within the fixture Python process; no
+        # production CLI flag/environment can weaken the root-owned path checks.
+        wrapper=self.root/'bootstrap-fixture.py'
+        wrapper.write_text("import os,runpy,sys\nfrom pathlib import Path\nsys.path.insert(0,"+repr(str(self.source))+")\nimport release_state as s\ns.TRUSTED_UID=getattr(os,'geteuid',lambda:0)()\ns.require_root=lambda:None\nargs=sys.argv[1:]\nif args[0]=='-c':\n sys.argv=['-c',*args[2:]];exec(compile(args[1],'<fixture cli>','exec'))\nelif args[0]=='-m':\n sys.argv=[args[1],*args[2:]];runpy.run_module(args[1],run_name='__main__')\nelse:raise SystemExit(s.main(args[1:]))\n",encoding='utf-8')
+        launcher=self.bin/'bootstrap-python'
+        launcher.write_text('#!/usr/bin/env bash\nexec '+shlex.quote(shell_path(sys.executable,preserve_symlink=True))+' '+shlex.quote(shell_path(wrapper))+' "$@"\n',encoding='utf-8',newline='\n');launcher.chmod(0o755)
         self.env=dict(os.environ,FAKE_STATE=shell_path(self.state),SHPAKDND_TOOLING_DEST=shell_path(self.dest),
                       SHPAKDND_TOOLING_BIN=shell_path(self.entry),SHPAKDND_LOCK=shell_path(self.root/'lock'),
-                      SHPAKDND_TOOLING_PYTHON=shell_path(sys.executable,preserve_symlink=True))
+                      SHPAKDND_TOOLING_PYTHON=shell_path(launcher))
 
     def install(self,**flags):
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(self.source/'install-deploy-shpakdnd.sh')+'"'
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(self.source/'install-deploy-shpakdnd.sh')+'" '+self.sha
         return subprocess.run([BASH,'-c',command],env=dict(self.env,**flags),capture_output=True,text=True,encoding='utf-8',timeout=30)
 
     def test_complete_bundle_is_installed_and_reinstallation_is_idempotent(self):

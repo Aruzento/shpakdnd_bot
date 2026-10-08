@@ -99,7 +99,21 @@ python)
         if [[ -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
         exec cat
     fi
-    if [[ "$*" == *release_preflight.py*' run '* ]]; then
+    if [[ "$*" == *systemd_state.py* ]]; then
+        [[ "${FAKE_UNIT_DRIFT:-0}" != 1 ]] || exit 1
+        if [[ "${FAKE_UNIT_DRIFT_AFTER:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
+    elif [[ "$*" == *release_lkg.py* ]]; then
+        case "$2" in
+            target)
+                [[ "${FAKE_LKG_ABSENT:-0}" != 1 && "${FAKE_LKG_CORRUPT:-0}" != 1 && "${FAKE_LKG_COMMIT_MISSING:-0}" != 1 ]] || exit 1
+                if [[ "${FAKE_LKG_DIFFERENT:-0}" == 1 ]]; then printf 'cccccccccccccccccccccccccccccccccccccccc\n';else cat "$FAKE_STATE/lkg";fi ;;
+            smoke|health) [[ "${FAKE_SMOKE_FAIL:-0}" != 1 ]] || exit 1 ;;
+            confirm)
+                IFS= read -r answer || answer=""
+                if [[ "$answer" == "$(cat "$FAKE_STATE/target")" ]]; then cat "$FAKE_STATE/target" > "$FAKE_STATE/lkg";echo 'LKG CONFIRMED';fi ;;
+            *) exit 9 ;;
+        esac
+    elif [[ "$*" == *release_preflight.py*' run '* || "$*" == *legacy_lkg.py* ]]; then
         while [[ "$1" != --evidence ]]; do shift; done
         evidence="$2"; echo RUNNING > "$evidence"
         printf 'python -m compileall TARGET\ncheck_bot.py SNAPSHOT\nvalidators TARGET\npython -m unittest TARGET\ngit diff --check BASE TARGET\n' >> "$FAKE_STATE/trace"
@@ -139,7 +153,9 @@ python)
         fi
         [[ "${FAKE_SOURCE_DATA_CHANGED:-0}" != 1 ]] || exit 1
         if [[ "$*" == *--rollback* ]]; then
-            [[ "${FAKE_ROLLBACK_UNKNOWN:-0}" != 1 ]] || exit 1
+            [[ "${FAKE_ROLLBACK_UNKNOWN:-0}" != 1 && "${FAKE_LKG_ABSENT:-0}" != 1 ]] || exit 1
+            if [[ "$stage" == SOURCE && "${FAKE_LKG_SOURCE_INCOMPATIBLE:-0}" == 1 ]]; then exit 1; fi
+            if [[ "$stage" == TARGET && "${FAKE_LKG_TARGET_INCOMPATIBLE:-0}" == 1 ]]; then exit 1; fi
             if [[ "$stage" == TARGET && "${FAKE_ROLLBACK_INCOMPATIBLE:-0}" == 1 ]]; then exit 1; fi
         fi
         if [[ "$*" == *' deployment-startup '* ]]; then touch "$FAKE_STATE/startup-attempted"; fi
@@ -207,6 +223,7 @@ class DeployShellTests(unittest.TestCase):
         (self.project/'shpakdnd.db').write_bytes(b'unchanged fake database')
         for unit,value in [('shpakdnd-bot.service','active'),('shpakdnd-bot-watch.path','active'),('shpakdnd-bot-update.service','inactive')]:
             (self.state/unit).write_text(value+'\n')
+        (self.state/'lkg').write_text(OLD+'\n')
         (self.state/'head').write_text(OLD+'\n');(self.state/'target').write_text(TARGET+'\n');(self.state/'notices').write_text('0\n')
         runtime=self.root/'runtime';runtime.mkdir()
         self.env=dict(os.environ,FAKE_STATE=shell_path(self.state),
