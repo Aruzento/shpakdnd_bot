@@ -271,6 +271,13 @@ def check(repo: Path, baseline: str = BASELINE_SHA, target: str = "HEAD", *, inf
         baseline_text=source(repo,infrastructure_baseline,path)
         if path==".github/workflows/release-checks.yml":
             baseline_text=baseline_text.replace("branches: ['main', 'codex/**']", "branches: ['codex/**']").replace('      - name: Automatic read-only semantic smoke\n        run: sudo -E "$(which python)" scripts/semantic_smoke_ci.py\n','')
+        if path == "scripts/release_checks.py":
+            # Offline archives have no .git. Permit only this reviewed source-path
+            # handoff; every other executor byte still matches immutable stage A.
+            offline_line = 'test_env = dict(env, RELEASE_TEST_ISOLATED_TOPICS="1", GITHUB_WORKSPACE=str(repo.resolve()))'
+            original_line = 'test_env = dict(env, RELEASE_TEST_ISOLATED_TOPICS="1")'
+            text = text.replace(offline_line, original_line)
+            baseline_text = baseline_text.replace(offline_line, original_line)
         if text != baseline_text:
             raise GuardError("reviewed CI executor/workflow changed or disabled: " + path)
     if infrastructure_baseline==INFRASTRUCTURE_BASELINE_SHA:

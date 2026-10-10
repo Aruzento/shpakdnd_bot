@@ -230,6 +230,22 @@ class ReleaseGuardCLITests(unittest.TestCase):
                 self.write(path, change); self.commit()
                 self.assert_guard(1, "required CI workflow")
 
+    def test_offline_workspace_handoff_is_exact_not_an_executor_bypass(self):
+        path = "scripts/release_checks.py"
+        text = (self.repo / path).read_text(encoding="utf-8")
+        approved = 'GITHUB_WORKSPACE=str(repo.resolve())'
+        self.assertIn(approved, text)
+        self.write(path, text.replace(approved, 'GITHUB_WORKSPACE="untrusted"'))
+        self.commit()
+        self.assert_guard(1, "reviewed CI executor/workflow changed or disabled")
+
+    def test_offline_handoff_does_not_allow_disabled_unittest(self):
+        path = "scripts/release_checks.py"
+        text = (self.repo / path).read_text(encoding="utf-8")
+        self.write(path, text.replace('"discover", "-s", "tests", "-q"', '"--help"'))
+        self.commit()
+        self.assert_guard(1, "reviewed CI executor/workflow changed or disabled")
+
     def test_stage_a_added_file_is_preserved_against_separate_baseline(self):
         # Infrastructure appears after stable game baseline; deleting it must
         # still fail. This proves the two baseline inventories are independent.

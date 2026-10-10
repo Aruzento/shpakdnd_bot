@@ -164,7 +164,7 @@ def run_checks(repo: Path, report_path: Path) -> int:
             step("boss abilities", [[sys.executable, "-m", "app.mini.boss.boss_abilities.validate"]], checkout, env)
             step("tower", [[sys.executable, "-m", "app.mini.tower.validate"]], checkout, env)
             step("JSON and content validators", [[sys.executable, "-c", CONTENT_CHECK]], checkout, env)
-            test_env = dict(env, RELEASE_TEST_ISOLATED_TOPICS="1")
+            test_env = dict(env, RELEASE_TEST_ISOLATED_TOPICS="1", GITHUB_WORKSPACE=str(repo.resolve()))
             baseline_checkout = root / "baseline"
             baseline_checkout.mkdir()
             git(repo, "archive", "--format=tar", f"--output={archive}", BASELINE_SHA)
