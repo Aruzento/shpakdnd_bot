@@ -22,9 +22,11 @@ from app.mini.db import connect_mini_db
 from app.mini.combat import creatures
 from app.mini.boss.notices import combat_event_lines
 from app.mini.boss.public import format_public_boss, format_public_turn
+from tests.topic_fixtures import isolated_topics
 
 class CreatureIntegrationFixture(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.db=Path(self.tmp.name)/"test.db"
         init_mini_db(self.db); init_boss_db(self.db); sync_hero_catalog(self.db)

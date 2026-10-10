@@ -1,3 +1,4 @@
+from tests.topic_fixtures import TEST_CHAT_ID, DND_THREAD_ID
 """ALL targets reuse single-player rules, scoped to one Mini world."""
 import sqlite3
 import unittest
@@ -79,7 +80,7 @@ class AllSuperadminTests(MiniCase):
             command=parse_command(f'/{action} {self.world["chat_id"]}:{self.world["thread_id"]} ALL {tail}')
             with self.subTest(action=action),self.assertRaises(ValueError):
                 service.execute(self.owner+1,command,operation_key='denied',db_path=self.db)
-            ordinary=parse_command(f'/{action} -1003376315265:4 ALL {tail}')
+            ordinary=parse_command(f'/{action} {TEST_CHAT_ID}:{DND_THREAD_ID} ALL {tail}')
             with self.assertRaisesRegex(ValueError,'Mini'):
                 service.execute(self.owner,ordinary,operation_key='ordinary',db_path=self.db)
         self.sql('UPDATE mini_worlds SET enabled=0 WHERE id=?',(self.world['id'],))

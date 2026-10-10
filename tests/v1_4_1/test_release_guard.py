@@ -1,0 +1,323 @@
+"""Unit and real CLI regression probes in a disposable Git checkout."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+from scripts import release_guard as guard
+
+SCRIPT = Path(guard.__file__).resolve()
+EVENTS = "app/mini/events/service.py"
+TESTS = "tests/test_mini_events.py"
+IMPORT = "from app.mini.events.handlers import router as mini_events_router"
+
+
+class InventoryTests(unittest.TestCase):
+    def test_ast_finds_async_methods_functions_and_scopes(self):
+        text = "def test_top(): pass\nclass Events:\n async def test_resume(self): pass\n"
+        self.assertEqual(guard.test_symbols(text, TESTS), {"test_top", "Events.test_resume"})
+
+    def test_duplicate_methods_are_rejected_instead_of_silently_hidden(self):
+        with self.assertRaisesRegex(guard.GuardError, "duplicate test symbol"):
+            guard.test_symbols("def test_one(): pass\ndef test_one(): pass", TESTS)
+
+    def test_invalid_python_fails_closed(self):
+        with self.assertRaisesRegex(guard.GuardError, "invalid Python"):
+            guard.test_symbols("def test_broken(", TESTS)
+
+    def test_dynamic_router_registry_requires_review(self):
+        with self.assertRaisesRegex(guard.GuardError, "explicit list"):
+            guard.handler_inventory("ROUTERS = build_routers()")
+
+    def test_router_reassignment_cannot_hide_removal(self):
+        with self.assertRaisesRegex(guard.GuardError, "exactly one explicit assignment"):
+            guard.handler_inventory("ROUTERS = [mini_events_router]\nROUTERS = []")
+
+    def test_bad_allowlist_structure_and_placeholder_reasons_fail(self):
+        key = ("file", EVENTS, "")
+        entry = {"kind": "file", "path": EVENTS, "reason": "TODO"}
+        for data in ([], {}, {"removals": {}}, {"removals": [None]}, {"removals": [entry]}):
+            with self.subTest(data=data), self.assertRaises(guard.GuardError):
+                guard.load_allowlist(json.dumps(data), {key})
+
+
+class ReleaseGuardCLITests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.repo = Path(temp.name)
+        self.git("init", "-q")
+        self.git("config", "user.name", "Fixture")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("config", "commit.gpgsign", "false")
+        self.git("config", "core.autocrlf", "false")
+        self.write(EVENTS, "def resume(): return 'preserved'\n")
+        self.write("bot.py", "# bot entry point\n")
+        self.write("app/mini/content/heroes/common.json", '{"heroes": []}\n')
+        self.write("app/mini/events/handlers.py", "router = object()\n")
+        self.write(guard.HANDLERS_PATH, IMPORT + "\nROUTERS = [mini_events_router]\n")
+        self.write(TESTS, "import unittest\nclass MiniEvents(unittest.TestCase):\n    def test_restart(self): pass\n    def test_rewards(self): pass\n")
+        # Stage B extends the fixture with the immutable infrastructure contract.
+        root = SCRIPT.parents[1]
+        for path in guard.INFRASTRUCTURE_HEAD_REQUIRED:
+            self.write(path, (root / path).read_text(encoding="utf-8-sig"))
+        self.write("deploy/deploy-shpakdnd.sh", (root/"deploy/deploy-shpakdnd.sh").read_text(encoding="utf-8"))
+        self.write("deploy/deploy_helpers.py", "# stable helper\n")
+        self.write("deploy/shpakdnd-bot-watch.path", "[Path]\nUnit=bot.service\n")
+        self.commit("V1.4 stable fixture")
+        self.baseline = self.git("rev-parse", "HEAD").strip()
+        self.write(guard.ALLOWLIST_PATH, '{"removals": []}\n')
+        self.commit("V1.4.1 development fixture")
+
+    def git(self, *args):
+        result = subprocess.run(["git", "-C", str(self.repo), *args],
+                                capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def write(self, path, text):
+        target = self.repo / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8", newline="\n")
+
+    def commit(self, message="Development change"):
+        self.git("add", ".")
+        self.git("commit", "-qm", message)
+
+    def run_guard(self, *, baseline=None):
+        result = subprocess.run([sys.executable, str(SCRIPT), "--repo", str(self.repo),
+                                 "--baseline", self.baseline if baseline is None else baseline,
+                                 "--infrastructure-baseline", self.baseline],
+                                capture_output=True, text=True, encoding="utf-8")
+        return result.returncode, result.stdout + result.stderr
+
+    def assert_guard(self, exit_code, message, **kwargs):
+        code, output = self.run_guard(**kwargs)
+        self.assertEqual(code, exit_code, output)
+        self.assertIn(message, output)
+        return output
+
+    def test_no_removals_pass_both_api_and_cli(self):
+        self.assert_guard(0, "OK: release guard")
+        report = guard.check(self.repo, self.baseline, infrastructure_baseline=self.baseline)
+        self.assertEqual(report["baseline_test_symbols"], 2)
+        self.assertEqual(report["approved_removals"], 0)
+
+    def test_deleted_events_service_fails(self):
+        (self.repo / EVENTS).unlink()
+        self.commit()
+        self.assert_guard(1, "file: " + EVENTS)
+
+    def test_deleted_events_test_file_fails(self):
+        (self.repo / TESTS).unlink()
+        self.commit()
+        self.assert_guard(1, "file: " + TESTS)
+
+    def test_deleted_existing_method_fails_even_when_another_is_added(self):
+        self.write(TESTS, "class MiniEvents:\n def test_rewards(self): pass\n def test_new(self): pass\n")
+        self.commit()
+        self.assert_guard(1, TESTS + "::MiniEvents.test_restart")
+
+    def test_removed_router_fails_even_with_import_preserved(self):
+        self.write(guard.HANDLERS_PATH, IMPORT + "\nROUTERS = []\n")
+        self.commit()
+        self.assert_guard(1, "router: " + guard.HANDLERS_PATH + "::mini_events_router")
+
+    def test_removed_import_fails_even_with_router_preserved(self):
+        self.write(guard.HANDLERS_PATH, "mini_events_router = object()\nROUTERS = [mini_events_router]\n")
+        self.commit()
+        self.assert_guard(1, "import: " + guard.HANDLERS_PATH + "::" + IMPORT)
+
+    def test_deleted_json_catalog_fails(self):
+        (self.repo / "app/mini/content/heroes/common.json").unlink()
+        self.commit()
+        self.assert_guard(1, "app/mini/content/heroes/common.json")
+
+    def test_deleted_application_entry_point_fails(self):
+        (self.repo / "bot.py").unlink()
+        self.commit()
+        self.assert_guard(1, "file: bot.py")
+
+    def test_stable_baseline_detects_removal_in_earlier_development_commit(self):
+        (self.repo / EVENTS).unlink()
+        self.commit("Earlier accidental deletion")
+        self.write("app/new_feature.py", "# unrelated next development commit\n")
+        self.commit("Next dev commit must not reset baseline")
+        self.assert_guard(1, EVENTS)
+
+    def test_reviewable_file_removal_passes(self):
+        (self.repo / EVENTS).unlink()
+        self.approve({"kind": "file", "path": EVENTS, "reason": "Replaced by reviewed unified events service in PR 42."})
+        self.assert_guard(0, '"approved_removals": 1')
+
+    def test_reviewable_exact_method_removal_passes(self):
+        self.write(TESTS, "class MiniEvents:\n def test_rewards(self): pass\n")
+        self.approve({"kind": "test", "path": TESTS, "symbol": "MiniEvents.test_restart",
+                      "reason": "Restart coverage moved to reviewed integration suite PR 42."})
+        self.assert_guard(0, '"approved_removals": 1')
+
+    def approve(self, *entries):
+        self.write(guard.ALLOWLIST_PATH, json.dumps({"removals": list(entries)}))
+        self.commit()
+
+    def test_malformed_allowlist_fails_even_without_removal(self):
+        self.write(guard.ALLOWLIST_PATH, "{broken json")
+        self.commit()
+        self.assert_guard(1, "invalid allowlist")
+
+    def test_missing_allowlist_fails_closed(self):
+        (self.repo / guard.ALLOWLIST_PATH).unlink()
+        self.commit()
+        self.assert_guard(1, "allowlist missing")
+
+    def test_nonexistent_baseline_fails_closed(self):
+        self.assert_guard(1, "baseline unavailable", baseline="0" * 40)
+
+    def test_relative_baseline_is_forbidden(self):
+        self.assert_guard(1, "explicit full stable-release SHA", baseline="HEAD~1")
+
+    def test_wildcard_and_traversal_allowlists_fail_closed(self):
+        for path in ("*", "app/*", "../app/service.py", "/app/service.py", "app/../service.py"):
+            with self.subTest(path=path):
+                self.approve({"kind": "file", "path": path, "reason": "Reviewed consolidation of obsolete event service."})
+                self.assert_guard(1, "exact relative path")
+
+    def test_blank_reason_fails_closed(self):
+        (self.repo / EVENTS).unlink()
+        self.approve({"kind": "file", "path": EVENTS, "reason": "  "})
+        self.assert_guard(1, "meaningful reason")
+
+    def test_duplicate_entries_fail_closed(self):
+        (self.repo / EVENTS).unlink()
+        entry = {"kind": "file", "path": EVENTS, "reason": "Reviewed consolidation of obsolete event service."}
+        self.approve(entry, entry)
+        self.assert_guard(1, "duplicate allowlist removal")
+
+    def test_duplicate_json_keys_fail_closed(self):
+        self.write(guard.ALLOWLIST_PATH, '{"removals": [], "removals": []}')
+        self.commit()
+        self.assert_guard(1, "duplicate allowlist field")
+
+    def test_stale_allowlist_is_not_future_blanket_permission(self):
+        self.approve({"kind": "file", "path": EVENTS, "reason": "Reviewed consolidation of obsolete event service."})
+        self.assert_guard(1, "stale or nonexistent")
+
+    def test_invalid_test_ast_fails_closed(self):
+        self.write(TESTS, "def test_broken(")
+        self.commit()
+        self.assert_guard(1, "invalid Python")
+
+    def test_deleted_critical_infrastructure_fails(self):
+        for path in ("deploy/deploy-shpakdnd.sh", "deploy/deploy_helpers.py", "deploy/shpakdnd-bot-watch.path",
+                     "scripts/release_checks.py", ".github/workflows/release-checks.yml"):
+            with self.subTest(path=path):
+                content = (self.repo / path).read_text(encoding="utf-8")
+                (self.repo / path).unlink()
+                self.commit()
+                self.assert_guard(1, "critical infrastructure removed")
+                self.write(path, content)
+                self.commit()
+
+    def test_disabled_ci_step_and_ignored_failure_are_detected(self):
+        path = ".github/workflows/release-checks.yml"
+        original = (self.repo / path).read_text(encoding="utf-8")
+        for change in (original.replace("run: python scripts/release_checks.py", "run: echo disabled"),
+                       original + "\n        if: false\n", original + "\n        continue-on-error: true\n"):
+            with self.subTest(change=change[-40:]):
+                self.write(path, change); self.commit()
+                self.assert_guard(1, "required CI workflow")
+
+    def test_offline_workspace_handoff_is_exact_not_an_executor_bypass(self):
+        path = "scripts/release_checks.py"
+        text = (self.repo / path).read_text(encoding="utf-8")
+        approved = 'GITHUB_WORKSPACE=str(repo.resolve())'
+        self.assertIn(approved, text)
+        self.write(path, text.replace(approved, 'GITHUB_WORKSPACE="untrusted"'))
+        self.commit()
+        self.assert_guard(1, "reviewed CI executor/workflow changed or disabled")
+
+    def test_offline_handoff_does_not_allow_disabled_unittest(self):
+        path = "scripts/release_checks.py"
+        text = (self.repo / path).read_text(encoding="utf-8")
+        self.write(path, text.replace('"discover", "-s", "tests", "-q"', '"--help"'))
+        self.commit()
+        self.assert_guard(1, "reviewed CI executor/workflow changed or disabled")
+
+    def test_stage_a_added_file_is_preserved_against_separate_baseline(self):
+        # Infrastructure appears after stable game baseline; deleting it must
+        # still fail. This proves the two baseline inventories are independent.
+        path = "deploy/stage_a_new_helper.py"
+        self.write(path, "# new infrastructure\n"); self.commit()
+        infrastructure = self.git("rev-parse", "HEAD").strip()
+        (self.repo / path).unlink(); self.commit()
+        with self.assertRaisesRegex(guard.GuardError, "critical infrastructure removed"):
+            guard.check(self.repo, self.baseline, infrastructure_baseline=infrastructure)
+
+
+    def test_no_op_ci_executor_and_discovery_script_are_rejected(self):
+        for path in ('scripts/release_checks.py','scripts/test_inventory.py'):
+            with self.subTest(path=path):
+                original=(self.repo/path).read_text()
+                self.write(path, '# disabled executor\n')
+                self.commit()
+                with self.assertRaisesRegex(guard.GuardError,'changed or disabled'):
+                    guard.check(self.repo,self.baseline,infrastructure_baseline=self.baseline)
+                self.write(path,original);self.commit()
+
+    def test_removing_c_installer_or_lkg_blocks_release(self):
+        for name in ('deploy/install-systemd-units.sh','deploy/release_lkg.py','deploy/ci-systemd/check.sh'):
+            original=(self.repo/name).read_text();(self.repo/name).unlink();self.commit()
+            self.assert_guard(1,'critical infrastructure removed')
+            self.write(name,original);self.commit()
+
+    def test_disabling_systemd_ci_blocks_release(self):
+        name='.github/workflows/systemd-staging.yml'
+        self.write(name,(self.repo/name).read_text().replace('    timeout-minutes: 15','    timeout-minutes: 15\n    if: false'))
+        self.commit();self.assert_guard(1,'systemd staging cannot bypass')
+
+
+    def test_deleted_semantic_smoke_blocks_guard(self):
+        (self.repo/'deploy/semantic_smoke.py').unlink();self.commit();self.assert_guard(1,'critical infrastructure removed')
+
+    def test_disabled_lkg_semantic_confirmation_blocks_guard(self):
+        name='deploy/release_lkg.py';self.write(name,(self.repo/name).read_text().replace('semantic_proof=semantic.validate_for_lkg(evidence,project,target,proof)',"semantic_proof={'status':'PASS'}"));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+    def test_stale_smoke_policy_cannot_be_disabled(self):
+        name='deploy/semantic_evidence.py';self.write(name,(self.repo/name).read_text().replace("if not 0<=age<=max_age:raise DeployError('Semantic evidence is STALE')",'pass'));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+    def test_mandatory_final_release_gate_cannot_be_removed(self):
+        name='deploy/deploy-shpakdnd.sh';self.write(name,(self.repo/name).read_text().replace('local readiness_action=gate','local readiness_action=disabled'));self.commit()
+        self.assert_guard(1,'mandatory release/LKG semantic gate disabled')
+
+
+class SquashGuardTests(unittest.TestCase):
+    def test_squashed_sha_still_protects_immutable_a_c_inventory(self):
+        # Disposable clone only; never change the developer branch or GitHub main.
+        with tempfile.TemporaryDirectory() as directory:
+            clone=Path(directory)/'squashed'
+            root=SCRIPT.parents[1]
+            if not (root/'.git').exists():
+                root=Path(os.environ['GITHUB_WORKSPACE'])
+                self.assertEqual((root/'scripts/release_guard.py').read_bytes(),SCRIPT.read_bytes())
+            source_sha=guard.git(root,'rev-parse','HEAD').strip()
+            for args in (['clone','--quiet','--shared',str(root),str(clone)],
+                         ['-C',str(clone),'config','user.name','Fixture'],
+                         ['-C',str(clone),'config','user.email','fixture@example.invalid'],
+                         ['-C',str(clone),'config','commit.gpgsign','false'],
+                         ['-C',str(clone),'checkout','-qb','fixture-squash',guard.BASELINE_SHA],
+                         ['-C',str(clone),'merge','--squash',source_sha],
+                         ['-C',str(clone),'commit','-qm','Squash only in disposable fixture']):
+                result=subprocess.run(['git',*args],capture_output=True,text=True,encoding='utf-8')
+                self.assertEqual(result.returncode,0,result.stderr)
+            candidate=guard.git(clone,'rev-parse','HEAD').strip()
+            self.assertNotEqual(candidate,guard.git(root,'rev-parse','HEAD').strip())
+            result=guard.check(clone)
+            self.assertEqual(result['approved_removals'],0);self.assertEqual(result['baseline_test_symbols'],979)
+
+if __name__ == "__main__":
+    unittest.main()

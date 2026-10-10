@@ -23,12 +23,14 @@ from app.mini.heroes import get_player_heroes, set_active_hero, sync_hero_catalo
 from app.mini.players import create_mini_player
 from app.mini.schema import init_mini_db
 from app.mini.worlds import sync_configured_mini_worlds
+from tests.topic_fixtures import isolated_topics
 
 ENGINEER = "panic_dungeon_engineer"
 
 
 class CompensationReleaseTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
         self.db = Path(self.tempdir.name) / "mini.db"

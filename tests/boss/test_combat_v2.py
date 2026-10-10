@@ -29,6 +29,7 @@ from app.mini.heroes import set_active_hero, sync_hero_catalog
 from app.mini.players import create_mini_player
 from app.mini.schema import init_mini_db
 from app.mini.worlds import sync_configured_mini_worlds
+from tests.topic_fixtures import isolated_topics
 
 
 class MatchupTests(unittest.TestCase):
@@ -179,6 +180,7 @@ class BossHookTests(unittest.TestCase):
 
 class CombatV2IntegrationTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tempdir = tempfile.TemporaryDirectory()
         self.db = Path(self.tempdir.name) / "combat.db"
         init_mini_db(self.db)
@@ -597,6 +599,9 @@ class CombatV2IntegrationTests(unittest.TestCase):
 
 
 class CombatV2CatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(isolated_topics())
+
     def test_current_hero_and_boss_traits_are_valid(self):
         from app.mini.boss.matchups import FACTIONS
         heroes = load_hero_catalog()["heroes"]

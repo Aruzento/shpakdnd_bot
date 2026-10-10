@@ -11,10 +11,12 @@ from app.mini.heroes import sync_hero_catalog
 from app.mini.equipment.service import sync_catalog
 from app.mini.players import create_mini_player
 from app.mini.worlds import sync_configured_mini_worlds
+from tests.topic_fixtures import isolated_topics
 
 
 class MiniCase(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tmp=tempfile.TemporaryDirectory()
         self.db=Path(self.tmp.name)/'mini.db'
         init_mini_db(self.db)

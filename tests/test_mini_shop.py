@@ -20,10 +20,12 @@ from app.mini.shop import (
 )
 from app.mini.wallet import add_coins, get_balance
 from app.mini.worlds import sync_configured_mini_worlds
+from tests.topic_fixtures import isolated_topics
 
 
 class MiniShopTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tempdir = tempfile.TemporaryDirectory()
         self.db = Path(self.tempdir.name) / "mini.db"
         init_mini_db(self.db)

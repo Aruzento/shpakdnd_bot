@@ -15,8 +15,12 @@ from app.mini.schema import init_mini_db
 from app.mini.worlds import sync_configured_mini_worlds
 from app.mini.players import create_mini_player
 from app.mini.db import connect_mini_db
+from tests.topic_fixtures import isolated_topics
 
 class EffectRegistryTests(unittest.TestCase):
+    def setUp(self):
+        self.enterContext(isolated_topics())
+
     def test_unknown_keys_rejected_and_ticket_stays_gacha_only(self):
         registry.validate_effect_key('')
         registry.validate_effect_key('gacha_ticket')
