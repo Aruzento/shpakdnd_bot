@@ -27,4 +27,3 @@ def home_content(player: dict, active: dict | None) -> str:
         *lines, "",
         f"🪙 {int(player['coins'])} монет • 🧩 {int(player['shards'])} осколков",
     ])
-
