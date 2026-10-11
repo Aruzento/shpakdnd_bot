@@ -40,7 +40,7 @@ async def batch_callback(callback):
     if context is None:return
     world,player,token=context
     try:
-        if len(token)!=8 or any(c not in '0123456789abcdef' for c in token):raise ValueError('Некорректная кнопка.')
+        if len(token) not in (8,12) or any(c not in '0123456789abcdef' for c in token):raise ValueError('Некорректная кнопка.')
         batch=perform_gacha_batch(player['id'],operation_key='batch:'+token)
         text,markup=batch_screen(batch,world['id'],callback.from_user.id)
     except ValueError as error:
@@ -52,13 +52,17 @@ async def batch_callback(callback):
         await callback.answer('Результат сохранён. Повтори эту кнопку или открой меню ещё раз.',show_alert=True)
 
 
-@router.callback_query(F.data.regexp(r'^mini:(batchpage|batchhero):'))
+@router.callback_query(F.data.regexp(r'^mini:(batchpage|batchhero|batchview):'))
 async def batch_result_callback(callback):
     prefix=callback.data.split(':')[1]
     context=await load_extended_context(callback,prefix)
     if context is None:return
     world,player,payload=context
     try:
+        if prefix=='batchview':
+            action,payload=payload.split('.',1)
+            if action not in ('page','card'):raise ValueError('Некорректная кнопка.')
+            prefix='batchhero' if action=='card' else 'batchpage'
         bid,page=map(int,payload.split('.'));batch=get_gacha_batch(player['id'],bid)
         if not 0<=page<10:raise ValueError('Некорректная страница.')
         if prefix=='batchhero':

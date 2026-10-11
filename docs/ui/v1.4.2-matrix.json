@@ -2691,7 +2691,7 @@
           },
           {
             "text": "⬅️ Назад",
-            "callback": "mini:tower:999999:9999999999:",
+            "callback": "mini:tower:999999:9999999999",
             "handlers": [
               "app.mini.tower.handlers.tower_callback"
             ]
@@ -2849,7 +2849,7 @@
         [
           {
             "text": "🏰 К испытанию",
-            "callback": "mini:tower:999999:9999999999:",
+            "callback": "mini:tower:999999:9999999999",
             "handlers": [
               "app.mini.tower.handlers.tower_callback"
             ]

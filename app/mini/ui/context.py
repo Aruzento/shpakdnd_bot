@@ -198,3 +198,8 @@ def load_player(world_id: int, callback: CallbackQuery) -> dict | None:
         touch_mini_player(world_id, callback.from_user.id, username_from_user(callback.from_user))
         player = get_mini_player(world_id, callback.from_user.id)
     return player
+
+
+async def valid_world_callback(callback,world):
+    """Earlier draft entry point; use the canonical owner/location validation."""
+    return await validate_callback_location(callback,world,callback.from_user.id)

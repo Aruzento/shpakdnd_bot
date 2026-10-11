@@ -62,6 +62,7 @@ async def equipment_callback(callback):
         await callback.answer('Эта тема больше не работает в режиме Mini.',show_alert=True);return
     page=0;mode='home';parent='heroarea'
     try:
+        if tail=='tower':tail='';parent='tower'
         if '~' in tail:
             tail,origin=tail.split('~',1)
             if origin!='t':raise ValueError('Некорректный возврат.')

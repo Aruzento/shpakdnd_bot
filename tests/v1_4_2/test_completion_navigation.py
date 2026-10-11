@@ -45,7 +45,7 @@ class NavigationIntegrationTests(MiniCase):
                 (context,'get_mini_player',get_mini_player),(context,'touch_mini_player',touch_mini_player),
                 (hero_ui,'get_player_heroes',get_player_heroes),(hero_ui,'get_player_hero',get_player_hero),
                 (hero_ui,'get_gacha_state',get_gacha_state),(hero_ui,'set_active_hero',set_active_hero),
-                (hero_ui,'is_favorite',__import__('app.mini.favorites',fromlist=['is_favorite']).is_favorite),(hero_ui,'restore',navigation.restore),(hero_ui,'remember',navigation.remember)):
+                (hero_ui,'is_favorite',__import__('app.mini.favorites',fromlist=['is_favorite']).is_favorite),(hero_ui,'restore',navigation.restore),(hero_ui,'remember',navigation.remember),(hero_ui,'validate_navigation',navigation.validate_navigation)):
             if hasattr(module,name):stack.enter_context(patch.object(module,name,side_effect=partial(fn,db_path=self.db)))
         return stack
 
@@ -204,7 +204,7 @@ class NavigationIntegrationTests(MiniCase):
     def test_favorite_replacement_keeps_source_and_uses_bounded_callback_for_large_ids(self):
         world=dict(self.world,id=999999);uid=9999999999;hid=100000004;old=[100000001,100000002,100000003];token='aabbccdd'
         cb=callback(world,f'add.{hid}~{token}',action='favorite',uid=uid)
-        with patch.object(hero_ui,'_load_extended_context',AsyncMock(return_value=(world,self.player,f'add.{hid}~{token}'))),patch.object(hero_ui,'restore',return_value={}),patch.object(hero_ui,'get_player_hero',side_effect=lambda pid,hid:dict(id=hid,name=str(hid))),patch.object(hero_ui,'get_favorites',return_value=old),patch.object(hero_ui,'_send_private_text_from_callback',AsyncMock()) as send:
+        with patch.object(hero_ui,'_load_extended_context',AsyncMock(return_value=(world,self.player,f'add.{hid}~{token}'))),patch.object(hero_ui,'restore',return_value={}),patch.object(hero_ui,'validate_navigation',return_value=token),patch.object(hero_ui,'get_player_hero',side_effect=lambda pid,hid:dict(id=hid,name=str(hid))),patch.object(hero_ui,'get_favorites',return_value=old),patch.object(hero_ui,'_send_private_text_from_callback',AsyncMock()) as send:
             asyncio.run(hero_ui.favorite_callback(cb))
         markup=send.await_args.args[-1]
         self.assertTrue(all(len(b.callback_data.encode())<=64 for b in buttons(markup)))

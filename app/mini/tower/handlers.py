@@ -104,6 +104,7 @@ async def tower_callback(callback):
     try:
         state=get_state(player['id']);reward=None;card=None
         parts=tail.split('.')
+        if parts[0] in ('card','choose') and len(parts)==4:parts.append('0')
         if parts[0] in {'heroes','pick','start','rarity','card','choose'}:
             floor=int(parts[1])
             if state['completed'] or floor!=state['floor']['floor'] or state['attempt']:

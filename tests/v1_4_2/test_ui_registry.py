@@ -133,7 +133,7 @@ class WorkerNavigationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_assign_and_remove_stay_in_current_worker_screen(self):
         for action,expected in (('am0','add_mine'),('wm0','workers_mine')):
-            payload='x.1.a.1.m.1.token.'+action
+            payload='x.1.a.1.'+('m' if action=='am0' else '-')+'.1.token.'+action
             cb=SimpleNamespace(from_user=SimpleNamespace(id=42),answer=AsyncMock())
             with patch.object(village,'load_extended_context',AsyncMock(return_value=({'id':1},{'id':1},payload))),patch.object(service,'mutate',return_value={'applied':True}),patch.object(service,'get_state',return_value=state()),patch.object(village,'screen',return_value=('Экран',None)) as screen,patch.object(village,'send_private_text_from_callback',AsyncMock()):
                 await village.action(cb)

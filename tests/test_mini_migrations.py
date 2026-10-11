@@ -104,6 +104,8 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute('UPDATE mini_player_heroes SET shards=0 WHERE player_id=?',(player,))
             conn.execute('UPDATE mini_player_heroes SET copies=4 WHERE player_id=? AND hero_id=?',(player,hero))
         with connect_mini_db(self.db) as conn:
+            conn.execute("INSERT INTO mini_registration_sessions VALUES('fixture',?,555,9999999999,0,1)",(world,))
+            conn.execute("INSERT INTO mini_public_shares VALUES(?,'fixture')",(player,))
             conn.execute("INSERT INTO mini_registration_requests VALUES('fixture',?,555,9999999999,0,?)",(world,player))
             conn.execute("INSERT INTO mini_ui_navigation VALUES('fixture',?,'collection','{}')",(player,))
             conn.execute("INSERT INTO mini_ui_publications VALUES(?,'fixture','sent')",(player,))
@@ -111,7 +113,7 @@ class MiniMigrationTests(unittest.TestCase):
                 (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,status)
                 VALUES(?,2,?,?,?,10,10,'lost')""",(player,hero,snapshot,json.dumps(get_floor(2)))).lastrowid
             active=conn.execute("SELECT id FROM mini_tower_attempts WHERE player_id=? AND status='active'",(player,)).fetchone()[0]
-            conn.execute('INSERT INTO mini_tower_retries VALUES(?,?,?)',(lost,player,active))
+            conn.execute('INSERT INTO mini_tower_retries VALUES(?,?)',(lost,active))
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

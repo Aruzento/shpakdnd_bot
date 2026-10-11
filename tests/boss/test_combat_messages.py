@@ -315,6 +315,13 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
         self.callback.bot.send_photo.assert_awaited_once()
         self.callback.message.delete_ephemeral.assert_not_awaited()
 
+    async def test_launcher_rejects_a_different_topic_without_personal_state(self):
+        self.callback.data='mini:launch:1';self.callback.message.message_thread_id=43
+        with patch('app.mini.ui.context.is_mini_topic',return_value=True),patch('app.mini.handlers.get_mini_world_by_id',return_value=self.world),patch('app.mini.handlers.get_mini_player') as player:
+            await launch_callback(self.callback)
+        player.assert_not_called();self.callback.bot.send_photo.assert_not_awaited()
+        self.assertTrue(self.callback.answer.call_args.kwargs['show_alert'])
+
     async def test_character_callback_sends_new_character_caption(self):
         self.callback.data = "mini:character:1:101"
         with patch("app.mini.handlers._load_personal_context", new_callable=AsyncMock, return_value=(self.world, self.player)), patch("app.mini.handlers.get_active_hero", return_value=self.hero):

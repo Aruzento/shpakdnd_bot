@@ -44,7 +44,7 @@ from app.mini.ui.hero_cards import (
 from app.mini.favorites import get_favorites,add_favorite,remove_favorite,replace_favorite,is_favorite
 from app.mini.ui.hero_selector import render_selector
 
-from app.mini.ui.state import split_context, restore, legacy_operation, claim_publication
+from app.mini.ui.state import split_context, restore, validate_navigation, legacy_operation, claim_publication
 
 router = Router(name="mini_heroes")
 
@@ -379,10 +379,11 @@ async def hero_card_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
+        hero_id_text,legacy_token=split_context(hero_id_text)
         parts=hero_id_text.split('.')
-        hero_id=int(parts[0]);nav_token=parts[1] if len(parts)==2 else ''
+        hero_id=int(parts[0]);nav_token=legacy_token or (parts[1] if len(parts)==2 else '')
         if len(parts)>2:raise ValueError('Некорректный герой.')
-        if nav_token:restore(player['id'],nav_token)
+        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
     except ValueError as error:
         await callback.answer(str(error) or 'Некорректный герой.',show_alert=True);return
 
@@ -419,7 +420,7 @@ async def hero_upgrade_callback(callback: CallbackQuery):
     world, player, hero_id_text = context
     try:
         hero_id_text,nav_token=split_context(hero_id_text)
-        if nav_token:restore(player["id"],nav_token)
+        if nav_token:nav_token=validate_navigation(player["id"],nav_token)
         profile=hero_id_text.endswith(".p")
         hero_id_text=hero_id_text.removesuffix(".p")
         collection=hero_id_text.endswith(".c")
@@ -471,7 +472,7 @@ async def hero_shards_callback(callback: CallbackQuery):
     world, player, hero_id_text = context
     try:
         hero_id_text,nav_token=split_context(hero_id_text)
-        if nav_token:restore(player['id'],nav_token)
+        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
         hero_id = int(hero_id_text)
     except ValueError:
         await callback.answer("Некорректный герой.", show_alert=True)
@@ -500,7 +501,7 @@ async def shard_sell_callback(callback: CallbackQuery):
     world, player, payload = context
     try:
         raw,nav_token=split_context(payload)
-        if nav_token:restore(player['id'],nav_token)
+        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
         values=raw.split(',')
         if len(values) not in (2,3):raise ValueError('Некорректная продажа.')
         hero_id_text,quantity_text=values[:2]
@@ -559,7 +560,7 @@ async def hero_active_callback(callback: CallbackQuery):
     world, player, hero_id_text = context
     try:
         hero_id_text,nav_token=split_context(hero_id_text)
-        if nav_token:restore(player["id"],nav_token)
+        if nav_token:nav_token=validate_navigation(player["id"],nav_token)
         profile=hero_id_text.endswith(".p")
         hero_id_text=hero_id_text.removesuffix(".p")
         collection=hero_id_text.endswith(".c")
@@ -613,7 +614,7 @@ async def favorite_callback(callback):
     world,player,tail=context
     try:
         tail,nav_token=split_context(tail)
-        if nav_token:restore(player['id'],nav_token)
+        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
         action,new_id,*old=tail.split('.')
         new_id=int(new_id)
         hero=get_player_hero(player['id'],new_id)

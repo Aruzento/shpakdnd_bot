@@ -3,6 +3,7 @@ import secrets
 import sqlite3
 import time
 from app.config import DB_PATH
+from app.topic_guard import is_mini_topic
 from app.mini.db import connect_mini_db
 from app.mini.players import validate_character_name, get_mini_player
 
@@ -12,8 +13,8 @@ def begin(world_id,user_id,db_path=DB_PATH,*,now=None):
     token=secrets.token_urlsafe(18)
     with connect_mini_db(db_path) as conn:
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
-        world=conn.execute('SELECT enabled FROM mini_worlds WHERE id=?',(world_id,)).fetchone()
-        if not world or not world[0]:raise ValueError('D&D Mini недоступен.')
+        world=conn.execute('SELECT enabled,chat_id,thread_id FROM mini_worlds WHERE id=?',(world_id,)).fetchone()
+        if not world or not world[0] or not is_mini_topic(world[1],world[2]):raise ValueError('D&D Mini недоступен.')
         conn.execute('DELETE FROM mini_registration_requests WHERE expires_at<=? AND player_id IS NULL',(when,))
         conn.execute('INSERT INTO mini_registration_requests(token,world_id,telegram_user_id,expires_at) VALUES(?,?,?,?)',
                      (token,world_id,user_id,when+1800))
@@ -26,6 +27,9 @@ def activate(token,user_id,db_path=DB_PATH,*,now=None):
         conn.row_factory=sqlite3.Row;conn.execute('BEGIN IMMEDIATE')
         row=conn.execute('SELECT r.* FROM mini_registration_requests r JOIN mini_worlds w ON w.id=r.world_id WHERE token=? AND telegram_user_id=? AND expires_at>? AND w.enabled=1',
                          (token,user_id,when)).fetchone()
+        if row:
+            world=conn.execute('SELECT chat_id,thread_id FROM mini_worlds WHERE id=?',(row['world_id'],)).fetchone()
+            if not is_mini_topic(world[0],world[1]):row=None
         if not row:raise ValueError('Ссылка регистрации истекла или принадлежит другому игроку.')
         existing=conn.execute('SELECT id FROM mini_players WHERE world_id=? AND telegram_user_id=?',(row['world_id'],user_id)).fetchone()
         if existing:
@@ -52,6 +56,9 @@ def complete(token,user_id,username,name,db_path=DB_PATH,*,now=None):
         conn.row_factory=sqlite3.Row;conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
         request=conn.execute('SELECT r.* FROM mini_registration_requests r JOIN mini_worlds w ON w.id=r.world_id WHERE token=? AND telegram_user_id=? AND expires_at>? AND w.enabled=1',
                              (token,user_id,when)).fetchone()
+        if request:
+            scoped=conn.execute('SELECT chat_id,thread_id FROM mini_worlds WHERE id=?',(request['world_id'],)).fetchone()
+            if not is_mini_topic(scoped[0],scoped[1]):request=None
         if not request:raise ValueError('Регистрация истекла. Открой меню Mini заново.')
         world=request['world_id']
         existing=conn.execute('SELECT id FROM mini_players WHERE world_id=? AND telegram_user_id=?',(world,user_id)).fetchone()

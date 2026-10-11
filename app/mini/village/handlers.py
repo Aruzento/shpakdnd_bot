@@ -139,7 +139,7 @@ async def action(callback):
             else:
                 view='home'
                 if act=='assign' and building!='-':raise ValueError('Сначала сними героя с работы и открой предприятие.')
-            if act=='assign' and building!='-' and view=='hero':raise ValueError('Назначение доступно только через предприятие.')
+            if act=='assign' and building!='-' and view!='add_'+building:raise ValueError('Назначение доступно только через предприятие.')
             result=service.mutate(player['id'],act,hero_id=integer(parts[3]) or None,building=None if building=='-' else building,
                 expected_revision=integer(rev),expected_houses=int(houses),operation_key=payload)
             notice=f"Собрано: {result['coins']} монет, {result['shards']} осколков" if act=='collect' else result.get('status','Готово')

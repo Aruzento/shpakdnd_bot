@@ -12,7 +12,7 @@ def render_selection(state,heroes,world,user,*,stage='rarity',rarity=0,page=0,he
     if state['completed'] or state['attempt']:raise ValueError('Нельзя выбирать героя во время боя.')
     floor=state['floor']['floor'];enemy=state['floor']
     def b(text,tail):
-        data=f'mini:tower:{world}:{user}:'+tail
+        data=f'mini:tower:{world}:{user}'+(':'+tail if tail else '')
         if len(data.encode())>64:raise ValueError('Слишком длинная кнопка.')
         return Button(text=text,callback_data=data)
     home=Button(text='🏠 Главная',callback_data=f'mini:home:{world}:{user}')

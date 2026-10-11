@@ -54,6 +54,7 @@ def choice(mode,world,user,context,hero_id):
 
 
 def render_selector(heroes, favorites, mode, world, user, context=0, *, view='home', page=0, token=EMPTY, return_token=''):
+    if view=='favorites':view='home'
     if mode not in ('c','b','t'): raise ValueError('Некорректный выбор героя.')
     available=filtered(heroes,token,mode)
     def nav(action, target=0, state=token):
@@ -86,9 +87,9 @@ def render_selector(heroes, favorites, mode, world, user, context=0, *, view='ho
         batch=available[page*size:(page+1)*size]
         rows=[[hero_button(h) for h in batch[n:n+2]] for n in range(0,len(batch),2)]
         pagination=[]
-        if page: pagination.append(button('◀️',view,page-1))
+        if page or mode=='c': pagination.append(button('◀️',view,max(0,page-1)))
         pagination.append(button(f'{page+1} / {pages}',view,page))
-        if page+1<pages: pagination.append(button('▶️',view,page+1))
+        if page+1<pages or mode=='c': pagination.append(button('▶️',view,min(pages-1,page+1)))
         rows.append(pagination)
         if mode!='c':rows.append([button('🔎 Изменить фильтр','filter')])
     elif view=='filter':

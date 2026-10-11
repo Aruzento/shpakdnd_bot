@@ -147,7 +147,7 @@ def retry_attempt(player_id,source_attempt_id,db_path=DB_PATH):
     """One persisted retry per lost attempt; concurrent/stale callbacks replay it."""
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row;conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
-        old=conn.execute('SELECT new_attempt_id FROM mini_tower_retries WHERE source_attempt_id=? AND player_id=?',
+        old=conn.execute('SELECT r.new_attempt_id FROM mini_tower_retries r JOIN mini_tower_attempts a ON a.id=r.previous_attempt_id WHERE r.previous_attempt_id=? AND a.player_id=?',
                          (source_attempt_id,player_id)).fetchone()
         if old:return repo.attempt_by_id(conn,player_id,old['new_attempt_id'])
         source=repo.attempt_by_id(conn,player_id,source_attempt_id)
@@ -163,5 +163,5 @@ def retry_attempt(player_id,source_attempt_id,db_path=DB_PATH):
                          (player_id,hero_id)).fetchone()
         hero=_enrich(dict(row))
         result=repo.create_attempt(conn,player_id,hero,get_floor(source['floor']),aggregate_in_transaction(conn,player_id))
-        conn.execute('INSERT INTO mini_tower_retries VALUES(?,?,?)',(source_attempt_id,player_id,result['id']))
+        conn.execute('INSERT INTO mini_tower_retries(previous_attempt_id,new_attempt_id) VALUES(?,?)',(source_attempt_id,result['id']))
         return result
