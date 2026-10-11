@@ -30,23 +30,22 @@ class ReleaseUIContractTests(unittest.TestCase):
     def test_selection_uses_buttons_and_separate_gear_bonus(self):
         enemy=dict(get_floor(1),name='Скелет-вахтёр: смена 1',features=[])
         state=dict(floor=enemy,equipment_bonus=5)
-        heroes=[dict(id=1,name='Азраэль',faction='dark',attack=1135),dict(id=2,name='Багбир-засадник',faction='monsters',attack=9)]
+        heroes=[dict(id=1,rarity='common',name='Азраэль',faction='dark',attack=1135),dict(id=2,rarity='common',name='Багбир-засадник',faction='monsters',attack=9)]
         text,markup=render_hero_selection(state,heroes,1,20,favorites=[1,2])
-        self.assertIn('🎴 Выбор героя\n\nСкелет-вахтёр: смена 1 · Простолюдины',text)
-        self.assertIn('Особенности: нет',text)
+        self.assertIn('Выбери редкость',text)
+        self.assertIn('Скелет-вахтёр: смена 1',text)
         self.assertNotIn('Азраэль',text);self.assertNotIn('Багбир',text)
-        self.assertEqual(markup.inline_keyboard[0][0].text,'⚪ Азраэль ★0')
-        self.assertEqual(markup.inline_keyboard[1][0].text,'⚪ Багбир-засадник ★0')
+        self.assertEqual(markup.inline_keyboard[0][0].text,'⚪ Обычный · 2')
         state['equipment_bonus']=0
         _,markup=render_hero_selection(state,heroes,1,20)
         self.assertNotIn('+0',markup.inline_keyboard[0][0].text)
 
     def test_selection_paginates_and_can_return(self):
-        heroes=[dict(id=i,name=str(i),faction='dark',attack=3) for i in range(17)]
+        heroes=[dict(id=i,rarity='common',name=str(i),faction='dark',attack=3) for i in range(17)]
         _,markup=render_hero_selection(dict(floor=get_floor(1),equipment_bonus=0),heroes,1,20,1)
         self.assertEqual(len([b for row in markup.inline_keyboard for b in row if ':pick.' in b.callback_data]),0)
-        self.assertTrue(any(b.text=='👥 Показать всех' for row in markup.inline_keyboard for b in row))
-        self.assertEqual(markup.inline_keyboard[-1][0].callback_data,'mini:tower:1:20')
+        self.assertTrue(any(':rarity.' in b.callback_data for row in markup.inline_keyboard for b in row))
+        self.assertEqual(markup.inline_keyboard[-1][-1].callback_data,'mini:tower:1:20')
         self.assertTrue(all(len(b.callback_data.encode())<=64 for row in markup.inline_keyboard for b in row))
 
     def test_equipment_three_slots_and_requested_buttons(self):

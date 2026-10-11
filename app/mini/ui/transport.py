@@ -1,4 +1,4 @@
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, EphemeralMessageParameters, InlineKeyboardMarkup
 
 
@@ -92,10 +92,16 @@ async def edit_private(
         await delete_current_ephemeral(callback)
         return sent
 
-    # Резерв для старого публичного меню, если оно осталось после обновления.
-    # Публичный launcher здесь не удаляем.
-    return await callback.message.edit_text(
-        text=text,
-        reply_markup=reply_markup,
-    )
-
+    # A legacy public menu must never be edited into somebody's personal state.
+    if getattr(callback.message.chat,'type',None) != 'private':
+        from app.mini.worlds import get_mini_world_by_id
+        try:world=get_mini_world_by_id(int(callback.data.split(':')[2]))
+        except (AttributeError,ValueError,IndexError):return None
+        if world and world['enabled']:
+            return await send_private_text_from_callback(callback,world,text,reply_markup)
+        return None
+    try:
+        return await callback.message.edit_text(text=text,reply_markup=reply_markup)
+    except TelegramBadRequest as error:
+        if 'message is not modified' in str(error).lower():return callback.message
+        return await callback.bot.send_message(chat_id=callback.from_user.id,text=text,reply_markup=reply_markup)

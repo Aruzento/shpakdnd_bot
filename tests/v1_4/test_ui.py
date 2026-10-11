@@ -22,13 +22,13 @@ def state(houses=0,residents=None):
 class NewScreensTests(unittest.TestCase):
     def test_dynamic_one_purchase_button_and_all_houses(self):
         for count,price in enumerate(village.service.PRICES):
-            text,markup=village.screen(state(count),1,42)
+            text,markup=village.screen(state(count),1,42,'houses')
             purchases=[b for b in buttons(markup) if b.text.startswith('🏠 Купить')]
             self.assertEqual(len(purchases),1);self.assertIn(str(price),purchases[0].text)
             self.assertIn(f'Дома {count}/5',text)
-        _,markup=village.screen(state(5),1,42)
+        _,markup=village.screen(state(5),1,42,'houses')
         self.assertFalse(any('Купить' in b.text for b in buttons(markup)))
-        self.assertTrue(any('Все дома куплены' in b.text for b in buttons(markup)))
+        self.assertTrue(any('Жильцы' in b.text for b in buttons(markup)))
 
     def test_fifty_residents_paginated_and_last_page_reachable(self):
         residents=[dict(hero_id=n,name=f'Житель {n}',building='mine') for n in range(1,51)]
@@ -37,7 +37,8 @@ class NewScreensTests(unittest.TestCase):
             people=[b for b in buttons(markup) if '.hero.' in b.callback_data or ':hero.' in b.callback_data]
             self.assertEqual(len(people),4 if page<12 else 2)
             self.assertIn(f'Страница {page+1}/13',text)
-            self.assertTrue(all(len(row)<=2 for row in markup.inline_keyboard[:2]))
+            self.assertTrue(all(len(row)<=2 for row in markup.inline_keyboard if any(':hero.' in b.callback_data for b in row)))
+            self.assertEqual(len(markup.inline_keyboard[-2]),3)
         self.assertTrue(any('Житель 50' in b.text for b in people))
 
     def test_worker_transfers_remove_job_and_eviction_buttons(self):

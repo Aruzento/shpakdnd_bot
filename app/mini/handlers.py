@@ -75,15 +75,17 @@ def _player_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 
 SUBMENUS={
     'adventures': ('⚔️ Приключения', [('🔥 Босс','boss'),('🏰 Испытания','tower'),('⚔️ Ежедневный бой','daily'),('⚔️ Дуэли','duels')]),
-    'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('📚 Коллекция','collection'),('🛡 Экипировка','equipment'),('🎒 Инвентарь','inventory'),('✨ Мифические герои','mythic')]),
+    'heroarea': ('🧙 Герой', [('👤 Профиль','character'),('🎒 Инвентарь','inventory'),('🛡 Экипировка','equipment'),('📚 Коллекция','collection')]),
     'fair': ('🎪 Ярмарка', [('🛒 Магазин','shop'),('🎪 События','events'),('🏘 Моя деревня','village')]),
-    'more': ('📖 Ещё', [('📖 Правила','rules'),('🔄 Обновить','home')]),
+    'more': ('📖 Ещё', [('📖 Правила','rules'),('🔄 Обновить','home'),('✨ Мифические герои','mythic')]),
 }
 
 
 def submenu(action,world,user):
     title,entries=SUBMENUS[action]
     rows=[[InlineKeyboardButton(text=label,callback_data=_personal_callback(target,world,user))] for label,target in entries]
+    if action in ('adventures','heroarea'):
+        rows=[sum(rows[n:n+2],[]) for n in range(0,len(rows),2)]
     rows.append([InlineKeyboardButton(text='⬅️ Назад',callback_data=_personal_callback('home',world,user))])
     return title,InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -115,7 +117,7 @@ def _create_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 
 def _home_content(player: dict, active: dict | None) -> str:
     if active is None:
-        lines = ["🎴 Активный герой пока не выбран.", "Выбери героя в коллекции."]
+        lines = ["🎴 Активный герой пока не выбран.", "Призови своего первого героя кнопкой «Призвать героя»."]
     else:
         lines = [
             hero_heading(active), "", *hero_trait_lines(active),
@@ -203,6 +205,49 @@ async def _send_private(
         return await message.bot.send_message(**kwargs)
     except TelegramBadRequest:
         return None
+
+
+def character_menu(world,user,hero=None):
+    from app.mini.hero_upgrades import hero_upgrade_state
+    rows=[]
+    if hero:
+        upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
+        if not upgrade['at_max']:
+            rows.append([InlineKeyboardButton(text=f"⬆️ Улучшить · {upgrade['upgrade_cost']} 🧩",callback_data=f"mini:charup:{world}:{user}:{hero['id']}.{hero.get('stars',0)}")])
+    rows.append([InlineKeyboardButton(text='🏠 Главная',callback_data=_personal_callback('home',world,user)),InlineKeyboardButton(text='⬅️ Назад',callback_data=_personal_callback('heroarea',world,user))])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data.startswith('mini:charup:'))
+async def character_upgrade(callback):
+    from app.mini.ui.context import load_extended_context
+    from app.mini.hero_upgrades import upgrade_hero
+    context=await load_extended_context(callback,'charup')
+    if not context:return
+    world,player,tail=context
+    try:
+        hero_id,stars=map(int,tail.split('.'))
+        active=get_active_hero(player['id'])
+        if not active or active['id']!=hero_id:raise ValueError('Активный герой изменился.')
+        upgrade_hero(player['id'],hero_id,expected_stars=stars)
+        active=get_active_hero(player['id'])
+    except ValueError as error:await callback.answer(str(error),show_alert=True);return
+    await callback.answer('Герой улучшен')
+    await send_hero_card(callback,world,active,hero_caption(active),character_menu(world['id'],callback.from_user.id,active))
+
+
+@router.message(F.chat.type == 'private', F.text, ~F.text.startswith('/'))
+async def registration_name(message):
+    from app.mini import registration
+    from aiogram.dispatcher.event.bases import SkipHandler
+    token=registration.pending(message.from_user.id)
+    if not token:raise SkipHandler()
+    try:
+        world,player,created=registration.complete(token,message.from_user.id,_username_from_user(message.from_user),message.text)
+    except ValueError as error:await message.answer(str(error));return
+    prefix=('✅ Персонаж создан! Теперь призови своего первого героя!\n\n'+STARTER_MESSAGE+'\n\n') if created and player['onboarding_granted'] else ''
+    await message.answer(prefix+_home_content(player,get_active_hero(player['id'])),reply_markup=_player_menu(world['id'],message.from_user.id))
+    await publish_pending_notifications(message.bot,player_id=player['id'])
 
 
 @router.message(Command("minipanel"))
@@ -300,6 +345,8 @@ async def launch_callback(callback: CallbackQuery):
         )
         return
 
+    from app.mini.ui.context import valid_world_callback
+    if not await valid_world_callback(callback,world):return
     player = get_mini_player(world_id, callback.from_user.id)
 
     if player is None:
@@ -429,11 +476,8 @@ async def minicreate_handler(message: Message):
 
     await publish_pending_notifications(message.bot, player_id=player['id'])
     gift = STARTER_MESSAGE if player.get('onboarding_granted') else 'Mini-персонаж восстановлен. Стартовый подарок уже выдавался.'
-    markup=InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='🎴 Перейти в Гачу',callback_data=_personal_callback('gacha',world['id'],message.from_user.id))],
-        [InlineKeyboardButton(text='🚀 Быстрый старт',callback_data=f"mini:rulespage:{world['id']}:{message.from_user.id}:start")],
-        [InlineKeyboardButton(text='Назад',callback_data=_personal_callback('home',world['id'],message.from_user.id))]])
-    await _send_private(message, "✅ Mini-персонаж создан!\n\n" + gift, markup)
+    await _send_private(message, "✅ Персонаж создан! Теперь призови своего первого героя!\n\n" + gift + "\n\n" + _home_content(player, get_active_hero(player['id'])), _player_menu(world['id'],message.from_user.id),hero=get_active_hero(player['id']))
+
 
 
 @router.callback_query(F.data.startswith("mini:create_help:"))
@@ -453,15 +497,15 @@ async def create_help_callback(callback: CallbackQuery):
         await callback.answer("D&D Mini недоступен.", show_alert=True)
         return
 
+    from app.mini import registration
+    from app.mini.ui.context import valid_world_callback
+    if not await valid_world_callback(callback,world):return
+    token=registration.begin(world_id,owner_id)
+    bot_user=await callback.bot.get_me()
+    markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='👤 Ввести имя лично',url=f'https://t.me/{bot_user.username}?start=mini_reg_{token}')]])
     await callback.answer()
-    await _edit_private(
-        callback,
-        "👤 Создание Mini-персонажа\n\n"
-        "Напиши личную команду:\n"
-        '/minicreate "Дед Максим"\n\n'
-        "Класс и раса позже будут определяться активным героем из коллекции.",
-        back_menu(world_id, owner_id),
-    )
+    await _edit_private(callback,'👤 Создание персонажа\n\nОткрой личный чат кнопкой и введи имя.\nРезерв: /minicreate "Имя персонажа"',markup)
+
 
 
 @router.callback_query(F.data.startswith("mini:home:"))
@@ -484,7 +528,7 @@ async def character_callback(callback: CallbackQuery):
     world, player = context
     active = get_active_hero(player["id"])
     text = hero_caption(active) if active is not None else "🎴 Активный герой пока не выбран."
-    markup = back_menu(world["id"], callback.from_user.id,"heroarea")
+    markup = character_menu(world["id"], callback.from_user.id,active)
 
     await callback.answer()
     if active is not None:
@@ -505,9 +549,9 @@ async def character_callback(callback: CallbackQuery):
 
 from app.mini.ui.hero_cards import hero_caption as _hero_caption
 
-from app.mini.ui import activities, heroes, inventory, shop, hero_selector
+from app.mini.ui import activities, heroes, inventory, shop, hero_selector, gacha_extra
 
-for screen in (inventory, shop, heroes, activities, hero_selector):
+for screen in (inventory, shop, heroes, activities, hero_selector, gacha_extra):
     router.include_router(screen.router)
 
 from app.mini.tower.handlers import router as tower_router

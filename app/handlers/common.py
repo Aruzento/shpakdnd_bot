@@ -17,6 +17,14 @@ router = Router(name="common")
 
 @router.message(Command("start"))
 async def start_handler(message: Message):
+    if message.chat.type=='private' and message.text and ' mini_reg_' in message.text:
+        from app.mini import registration
+        token=message.text.split(maxsplit=1)[1].removeprefix('mini_reg_')
+        try:
+            world=registration.activate(token,message.from_user.id)
+        except ValueError as error:await message.answer(str(error));return
+        await message.answer(f"👤 {world['name']}\nВведи имя персонажа (1–64 символа). Оно будет обработано только в этом личном чате.")
+        return
     await message.answer(
         "🎲 Шпаковский ДНДнарь\n\n"
         "⏱ Таймер:\n"

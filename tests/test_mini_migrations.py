@@ -71,6 +71,13 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
                 VALUES(?,1,?,2,'eq_helmet_010')""",(player,won))
             conn.execute("INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)",(player,))
+            conn.execute("INSERT INTO mini_gacha_batches(player_id,operation_key,cost_coins,result_json) VALUES(?,'fixture',100,'{}')",(player,))
+            conn.execute("INSERT INTO mini_registration_sessions(token,world_id,telegram_user_id,expires_at,active) VALUES('fixture',?,555,2000000000,1)",(world,))
+            conn.execute("INSERT INTO mini_public_shares VALUES(?,'fixture')",(player,))
+            lost=conn.execute("""INSERT INTO mini_tower_attempts(player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,shields,status)
+                VALUES(?,2,?,?,?,10,4,0,'lost')""",(player,hero,snapshot,json.dumps(get_floor(2)))).lastrowid
+            active=conn.execute("SELECT id FROM mini_tower_attempts WHERE player_id=? AND status='active'",(player,)).fetchone()[0]
+            conn.execute('INSERT INTO mini_tower_retries VALUES(?,?)',(lost,active))
             conn.execute("INSERT INTO mini_gacha_pity(player_id,uncommon_count,rare_count,legendary_count) VALUES(?,10,24,84)",(player,))
             conn.execute("""INSERT INTO mini_superadmin_audit
                 (admin_user_id,action,world_id,target_user_id,player_id,resource,operation_key)
@@ -78,7 +85,9 @@ class MiniMigrationTests(unittest.TestCase):
         from app.mini.favorites import add_favorite
         add_favorite(player,hero,self.db)
         from app.mini.tower.service import select_hero
-        select_hero(player,hero,self.db)
+        # Seed the persisted selection alongside an already active legacy snapshot.
+        with connect_mini_db(self.db) as conn:
+            conn.execute('INSERT INTO mini_tower_selections(player_id,hero_id) VALUES(?,?)',(player,hero))
         from app.mini.titles.service import issue_title
         issue_title(player,'Хранитель',86400,555,'fixture:title',self.db,now=1000)
         with connect_mini_db(self.db) as conn:

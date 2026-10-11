@@ -9,6 +9,11 @@ from app.mini.presentation import hero_heading, hero_trait_lines
 
 HERO_PAGE_SIZE = 8
 
+
+def participants_menu(world_id,user_id,boss_id,*,has_player=True):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='⬅️ К боссу',callback_data=
+        f'mini:boss:{world_id}:{user_id}' if has_player else f'miniboss:list:{world_id}:{boss_id}')]])
+
 def format_private_boss(
     boss: dict,
     participants: list[dict],
@@ -126,7 +131,7 @@ def boss_private_menu(
 
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ На главную",
+            text="⬅️ Назад",
             callback_data=f"mini:adventures:{world_id}:{user_id}",
         )
     ])
@@ -149,7 +154,7 @@ def no_boss_menu(
         ])
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ На главную",
+            text="⬅️ Назад",
             callback_data=f"mini:adventures:{world_id}:{user_id}",
         )
     ])

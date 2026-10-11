@@ -272,18 +272,8 @@ async def boss_list_callback(callback: CallbackQuery):
     )
 
     player = _load_player(world_id, callback)
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[[
-            InlineKeyboardButton(
-                text="⬅️ К боссу",
-                callback_data=(
-                    f"mini:boss:{world_id}:{callback.from_user.id}"
-                    if player is not None
-                    else f"miniboss:list:{world_id}:{boss_id}"
-                ),
-            )
-        ]]
-    )
+    from app.mini.boss.presentation import participants_menu
+    markup=participants_menu(world_id,callback.from_user.id,boss_id,has_player=player is not None)
 
     await callback.answer()
     await _send_private(callback, world, text, markup)

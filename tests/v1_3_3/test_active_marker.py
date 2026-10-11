@@ -12,7 +12,7 @@ class ActiveMarkerTests(MiniCase):
 
     def hero_buttons(self,mode='c',view='home'):
         heroes=get_player_heroes(self.pid,self.db,sync_catalog=False)
-        _,markup=render_selector(heroes,get_favorites(self.pid,self.db),mode,self.world['id'],900123,1 if mode!='c' else 0,view=view)
+        _,markup=render_selector(heroes,get_favorites(self.pid,self.db),mode,self.world['id'],900123,1 if mode!='c' else 0,view='favorites' if mode=='c' and view=='home' else view)
         return [b for row in markup.inline_keyboard for b in row if b.callback_data.startswith(('mini:hero:','miniboss:hero:')) or ':pick.' in b.callback_data]
 
     def test_active_marker_in_favorites_all_and_filter_results(self):
@@ -20,14 +20,14 @@ class ActiveMarkerTests(MiniCase):
             buttons=self.hero_buttons(view=view)
             self.assertEqual(sum(b.text.endswith(' ✅') for b in buttons),1)
             active=next(b for b in buttons if b.text.endswith(' ✅'))
-            self.assertTrue(active.callback_data.endswith(':'+str(self.second)))
+            self.assertTrue(active.callback_data.split('~')[0].endswith(':'+str(self.second)))
             self.assertTrue(all(len(b.callback_data.encode())<=64 for b in buttons))
 
     def test_marker_moves_immediately_after_global_selection(self):
         set_active_hero(self.pid,self.first,self.db)
         for view in ('home','all','results'):
             active=[b for b in self.hero_buttons(view=view) if b.text.endswith(' ✅')]
-            self.assertEqual(len(active),1);self.assertTrue(active[0].callback_data.endswith(':'+str(self.first)))
+            self.assertEqual(len(active),1);self.assertTrue(active[0].callback_data.split('~')[0].endswith(':'+str(self.first)))
         self.assertEqual(get_favorites(self.pid,self.db),[self.first,self.second])
 
     def test_tower_choice_and_boss_do_not_receive_global_marker(self):
@@ -51,5 +51,5 @@ class ActiveMarkerTests(MiniCase):
         _,markup=render_selector(heroes,get_favorites(self.pid,self.db),'c',1,900123,view='results',token=token)
         buttons=[b for row in markup.inline_keyboard for b in row if b.callback_data.startswith('mini:hero:')]
         self.assertEqual(sum(b.text.endswith(' ✅') for b in buttons),1)
-        self.assertTrue(any(b.callback_data.endswith(':'+str(active['id'])) and b.text.endswith(' ✅') for b in buttons))
+        self.assertTrue(any(b.callback_data.split('~')[0].endswith(':'+str(active['id'])) and b.text.endswith(' ✅') for b in buttons))
         self.assertIn(active['id'],get_favorites(self.pid,self.db))

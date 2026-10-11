@@ -19,7 +19,7 @@ def screen(player_id,world_id,user_id,page=0):
     if page:nav.append(Button(text='←',callback_data=f'mini:myth:{world_id}:{user_id}:page.{page-1}'))
     if page+1<pages:nav.append(Button(text='→',callback_data=f'mini:myth:{world_id}:{user_id}:page.{page+1}'))
     if nav:rows.append(nav)
-    rows.append([Button(text='Назад',callback_data=personal_callback('heroarea',world_id,user_id))])
+    rows.append([Button(text='Назад',callback_data=personal_callback('more',world_id,user_id))])
     return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
 
 

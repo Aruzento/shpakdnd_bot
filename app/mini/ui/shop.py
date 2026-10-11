@@ -116,7 +116,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ На главную",
+                    text="⬅️ К ярмарке",
                     callback_data=_personal_callback("fair", world_id, user_id),
                 )
             ],

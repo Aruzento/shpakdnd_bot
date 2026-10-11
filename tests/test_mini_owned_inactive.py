@@ -119,7 +119,7 @@ class OwnedInactiveTests(OwnedInactiveCase):
             for view in ('all', 'home', 'results'):
                 with self.subTest(mode=mode, view=view):
                     _, markup = render_selector(heroes, [self.eid, self.villager['id']], mode,
-                                                self.world['id'], 900123, 1, view=view)
+                                                self.world['id'], 900123, 1, view='favorites' if mode=='c' and view=='home' else view)
                     labels = [b.text for b in buttons(markup)]
                     self.assertTrue(any(self.engineer['name'][:27] in label for label in labels))
                     self.assertTrue(any(self.villager['name'][:27] in label for label in labels))
@@ -155,7 +155,7 @@ class OwnedInactiveTests(OwnedInactiveCase):
         self.assertEqual(get_active_hero(self.pid, self.db)['code'], ENGINEER)
         heroes = get_player_heroes(self.pid, self.db)
         for mode in ('c', 'b', 't'):
-            _, markup = render_selector(heroes, [self.eid], mode, self.world['id'], 900123, 1)
+            _, markup = render_selector(heroes, [self.eid], mode, self.world['id'], 900123, 1,view='favorites' if mode=='c' else 'home')
             label = markup.inline_keyboard[0][0].text
             self.assertEqual(label.endswith(' ✅'), mode == 'c')
         self.assertEqual(get_player_hero(self.pid, self.eid, self.db)['active'], 0)
@@ -174,7 +174,7 @@ class OwnedInactiveTests(OwnedInactiveCase):
         for field in FIELDS + ('passive_key', 'passive_text'):
             self.assertEqual(snapshot[field], self.engineer[field])
         set_active_hero(self.pid, self.villager['id'], self.db)
-        select_hero(self.pid, self.villager['id'], self.db)
+        with self.assertRaises(ValueError):select_hero(self.pid, self.villager['id'], self.db)
         self.sql('UPDATE mini_player_heroes SET stars=3 WHERE player_id=? AND hero_id=?', (self.pid, self.eid))
         init_mini_db(self.db)
         self.assertEqual(get_state(self.pid, self.db)['attempt']['hero_json'], attempt['hero_json'])
@@ -265,6 +265,8 @@ class OwnedInactiveUITests(OwnedInactiveCase, unittest.IsolatedAsyncioTestCase):
 
     def services(self):
         stack = ExitStack()
+        from app.mini.sharing import claim
+        stack.enter_context(patch.object(hero_ui,'claim_public_share',side_effect=lambda pid,key:claim(pid,key,self.db)))
         stack.enter_context(patch('app.mini.ui.heroes._load_extended_context',
             side_effect=lambda cb, prefix: (self.world, self.player, cb.data.split(':', 4)[4])))
         for name in ('get_favorites', 'add_favorite', 'remove_favorite', 'replace_favorite', 'is_favorite'):

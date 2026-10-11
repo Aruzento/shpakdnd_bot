@@ -19,6 +19,10 @@ router=Router(name='mini_duels')
 SIZE=8
 
 
+def public_challenge_menu(world_id,defender_user_id):
+    return InlineKeyboardMarkup(inline_keyboard=[[Button(text='Открыть вызов',callback_data=f'mini:duel:{world_id}:{defender_user_id}:home')]])
+
+
 def public_challenge_text(challenger, defender, duel_id):
     username = str(defender.get('username') or '').strip().lstrip('@')
     if re.fullmatch(r'[A-Za-z0-9_]+', username):
@@ -102,7 +106,7 @@ async def action(callback):
                 try:
                     await callback.bot.send_message(chat_id=world['chat_id'],message_thread_id=world['thread_id'] or None,
                         text=public_challenge_text(player, defender, result['id']), parse_mode='HTML',
-                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[Button(text='Открыть вызов',callback_data=f'mini:duel:{world["id"]}:{owner}:home')]]))
+                        reply_markup=public_challenge_menu(world['id'],owner))
                 except TelegramAPIError:
                     # Escrow persists; the defender can open Duels and the challenger can cancel.
                     answered=True

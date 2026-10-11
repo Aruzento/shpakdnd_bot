@@ -87,51 +87,38 @@ def hero_card_menu(
     collection: bool = False,
     favorite: bool = False,
 ) -> InlineKeyboardMarkup:
-    token=secrets.token_hex(4)
-    rows = []
-    upgrade = hero.get("upgrade") or hero_upgrade_state(hero)
-
-    if not upgrade["at_max"]:
-        rows.append([
-            InlineKeyboardButton(
-                text=(
-                    (f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩" if collection
-                     else f"⬆️ До ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩")
-                ),
-                callback_data=(
-                    f"mini:heroupgrade:{world_id}:{user_id}:{hero['id']}.{int(hero.get('stars',0))}{'.c' if collection else ''}"
-                ),
-            )
-        ])
-
-    if not int(hero.get("is_active", 0)):
-        rows.append([InlineKeyboardButton(text='✅ Сделать активным',callback_data=f"mini:heroactive:{world_id}:{user_id}:{hero['id']}{'.c' if collection else ''}")])
+    token=secrets.token_hex(6)
+    origin=hero.get('origin','')
+    def b(label,action,tail=''):
+        data=f'mini:{action}:{world_id}:{user_id}'+(':'+tail if tail else '')
+        if len(data.encode())>64:raise ValueError('Кнопка слишком длинная.')
+        return InlineKeyboardButton(text=label,callback_data=data)
+    active=[]
+    if not int(hero.get('is_active',0)):active.append(b('✅ Сделать активным','heroactive',f"{hero['id']}"+('.c' if collection else '')+origin))
+    if allow_share:active.append(b('📣 Похвастаться','heroshare',f"{hero['id']}~{token}"))
+    rows=[]
     if collection:
-        rows.append([InlineKeyboardButton(
-            text='☆ Убрать из избранного' if favorite else '⭐ Сделать избранным',
-            callback_data=f"mini:favorite:{world_id}:{user_id}:{'remove' if favorite else 'add'}.{hero['id']}")])
+        upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
+        if not upgrade['at_max']:
+            rows.append([b(f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩",'heroupgrade',f"{hero['id']}.{hero.get('stars',0)}.c"+origin)])
+        if active:rows.append(active)
+        rows.append([b('☆ Убрать из избранного' if favorite else '⭐ Сделать избранным','favorite',f"{'remove' if favorite else 'add'}.{hero['id']}"+origin)])
+        if int(hero.get('shards',0))>0:rows.append([b('💱 Продать осколки','heroshards',str(hero['id'])+origin)])
+        rows.append([b('📚 Коллекция','collection')])
+        if origin:
+            _,route,filter_token=origin.split('~')
+            view={'a':'all','r':'results','f':'favorites'}[route[0]]
+            rows.append([b('⬅️ Назад','select',f'c0.{view}.{int(route[1:])}.{filter_token}')])
+        else:rows.append([b('⬅️ Назад','collection')])
     else:
-        rows.append([InlineKeyboardButton(text=f"🪙 Ещё призыв · {state['pull_price']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:coins.{token}')])
-        if int(state.get('tickets',0))>0:
-            rows.append([InlineKeyboardButton(text=f"🎟 Билет · {state['tickets']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:ticket.{token}')])
-
-    if allow_share:
-        rows.append([
-            InlineKeyboardButton(
-                text="📣 Похвастаться",
-                callback_data=(
-                    f"mini:heroshare:{world_id}:{user_id}:{hero['id']}"
-                ),
-            )
-        ])
-
-    rows.append([
-        InlineKeyboardButton(
-            text="📚 Коллекция" if collection else "🎴 Открыть коллекцию",
-            callback_data=f"mini:collectionopen:{world_id}:{user_id}:0",
-        )
-    ])
+        if active:rows.append(active)
+        rows.append([b('🪙 Ещё призыв','gacharepeat','coins.'+token),b('✨ Ещё 10','gachabatch',token)])
+        rows[-1]=[button.model_copy(update={'style':'success'}) for button in rows[-1]]
+        rows.append([b('🏠 Главная','home'),b('📚 Коллекция','collection'),b('⬅️ Назад','gacha')])
+        if state.get('back_callback'):
+            rows.append([InlineKeyboardButton(text='⬅️ К десяти результатам',callback_data=state['back_callback'])])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 async def send_hero_card(
@@ -206,6 +193,7 @@ async def show_gacha_pull_result(
     result: dict,
 ):
     state = get_gacha_state(player["id"])
+    if result.get("back_callback"):state["back_callback"]=result["back_callback"]
     hero = get_player_hero(player["id"], result["id"])
     if hero is None:
         hero = result

@@ -3,6 +3,22 @@ from app.mini.players import get_mini_player, touch_mini_player
 from app.mini.worlds import get_mini_world_by_id
 
 
+async def valid_world_callback(callback,world):
+    from app.topic_guard import is_mini_topic
+    if not is_mini_topic(world['chat_id'],world.get('thread_id',0)):
+        await callback.answer('Эта тема больше не работает в режиме Mini.',show_alert=True);return False
+    message=getattr(callback,'message',None)
+    if message is not None:
+        chat=getattr(message,'chat',None)
+        chat_id=getattr(chat,'id',None)
+        if isinstance(chat_id,int) and chat_id not in (world['chat_id'],callback.from_user.id):
+            await callback.answer('Кнопка из другого мира.',show_alert=True);return False
+        thread=getattr(message,'message_thread_id',None)
+        if chat_id==world['chat_id'] and isinstance(thread,(int,type(None))) and (thread or 0)!=(world.get('thread_id') or 0):
+            await callback.answer('Кнопка из другой темы.',show_alert=True);return False
+    return True
+
+
 def username_from_user(user) -> str:
     if user is None or not user.username:
         return ""
@@ -47,6 +63,7 @@ async def load_extended_context(
         await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
         return None
 
+    if not await valid_world_callback(callback,world):return None
     player = get_mini_player(world_id, owner_id)
     if player is None:
         await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
@@ -98,6 +115,7 @@ async def load_personal_context(
         )
         return None
 
+    if not await valid_world_callback(callback,world):return None
     player = get_mini_player(world_id, owner_id)
     if player is None:
         await callback.answer(
@@ -150,6 +168,7 @@ async def shop_context(
     if not world or not world["enabled"]:
         await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
         return None
+    if not await valid_world_callback(callback,world):return None
     player = get_mini_player(world_id, owner_id)
     if player is None:
         await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)

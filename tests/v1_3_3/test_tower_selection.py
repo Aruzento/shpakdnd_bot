@@ -47,10 +47,10 @@ class TowerSelectionTests(MiniCase):
     def test_selection_change_never_rewrites_active_snapshot(self):
         select_hero(self.pid,self.first,self.db)
         a=start_selected_attempt(self.pid,1,self.first,self.db)
-        select_hero(self.pid,self.second,self.db)
+        with self.assertRaises(ValueError):select_hero(self.pid,self.second,self.db)
         init_mini_db(self.db)
         state=get_state(self.pid,self.db)
-        self.assertEqual(state['selected_hero']['id'],self.second)
+        self.assertEqual(state['selected_hero']['id'],self.first)
         self.assertEqual(state['attempt']['hero_json'],a['hero_json'])
         self.assertEqual(state['attempt']['runtime_json'],a['runtime_json'])
         self.assertEqual(state['attempt']['hero_id'],self.first)
@@ -114,8 +114,8 @@ class TowerSelectionUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
     async def test_no_saved_hero_opens_shared_selector_and_pick_saves(self):
         cb=await self.invoke()
         sent=cb.bot.send_message.call_args.kwargs
-        self.assertIn('⭐ Избранные',sent['text'])
-        self.assertIn('👥 Показать всех',[b.text for r in sent['reply_markup'].inline_keyboard for b in r])
+        self.assertIn('🎴 Выбрать героя',[b.text for row in sent['reply_markup'].inline_keyboard for b in row])
+        self.assertIn('🛡 Экипировка',[b.text for r in sent['reply_markup'].inline_keyboard for b in r])
         selected=await self.invoke(f'pick.1.{self.hero_id}')
         self.assertEqual(get_state(self.pid,self.db)['selected_hero']['id'],self.hero_id)
         self.assertIn('Текущий герой:',selected.bot.send_message.call_args.kwargs['text'])
@@ -128,11 +128,11 @@ class TowerSelectionUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
         cb=await self.invoke()
         sent=cb.bot.send_message.call_args.kwargs
         labels=[b.text for r in sent['reply_markup'].inline_keyboard for b in r]
-        self.assertIn('⚔️ Начать бой',labels);self.assertIn('🔄 Сменить героя',labels)
+        self.assertIn('⚔️ Начать бой',labels);self.assertIn('🎴 Выбрать героя',labels)
         self.assertNotIn('👥 Показать всех',labels)
         self.assertIn(f'start.2.{self.hero_id}',str(sent['reply_markup']))
         change=await self.invoke('heroes.2.0')
-        self.assertIn('⭐ Избранные',change.bot.send_message.call_args.kwargs['text'])
+        self.assertIn('Выбери редкость',change.bot.send_message.call_args.kwargs['text'])
 
     async def test_gacha_inactive_saved_hero_still_offers_start(self):
         select_hero(self.pid,self.hero_id,self.db)

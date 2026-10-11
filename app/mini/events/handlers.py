@@ -61,6 +61,7 @@ def _screen(world_id: int, user_id: int, player: dict, screen: str,
                 [button("⬅️ Назад", "events")]]
     else:
         raise EventError("Неизвестный экран.")
+    if screen=='rps':rows.append([button('⬅️ Назад','events')])
     text += "\n\n" + _balance(player)
     if notice:
         text += "\n\n" + notice
@@ -112,6 +113,8 @@ def _session_screen(world_id: int, user_id: int, player: dict,
                     "🧩 Получено: 3 осколка")
         rows = [[button("🔁 Ещё раз — 5 монет", f"again.{sid}")],
                 [button("🎪 К событиям", "events")]]
+    if session['status']=='active' or session['game_type']=='rps':
+        rows.append([InlineKeyboardButton(text='⬅️ К ярмарке',callback_data=personal_callback('fair',world_id,user_id))])
     return text + "\n\n" + _balance(player), InlineKeyboardMarkup(inline_keyboard=rows)
 
 

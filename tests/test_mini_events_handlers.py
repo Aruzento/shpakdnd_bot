@@ -48,19 +48,19 @@ class EventMenuTests(unittest.TestCase):
         self.assertTrue(all(b.style is None for i, row in enumerate(menu.inline_keyboard)
                             if i != 1 for b in row))
 
-    def test_bets_have_exit_active_round_has_no_exit_results_have_two_buttons(self):
+    def test_bets_active_round_and_results_have_safe_exit(self):
         player = {"coins": 50, "shards": 2}
         _, bets = ui._screen(1, 101, player, "bets")
         self.assertEqual([b.text for r in bets.inline_keyboard for b in r],
                          ["🪙 1", "🪙 5", "🪙 10", "⬅️ Выйти"])
         session = {"id": 123, "stake": 5, "status": "active", "game_type": "rps", "payload": {}}
         _, active = ui._session_screen(1, 101, player, session)
-        self.assertEqual([b.text for r in active.inline_keyboard for b in r], list(ui.RPS_LABELS.values()))
+        self.assertEqual([b.text for r in active.inline_keyboard for b in r], list(ui.RPS_LABELS.values())+["⬅️ К ярмарке"])
         session.update(status="resolved", payload={"choice": "saint", "bot_choice": "demon", "outcome": "win"})
         text, result = ui._session_screen(1, 101, player, session)
         self.assertIn("+5 монет", text)
         self.assertEqual([b.text for r in result.inline_keyboard for b in r],
-                         ["🔁 Ещё раз!", "💰 Поменять ставку"])
+                         ["🔁 Ещё раз!", "💰 Поменять ставку", "⬅️ К ярмарке"])
         self.assertIn("🪙 50 монет • 🧩 2 осколков", text)
 
     def test_every_labyrinth_screen_hides_sequence_and_shows_progress_or_resources(self):
