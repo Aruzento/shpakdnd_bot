@@ -1,3 +1,4 @@
+from app.mini.ui.state import legacy_operation
 from app.mini.ui.context import (
     personal_callback as _personal_callback,
     load_personal_context as _load_personal_context,
@@ -117,7 +118,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
             [
                 InlineKeyboardButton(
                     text="⬅️ На главную",
-                    callback_data=_personal_callback("fair", world_id, user_id),
+                    callback_data=_personal_callback("home", world_id, user_id),
                 )
             ],
         ]
@@ -245,7 +246,7 @@ async def shop_buy_callback(callback: CallbackQuery):
             player["id"],
             world["id"],
             offer_id,
-            operation_key="shop:"+offer_id_text if "." in offer_id_text else "legacy-shop:"+callback.id,
+            operation_key="shop:"+offer_id_text if "." in offer_id_text else legacy_operation(callback,"legacy-shop:"+offer_id_text),
         )
     except ShopInsufficientFunds as error:
         await callback.answer(str(error), show_alert=True)

@@ -70,7 +70,10 @@ async def boss_hit_callback(callback: CallbackQuery):
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or boss is None or int(boss["world_id"]) != world_id:

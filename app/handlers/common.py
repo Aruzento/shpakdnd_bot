@@ -1,7 +1,7 @@
 import secrets
 import re
 
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
@@ -13,6 +13,12 @@ from app.context import (
 
 
 router = Router(name="common")
+
+
+@router.message(Command("start"), F.text.regexp(r"^/start(?:@\w+)?\s+mini_reg_"))
+async def mini_registration_start(message: Message):
+    from app.mini.ui.registration import start_private
+    await start_private(message)
 
 
 @router.message(Command("start"))

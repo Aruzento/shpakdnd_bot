@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch, sentinel
 
 os.environ.setdefault("BOT_TOKEN", "test-token")
 
+from app.mini.ui.hero_selector import render_selector
+from app.mini.ui.state import legacy_operation
 from app.mini.presentation import rarity_emoji
 from app.mini.ui.hero_cards import hero_caption
 from app.mini.ui.heroes import _collection_menu, gacha_pull_callback, gacha_repeat_callback
@@ -40,7 +42,7 @@ class RarityPresentationTests(unittest.TestCase):
         for rarity, emoji in EXPECTED.items():
             with self.subTest(rarity=rarity):
                 hero = {"id": 11, "name": "Герой", "rarity": rarity}
-                menu = _collection_menu(1, 2, {"heroes": [hero],"favorites":[11]})
+                menu = render_selector([hero],[11],'c',1,2)[1]
                 label = menu.inline_keyboard[0][0].text
                 self.assertEqual(label, f"{emoji} Герой ★0")
                 self.assertTrue(hero_caption(hero).startswith(f"{emoji} Герой • "))
@@ -72,7 +74,7 @@ class GachaResultRouteTests(unittest.IsolatedAsyncioTestCase):
                             patch("app.mini.ui.hero_cards.send_hero_card", new_callable=AsyncMock) as send,
                         ):
                             await handler(callback)
-                        service.assert_called_once_with(2, payment=payment, operation_key="legacy-gacha:legacy-button")
+                        service.assert_called_once_with(2, payment=payment, operation_key=legacy_operation(callback,"legacy-gacha:"+payment))
                         send.assert_awaited_once()
                         heading = send.call_args.args[3].splitlines()[0]
                         self.assertTrue(heading.startswith("🟣 Герой • "))

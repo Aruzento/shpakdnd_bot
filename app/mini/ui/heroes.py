@@ -44,16 +44,19 @@ from app.mini.ui.hero_cards import (
 from app.mini.favorites import get_favorites,add_favorite,remove_favorite,replace_favorite,is_favorite
 from app.mini.ui.hero_selector import render_selector
 
+from app.mini.ui.state import split_context, restore, legacy_operation, claim_publication
+
 router = Router(name="mini_heroes")
 
-COLLECTION_PAGE_SIZE = 6
+COLLECTION_PAGE_SIZE = 4
 def _collection_menu(
     world_id: int,
     user_id: int,
     summary: dict,
     page: int = 0,
+    *, view: str = 'collection',
 ) -> InlineKeyboardMarkup:
-    return render_selector(summary['heroes'],summary.get('favorites',[]),'c',world_id,user_id)[1]
+    return render_selector(summary['heroes'],summary.get('favorites',[]),'c',world_id,user_id,view=view,page=page)[1]
 
 
 def _format_collection(world: dict, player: dict, summary: dict) -> str:
@@ -66,8 +69,7 @@ def _format_collection(world: dict, player: dict, summary: dict) -> str:
         f"⭐ Активный герой: {active_text}\n"
         f"🪙 Монеты: {player['coins']}\n"
         f"🧩 Осколки: {player['shards']}\n\n"
-        + "⭐ Избранные\n"
-        + ("Выбери героя, чтобы открыть его карточку." if summary.get('favorites') else "Пока никого нет.")
+        + "Открой избранных, всех героев или поиск."
     )
 
 
@@ -78,32 +80,18 @@ def _gacha_menu(
     state: dict,
 ) -> InlineKeyboardMarkup:
     token=secrets.token_hex(4)
-    rows = [[
-        InlineKeyboardButton(
-            text=f"🪙 Призвать за {state['pull_price']}",
-            callback_data=f"mini:gachapull:{world_id}:{user_id}:coins.{token}",
-        )
-    ]]
-
-    if int(state["tickets"]) > 0:
-        rows.append([
-            InlineKeyboardButton(
-                text=f"🎟 Использовать билет · {state['tickets']}",
-                callback_data=f"mini:gachapull:{world_id}:{user_id}:ticket.{token}",
-            )
-        ])
-
-    rows.extend([
-        [InlineKeyboardButton(
-            text="🎴 Коллекция",
-            callback_data=_personal_callback("collection", world_id, user_id),
-        )],
-        [InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data=_personal_callback("home", world_id, user_id),
-        )],
-    ])
+    def b(label,action,tail=None):
+        data=_personal_callback(action,world_id,user_id)+(':'+tail if tail is not None else '')
+        return InlineKeyboardButton(text=label,callback_data=data)
+    rows=[[b(f"🪙 Призвать 1 раз · {state['pull_price']}",'gachapull','coins.'+token),
+           b('✨ Призвать 10 раз','gachabatch',token)]]
+    second=[]
+    if int(state.get('tickets',0))>0:second.append(b(f"🎟 Призвать за билет · {state['tickets']}",'gachapull','ticket.'+token))
+    if state.get('coupons'):second.append(b('🎟 Использовать купон','gachacoupon'))
+    if second:rows.append(second)
+    rows.append([b('🏠 Главная','home'),b('📚 Коллекция','collection'),b('⬅️ Назад','home')])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 from app.mini.pity import format_progress
@@ -138,7 +126,10 @@ def _shard_sell_menu(
     world_id: int,
     user_id: int,
     hero: dict,
+    *, nav_token: str = '',
 ) -> InlineKeyboardMarkup:
+    token=secrets.token_hex(4)
+    suffix='~'+nav_token if nav_token else ''
     shards = int(hero.get("shards", 0))
     rows = []
 
@@ -146,28 +137,28 @@ def _shard_sell_menu(
         rows.append([
             InlineKeyboardButton(
                 text="Продать 1 → +1 🪙",
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},1",
+                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},1,{token}{suffix}",
             )
         ])
     if shards >= 10:
         rows.append([
             InlineKeyboardButton(
                 text="Продать 10 → +10 🪙",
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},10",
+                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},10,{token}{suffix}",
             )
         ])
     if shards > 0:
         rows.append([
             InlineKeyboardButton(
                 text=f"Продать все {shards} → +{shards} 🪙",
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},all",
+                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},all,{token}{suffix}",
             )
         ])
 
     rows.append([
         InlineKeyboardButton(
             text="⬅️ К герою",
-            callback_data=f"mini:hero:{world_id}:{user_id}:{hero['id']}",
+            callback_data=f"mini:hero:{world_id}:{user_id}:{hero['id']}{'.'+nav_token if nav_token else ''}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -224,7 +215,7 @@ async def collection_page_callback(callback: CallbackQuery):
         callback,
         _format_collection(world, player, summary),
         _collection_menu(
-            world["id"], callback.from_user.id, summary, page=page
+            world["id"], callback.from_user.id, summary, page=page, view="all"
         ),
     )
 
@@ -296,7 +287,7 @@ async def _handle_gacha_pull(
         return
 
     try:
-        result = perform_gacha_pull(player["id"], payment=payment, operation_key="gacha:"+payload if "." in payload else "legacy-gacha:"+callback.id)
+        result = perform_gacha_pull(player["id"], payment=payment, operation_key="gacha:"+payload if "." in payload else legacy_operation(callback,"legacy-gacha:"+payment))
     except (GachaInsufficientFunds, GachaNoTicket, GachaNoHeroes, GachaError) as error:
         await callback.answer(str(error), show_alert=True)
         return
@@ -328,7 +319,7 @@ async def hero_share_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
-        hero_id = int(hero_id_text)
+        hero_id = int(hero_id_text.split('.',1)[0])
     except ValueError:
         await callback.answer("Некорректный герой.", show_alert=True)
         return
@@ -337,6 +328,10 @@ async def hero_share_callback(callback: CallbackQuery):
     if hero is None:
         await callback.answer("Этого героя нет в коллекции.", show_alert=True)
         return
+
+    key='share:'+hero_id_text if '.' in hero_id_text else legacy_operation(callback,'share:'+str(hero_id))
+    if not claim_publication(player['id'],key):
+        await callback.answer('Этот герой уже опубликован или публикация ожидает подтверждения.');return
 
     sharer = format_player_mention(dict(player,username=_username_from_user(callback.from_user) or player.get("username")))
 
@@ -384,10 +379,12 @@ async def hero_card_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
-        hero_id = int(hero_id_text)
-    except ValueError:
-        await callback.answer("Некорректный герой.", show_alert=True)
-        return
+        parts=hero_id_text.split('.')
+        hero_id=int(parts[0]);nav_token=parts[1] if len(parts)==2 else ''
+        if len(parts)>2:raise ValueError('Некорректный герой.')
+        if nav_token:restore(player['id'],nav_token)
+    except ValueError as error:
+        await callback.answer(str(error) or 'Некорректный герой.',show_alert=True);return
 
     hero = get_player_hero(player["id"], hero_id)
     if hero is None:
@@ -402,7 +399,7 @@ async def hero_card_callback(callback: CallbackQuery):
             hero,
             hero_caption(hero,full=True),
             hero_card_menu(
-                world["id"], callback.from_user.id, hero, state, collection=True, favorite=is_favorite(player["id"],hero_id)
+                world["id"], callback.from_user.id, hero, state, collection=True, favorite=is_favorite(player["id"],hero_id), nav_token=nav_token
             ),
         )
     except TelegramAPIError as error:
@@ -421,6 +418,10 @@ async def hero_upgrade_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
+        hero_id_text,nav_token=split_context(hero_id_text)
+        if nav_token:restore(player["id"],nav_token)
+        profile=hero_id_text.endswith(".p")
+        hero_id_text=hero_id_text.removesuffix(".p")
         collection=hero_id_text.endswith(".c")
         hero_id,expected_stars = map(int,hero_id_text.removesuffix(".c").split("."))
     except ValueError:
@@ -444,7 +445,7 @@ async def hero_upgrade_callback(callback: CallbackQuery):
                 hero,
                 hero_caption(hero,full=collection),
                 hero_card_menu(
-                    world["id"], callback.from_user.id, hero, state, collection=collection, favorite=collection and is_favorite(player["id"],hero_id)
+                    world["id"], callback.from_user.id, hero, state, collection=collection, favorite=collection and is_favorite(player["id"],hero_id), nav_token=nav_token, profile=profile
                 ),
             )
         except TelegramAPIError as error:
@@ -469,6 +470,8 @@ async def hero_shards_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
+        hero_id_text,nav_token=split_context(hero_id_text)
+        if nav_token:restore(player['id'],nav_token)
         hero_id = int(hero_id_text)
     except ValueError:
         await callback.answer("Некорректный герой.", show_alert=True)
@@ -483,7 +486,7 @@ async def hero_shards_callback(callback: CallbackQuery):
         callback,
         world,
         _format_shard_sell(hero, int(player["coins"])),
-        _shard_sell_menu(world["id"], callback.from_user.id, hero),
+        _shard_sell_menu(world["id"], callback.from_user.id, hero,nav_token=nav_token),
     )
     await callback.answer()
 
@@ -496,7 +499,11 @@ async def shard_sell_callback(callback: CallbackQuery):
 
     world, player, payload = context
     try:
-        hero_id_text, quantity_text = payload.split(",", 1)
+        raw,nav_token=split_context(payload)
+        if nav_token:restore(player['id'],nav_token)
+        values=raw.split(',')
+        if len(values) not in (2,3):raise ValueError('Некорректная продажа.')
+        hero_id_text,quantity_text=values[:2]
         hero_id = int(hero_id_text)
     except (ValueError, IndexError):
         await callback.answer("Некорректная продажа.", show_alert=True)
@@ -521,7 +528,7 @@ async def shard_sell_callback(callback: CallbackQuery):
             player["id"],
             hero_id,
             quantity,
-            operation_key=callback.id,
+            operation_key='shardsell:'+raw if len(values)==3 else legacy_operation(callback,'shardsell:'+raw),
         )
     except HeroShardSellError as error:
         await callback.answer(str(error), show_alert=True)
@@ -539,7 +546,7 @@ async def shard_sell_callback(callback: CallbackQuery):
         await _edit_private(
             callback,
             _format_shard_sell(hero, int(player["coins"])),
-            _shard_sell_menu(world["id"], callback.from_user.id, hero),
+            _shard_sell_menu(world["id"], callback.from_user.id, hero,nav_token=nav_token),
         )
 
 
@@ -551,6 +558,10 @@ async def hero_active_callback(callback: CallbackQuery):
 
     world, player, hero_id_text = context
     try:
+        hero_id_text,nav_token=split_context(hero_id_text)
+        if nav_token:restore(player["id"],nav_token)
+        profile=hero_id_text.endswith(".p")
+        hero_id_text=hero_id_text.removesuffix(".p")
         collection=hero_id_text.endswith(".c")
         hero_id = int(hero_id_text.removesuffix(".c"))
     except ValueError:
@@ -575,7 +586,7 @@ async def hero_active_callback(callback: CallbackQuery):
                 hero,
                 hero_caption(hero,full=collection),
                 hero_card_menu(
-                    world["id"], callback.from_user.id, hero, state, collection=collection, favorite=collection and is_favorite(player["id"],hero_id)
+                    world["id"], callback.from_user.id, hero, state, collection=collection, favorite=collection and is_favorite(player["id"],hero_id), nav_token=nav_token, profile=profile
                 ),
             )
         except TelegramAPIError as error:
@@ -601,6 +612,8 @@ async def favorite_callback(callback):
     if context is None: return
     world,player,tail=context
     try:
+        tail,nav_token=split_context(tail)
+        if nav_token:restore(player['id'],nav_token)
         action,new_id,*old=tail.split('.')
         new_id=int(new_id)
         hero=get_player_hero(player['id'],new_id)
@@ -611,17 +624,36 @@ async def favorite_callback(callback):
                 rows=[]
                 for old_id in ids:
                     old_hero=get_player_hero(player['id'],old_id)
-                    if old_hero: rows.append([InlineKeyboardButton(text=old_hero['name'],callback_data=f"mini:favorite:{world['id']}:{callback.from_user.id}:replace.{new_id}.{old_id}")])
-                rows.append([InlineKeyboardButton(text='⬅️ Отмена',callback_data=f"mini:hero:{world['id']}:{callback.from_user.id}:{new_id}")])
+                    if old_hero:
+                        data=f"mini:favorite:{world['id']}:{callback.from_user.id}:replace.{new_id}.{old_id}{'~'+nav_token if nav_token else ''}"
+                        if len(data.encode())>64:data=data.replace(':replace.',':r.',1)
+                        if len(data.encode())>64:raise ValueError('Слишком длинная кнопка.')
+                        rows.append([InlineKeyboardButton(text=old_hero['name'],callback_data=data)])
+                rows.append([InlineKeyboardButton(text='⬅️ Отмена',callback_data=f"mini:hero:{world['id']}:{callback.from_user.id}:{new_id}{'.'+nav_token if nav_token else ''}")])
                 await callback.answer()
                 await _send_private_text_from_callback(callback,world,'⭐ Кого заменить?',InlineKeyboardMarkup(inline_keyboard=rows))
                 return
             add_favorite(player['id'],new_id)
         elif action=='remove': remove_favorite(player['id'],new_id)
-        elif action=='replace' and len(old)==1: replace_favorite(player['id'],int(old[0]),new_id)
+        elif action in ('replace','r') and len(old)==1: replace_favorite(player['id'],int(old[0]),new_id)
         else: raise ValueError('Некорректная кнопка.')
         state=get_gacha_state(player['id'])
-        await send_hero_card(callback,world,hero,hero_caption(hero,full=True),hero_card_menu(world['id'],callback.from_user.id,hero,state,collection=True,favorite=is_favorite(player['id'],new_id)))
+        await send_hero_card(callback,world,hero,hero_caption(hero,full=True),hero_card_menu(world['id'],callback.from_user.id,hero,state,collection=True,favorite=is_favorite(player['id'],new_id),nav_token=nav_token))
         await callback.answer('Избранное обновлено')
     except (ValueError,IndexError) as error:
         await callback.answer(str(error),show_alert=True)
+
+
+@router.callback_query(F.data.startswith('mini:collectionback:'))
+async def collection_back_callback(callback):
+    context=await _load_extended_context(callback,'collectionback')
+    if context is None:return
+    world,player,token=context
+    try:
+        saved=restore(player['id'],token)
+        from app.mini.heroes import get_player_heroes
+        text,markup=render_selector(get_player_heroes(player['id'],sync_catalog=False),get_favorites(player['id']),
+            'c',world['id'],callback.from_user.id,view=saved['view'],page=saved['page'],token=saved['filter'],return_token=token)
+    except ValueError as error:
+        await callback.answer(str(error),show_alert=True);return
+    await callback.answer();await _send_private_text_from_callback(callback,world,text,markup)

@@ -1,3 +1,4 @@
+from app.mini.ui.state import legacy_operation
 from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
     username_from_user as _username_from_user,
@@ -78,29 +79,13 @@ def _inventory_menu(
     user_id: int,
     goods: dict,
 ) -> InlineKeyboardMarkup:
-    rows = []
-    if goods.get("inventory") or goods.get("certificates"):
-        rows.append([
-            InlineKeyboardButton(
-                text="✨ Использовать предмет",
-                callback_data=_personal_callback("useitems", world_id, user_id),
-            )
-        ])
-    rows.append([InlineKeyboardButton(text='🛡 Экипировка в инвентаре',
-        callback_data=_personal_callback('equipment',world_id,user_id)+':inventory.0')])
-    rows.append([
-        InlineKeyboardButton(
-            text="🛒 Магазин",
-            callback_data=_personal_callback("shop", world_id, user_id),
-        )
-    ])
-    rows.append([
-        InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data=_personal_callback("heroarea", world_id, user_id),
-        )
-    ])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    def b(label,action,tail=''):
+        return InlineKeyboardButton(text=label,callback_data=_personal_callback(action,world_id,user_id)+(':'+tail if tail else ''))
+    first=[]
+    if goods.get('inventory') or goods.get('certificates'):first.append(b('✨ Использовать предмет','useitems'))
+    first.append(b('🛡 Экипировка в инвентаре','equipment','inventory.0'))
+    return InlineKeyboardMarkup(inline_keyboard=[first,[b('🛒 Магазин','shop'),b('🏠 Главная','home'),b('⬅️ Назад','heroarea')]])
+
 
 
 def _use_items_menu(
@@ -180,7 +165,7 @@ def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="⬅️ На главную",
-                    callback_data=_personal_callback("heroarea", world_id, user_id),
+                    callback_data=_personal_callback("home", world_id, user_id),
                 )
             ],
         ]
@@ -329,7 +314,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
     try:
         parts = payload.split(",")
         kind, value_text = parts[:2]
-        operation_key = "itemuse:" + payload if len(parts)==3 else callback.id
+        operation_key = "itemuse:" + payload if len(parts)==3 else legacy_operation(callback,"itemuse:"+payload)
         value = int(value_text)
     except (ValueError, IndexError):
         await callback.answer("Некорректный предмет.", show_alert=True)

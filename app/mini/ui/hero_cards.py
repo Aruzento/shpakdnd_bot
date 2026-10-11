@@ -2,6 +2,7 @@ import secrets
 
 from app.mini.ui.transport import (
     replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs,
+    callback_delivery,
     send_private_text_from_callback as _send_private_text_from_callback,
     delete_current_ephemeral as _delete_current_ephemeral,
 )
@@ -77,60 +78,47 @@ def hero_share_caption(hero: dict, sharer: str) -> str:
     )[:1020]
 
 
-def hero_card_menu(
-    world_id: int,
-    user_id: int,
-    hero: dict,
-    state: dict,
-    *,
-    allow_share: bool = False,
-    collection: bool = False,
-    favorite: bool = False,
-) -> InlineKeyboardMarkup:
+def profile_menu(world,user,hero):
+    rows=[]
+    if hero:
+        upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
+        if not upgrade['at_max']:
+            rows.append([InlineKeyboardButton(text=f"⬆️ Улучшить · {upgrade['upgrade_cost']} 🧩",
+                callback_data=f"mini:heroupgrade:{world}:{user}:{hero['id']}.{int(hero.get('stars',0))}.p")])
+    rows.append([InlineKeyboardButton(text='🏠 Главная',callback_data=f'mini:home:{world}:{user}'),
+                 InlineKeyboardButton(text='⬅️ Назад',callback_data=f'mini:heroarea:{world}:{user}')])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def hero_card_menu(world_id,user_id,hero,state,*,allow_share=False,collection=False,favorite=False,
+                   nav_token='',return_callback=None,profile=False):
+    if profile:return profile_menu(world_id,user_id,hero)
     token=secrets.token_hex(4)
-    rows = []
-    upgrade = hero.get("upgrade") or hero_upgrade_state(hero)
-
-    if not upgrade["at_max"]:
-        rows.append([
-            InlineKeyboardButton(
-                text=(
-                    (f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩" if collection
-                     else f"⬆️ До ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩")
-                ),
-                callback_data=(
-                    f"mini:heroupgrade:{world_id}:{user_id}:{hero['id']}.{int(hero.get('stars',0))}{'.c' if collection else ''}"
-                ),
-            )
-        ])
-
-    if not int(hero.get("is_active", 0)):
-        rows.append([InlineKeyboardButton(text='✅ Сделать активным',callback_data=f"mini:heroactive:{world_id}:{user_id}:{hero['id']}{'.c' if collection else ''}")])
+    def button(text,action,tail=None):
+        data=f'mini:{action}:{world_id}:{user_id}'+(':'+tail if tail is not None else '')
+        if len(data.encode())>64:raise ValueError('Слишком длинная кнопка.')
+        return InlineKeyboardButton(text=text,callback_data=data)
+    suffix=('~'+nav_token) if nav_token else ''
+    rows=[];upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
+    active=not int(hero.get('is_active',0))
     if collection:
-        rows.append([InlineKeyboardButton(
-            text='☆ Убрать из избранного' if favorite else '⭐ Сделать избранным',
-            callback_data=f"mini:favorite:{world_id}:{user_id}:{'remove' if favorite else 'add'}.{hero['id']}")])
+        if not upgrade['at_max']:
+            rows.append([button(f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩",
+                'heroupgrade',f"{hero['id']}.{int(hero.get('stars',0))}.c{suffix}")])
+        if active:rows.append([button('✅ Сделать активным','heroactive',f"{hero['id']}.c{suffix}")])
+        rows.append([button('☆ Убрать из избранного' if favorite else '⭐ Сделать избранным','favorite',
+                            f"{'remove' if favorite else 'add'}.{hero['id']}{suffix}")])
+        if int(hero.get('shards',0))>0:rows.append([button('💱 Продать осколки','heroshards',str(hero['id'])+suffix)])
+        rows.append([button('📚 Коллекция','collectionopen','0')])
+        if nav_token:rows.append([button('⬅️ К списку','collectionback',nav_token)])
     else:
-        rows.append([InlineKeyboardButton(text=f"🪙 Ещё призыв · {state['pull_price']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:coins.{token}')])
-        if int(state.get('tickets',0))>0:
-            rows.append([InlineKeyboardButton(text=f"🎟 Билет · {state['tickets']}",callback_data=f'mini:gacharepeat:{world_id}:{user_id}:ticket.{token}')])
-
-    if allow_share:
-        rows.append([
-            InlineKeyboardButton(
-                text="📣 Похвастаться",
-                callback_data=(
-                    f"mini:heroshare:{world_id}:{user_id}:{hero['id']}"
-                ),
-            )
-        ])
-
-    rows.append([
-        InlineKeyboardButton(
-            text="📚 Коллекция" if collection else "🎴 Открыть коллекцию",
-            callback_data=f"mini:collectionopen:{world_id}:{user_id}:0",
-        )
-    ])
+        first=[]
+        if active:first.append(button('✅ Сделать активным','heroactive',str(hero['id'])))
+        if allow_share:first.append(button('📣 Похвастаться','heroshare',f"{hero['id']}.{token}"))
+        if first:rows.append(first)
+        rows.append([button('🪙 Ещё призыв','gacharepeat','coins.'+token),button('✨ Ещё 10','gachabatch',token)])
+        rows.append([button('🏠 Главная','home'),button('📚 Коллекция','collection'),
+                     InlineKeyboardButton(text='⬅️ Назад',callback_data=return_callback or f'mini:gacha:{world_id}:{user_id}')])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -145,8 +133,7 @@ async def send_hero_card(
     if image is not None:
         try:
             sent = await callback.bot.send_photo(
-                chat_id=world["chat_id"],
-                message_thread_id=world["thread_id"] or None,
+                **callback_delivery(callback,world),
                 photo=FSInputFile(image),
                 caption=caption,
                 reply_markup=reply_markup,
@@ -204,6 +191,7 @@ async def show_gacha_pull_result(
     world: dict,
     player: dict,
     result: dict,
+    *, return_callback: str | None = None,
 ):
     state = get_gacha_state(player["id"])
     hero = get_player_hero(player["id"], result["id"])
@@ -217,6 +205,7 @@ async def show_gacha_pull_result(
         hero,
         state,
         allow_share=True,
+        return_callback=return_callback,
     )
 
     try:
@@ -224,7 +213,7 @@ async def show_gacha_pull_result(
             callback,
             world,
             hero,
-            hero_caption(hero, pull_result=result),
+            hero_caption(result.get("hero_snapshot",hero), pull_result=result),
             markup,
         )
     except TelegramAPIError as error:

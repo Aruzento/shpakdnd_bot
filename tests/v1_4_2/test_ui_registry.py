@@ -26,7 +26,7 @@ class InterfaceTests(unittest.TestCase):
                 hero_rows=[row for row in markup.inline_keyboard if any(':hero.' in b.callback_data for b in row)]
                 self.assertTrue(all(len(row)<=2 for row in hero_rows));self.assertLessEqual(len(hero_rows),2)
                 seen += [b.text for row in hero_rows for b in row]
-                self.assertEqual(markup.inline_keyboard[-1][0].text,'Назад')
+                self.assertEqual(markup.inline_keyboard[-1][-1].text,'⬅️ Назад')
             self.assertEqual(len(seen),count)
 
     def test_card_back_page_and_building_menus_candidates_and_workers(self):
@@ -36,10 +36,10 @@ class InterfaceTests(unittest.TestCase):
         self.assertTrue(buttons(markup)[-1].callback_data.endswith('residents.1'))
         for job in service.BUILDINGS:
             _,menu=village.screen(state(5,residents),1,42,job)
-            self.assertEqual([b.text for b in buttons(menu)],['Добавить работника','Кто работает','Назад'])
+            self.assertEqual([b.text for b in buttons(menu)],['➕ Добавить','➖ Убрать','⬅️ Назад'])
             _,candidates=village.screen(state(5,residents),1,42,'add_'+job)
             _,workers=village.screen(state(5,residents),1,42,'workers_'+job)
-            if job=='mine':self.assertTrue(all('Рынок' in b.text for b in buttons(candidates) if ':x.' in b.callback_data))
+            self.assertFalse(any(':x.' in b.callback_data for b in buttons(candidates)), 'Working residents are never candidates for transfer')
             if job=='hunt':self.assertIn('Пока пусто',village.screen(state(5,residents),1,42,'workers_hunt')[0])
             self.assertTrue(all(len(b.callback_data.encode())<=64 for b in buttons(candidates)+buttons(workers)))
 

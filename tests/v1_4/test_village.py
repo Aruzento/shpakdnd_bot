@@ -61,6 +61,8 @@ class VillageTests(MiniCase):
         self.buy();hero=self.hero()
         with self.assertRaises(ValueError):self.mutate('assign',hero_id=hero['id'],building='mine')
         self.mutate('settle',hero_id=hero['id']);self.mutate('assign',hero_id=hero['id'],building='mine')
+        with self.assertRaises(ValueError):self.mutate('assign',hero_id=hero['id'],building='market')
+        self.mutate('assign',hero_id=hero['id'],building=None)
         self.mutate('assign',hero_id=hero['id'],building='market')
         row=v.get_state(self.pid,self.db,now=1000)['residents'][0];self.assertEqual(row['building'],'market')
 
@@ -95,6 +97,7 @@ class VillageTests(MiniCase):
 
     def test_lineup_change_settles_previous_period(self):
         self.buy();self.worker('reborn_crypt_keeper',2,'hunt');hero=self.worker('Villager',1,'market')
+        self.mutate('assign',now=4600,hero_id=hero['id'],building=None)
         self.mutate('assign',now=4600,hero_id=hero['id'],building='mine')
         state=v.get_state(self.pid,self.db,now=8200)
         self.assertEqual(state['coins'],Decimal('.25'));self.assertEqual(state['shards'],Decimal('.25'))

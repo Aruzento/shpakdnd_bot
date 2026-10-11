@@ -310,7 +310,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
     async def test_launcher_stays_public_and_home_is_ephemeral_photo(self):
         self.callback.data = "mini:launch:1"
         self.callback.message.ephemeral_message_id = None
-        with patch("app.mini.handlers.get_mini_world_by_id", return_value=self.world), patch("app.mini.handlers.get_mini_player", return_value=self.player), patch("app.mini.handlers.touch_mini_player"), patch("app.mini.handlers.get_active_hero", return_value=self.hero):
+        with patch("app.mini.handlers.callback_location_allowed",return_value=True), patch("app.mini.handlers.get_mini_world_by_id", return_value=self.world), patch("app.mini.handlers.get_mini_player", return_value=self.player), patch("app.mini.handlers.touch_mini_player"), patch("app.mini.handlers.get_active_hero", return_value=self.hero):
             await launch_callback(self.callback)
         self.callback.bot.send_photo.assert_awaited_once()
         self.callback.message.delete_ephemeral.assert_not_awaited()

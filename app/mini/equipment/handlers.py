@@ -10,9 +10,9 @@ router=Router(name='mini_equipment')
 LABELS={'helmet':'Шлем','ring':'Кольцо','cloak':'Плащ'}
 
 
-def render_equipment(state,world,user,page=0,mode='home'):
+def render_equipment(state,world,user,page=0,mode='home',parent='heroarea'):
     base=personal_callback('equipment',world,user)
-    def btn(text,tail): return InlineKeyboardButton(text=text,callback_data=base+(':'+tail if tail else ''))
+    def btn(text,tail): return InlineKeyboardButton(text=text,callback_data=base+(':'+tail if tail else ':home.0')+('~t' if parent=='tower' else ''))
     rows=[]
     if mode=='home':
         lines=['🛡 Экипировка','','Надетая экипировка даёт бонусы в «Испытаниях».','']
@@ -21,7 +21,7 @@ def render_equipment(state,world,user,page=0,mode='home'):
             lines.append(f"{LABELS[slot]}: {item['name']} +{item['attack_bonus']}" if item else f"{LABELS[slot]}: пусто")
         lines += ['','Ненадетые предметы можно посмотреть в «Инвентаре».']
         rows=[[btn('Надеть...','choose_equip.0')],[btn('Снять...','choose_remove.0')],
-              [InlineKeyboardButton(text='Назад',callback_data=personal_callback('heroarea',world,user))]]
+              [InlineKeyboardButton(text='Назад',callback_data=personal_callback(parent,world,user))]]
     elif mode=='choose_remove':
         lines=['🛡 Снять экипировку','','Выбери слот. Снятый предмет останется в инвентаре.']
         for slot in SLOTS:
@@ -60,16 +60,20 @@ async def equipment_callback(callback):
     world,player,tail=context
     if not is_mini_topic(world['chat_id'],world['thread_id']):
         await callback.answer('Эта тема больше не работает в режиме Mini.',show_alert=True);return
-    page=0;mode='home'
+    page=0;mode='home';parent='heroarea'
     try:
+        if '~' in tail:
+            tail,origin=tail.split('~',1)
+            if origin!='t':raise ValueError('Некорректный возврат.')
+            parent='tower'
         if tail:
             action,value=tail.split('.',1)
             if action=='equip': equip(player['id'],value)
             elif action=='unequip': unequip(player['id'],value)
-            elif action in {'page','choose_equip','choose_remove','inventory'}:
+            elif action in {'home','page','choose_equip','choose_remove','inventory'}:
                 page=max(0,int(value));mode='choose_equip' if action=='page' else action
             else: raise ValueError('Некорректная кнопка.')
-        text,markup=render_equipment(get_equipment(player['id']),world['id'],callback.from_user.id,page,mode)
+        text,markup=render_equipment(get_equipment(player['id']),world['id'],callback.from_user.id,page,mode,parent)
     except ValueError as error:
         await callback.answer(str(error),show_alert=True);return
     await callback.answer()

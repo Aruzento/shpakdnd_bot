@@ -14,10 +14,10 @@ class UpgradeTests(unittest.TestCase):
     def test_upgrade_from_pre_v1_3_schema_keeps_old_tables_and_boss_snapshots(self):
         self.fixture.seed()
         new_tables={'mini_equipment','mini_equipment_owned','mini_equipment_slots','mini_tower_progress',
-                    'mini_tower_attempts','mini_tower_rewards','mini_gacha_guarantees','mini_superadmin_audit'}
+                    'mini_tower_attempts','mini_tower_rewards','mini_tower_retries','mini_gacha_guarantees','mini_superadmin_audit'}
         before={k:v for k,v in self.fixture.snapshot().items() if k not in new_tables}
         with connect_mini_db(self.db) as conn:
-            for table in ('mini_tower_rewards','mini_tower_attempts','mini_tower_progress','mini_equipment_slots',
+            for table in ('mini_tower_retries','mini_tower_rewards','mini_tower_attempts','mini_tower_progress','mini_equipment_slots',
                           'mini_equipment_owned','mini_equipment','mini_gacha_guarantees','mini_superadmin_audit'):
                 conn.execute(f'DROP TABLE {table}')
         init_mini_db(self.db)

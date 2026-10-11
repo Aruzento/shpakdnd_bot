@@ -2,8 +2,19 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, EphemeralMessageParameters, InlineKeyboardMarkup
 
 
+def callback_delivery(callback,world):
+    """Registration can open Mini in private chat; keep subsequent UI there."""
+    chat=getattr(getattr(callback,'message',None),'chat',None)
+    if chat is not None and getattr(chat,'type',None)=='private' and chat.id==callback.from_user.id:
+        return {'chat_id':chat.id}
+    return {'chat_id':world['chat_id'],'message_thread_id':world['thread_id'] or None}
+
+
 def replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
     """Параметры нового ephemeral-сообщения по текущему callback."""
+    chat=getattr(getattr(callback,'message',None),'chat',None)
+    if chat is not None and getattr(chat,'type',None)=='private' and chat.id==callback.from_user.id:
+        return {}
     return {
         "ephemeral_message_parameters": EphemeralMessageParameters(
             receiver_user_id=callback.from_user.id,
@@ -20,8 +31,7 @@ async def send_private_text_from_callback(
     reply_markup: InlineKeyboardMarkup,
 ):
     sent = await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
+        **callback_delivery(callback,world),
         text=text,
         reply_markup=reply_markup,
         **replacement_ephemeral_kwargs(callback),

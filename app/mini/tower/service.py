@@ -1,5 +1,6 @@
 import json
 import secrets
+import time
 import sqlite3
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
@@ -19,6 +20,7 @@ def get_state(player_id,db_path=DB_PATH):
         return {"highest_cleared":best,"floor":get_floor(best+1) if best<200 else None,
                 "completed":best==200,"attempt":repo.active_attempt(conn,player_id),
                 "selected_hero":_available_selection(conn,player_id),
+                "last_attempt":repo.last_lost_attempt(conn,player_id,best+1),
                 "equipment_bonus":aggregate_in_transaction(conn,player_id)}
 
 
@@ -46,6 +48,7 @@ def select_hero(player_id,hero_id,db_path=DB_PATH,*,expected_floor=None):
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
+        if repo.active_attempt(conn,player_id):raise ValueError('Нельзя менять героя во время боя.')
         if expected_floor is not None:
             if expected_floor!=repo.progress(conn,player_id)+1 or repo.active_attempt(conn,player_id):
                 raise ValueError('Кнопка выбора героя устарела. Открой текущий бой.')
@@ -54,6 +57,8 @@ def select_hero(player_id,hero_id,db_path=DB_PATH,*,expected_floor=None):
         if not row:raise ValueError('Этот герой больше недоступен в коллекции.')
         from app.mini.availability import assert_available
         assert_available(conn,player_id,hero_id)
+        from app.mini.availability import assert_not_committed
+        assert_not_committed(conn,player_id,hero_id,now=int(time.time()))
         repo.save_selection(conn,player_id,hero_id)
         return _enrich(dict(row))
 
@@ -82,6 +87,8 @@ def start_attempt(player_id,hero_id,expected_floor,db_path=DB_PATH,*,require_sel
             raise ValueError("Этого героя нет в твоей коллекции.")
         from app.mini.availability import assert_available
         assert_available(conn,player_id,hero_id)
+        from app.mini.availability import assert_not_committed
+        assert_not_committed(conn,player_id,hero_id,now=int(time.time()))
         hero=dict(row);hero["base_attack"]=hero["attack"]
         hero["attack"]=calculate_attack(hero["attack"],hero["stars"])
         return repo.create_attempt(conn,player_id,hero,get_floor(best+1),aggregate_in_transaction(conn,player_id))
@@ -134,3 +141,27 @@ def _available_selection(conn,player_id):
         try: assert_available(conn,player_id,hero['id'])
         except ValueError: return None
     return _enrich(hero)
+
+
+def retry_attempt(player_id,source_attempt_id,db_path=DB_PATH):
+    """One persisted retry per lost attempt; concurrent/stale callbacks replay it."""
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory=sqlite3.Row;conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
+        old=conn.execute('SELECT new_attempt_id FROM mini_tower_retries WHERE source_attempt_id=? AND player_id=?',
+                         (source_attempt_id,player_id)).fetchone()
+        if old:return repo.attempt_by_id(conn,player_id,old['new_attempt_id'])
+        source=repo.attempt_by_id(conn,player_id,source_attempt_id)
+        if not source or source['status']!='lost':raise ValueError('Повтор доступен только после поражения.')
+        if source['floor']!=repo.progress(conn,player_id)+1 or repo.active_attempt(conn,player_id):
+            raise ValueError('Кнопка повтора устарела. Продолжи текущий бой.')
+        selected=repo.selected_hero(conn,player_id)
+        hero_id=selected['id'] if selected else source['hero_id']
+        from app.mini.availability import assert_available,assert_not_committed
+        assert_available(conn,player_id,hero_id)
+        assert_not_committed(conn,player_id,hero_id,now=int(time.time()))
+        row=conn.execute('SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id WHERE ph.player_id=? AND ph.hero_id=?',
+                         (player_id,hero_id)).fetchone()
+        hero=_enrich(dict(row))
+        result=repo.create_attempt(conn,player_id,hero,get_floor(source['floor']),aggregate_in_transaction(conn,player_id))
+        conn.execute('INSERT INTO mini_tower_retries VALUES(?,?,?)',(source_attempt_id,player_id,result['id']))
+        return result

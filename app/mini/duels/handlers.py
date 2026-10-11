@@ -31,6 +31,10 @@ def public_challenge_text(challenger, defender, duel_id):
             f"Вызов #{int(duel_id)}\nСтавка: 10 монет\nВремя на ответ: 2 минуты")
 
 
+def public_challenge_menu(world_id,owner_id):
+    return InlineKeyboardMarkup(inline_keyboard=[[Button(text='Открыть вызов',callback_data=f'mini:duel:{world_id}:{owner_id}:home')]])
+
+
 def screen(world,player,user_id,view='home',value=0,page=0):
     wid=world['id'];pid=player['id']
     def b(label,payload):return Button(text=label,callback_data=f'mini:duel:{wid}:{user_id}:{payload}')
@@ -102,7 +106,7 @@ async def action(callback):
                 try:
                     await callback.bot.send_message(chat_id=world['chat_id'],message_thread_id=world['thread_id'] or None,
                         text=public_challenge_text(player, defender, result['id']), parse_mode='HTML',
-                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[Button(text='Открыть вызов',callback_data=f'mini:duel:{world["id"]}:{owner}:home')]]))
+                        reply_markup=public_challenge_menu(world['id'],owner))
                 except TelegramAPIError:
                     # Escrow persists; the defender can open Duels and the challenger can cancel.
                     answered=True

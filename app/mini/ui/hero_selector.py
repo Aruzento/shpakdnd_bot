@@ -53,7 +53,7 @@ def choice(mode,world,user,context,hero_id):
     return f'mini:tower:{world}:{user}:pick.{context}.{hero_id}'
 
 
-def render_selector(heroes, favorites, mode, world, user, context=0, *, view='home', page=0, token=EMPTY):
+def render_selector(heroes, favorites, mode, world, user, context=0, *, view='home', page=0, token=EMPTY, return_token=''):
     if mode not in ('c','b','t'): raise ValueError('Некорректный выбор героя.')
     available=filtered(heroes,token,mode)
     def nav(action, target=0, state=token):
@@ -61,33 +61,45 @@ def render_selector(heroes, favorites, mode, world, user, context=0, *, view='ho
         if len(data.encode())>64: raise ValueError('Некорректный размер кнопки.')
         return data
     def button(label,action,target=0,state=token): return Button(text=label,callback_data=nav(action,target,state))
-    def hero_button(h): return Button(text=hero_label(h,active_marker=mode=="c"),callback_data=choice(mode,world,user,context,h['id']))
+    def hero_button(h): return Button(text=hero_label(h,active_marker=mode=="c"),callback_data=choice(mode,world,user,context,h['id'])+('.'+return_token if mode=='c' and return_token else ''))
     rows=[]
-    if view=='home':
+    if view=='collection' and mode=='c':
+        text='📚 Коллекция'
+        rows=[[button('⭐ Избранные','home')],
+              [button('👥 Все','all',state=EMPTY),button('🔎 Найти','filter')]]
+    elif view=='home':
         text='⭐ Избранные'
         by_id={h['id']:h for h in heroes}
         selected=[by_id[h] for h in favorites if h in by_id][:3]
         rows=[[hero_button(h)] for h in selected]
         if not selected: text+='\nПока никого нет.'
-        rows += [[button('👥 Показать всех','all',state=EMPTY)], [button('🔎 Поиск по фильтру','filter')]]
+        if mode=='c':
+            rows=[sum(rows[n:n+2],[]) for n in range(0,len(rows),2)]
+            rows.append([button('👥 Все','all',state=EMPTY),button('🔎 Найти','filter')])
+        else:
+            rows += [[button('👥 Показать всех','all',state=EMPTY)], [button('🔎 Поиск по фильтру','filter')]]
     elif view in ('all','results'):
-        pages=max(1,(len(available)+PAGE_SIZE-1)//PAGE_SIZE);page=min(max(0,int(page)),pages-1)
+        size=4 if mode=='c' else PAGE_SIZE
+        pages=max(1,(len(available)+size-1)//size);page=min(max(0,int(page)),pages-1)
         text='👥 Все герои' if view=='all' else '🔎 Результаты подбора'
         if not available: text+='\nПодходящих героев нет. Измени или сбрось фильтр.'
-        batch=available[page*PAGE_SIZE:(page+1)*PAGE_SIZE]
+        batch=available[page*size:(page+1)*size]
         rows=[[hero_button(h) for h in batch[n:n+2]] for n in range(0,len(batch),2)]
         pagination=[]
         if page: pagination.append(button('◀️',view,page-1))
         pagination.append(button(f'{page+1} / {pages}',view,page))
         if page+1<pages: pagination.append(button('▶️',view,page+1))
-        rows += [pagination,[button('🔎 Изменить фильтр','filter')]]
+        rows.append(pagination)
+        if mode!='c':rows.append([button('🔎 Изменить фильтр','filter')])
     elif view=='filter':
         chosen,upgrade=decode(token,mode);text='🔎 Поиск по фильтру\nВыбери свойства подходящего героя.'
         for n,field in enumerate(FIELDS):
             label=tag_label(chosen[field],LABELS[n]) if field in chosen else 'Любая' if n in (0,1,4) else 'Любой'
-            rows.append([button(f'{NAMES[n]}: {label}',f'f{n}')])
-        if mode=='c': rows.append([button('✅ Можно улучшить' if upgrade else '⬆️ Можно улучшить: нет', 'upgrade')])
-        rows += [[button('🔎 Посмотреть результаты','results')],[button('🔄 Сбросить','reset')]]
+            rows.append([button(f'{(("Редкость","Фракция","Класс","Урон","Дальность","Свойство") if mode=="c" else NAMES)[n]}: {label}',f'f{n}')])
+        if mode=='c':
+            rows=[sum(rows[n:n+3],[]) for n in range(0,len(rows),3)]
+            rows.append([button('✅ Можно улучшить' if upgrade else '⬆️ Можно улучшить: нет', 'upgrade')])
+        rows += [[button('🔎 Показать результаты','results'),button('🔄 Сбросить','reset')]] if mode=='c' else [[button('🔎 Посмотреть результаты','results')],[button('🔄 Сбросить','reset')]]
     elif view.startswith('f') and view[1:].isdigit():
         n=int(view[1:]);opts=options()
         if not 0<=n<6: raise ValueError('Некорректный фильтр.')
@@ -96,10 +108,10 @@ def render_selector(heroes, favorites, mode, world, user, context=0, *, view='ho
         rows += [[button(tag_label(value,LABELS[n]),f's{n}{DIGITS[i+1]}')] for i,value in enumerate(opts[n])]
         rows.append([button('⬅️ К фильтрам','filter')])
     else: raise ValueError('Некорректная кнопка.')
-    if view!='home': rows.append([button('⬅️ Избранные','home',state=EMPTY)])
-    back=(personal_callback('heroarea',world,user) if mode=='c' else
+    if view!='home' and mode!='c' or mode=='c' and view.startswith('f') and view!='filter':rows.append([button('⬅️ Избранные','home',state=EMPTY)])
+    back=(nav('filter' if view=='results' else 'collection') if mode=='c' else
           personal_callback('boss',world,user) if mode=='b' else personal_callback('tower',world,user))
-    rows.append([Button(text='⬅️ Назад',callback_data=back)])
+    rows.append(([Button(text='🏠 Главная',callback_data=personal_callback('home',world,user))] if mode=='c' else [])+[Button(text='⬅️ Назад',callback_data=personal_callback('heroarea',world,user) if mode=='c' and view=='collection' else back)])
     return text,InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -126,6 +138,7 @@ async def selector_callback(callback):
         if view=='reset': token=EMPTY;view='filter'
         if view=='upgrade': token=token[:6]+('0' if token[6]=='1' else '1');view='filter'
         if view.startswith('s'):
+            if len(view)!=3:raise ValueError('Некорректный фильтр.')
             n=int(view[1]);v=view[2]
             if n not in range(6) or v not in DIGITS or DIGITS.index(v)>len(options()[n]): raise ValueError('Фильтр устарел.')
             token=token[:n]+v+token[n+1:];view='filter'
@@ -133,7 +146,13 @@ async def selector_callback(callback):
         if mode in ('b','t'):
             from app.mini.availability import filter_heroes
             heroes=filter_heroes(heroes,player['id'])
-        text,markup=render_selector(heroes,get_favorites(player['id']),mode,world['id'],callback.from_user.id,value,view=view,page=page,token=token)
+        return_token=''
+        if mode=='c' and view in ('home','all','results','collection'):
+            from app.mini.ui.state import remember
+            size=4;pages=max(1,(len(filtered(heroes,token,mode))+size-1)//size)
+            page=max(0,min(page,pages-1))
+            return_token=remember(player['id'],'collection',{'view':view,'page':page,'filter':token})
+        text,markup=render_selector(heroes,get_favorites(player['id']),mode,world['id'],callback.from_user.id,value,view=view,page=page,token=token,return_token=return_token)
         if mode=='t':
             from app.mini.tower.handlers import enemy_lines
             text='\n'.join(enemy_lines(state['floor'],selection=True))+'\n\n'+text

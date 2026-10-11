@@ -25,7 +25,10 @@ async def _hero_selection_context(callback: CallbackQuery):
     if callback.from_user.id != owner_id:
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return None
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or player is None or boss is None or int(boss["world_id"]) != world_id:

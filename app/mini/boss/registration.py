@@ -47,7 +47,10 @@ async def boss_home_callback(callback: CallbackQuery):
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     if world is None or player is None:
         await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
@@ -72,7 +75,10 @@ async def boss_create_callback(callback: CallbackQuery):
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     if world is None or not is_admin(callback, world):
         await callback.answer("Только администратор темы может создать босса.", show_alert=True)
         return
@@ -105,7 +111,10 @@ async def boss_preview_callback(callback: CallbackQuery):
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     template = get_boss_template(code)
     if world is None or not is_admin(callback, world):
         await callback.answer("Нет прав администратора.", show_alert=True)
@@ -143,7 +152,10 @@ async def boss_announce_callback(callback: CallbackQuery):
         await callback.answer("Это меню другого игрока.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     if world is None or player is None or not is_admin(callback, world):
         await callback.answer("Нет прав администратора.", show_alert=True)
@@ -174,7 +186,10 @@ async def boss_join_callback(callback: CallbackQuery):
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or boss is None or int(boss["world_id"]) != world_id:
@@ -218,7 +233,10 @@ async def boss_leave_callback(callback: CallbackQuery):
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or boss is None or int(boss["world_id"]) != world_id:
@@ -258,7 +276,10 @@ async def boss_list_callback(callback: CallbackQuery):
         await callback.answer("Некорректная кнопка.", show_alert=True)
         return
 
-    world = _load_world(world_id)
+    world = _load_world(world_id,callback)
+    if world is None:
+        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        return None
     boss = get_boss(boss_id)
     if world is None or boss is None or int(boss["world_id"]) != world_id:
         await callback.answer("Босс больше не актуален.", show_alert=True)

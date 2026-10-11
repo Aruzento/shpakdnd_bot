@@ -127,7 +127,7 @@ def boss_private_menu(
     rows.append([
         InlineKeyboardButton(
             text="⬅️ На главную",
-            callback_data=f"mini:adventures:{world_id}:{user_id}",
+            callback_data=f"mini:home:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -150,7 +150,7 @@ def no_boss_menu(
     rows.append([
         InlineKeyboardButton(
             text="⬅️ На главную",
-            callback_data=f"mini:adventures:{world_id}:{user_id}",
+            callback_data=f"mini:home:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
