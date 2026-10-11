@@ -1,5 +1,5 @@
 from app.mini.effects.contracts import EffectDefinition
-from app.mini.effects.builtins import coin_pouch, shard_casket, charged_effect, village_boost, equipment_chest
+from app.mini.effects.builtins import coin_pouch, shard_casket, charged_effect, village_boost, equipment_chest, rarity_coupon
 
 EFFECT_GACHA_TICKET = "gacha_ticket"
 
@@ -41,6 +41,10 @@ def validate_effect_key(key: str, *, allow_empty: bool = True) -> None:
 
 
 for definition in (
+    EffectDefinition('rarity_coupon_uncommon', 'Один случайный активный необычный герой; не изменяет гарант 10/25/85.', rarity_coupon),
+    EffectDefinition('rarity_coupon_rare', 'Один случайный активный редкий герой; не изменяет гарант 10/25/85.', rarity_coupon),
+    EffectDefinition('rarity_coupon_legendary', 'Один случайный активный легендарный герой; не изменяет гарант 10/25/85.', rarity_coupon),
+    EffectDefinition('spirit_lantern', 'Гарантированный Arise в следующем подходящем бою: нужна победа и хотя бы один удар.', charged_effect, '🏮 Гарант Arise — следующий подходящий бой'),
     EffectDefinition('village_gold_boost','Рынок +25% на 8 часов; повтор продлевает срок.',village_boost,''),
     EffectDefinition('village_shards_boost','Шахта +25% на 8 часов; повтор продлевает срок.',village_boost,''),
     EffectDefinition('tower_equipment_chest','Случайная экипировка Испытаний.',equipment_chest,''),

@@ -4,6 +4,7 @@ import secrets
 import sqlite3
 from pathlib import Path
 
+from app.mini.pity import read as read_pity, required_rarity, advance as advance_pity
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
 from app.mini.catalog import load_hero_catalog, GACHA_RARITIES
@@ -145,6 +146,7 @@ def get_gacha_state(
             (int(player_id),),
         ).fetchone()
         forced_legendary = bool(guarantee_row and guarantee_row[0])
+        pity = read_pity(conn, int(player_id))
 
     luck_charges = int(luck_row[0]) if luck_row else 0
     luck_active = luck_charges > 0
@@ -175,6 +177,7 @@ def get_gacha_state(
     # The administrative override stays private and is applied only at pull time.
 
     return {
+        "pity": pity,
         "pull_price": int(settings["pull_price"]),
         "ticket_item_code": ticket_code,
         "tickets": tickets,
@@ -190,6 +193,18 @@ def get_gacha_state(
         "luck_charges": luck_charges,
         "active_hero_id": player["active_hero_id"],
     }
+
+
+def get_previous_gacha_pull(player_id, operation_key, db_path=DB_PATH):
+    """Read the persisted result without checking the already consumed ticket."""
+    if not operation_key:
+        return None
+    with connect_mini_db(db_path) as conn:
+        row = conn.execute(
+            'SELECT result_json FROM mini_gacha_pulls WHERE player_id=? AND operation_key=?',
+            (int(player_id), operation_key),
+        ).fetchone()
+    return {**json.loads(row[0]), 'repeated': True} if row else None
 
 
 def perform_gacha_pull(
@@ -286,10 +301,12 @@ def perform_gacha_pull(
         )
         guarantee = conn.execute("SELECT forced_legendary FROM mini_gacha_guarantees WHERE player_id=?", (int(player_id),)).fetchone()
         forced_legendary = bool(guarantee and guarantee[0])
-        if forced_legendary:
-            legendary = conn.execute("SELECT code FROM mini_heroes WHERE rarity='legendary' AND active=1 ORDER BY code").fetchall()
+        counts = read_pity(conn, int(player_id))
+        required = "legendary" if forced_legendary else required_rarity(counts)
+        if required:
+            legendary = conn.execute("SELECT code FROM mini_heroes WHERE rarity=? AND active=1 ORDER BY code", (required,)).fetchall()
             if not legendary:
-                raise GachaNoHeroes("В гаче пока нет активных Legendary.")
+                raise GachaNoHeroes(f"В гаче пока нет активных героев редкости {required}.")
             hero_code = secrets.choice(legendary)[0]
         else:
             hero_code = _choose_hero_code(luck_active=luck_used)
@@ -301,59 +318,11 @@ def perform_gacha_pull(
             conn.rollback()
             raise GachaNoHeroes("Выбранный герой больше не активен. Повтори крутку.")
 
-        owned = conn.execute(
-            """
-            SELECT copies
-            FROM mini_player_heroes
-            WHERE player_id = ? AND hero_id = ?
-            """,
-            (int(player_id), int(hero["id"])),
-        ).fetchone()
-
-        is_duplicate = owned is not None
-        shards_awarded = 0
-        shards = int(player["shards"])
-
-        if owned is None:
-            copies = 1
-            conn.execute(
-                """
-                INSERT INTO mini_player_heroes (
-                    player_id,
-                    hero_id,
-                    copies
-                )
-                VALUES (?, ?, 1)
-                """,
-                (int(player_id), int(hero["id"])),
-            )
-        else:
-            shards_awarded = int(duplicate_shards.get(hero["rarity"], 0))
-            copies = int(owned["copies"]) + 1
-            shards += shards_awarded
-            conn.execute(
-                """
-                UPDATE mini_player_heroes
-                SET copies = ?
-                WHERE player_id = ? AND hero_id = ?
-                """,
-                (
-                    copies,
-                    int(player_id),
-                    int(hero["id"]),
-                ),
-            )
-            conn.execute(
-                "UPDATE mini_players SET shards = ? WHERE id = ?",
-                (shards, int(player_id)),
-            )
-
-        auto_activated = player["active_hero_id"] is None
-        if auto_activated:
-            conn.execute(
-                "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
-                (int(hero["id"]), int(player_id)),
-            )
+        grant = grant_summoned_hero_in_transaction(conn, player, hero, duplicate_shards)
+        is_duplicate = grant['is_duplicate']
+        shards_awarded = grant['shards_awarded']
+        copies, shards, auto_activated = grant['copies'], grant['shards'], grant['auto_activated']
+        pity = advance_pity(conn, int(player_id), counts, hero['rarity'])
 
         pull_cursor = conn.execute(
             """
@@ -390,6 +359,7 @@ def perform_gacha_pull(
 
         result = dict(hero)
         result.update({
+            "pity": pity,
             "pull_id": pull_id,
             "payment": payment,
             "cost_coins": cost_coins,
@@ -410,3 +380,61 @@ def perform_gacha_pull(
                          (operation_key,json.dumps(result,ensure_ascii=False),pull_id))
         conn.commit()
     return result
+
+
+def grant_summoned_hero_in_transaction(conn, player, hero, duplicate_shards):
+    player_id = int(player["id"])
+    owned = conn.execute(
+        """
+        SELECT copies
+        FROM mini_player_heroes
+        WHERE player_id = ? AND hero_id = ?
+        """,
+        (int(player_id), int(hero["id"])),
+    ).fetchone()
+
+    is_duplicate = owned is not None
+    shards_awarded = 0
+    shards = int(player["shards"])
+
+    if owned is None:
+        copies = 1
+        conn.execute(
+            """
+            INSERT INTO mini_player_heroes (
+                player_id,
+                hero_id,
+                copies
+            )
+            VALUES (?, ?, 1)
+            """,
+            (int(player_id), int(hero["id"])),
+        )
+    else:
+        shards_awarded = int(duplicate_shards.get(hero["rarity"], 0))
+        copies = int(owned["copies"]) + 1
+        shards += shards_awarded
+        conn.execute(
+            """
+            UPDATE mini_player_heroes
+            SET copies = ?
+            WHERE player_id = ? AND hero_id = ?
+            """,
+            (
+                copies,
+                int(player_id),
+                int(hero["id"]),
+            ),
+        )
+        conn.execute(
+            "UPDATE mini_players SET shards = ? WHERE id = ?",
+            (shards, int(player_id)),
+        )
+
+    auto_activated = player["active_hero_id"] is None
+    if auto_activated:
+        conn.execute(
+            "UPDATE mini_players SET active_hero_id = ? WHERE id = ?",
+            (int(hero["id"]), int(player_id)),
+        )
+    return {"is_duplicate": is_duplicate, "shards_awarded": shards_awarded, "copies": copies, "shards": shards, "auto_activated": auto_activated}

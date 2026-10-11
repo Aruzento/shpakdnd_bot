@@ -1,4 +1,6 @@
 """Ephemeral selection; a challenge advertises only a defender-owned open button."""
+from html import escape
+import re
 import json
 import secrets
 import sqlite3
@@ -15,6 +17,18 @@ from app.mini.duels import service
 
 router=Router(name='mini_duels')
 SIZE=8
+
+
+def public_challenge_text(challenger, defender, duel_id):
+    username = str(defender.get('username') or '').strip().lstrip('@')
+    if re.fullmatch(r'[A-Za-z0-9_]+', username):
+        mention = '@' + username
+    else:
+        name = escape(str(defender.get('character_name') or 'Игрок'))
+        uid = defender.get('telegram_user_id')
+        mention = f'<a href="tg://user?id={int(uid)}">{name}</a>' if uid else name
+    return (f"⚔️ {escape(str(challenger.get('character_name') or 'Игрок'))} вызывает {mention} на дуэль!\n\n"
+            f"Вызов #{int(duel_id)}\nСтавка: 10 монет\nВремя на ответ: 2 минуты")
 
 
 def screen(world,player,user_id,view='home',value=0,page=0):
@@ -81,10 +95,13 @@ async def action(callback):
             rival,hid=integer(parts[1]),integer(parts[2])
             result=service.challenge(player['id'],rival,hid,payload)
             if result['applied']:
-                with connect_mini_db() as conn:owner=conn.execute('SELECT telegram_user_id FROM mini_players WHERE id=?',(rival,)).fetchone()[0]
+                with connect_mini_db() as conn:
+                    conn.row_factory = sqlite3.Row
+                    defender = dict(conn.execute('SELECT * FROM mini_players WHERE id=?', (rival,)).fetchone())
+                owner = defender['telegram_user_id']
                 try:
                     await callback.bot.send_message(chat_id=world['chat_id'],message_thread_id=world['thread_id'] or None,
-                        text=f"⚔️ {player['character_name']} вызывает на дуэль! Вызов #{result['id']} • срок 2 минуты • ставка 10 монет.",
+                        text=public_challenge_text(player, defender, result['id']), parse_mode='HTML',
                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[Button(text='Открыть вызов',callback_data=f'mini:duel:{world["id"]}:{owner}:home')]]))
                 except TelegramAPIError:
                     # Escrow persists; the defender can open Duels and the challenger can cancel.

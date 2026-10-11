@@ -32,25 +32,27 @@ class NewScreensTests(unittest.TestCase):
 
     def test_fifty_residents_paginated_and_last_page_reachable(self):
         residents=[dict(hero_id=n,name=f'Житель {n}',building='mine') for n in range(1,51)]
-        for page in range(7):
+        for page in range(13):
             text,markup=village.screen(state(5,residents),1,42,'residents',page)
             people=[b for b in buttons(markup) if '.hero.' in b.callback_data or ':hero.' in b.callback_data]
-            self.assertEqual(len(people),8 if page<6 else 2)
-            self.assertIn(f'Страница {page+1}/7',text)
+            self.assertEqual(len(people),4 if page<12 else 2)
+            self.assertIn(f'Страница {page+1}/13',text)
+            self.assertTrue(all(len(row)<=2 for row in markup.inline_keyboard[:2]))
         self.assertTrue(any('Житель 50' in b.text for b in people))
 
     def test_worker_transfers_remove_job_and_eviction_buttons(self):
         text,markup=village.screen(state(1,[dict(hero_id=123456789,name='Житель',building='mine')]),999999,9999999999,'hero',hero_id=123456789)
         labels=[b.text for b in buttons(markup)]
-        for expected in ('⛏ Шахта','🏪 Рынок','🏹 Охота','Снять с производства','Выселить'):self.assertIn(expected,labels)
+        self.assertEqual(labels,['Снять с производства','Выселить','Назад'])
         self.assertTrue(all(len(b.callback_data.encode())<=64 for b in buttons(markup)))
         payloads=[b.callback_data.split(':',4)[4] for b in buttons(markup) if ':x.' in b.callback_data]
-        self.assertTrue(all(p.startswith('x.') for p in payloads));self.assertEqual(len(payloads),5)
+        self.assertTrue(all(p.startswith('x.') for p in payloads));self.assertEqual(len(payloads),2)
 
     def test_resident_without_work_is_in_list_and_cap_food_visible(self):
         s=state(1,[dict(hero_id=1,name='Житель',building=None)]);s['seconds_left']=0;s['fed']=False
         text,_=village.screen(s,1,42);self.assertIn('предел 8 часов',text);self.assertIn('не хватает еды',text);self.assertIn('1.125',text)
-        _,markup=village.screen(s,1,42,'residents');self.assertTrue(any('Без работы' in b.text for b in buttons(markup)))
+        _,markup=village.screen(s,1,42,'hero',hero_id=1)
+        text,_=village.screen(s,1,42,'hero',hero_id=1);self.assertIn('Без работы',text)
 
     def test_mythic_empty_catalog_and_large_code_compact_craft_callback(self):
         with patch.object(mythic.service,'list_heroes',return_value=[]):text,_=mythic.screen(1,1,42)

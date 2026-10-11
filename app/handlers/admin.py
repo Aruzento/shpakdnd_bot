@@ -31,6 +31,24 @@ from app.topics import TOPIC_SETTINGS
 router = Router(name="admin")
 
 
+@router.message(Command('admcoin', 'admscoin'))
+async def currency_handler(message: Message):
+    if not await check_global_admin_permission(message):
+        return
+    from app.db.dnd_items import parse_currency_command, create_currency
+    secondary=message.text.split()[0].split('@')[0]=='/admscoin'
+    try:
+        raw_scope,name,quantity,value=parse_currency_command(message.text,secondary=secondary)
+        scope=parse_target_scope(raw_scope)
+        if scope is None: raise ValueError('Не удалось определить разрешённые чат и тему.')
+        if not await allow_dnd(message,*scope): return
+        result=create_currency(*scope,name,quantity,value,is_base=not secondary)
+    except ValueError as error:
+        await message.answer('❌ '+str(error))
+        return
+    await message.answer(f"✅ Валюта «{result['name']}» создана. Номинал: {result['base_value']} базовой валюты. Монеты игрокам не выдавались.",parse_mode=None)
+
+
 def parse_target_scope(
     raw_scope: str,
 ) -> tuple[int, int] | None:

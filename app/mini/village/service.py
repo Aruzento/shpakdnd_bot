@@ -127,6 +127,14 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
                 raise ValueError('Этот герой не живёт в деревне.')
         elif action=='assign':
             if building not in (*BUILDINGS,None): raise ValueError('Неизвестное производство.')
+            resident=conn.execute('''SELECT v.building FROM mini_village_residents v
+                JOIN mini_player_heroes ph ON ph.player_id=v.player_id AND ph.hero_id=v.hero_id
+                WHERE v.player_id=? AND v.hero_id=?''',(player_id,hero_id)).fetchone()
+            if not resident: raise ValueError('Работник должен принадлежать игроку и жить в деревне.')
+            if resident['building']==building:
+                result={'applied':False,'action':action,'coins':0,'shards':0,'status':'Герой уже работает здесь.' if building else 'Герой уже не работает.'}
+                conn.execute('INSERT INTO mini_village_operations VALUES(?,?,?,?)',(player_id,operation_key,payload,json.dumps(result)))
+                return result
             if not conn.execute('UPDATE mini_village_residents SET building=? WHERE player_id=? AND hero_id=?',(building,player_id,hero_id)).rowcount:
                 raise ValueError('Работник должен жить в деревне.')
         elif action=='collect':

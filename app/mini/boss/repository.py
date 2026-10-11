@@ -171,13 +171,14 @@ def start_participants(conn, boss_id: int):
     ).fetchall()
 
 
-def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion):
+def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, spirit_lantern=False):
     from app.mini.catalog import load_hero_catalog
     row = dict(row)
     source = next((h for h in load_hero_catalog()["heroes"] if h["code"] == row["code"]), {})
     snapshot = {field: row[field] for field in (
         "faction", "damage_type", "class_tag", "attack_range", "special_trait",
         "passive_key", "passive_text", "rarity", "code", "base_attack")}
+    snapshot["spirit_lantern"] = bool(spirit_lantern)
     if "arise_chance_percent" in source:
         snapshot["arise_chance_percent"] = source["arise_chance_percent"]
     conn.execute(
@@ -349,3 +350,20 @@ def freeze_start_forms(conn, boss):
             "UPDATE mini_boss_participants SET hero_snapshot_json=?, hero_state_json=? WHERE boss_id=? AND player_id=?",
             (json.dumps(form["hero"], ensure_ascii=False), json.dumps(form["state"]),
              boss["id"], participant["player_id"]))
+
+
+def apply_round_forms(conn, boss, when):
+    from app.mini.combat.hero_abilities.engine import resolve_round_start, hero_state
+    from app.mini.boss.loadouts import battle_loadout
+    events = []
+    for participant in active_loadouts(conn, boss['id']):
+        hero = battle_loadout(participant['hero_snapshot_json'])
+        state = hero_state(participant['hero_state_json'])
+        form = resolve_round_start(hero, state=state, round_number=int(boss['current_round']))
+        if form['hero'] != hero or form['state'] != state:
+            conn.execute(
+                'UPDATE mini_boss_participants SET hero_snapshot_json=?,hero_state_json=? WHERE boss_id=? AND player_id=?',
+                (json.dumps(form['hero'], ensure_ascii=False), json.dumps(form['state']), boss['id'], participant['player_id']),
+            )
+        events.extend(log_hero_event(conn, boss, participant, event, when) for event in form['events'])
+    return events

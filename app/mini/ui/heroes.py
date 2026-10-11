@@ -106,6 +106,9 @@ def _gacha_menu(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+from app.mini.pity import format_progress
+
+
 def _format_gacha(world: dict, state: dict) -> str:
     chances = state["rarity_chances"]
     luck_line = (
@@ -126,7 +129,8 @@ def _format_gacha(world: dict, state: dict) -> str:
         f"🟣 Редкий — {chances.get('rare', 0):g}%\n"
         f"🟡 Легендарный — {chances.get('legendary', 0):g}%\n\n"
         f"Героев в коллекции: {state['owned']}\n"
-        f"Доступно сейчас: {state['total']}"
+        f"Доступно сейчас: {state['total']}\n\n"
+        + format_progress(state.get("pity", {}))
     )
 
 

@@ -99,6 +99,78 @@
       "stock": null,
       "max_per_player": 2,
       "active": true
+    },
+    {
+      "code": "rarity_coupon_uncommon",
+      "category": "summons",
+      "title": "Купон на необычного персонажа",
+      "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+      "price": 100,
+      "delivery": "inventory",
+      "stock": null,
+      "max_per_player": null,
+      "active": true,
+      "item": {
+        "code": "rarity_coupon_uncommon",
+        "name": "Купон на необычного персонажа",
+        "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+        "effect_key": "rarity_coupon_uncommon",
+        "stackable": true
+      }
+    },
+    {
+      "code": "rarity_coupon_rare",
+      "category": "summons",
+      "title": "Купон на редкого персонажа",
+      "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+      "price": 500,
+      "delivery": "inventory",
+      "stock": null,
+      "max_per_player": null,
+      "active": true,
+      "item": {
+        "code": "rarity_coupon_rare",
+        "name": "Купон на редкого персонажа",
+        "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+        "effect_key": "rarity_coupon_rare",
+        "stackable": true
+      }
+    },
+    {
+      "code": "rarity_coupon_legendary",
+      "category": "summons",
+      "title": "Купон на легендарного персонажа",
+      "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+      "price": 3500,
+      "delivery": "inventory",
+      "stock": null,
+      "max_per_player": null,
+      "active": true,
+      "item": {
+        "code": "rarity_coupon_legendary",
+        "name": "Купон на легендарного персонажа",
+        "description": "Один случайный активный герой указанной редкости. Дубликат даёт стандартные осколки. Не расходует удачу и не изменяет обычный гарант призыва.",
+        "effect_key": "rarity_coupon_legendary",
+        "stackable": true
+      }
+    },
+    {
+      "code": "spirit_lantern",
+      "category": "mini",
+      "title": "Фонарь духов",
+      "description": "Гарантированный Arise в следующем подходящем бою с боссом. Нужны нормальная победа и хотя бы один удар. Заряд расходуется в начале боя, включая последующее поражение.",
+      "price": 2500,
+      "delivery": "inventory",
+      "stock": null,
+      "max_per_player": null,
+      "active": true,
+      "item": {
+        "code": "spirit_lantern",
+        "name": "Фонарь духов",
+        "description": "Гарантированный Arise в следующем подходящем бою с боссом. Нужны нормальная победа и хотя бы один удар. Заряд расходуется в начале боя, включая последующее поражение.",
+        "effect_key": "spirit_lantern",
+        "stackable": true
+      }
     }
   ]
 }

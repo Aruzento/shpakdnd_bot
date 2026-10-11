@@ -51,6 +51,8 @@ def resolve_attack(
     extra_uses_primary_base = False
     boss_skip_turns = 0
     remove_magic_shield = False
+    banish_boss = False
+    pure_bonus = 0
     extra_attacks = 0
     extra_attack_percent = 100
     extra_attack_message = "💥 Дополнительная атака — {damage} урона"
@@ -82,6 +84,21 @@ def resolve_attack(
             damage_mode = "incoming_pure"
             continue
 
+        if effect_type == 'every_n_banish_boss':
+            if hit_number % int(effect['every']) == 0 and roller(effect['chance_percent']):
+                banish_boss = True
+                events.append(_event(effect))
+            continue
+        if effect_type == 'chance_extra_attack':
+            if roller(effect['chance_percent']):
+                extra_attacks += 1
+                events.append(_event(effect))
+            continue
+        if effect_type == 'chance_current_hp_pure':
+            if roller(effect['chance_percent']):
+                pure_bonus += hp_before * int(effect['damage_percent']) // 100
+                events.append(_event(effect))
+            continue
         if effect_type == "chance_remove_magic_shield":
             if (boss_ability_key == "magic_shield" and (boss_state or {}).get("shield_active")
                     and roller(float(effect["chance_percent"]))):
@@ -170,6 +187,8 @@ def resolve_attack(
         "damage": damage,
         "boss_skip_turns": boss_skip_turns,
         "remove_magic_shield": remove_magic_shield,
+        "banish_boss": banish_boss,
+        "pure_bonus": pure_bonus,
         "extra_attacks": extra_attacks,
         "extra_attack_percent": extra_attack_percent,
         "extra_attack_message": extra_attack_message,
@@ -253,6 +272,10 @@ def hero_state(raw: str) -> dict:
     for field in ('bone_decoy','grave_seal','last_watch_used','shadow_pending_double'):
         if field in state and type(state[field]) is not bool:
             raise ValueError(f'Invalid hero state: {field}.')
+    if 'shadow_faction' in state and state['shadow_faction'] not in ('dark','beasts'):
+        raise ValueError('Invalid shadow_faction state.')
+    if 'shadow_round' in state and (type(state['shadow_round']) is not int or state['shadow_round'] < 1):
+        raise ValueError('Invalid shadow_round state.')
     if "shadow_form" in state:
         from app.mini.combat.tags import CREATURE_TRAITS, FACTIONS
         form = state["shadow_form"]
@@ -267,12 +290,15 @@ def resolve_after_attack(passive_key: str, *, hit_number: int, actual_hp_damage:
     """Only ordinary hits create effects; counters use persisted hit_count."""
     state = dict(state)
     events = []
+    restore_shield = False
     for effect in get_ability(passive_key)["effects"]:
         if effect.get("trigger") != "after_attack" or hit_number % int(effect["every"]):
             continue
         kind = effect["type"]
         event = _event(effect)
-        if kind == "every_n_decoy":
+        if kind == "every_n_restore_shield":
+            restore_shield = True
+        elif kind == "every_n_decoy":
             state["bone_decoy"] = True
         elif kind == "every_n_seal":
             state["grave_seal"] = True
@@ -287,7 +313,7 @@ def resolve_after_attack(passive_key: str, *, hit_number: int, actual_hp_damage:
         else:
             continue
         events.append(event)
-    return {"state": state, "events": events}
+    return {"state": state, "events": events, "restore_shield": restore_shield}
 
 
 def resolve_turn_start(*, state: dict) -> dict:
@@ -341,7 +367,7 @@ def arise_chance(hero):
     return None
 
 
-def resolve_battle_start(hero: dict, boss: dict, *, state=None, chooser=None) -> dict:
+def resolve_battle_start(hero: dict, boss: dict, *, state=None, chooser=None, roller=None) -> dict:
     """Freeze one effective form at battle creation; no live hero catalog."""
     from app.mini.combat import creatures
     from app.mini.combat.tags import CREATURE_TRAITS
@@ -359,3 +385,20 @@ def resolve_battle_start(hero: dict, boss: dict, *, state=None, chooser=None) ->
                 "special_trait": (chooser or secrets.choice)(traits) if traits else "none"}
         hero.update(state["shadow_form"])
     return {"hero": hero, "state": state}
+
+
+def resolve_round_start(hero, *, state, round_number, roller=None):
+    """Roll once per round; retain the effective faction and round in SQLite state."""
+    hero, state = dict(hero), dict(state)
+    events = []
+    for effect in get_ability(hero.get('passive_key', 'none'))['effects']:
+        if effect['type'] != 'chance_shadow_faction' or effect['trigger'] != 'round_start':
+            continue
+        faction = state.get('shadow_faction', hero['faction'])
+        if state.get('shadow_round') != round_number:
+            if (roller or _roll_success)(effect['chance_percent']):
+                faction = 'beasts' if faction == 'dark' else 'dark'
+                events.append({**_event(effect), 'faction': faction})
+            state.update(shadow_faction=faction, shadow_round=round_number)
+        hero['faction'] = faction
+    return {'hero': hero, 'state': state, 'events': events}

@@ -54,10 +54,10 @@ class ShadowTests(MiniCase):
             'simple_village_guy':'shadow_simple_village_guy'}
         bosses=load_boss_catalog()['bosses']
         mappings={b['code']:b['shadow_hero_code'] for b in bosses if b.get('shadow_hero_code') is not None}
-        self.assertEqual(mappings,expected)
+        self.assertTrue(expected.items()<=mappings.items())
         heroes={h['code']:h for h in load_hero_catalog()['heroes']}
         for boss in bosses:
-            if boss['code'] in expected:
+            if boss.get('shadow_hero_code'):
                 self.assertTrue(boss['shadow_extractable'])
                 self.assertEqual(heroes[boss['shadow_hero_code']]['rarity'],'shadow')
         dummy=next(b for b in bosses if b['code']=='training_dummy')

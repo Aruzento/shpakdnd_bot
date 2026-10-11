@@ -15,12 +15,8 @@ def grant_starter_in_transaction(conn, player_id, world_id, telegram_user_id, ch
     if not claimed:
         return False
     # The shop may not have been synchronized yet on a fresh database.
-    product = next(p for p in load_shop_catalog()['products'] if p['code']=='summon_ticket')
-    item = product['item']
-    conn.execute("""INSERT OR IGNORE INTO mini_items
-        (code,name,category,description,effect_key,stackable,active)
-        VALUES(?,?,?,?,?,1,1)""", (item['code'],item['name'],product['category'],
-            item['description'],item['effect_key']))
+    from app.mini.item_registry import sync_in_transaction
+    sync_in_transaction(conn)
     grant_item_in_transaction(conn, player_id, 'summon_ticket', 3)
     conn.execute("""INSERT INTO mini_public_notifications
         (event_key,world_id,player_id,kind,payload_json) VALUES(?,?,?,'welcome',?)""",

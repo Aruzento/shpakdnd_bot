@@ -9,6 +9,7 @@ from app.mini.boss.repository import (
     apply_boss_effects,
     save_hero_state,
     log_hero_event,
+    apply_round_forms,
 )
 from app.mini.boss.rewards import finish_victory, finish_failure
 from app.mini.combat import creatures
@@ -349,6 +350,7 @@ def advance_after_turn(
                 "UPDATE mini_bosses SET current_round = current_round + 1 WHERE id = ?",
                 (int(boss["id"]),),
             )
+            hero_events.extend(apply_round_forms(conn, dict(refresh_boss(conn, int(boss['id']))), when))
         conn.execute(
             """UPDATE mini_bosses SET current_turn_position = ?, turn_started_at = ?
                WHERE id = ?""",

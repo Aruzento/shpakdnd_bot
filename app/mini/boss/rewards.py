@@ -71,6 +71,7 @@ def grant_victory_rewards(
     boss: sqlite3.Row,
     *,
     include_all_registered: bool = False,
+    allow_shadow: bool = True,
     when: datetime | None = None,
 ) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
@@ -139,7 +140,7 @@ def grant_victory_rewards(
 
         if not include_all_registered and int(row["hit_count"]) > 0:
             from app.mini.shadow import extract_in_transaction
-            extraction=extract_in_transaction(conn,boss,row,now=when)
+            extraction=extract_in_transaction(conn,boss,row,now=when) if allow_shadow else None
             if extraction: victory_events.append(log_hero_event(conn,boss,row,extraction,when or utcnow()))
             passive = battle_loadout(row["hero_snapshot_json"]).get("passive_key", "none")
             victory = hero_abilities.resolve_victory(passive)
@@ -256,6 +257,13 @@ def finish_admin_victory(
         """,
         (db_time(when), int(boss["id"])),
     )
+    return rewards
+
+
+def finish_banishment(conn,boss,when):
+    """Living boss leaves treasure; no extraction or death hooks."""
+    rewards=grant_victory_rewards(conn,boss,when=when,allow_shadow=False)
+    conn.execute("UPDATE mini_bosses SET status='defeated',battle_result='banished',ended_at=?,turn_started_at=NULL WHERE id=?",(db_time(when),boss['id']))
     return rewards
 
 

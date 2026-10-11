@@ -22,6 +22,9 @@ def resolve_turn(attempt, *, roller=None):
     events = []
     damage_total = 0
     turn = attempt["turn"] + 1
+    form = abilities.resolve_round_start(hero, state=hero_state, round_number=turn, roller=roller)
+    hero, hero_state = form['hero'], form['state']
+    events.extend(form['events'])
     percent = faction_multiplier_percent(hero["faction"], enemy["faction"])
     passive = hero.get("passive_key") or "none"
     participants = [{"hero_snapshot_json":json.dumps(hero)}]
@@ -60,11 +63,13 @@ def resolve_turn(attempt, *, roller=None):
             boss_hp_before=enemy["current_hp"],boss_max_hp=enemy["max_hp"],roller=roller)
         events.extend(attack["events"])
         ordinary=creatures.feature_damage(enemy,hero,modify_damage(attack["damage"],percent))
-        hit = damage(classes.beast_damage(ordinary,hero,hero_state,active=classes.enabled(enemy)))
+        hit = damage(classes.beast_damage(ordinary,hero,hero_state,active=classes.enabled(enemy)) + (attack['pure_bonus'] if reachable else 0))
         if not reachable:
             events.append({"type":"unreachable","message":"🪽 Нужен дальний бой или летающий герой."})
         apply(creatures.on_hit(enemy,hero,successful=hit>0,roller=roller))
         after = abilities.resolve_after_attack(passive if reachable else "none",hit_number=hit_number,actual_hp_damage=hit,state=hero_state)
+        if after.get('restore_shield'):
+            enemy['reward_shields'] = min(enemy['reward_shields_max'], enemy['reward_shields'] + 1)
         class_plan=classes.on_hit(enemy,hero,after['state'],successful=hit>0,roller=roller)
         apply(class_plan)
         hero_state = class_plan["state"]; events.extend(after["events"])

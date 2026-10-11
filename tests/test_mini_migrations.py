@@ -71,6 +71,7 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
                 VALUES(?,1,?,2,'eq_helmet_010')""",(player,won))
             conn.execute("INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)",(player,))
+            conn.execute("INSERT INTO mini_gacha_pity(player_id,uncommon_count,rare_count,legendary_count) VALUES(?,10,24,84)",(player,))
             conn.execute("""INSERT INTO mini_superadmin_audit
                 (admin_user_id,action,world_id,target_user_id,player_id,resource,operation_key)
                 VALUES(555,'superluck',?,555,?,'gacha_guarantee','fixture')""",(world,player))

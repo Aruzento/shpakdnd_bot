@@ -390,6 +390,17 @@ async def use_item_confirm_callback(callback: CallbackQuery):
 
     item = get_inventory_item(player["id"], value)
     if item is None:
+        from app.mini.items import get_previous_item_use
+        previous=get_previous_item_use(player['id'],operation_key)
+        if previous and previous.get('item_id')==value:
+            item=previous
+        if item is None:
+            from app.mini.gacha import get_previous_gacha_pull
+            previous_pull = get_previous_gacha_pull(player['id'], operation_key)
+            if previous_pull and previous_pull.get('payment') == 'ticket':
+                await show_gacha_pull_result(callback, world, player, previous_pull)
+                return
+    if item is None:
         await callback.answer("Предмета больше нет в инвентаре.", show_alert=True)
         return
 
@@ -412,6 +423,10 @@ async def use_item_confirm_callback(callback: CallbackQuery):
         await callback.answer(str(error), show_alert=True)
         return
 
+    if result.get('summon_result'):
+        await show_gacha_pull_result(callback, world, player, result['summon_result'])
+        return
+
     effect_key = result.get("effect_key", "")
     if effect_key == "boss_coin_pouch":
         text = (
@@ -423,6 +438,8 @@ async def use_item_confirm_callback(callback: CallbackQuery):
             f"🧩 Шкатулка открыта: +{result['amount']} осколков.\n"
             f"Осколки: {result['shards']} 🧩"
         )
+    elif effect_key == 'spirit_lantern':
+        text = f"🏮 Фонарь активирован. Зарядов Arise: {result['charges']}.\nСледующий подходящий бой: нормальная победа и хотя бы один удар гарантируют тень."
     elif effect_key == "gacha_luck":
         text = (
             "🍀 Зелье удачи использовано.\n\n"

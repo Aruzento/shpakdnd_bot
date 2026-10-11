@@ -19,6 +19,8 @@ from app.mini.worlds import sync_configured_mini_worlds
 
 
 def main():
+    from app.mini.item_registry import load_definitions
+    load_definitions()
     init_db()
     init_mini_db()
     init_boss_db()
@@ -45,7 +47,7 @@ def main():
     for world in worlds:
         sync_shop_catalog(world["id"])
 
-    print(f"OK: V1.4 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
+    print(f"OK: V1.4.2 Tower floors={len(load_tower_catalog()['floors'])}, Equipment items={equipment_count}")
     print("OK: Python-модули импортированы")
     print(f"OK: база данных: {DB_PATH}")
     print(f"OK: часовой пояс: {TIMEZONE_NAME}")

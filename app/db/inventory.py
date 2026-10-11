@@ -1,3 +1,4 @@
+from contextlib import closing
 import sqlite3
 
 from app.config import DB_PATH
@@ -12,11 +13,17 @@ def add_inventory_item(
     quantity: int,
     description: str = "",
 ) -> tuple[str, int, str]:
+    if type(quantity) is not int or quantity <= 0:
+        raise ValueError('Количество должно быть положительным целым.')
     username = normalize_username(username)
     name = name.strip()
     description = description.strip()
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute('PRAGMA foreign_keys=ON')
+        conn.execute('BEGIN IMMEDIATE')
+        from app.db.dnd_items import register_in_transaction
+        definition_id=register_in_transaction(conn,chat_id,thread_id,name,description)
         cursor = conn.execute(
             """
             SELECT
@@ -77,9 +84,10 @@ def add_inventory_item(
                 username,
                 name,
                 quantity,
-                description
+                description,
+                item_id
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 chat_id,
@@ -88,6 +96,7 @@ def add_inventory_item(
                 name,
                 quantity,
                 description,
+                definition_id,
             ),
         )
         conn.commit()
@@ -102,7 +111,7 @@ def get_inventory(
 ) -> list[tuple[str, int, str]]:
     username = normalize_username(username)
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         cursor = conn.execute(
             """
             SELECT
@@ -127,7 +136,7 @@ def get_all_inventory(
 ) -> dict[str, list[tuple[str, int, str]]]:
     inventory = {}
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         cursor = conn.execute(
             """
             SELECT
@@ -159,10 +168,13 @@ def delete_inventory_item(
     name: str,
     quantity: int = 1,
 ) -> tuple[str, int, int, str] | None:
+    if type(quantity) is not int or quantity <= 0:
+        raise ValueError('Количество должно быть положительным целым.')
     username = normalize_username(username)
     wanted_name = name.strip().casefold()
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute('BEGIN IMMEDIATE')
         cursor = conn.execute(
             """
             SELECT
@@ -220,7 +232,7 @@ def clean_inventory(
 ):
     username = normalize_username(username)
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.execute(
             """
             DELETE FROM inventory
@@ -237,7 +249,7 @@ def clean_all_inventory(
     chat_id: int,
     thread_id: int,
 ):
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
         conn.execute(
             """
             DELETE FROM inventory

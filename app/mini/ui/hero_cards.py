@@ -46,7 +46,9 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         else:
             lines.append("🎉 Новый герой добавлен в коллекцию!")
 
-        if pull_result["used_ticket"]:
+        if pull_result.get('payment') == 'coupon':
+            lines.append('🎟 Потрачено: 1 купон целевой редкости')
+        elif pull_result["used_ticket"]:
             lines.append("🎟 Потрачено: 1 билет призыва")
         else:
             lines.append(f"🪙 Потрачено: {pull_result['cost_coins']}")
@@ -58,7 +60,12 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         if pull_result["auto_activated"]:
             lines.append("⭐ Первый герой автоматически выбран активным.")
 
-    return "\n".join(lines)[:1020]
+    caption = "\n".join(lines)
+    if pull_result is not None and pull_result.get('pity') is not None:
+        from app.mini.pity import format_progress
+        progress = format_progress(pull_result['pity'])
+        return caption[:1018-len(progress)] + '\n\n' + progress
+    return caption[:1020]
 
 
 def hero_share_caption(hero: dict, sharer: str) -> str:

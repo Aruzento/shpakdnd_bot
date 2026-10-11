@@ -6,6 +6,7 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_gacha_pity",
     "mini_villages",
     "mini_village_residents",
     "mini_village_boosts",

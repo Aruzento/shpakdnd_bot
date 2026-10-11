@@ -40,7 +40,7 @@ class CreatureIntegrationFixture(unittest.TestCase):
         self.event=create_boss_event(world,"training_golem",999,self.db)
         self.update(min_players=2,max_hp=1000,current_hp=1000,faction="commoners",ability_key="none",
                     ability_text="Нет особой способности.",features_json="[]",reward_coins=100,reward_items_json="[]",
-                    reward_shields=3,reward_shields_max=3)
+                    reward_shields=3,reward_shields_max=3,reward_decay_percent=10)
         for player in self.players:
             register_player(self.event["id"],player["id"],self.db)
         self.now=datetime(2026,10,6,12,tzinfo=timezone.utc)
