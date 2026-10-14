@@ -69,5 +69,12 @@
   "hero_selector.render_selector.line_12": "🔎 {value_1}",
   "hero_selector.selector_callback.line_01": "Некорректная кнопка.",
   "hero_selector.render_selector.line_20": "Любая",
-  "hero_selector.render_selector.line_21": "Любой"
+  "hero_selector.render_selector.line_21": "Любой",
+  "hero.village.status": "🏘 В деревне ({job})",
+  "hero.village.evict": "🏘 Выселить из деревни",
+  "hero.village.confirm": "Подтвердить выселение",
+  "hero.village.question": "Выселить героя «{name}»?\nНакопленное производство будет учтено. Герой перестанет работать и освободит место в доме, оставаясь в коллекции.",
+  "hero.village.missing": "Герой не принадлежит игроку.",
+  "hero.village.stale": "Состояние деревни изменилось. Открой карточку заново.",
+  "hero.shards.closed": "Продажа осколков через карточку закрыта. Осколки можно использовать для повышения звёзд."
 }

@@ -136,6 +136,8 @@ def rules_menu(world_id, user_id, *, section=False):
     if not section:
         rows=[[InlineKeyboardButton(text=label,callback_data=f'mini:rulespage:{world_id}:{user_id}:{key}')]
               for key,(label,_) in SECTIONS.items()]
+    if not section:
+        rows.append([InlineKeyboardButton(text=editorial_text("guide.title"),callback_data=f"mini:guide:{world_id}:{user_id}:0")])
     rows.append([InlineKeyboardButton(text=editorial_text('general.back'),callback_data=_personal_callback(
         'rules' if section else 'more',world_id,user_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -153,3 +155,18 @@ async def rules_section_callback(callback):
         return
     await callback.answer()
     await _edit_private(callback,SECTIONS[key][1],rules_menu(world['id'],callback.from_user.id,section=True))
+
+
+@router.callback_query(F.data.startswith("mini:guide:"))
+@editorial_screen
+async def combat_guide_callback(callback):
+    from app.mini.ui.combat_guide import guide_screen
+    context=await load_extended_context(callback,"guide")
+    if context is None:return
+    world,_,page=context
+    try:body,markup=guide_screen(world["id"],callback.from_user.id,int(page))
+    except ValueError:
+        await callback.answer(editorial_text("activities.rules_section_callback.line_01"),show_alert=True)
+        return
+    await callback.answer()
+    await _edit_private(callback,body,markup)

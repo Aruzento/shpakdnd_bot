@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from tests.v1_3.support import MiniCase
+from app.mini.ui.hero_village import with_village
 from app.mini import favorites
 from app.mini.admin_grants import grant_mini_hero
 from app.mini.boss.schema import init_boss_db
@@ -265,6 +266,7 @@ class OwnedInactiveUITests(OwnedInactiveCase, unittest.IsolatedAsyncioTestCase):
 
     def services(self):
         stack = ExitStack()
+        stack.enter_context(patch('app.mini.ui.heroes.with_village',side_effect=partial(with_village,db_path=self.db)))
         stack.enter_context(patch('app.mini.ui.heroes._load_extended_context',
             side_effect=lambda cb, prefix: (self.world, self.player, cb.data.split(':', 4)[4])))
         for name in ('get_favorites', 'add_favorite', 'remove_favorite', 'replace_favorite', 'is_favorite'):

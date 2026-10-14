@@ -1,5 +1,6 @@
 from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.editorial.buttons import button as InlineKeyboardButton
+from app.mini.ui.hero_village import with_village
 import secrets
 from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
@@ -119,48 +120,15 @@ def _shard_sell_menu(
     hero: dict,
     *, nav_token: str = '',
 ) -> InlineKeyboardMarkup:
-    token=secrets.token_hex(4)
-    suffix='~'+nav_token if nav_token else ''
-    shards = int(hero.get("shards", 0))
-    rows = []
-
-    if shards >= 1:
-        rows.append([
-            InlineKeyboardButton(
-                text=editorial_text('heroes.shard_sell_menu.line_02'),
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},1,{token}{suffix}",
-            )
-        ])
-    if shards >= 10:
-        rows.append([
-            InlineKeyboardButton(
-                text=editorial_text('heroes.shard_sell_menu.line_03'),
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},10,{token}{suffix}",
-            )
-        ])
-    if shards > 0:
-        rows.append([
-            InlineKeyboardButton(
-                text=editorial_text('heroes.shard_sell_menu.line_04', shards=f'{shards}', shards_2=f'{shards}'),
-                callback_data=f"mini:shardsell:{world_id}:{user_id}:{hero['id']},all,{token}{suffix}",
-            )
-        ])
-
-    rows.append([
-        InlineKeyboardButton(
-            text=editorial_text('heroes.shard_sell_menu.line_01'),
-            callback_data=f"mini:hero:{world_id}:{user_id}:{hero['id']}{'.'+nav_token if nav_token else ''}",
-        )
-    ])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(
+        text=editorial_text("navigation.back"),
+        callback_data=f"mini:hero:{world_id}:{user_id}:{hero['id']}")]])
 
 
 @editorial_screen
 def _format_shard_sell(hero: dict, balance: int) -> str:
-    shards = int(hero.get("shards", 0))
-    return (
-        editorial_text('heroes.format_shard_sell.line_01', name=f"{hero['name']}", shards=f'{shards}', balance=f'{balance}')
-    )
+    return editorial_text("hero.shards.closed")
+
 
 
 @router.callback_query(F.data.startswith("mini:collection:"))
@@ -388,6 +356,7 @@ async def hero_card_callback(callback: CallbackQuery):
         await callback.answer(editorial_text('heroes.hero_card_callback.line_01'), show_alert=True)
         return
 
+    hero=with_village(hero,player["id"])
     state = get_gacha_state(player["id"])
     try:
         await send_hero_card(
@@ -433,6 +402,7 @@ async def hero_upgrade_callback(callback: CallbackQuery):
         return
 
     hero = get_player_hero(player["id"], hero_id)
+    if collection or profile:hero=with_village(hero,player["id"])
     state = get_gacha_state(player["id"])
 
     if hero is not None:
@@ -463,91 +433,17 @@ async def hero_upgrade_callback(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("mini:heroshards:"))
 @editorial_screen
 async def hero_shards_callback(callback: CallbackQuery):
-    context = await _load_extended_context(callback, "heroshards")
-    if context is None:
-        return
-
-    world, player, hero_id_text = context
-    try:
-        hero_id_text,nav_token=split_context(hero_id_text)
-        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
-        hero_id = int(hero_id_text)
-    except ValueError:
-        await callback.answer(editorial_text('heroes.hero_shards_callback.line_02'), show_alert=True)
-        return
-
-    hero = get_player_hero(player["id"], hero_id)
-    if hero is None:
-        await callback.answer(editorial_text('heroes.hero_shards_callback.line_01'), show_alert=True)
-        return
-
-    await _send_private_text_from_callback(
-        callback,
-        world,
-        _format_shard_sell(hero, int(player["coins"])),
-        _shard_sell_menu(world["id"], callback.from_user.id, hero,nav_token=nav_token),
-    )
-    await callback.answer()
+    context=await _load_extended_context(callback,"heroshards")
+    if context is None:return
+    await callback.answer(editorial_text("hero.shards.closed"),show_alert=True)
 
 
 @router.callback_query(F.data.startswith("mini:shardsell:"))
 @editorial_screen
 async def shard_sell_callback(callback: CallbackQuery):
-    context = await _load_extended_context(callback, "shardsell")
-    if context is None:
-        return
-
-    world, player, payload = context
-    try:
-        raw,nav_token=split_context(payload)
-        if nav_token:nav_token=validate_navigation(player['id'],nav_token)
-        values=raw.split(',')
-        if len(values) not in (2,3):raise ValueError(editorial_text('errors.ui.heroes.shard_sell_callback.01'))
-        hero_id_text,quantity_text=values[:2]
-        hero_id = int(hero_id_text)
-    except (ValueError, IndexError):
-        await callback.answer(editorial_text('heroes.shard_sell_callback.line_03'), show_alert=True)
-        return
-
-    hero = get_player_hero(player["id"], hero_id)
-    if hero is None:
-        await callback.answer(editorial_text('heroes.shard_sell_callback.line_02'), show_alert=True)
-        return
-
-    if quantity_text == "all":
-        quantity = int(hero.get("shards", 0))
-    else:
-        try:
-            quantity = int(quantity_text)
-        except ValueError:
-            await callback.answer(editorial_text('heroes.shard_sell_callback.line_04'), show_alert=True)
-            return
-
-    try:
-        result = sell_hero_shards(
-            player["id"],
-            hero_id,
-            quantity,
-            operation_key='shardsell:'+raw if len(values)==3 else legacy_operation(callback,'shardsell:'+raw),
-        )
-    except HeroShardSellError as error:
-        await callback.answer(str(error), show_alert=True)
-        return
-
-    hero = get_player_hero(player["id"], hero_id)
-    player = get_mini_player(world["id"], callback.from_user.id)
-
-    await callback.answer(
-        editorial_text('heroes.shard_sell_callback.line_01', coins_earned=f"{result['coins_earned']}"),
-        show_alert=True,
-    )
-
-    if hero is not None and player is not None:
-        await _edit_private(
-            callback,
-            _format_shard_sell(hero, int(player["coins"])),
-            _shard_sell_menu(world["id"], callback.from_user.id, hero,nav_token=nav_token),
-        )
+    context=await _load_extended_context(callback,"shardsell")
+    if context is None:return
+    await callback.answer(editorial_text("hero.shards.closed"),show_alert=True)
 
 
 @router.callback_query(F.data.startswith("mini:heroactive:"))
@@ -578,6 +474,7 @@ async def hero_active_callback(callback: CallbackQuery):
 
 
     hero = get_player_hero(player["id"], hero_id)
+    if collection or profile:hero=with_village(hero,player["id"])
     state = get_gacha_state(player["id"])
     if hero is not None:
         try:
@@ -639,6 +536,7 @@ async def favorite_callback(callback):
         elif action=='remove': remove_favorite(player['id'],new_id)
         elif action in ('replace','r') and len(old)==1: replace_favorite(player['id'],int(old[0]),new_id)
         else: raise ValueError(editorial_text('errors.ui.heroes.favorite_callback.02'))
+        hero=with_village(hero,player["id"])
         state=get_gacha_state(player['id'])
         await send_hero_card(callback,world,hero,hero_caption(hero,full=True),hero_card_menu(world['id'],callback.from_user.id,hero,state,collection=True,favorite=is_favorite(player['id'],new_id),nav_token=nav_token))
         await callback.answer(editorial_text('heroes.favorite_callback.line_01'))
@@ -660,3 +558,44 @@ async def collection_back_callback(callback):
     except ValueError as error:
         await callback.answer(str(error),show_alert=True);return
     await callback.answer();await _send_private_text_from_callback(callback,world,text,markup)
+
+
+@router.callback_query(F.data.startswith("mini:hevict:"))
+@editorial_screen
+async def hero_evict_callback(callback):
+    from app.mini.ui.callbacks import integer
+    from app.mini.village.service import mutate
+    context=await _load_extended_context(callback,"hevict")
+    if context is None:return
+    world,player,payload=context
+    try:
+        parts=payload.split(".")
+        if len(parts) not in (3,4) or parts[2] not in {"c","p"}:raise ValueError
+        hid,revision=integer(parts[0]),integer(parts[1])
+        profile=parts[2]=="p"
+        hero=get_player_hero(player["id"],hid)
+        if hero is None:raise ValueError(editorial_text("hero.village.missing"))
+        if len(parts)==4:
+            if parts[3]!="yes":raise ValueError
+            mutate(player["id"],"evict",hero_id=hid,expected_revision=revision,
+                   operation_key=f"hero-evict:{hid}:{revision}")
+            hero=with_village(hero,player["id"])
+            await send_hero_card(callback,world,hero,hero_caption(hero,full=not profile),
+                hero_card_menu(world["id"],callback.from_user.id,hero,get_gacha_state(player["id"]),
+                    collection=not profile,profile=profile,favorite=is_favorite(player["id"],hid)))
+        else:
+            hero=with_village(hero,player["id"])
+            resident=hero.get("village_resident")
+            if not resident or resident["revision"]!=revision:raise ValueError(editorial_text("hero.village.stale"))
+            markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=editorial_text("hero.village.confirm"),
+                    callback_data=f"mini:hevict:{world['id']}:{callback.from_user.id}:{payload}.yes")],
+                [InlineKeyboardButton(text=editorial_text("navigation.back"),
+                    callback_data=(f"mini:character:{world['id']}:{callback.from_user.id}" if profile else
+                                   f"mini:hero:{world['id']}:{callback.from_user.id}:{hid}"))]])
+            await _send_private_text_from_callback(callback,world,
+                editorial_text("hero.village.question",name=hero["name"]),markup)
+    except (ValueError,IndexError) as error:
+        await callback.answer(str(error)[:180] or editorial_text("hero.village.stale"),show_alert=True)
+        return
+    await callback.answer()

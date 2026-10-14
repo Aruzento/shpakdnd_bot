@@ -1,6 +1,8 @@
 from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.editorial.buttons import button as InlineKeyboardButton
 from app.mini.editorial.registry import LiveMapping
+from app.mini.editorial import glossary
+from app.mini.ui.callbacks import number
 import secrets
 
 from app.mini.ui.transport import (
@@ -66,12 +68,15 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         if pull_result["auto_activated"]:
             lines.append(editorial_text('hero_cards.hero_caption.line_15'))
 
+    resident=hero.get("village_resident") if pull_result is None else None
+    if resident:
+        lines.append(editorial_text("hero.village.status",job=glossary("job."+(resident["building"] or "none"))))
     caption = "\n".join(lines)
     if pull_result is not None and pull_result.get('pity') is not None:
         from app.mini.pity import format_progress
         progress = format_progress(pull_result['pity'])
         return caption[:1018-len(progress)] + '\n\n' + progress
-    return caption[:1020]
+    return caption if resident else caption[:1020]
 
 
 @editorial_screen
@@ -83,6 +88,12 @@ def hero_share_caption(hero: dict, sharer: str) -> str:
     )[:1020]
 
 
+def eviction_button(world,user,hero,origin):
+    resident=hero["village_resident"]
+    tail=f"{number(hero['id'])}.{number(resident['revision'])}.{origin}"
+    return InlineKeyboardButton(text=editorial_text("hero.village.evict"),callback_data=f"mini:hevict:{world}:{user}:{tail}")
+
+
 @editorial_screen
 def profile_menu(world,user,hero):
     rows=[]
@@ -91,6 +102,8 @@ def profile_menu(world,user,hero):
         if not upgrade['at_max']:
             rows.append([InlineKeyboardButton(text=editorial_text('hero_cards.profile_menu.line_03', upgrade_cost=f"{upgrade['upgrade_cost']}"),
                 callback_data=f"mini:heroupgrade:{world}:{user}:{hero['id']}.{int(hero.get('stars',0))}.p")])
+    if hero and hero.get("village_resident"):
+        rows.append([eviction_button(world,user,hero,"p")])
     rows.append([InlineKeyboardButton(text=editorial_text('navigation.home'),callback_data=f'mini:home:{world}:{user}'),
                  InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=f'mini:heroarea:{world}:{user}')])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -115,7 +128,8 @@ def hero_card_menu(world_id,user_id,hero,state,*,allow_share=False,collection=Fa
         if active:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_09'),'heroactive',f"{hero['id']}.c{suffix}")])
         rows.append([button(editorial_text('hero_cards.hero_card_menu.line_10') if favorite else editorial_text('hero_cards.hero_card_menu.line_11'),'favorite',
                             f"{'remove' if favorite else 'add'}.{hero['id']}{suffix}")])
-        if int(hero.get('shards',0))>0:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_12'),'heroshards',str(hero['id'])+suffix)])
+        if hero.get("village_resident"):
+            rows.append([eviction_button(world_id,user_id,hero,"c")])
         rows.append([button(editorial_text('navigation.collection'),'collectionopen','0')])
         if nav_token:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_13'),'collectionback',nav_token)])
     else:
@@ -129,6 +143,25 @@ def hero_card_menu(world_id,user_id,hero,state,*,allow_share=False,collection=Fa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _text_chunks(value,limit=4096):
+    chunks=[];current=[];units=0
+    for char in value:
+        size=len(char.encode("utf-16-le"))//2
+        if units+size>limit:
+            chunks.append("".join(current));current=[];units=0
+        current.append(char);units+=size
+    if current:chunks.append("".join(current))
+    return chunks or [""]
+
+
+async def _send_card_text(callback,world,caption,reply_markup):
+    chunks=_text_chunks(caption)
+    for index,chunk in enumerate(chunks):
+        sent=await _send_private_text_from_callback(callback,world,chunk,
+            reply_markup if index==len(chunks)-1 else InlineKeyboardMarkup(inline_keyboard=[]))
+    return sent
+
+
 @editorial_screen
 async def send_hero_card(
     callback: CallbackQuery,
@@ -138,15 +171,18 @@ async def send_hero_card(
     reply_markup: InlineKeyboardMarkup,
 ):
     image = get_hero_image(hero)
+    long_caption=len(caption.encode("utf-16-le"))//2>1024
     if image is not None:
         try:
             sent = await callback.bot.send_photo(
                 **callback_delivery(callback,world),
                 photo=FSInputFile(image),
-                caption=caption,
-                reply_markup=reply_markup,
+                caption=(hero_heading(hero)[:200] if long_caption else caption),
+                reply_markup=None if long_caption else reply_markup,
                 **_replacement_ephemeral_kwargs(callback),
             )
+            if long_caption:
+                return await _send_card_text(callback,world,caption,reply_markup)
             await _delete_current_ephemeral(callback)
             return sent
         except TelegramBadRequest as error:
@@ -155,7 +191,7 @@ async def send_hero_card(
                 f"hero={hero.get('code')} error={type(error).__name__}: {error}"
             )
 
-    return await _send_private_text_from_callback(
+    return await _send_card_text(
         callback,
         world,
         caption,

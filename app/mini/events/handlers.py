@@ -49,7 +49,8 @@ def _screen(world_id: int, user_id: int, player: dict, screen: str,
                     personal_callback("fair", world_id, user_id))]]
     elif screen == "rps":
         text = (editorial_text('events.screen.line_02'))
-        rows = [[button(editorial_text('events.screen.line_09'), "bets")]]
+        rows = [[button(editorial_text('pvp.bot'), "bets")],
+                [InlineKeyboardButton(text=editorial_text("pvp.player"),callback_data=f"mini:pvp:{world_id}:{user_id}:home")]]
     elif screen == "bets":
         text = editorial_text('events.screen.line_03')
         token = secrets.token_hex(6)

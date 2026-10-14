@@ -5740,5 +5740,374 @@
     "kind": "text",
     "parameters": [],
     "limit": 200
+  },
+  "pvp.bot": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.player": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.create": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024,
+    "icon_key": "icon.section.duels"
+  },
+  "pvp.accept": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024,
+    "icon_key": "icon.section.duels"
+  },
+  "pvp.cancel": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.open_choice": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.refresh": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.lobby": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.lobby.challenge": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.open": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.choosing": {
+    "kind": "text",
+    "parameters": [
+      "first",
+      "second"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.choice": {
+    "kind": "text",
+    "parameters": [
+      "choice",
+      "name"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.win": {
+    "kind": "text",
+    "parameters": [
+      "choices",
+      "winner"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.draw": {
+    "kind": "text",
+    "parameters": [
+      "choices"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.public.closed": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.personal.open": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.personal.choose": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.personal.wait": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.personal.publication_failed": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.player": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.session": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.busy": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.solo": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.key": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.self": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.closed": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.choice": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.member": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.cancel": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.callback": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.village.status": {
+    "kind": "text",
+    "parameters": [
+      "job"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.village.evict": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024,
+    "icon_key": "icon.section.village"
+  },
+  "hero.village.confirm": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.village.question": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.village.missing": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.village.stale": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "hero.shards.closed": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "guide.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096,
+    "icon_key": "icon.guide.title"
+  },
+  "guide.previous": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.next": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.rules": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.factions.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.damage.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.range.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.classes.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.traits.title": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.factions.body": {
+    "kind": "text",
+    "parameters": [
+      "beasts",
+      "commoners",
+      "dark",
+      "monsters",
+      "title",
+      "warriors"
+    ],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.damage.body": {
+    "kind": "text",
+    "parameters": [
+      "bludgeoning",
+      "magic",
+      "piercing",
+      "slashing",
+      "title"
+    ],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.range.body": {
+    "kind": "text",
+    "parameters": [
+      "melee",
+      "ranged",
+      "title"
+    ],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.classes.body": {
+    "kind": "text",
+    "parameters": [
+      "beast",
+      "guardian",
+      "healer",
+      "mage",
+      "none",
+      "sneaky",
+      "technical",
+      "title",
+      "warrior"
+    ],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "guide.traits.body": {
+    "kind": "text",
+    "parameters": [
+      "armored",
+      "construct",
+      "demonic",
+      "flying",
+      "holy",
+      "none",
+      "poisonous",
+      "title",
+      "undead"
+    ],
+    "parse_mode": null,
+    "limit": 4096
+  },
+  "icon.guide.title": {
+    "kind": "icon"
   }
 }

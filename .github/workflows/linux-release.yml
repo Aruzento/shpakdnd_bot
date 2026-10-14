@@ -140,7 +140,10 @@ jobs:
       - name: Validate all JSON and repeated disposable SQLite startup
         run: python tools/validate_editorial_release.py
 
-      - name: Verify gameplay changes are only editorial strings
+      - name: Verify PvP migrations and old-code startup on disposable copies
+        run: python tools/validate_pvp_migration.py
+
+      - name: Verify unchanged gameplay and the authorized PvP integration
         run: python tools/verify_editorial_mechanics.py
 
       - name: Create synthetic legacy SQLite fixture

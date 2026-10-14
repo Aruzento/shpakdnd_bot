@@ -467,6 +467,8 @@ async def character_callback(callback: CallbackQuery):
 
     world, player = context
     active = get_active_hero(player["id"])
+    from app.mini.ui.hero_village import with_village
+    active=with_village(active,player["id"])
     text = hero_caption(active) if active is not None else editorial_text('handlers.character_callback.line_01')
     from app.mini.ui.hero_cards import profile_menu
     markup = profile_menu(world["id"],callback.from_user.id,active)

@@ -41,7 +41,7 @@
   },
   "icon.class.none": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "▪️"
   },
   "icon.class.magical": {
     "custom_emoji_id": null,
@@ -49,7 +49,7 @@
   },
   "icon.class.technical": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🔧"
   },
   "icon.class.martial": {
     "custom_emoji_id": null,
@@ -57,15 +57,15 @@
   },
   "icon.class.warrior": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🔪"
   },
   "icon.class.guardian": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🛡"
   },
   "icon.class.mage": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🧹"
   },
   "icon.class.ranger": {
     "custom_emoji_id": null,
@@ -73,15 +73,15 @@
   },
   "icon.class.sneaky": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🕯"
   },
   "icon.class.healer": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🧑‍🔬"
   },
   "icon.class.beast": {
     "custom_emoji_id": null,
-    "fallback": ""
+    "fallback": "🐺"
   },
   "icon.range.melee": {
     "custom_emoji_id": null,
@@ -798,5 +798,9 @@
   "icon.boss.preview_menu.line_02": {
     "custom_emoji_id": null,
     "fallback": "⬅️"
+  },
+  "icon.guide.title": {
+    "custom_emoji_id": null,
+    "fallback": "📚"
   }
 }

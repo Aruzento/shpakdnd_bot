@@ -114,6 +114,15 @@ class MiniMigrationTests(unittest.TestCase):
                 VALUES(?,2,?,?,?,10,10,'lost')""",(player,hero,snapshot,json.dumps(get_floor(2)))).lastrowid
             active=conn.execute("SELECT id FROM mini_tower_attempts WHERE player_id=? AND status='active'",(player,)).fetchone()[0]
             conn.execute('INSERT INTO mini_tower_retries VALUES(?,?)',(lost,active))
+        # New persisted choices/publication join the same all-tables snapshot.
+        with connect_mini_db(self.db) as conn:
+            sid=conn.execute("""INSERT INTO mini_event_pvp
+                (world_id,creator_id,acceptor_id,operation_key,status,created_at,accept_until,
+                 choose_until,publication,message_id,revision)
+                VALUES(?,?,?,'fixture-pvp','choosing',1000,1120,1240,'sent',99,2)""",
+                (world,player,other)).lastrowid
+            conn.execute("INSERT INTO mini_event_pvp_members(session_id,player_id,choice) VALUES(?,?,'saint')",(sid,player))
+            conn.execute("INSERT INTO mini_event_pvp_members(session_id,player_id) VALUES(?,?)",(sid,other))
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

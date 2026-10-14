@@ -132,11 +132,11 @@ def validate_entry(file, key, value, schema):
             fallback = value["fallback"]
             if not isinstance(fallback, str) or len(fallback) > 16 or any(c in fallback for c in "<>{}"):
                 raise EditorialError("fallback must be a short plain emoji")
-            if fallback and not re.fullmatch(r"[\U0001f000-\U0001ffff\u2600-\u27ff\u2b00-\u2bff\u2190-\u23ff\u200d\ufe0f\u20e30-9#*]+", fallback):
+            if fallback and not re.fullmatch(r"[\U0001f000-\U0001ffff\u25aa\u2600-\u27ff\u2b00-\u2bff\u2190-\u23ff\u200d\ufe0f\u20e30-9#*]+", fallback):
                 raise EditorialError("fallback must contain emoji characters only")
             if value["custom_emoji_id"] and not fallback:
                 raise EditorialError("custom emoji requires a non-empty fallback")
-            if fallback and not re.search(r"[\U0001f000-\U0001ffff\u2600-\u27ff\u2b00-\u2bff\u2190-\u23ff]",fallback):
+            if fallback and not re.search(r"[\U0001f000-\U0001ffff\u25aa\u2600-\u27ff\u2b00-\u2bff\u2190-\u23ff]",fallback):
                 raise EditorialError("fallback must be a short plain emoji")
         else:
             raise EditorialError(f"unknown schema kind: {kind}")

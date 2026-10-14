@@ -282,6 +282,9 @@ class TurnMediaTests(unittest.IsolatedAsyncioTestCase):
 
 class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        residence=patch("app.mini.ui.hero_village.with_village",side_effect=lambda hero,pid:hero)
+        residence.start()
+        self.addCleanup(residence.stop)
         self.world = {"id": 1, "chat_id": -1001, "thread_id": 42, "enabled": 1}
         self.player = {"id": 10, "coins": 45, "shards": 12, "username": "@user", "character_name": "Player"}
         self.hero = {

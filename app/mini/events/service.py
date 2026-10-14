@@ -104,6 +104,8 @@ def _start(conn, player_id, world_id, game_type, stake, start_key) -> dict:
         )
         return active
 
+    from app.mini.events.pvp import assert_no_active_pvp
+    assert_no_active_pvp(conn, player_id)
     payload = {}
     if game_type == "labyrinth":
         payload["sequence"] = [secrets.choice(DIRECTIONS) for _ in range(3)]

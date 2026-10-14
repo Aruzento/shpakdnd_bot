@@ -6858,5 +6858,25 @@
     }
   ],
   "total_migrated_expressions": 845,
-  "editorial_entries": 1147
+  "editorial_entries": 1147,
+  "historical_scope": "Initial editorial migration through de3ce625a779a8295b82a08f7a4844d290362e5d; original line numbers are historical.",
+  "followup": {
+    "features": [
+      "owner-scoped Village cards and eviction",
+      "closed shard sale callbacks",
+      "persistent RPS PvP",
+      "five combat guide chapters"
+    ],
+    "architecture": "docs/architecture/V1.4.3.md",
+    "staging": "docs/ui/v1.4.3-staging.md",
+    "new_catalogs": [
+      "events_pvp.json",
+      "combat_guide.json"
+    ],
+    "new_tables": [
+      "mini_event_pvp",
+      "mini_event_pvp_members"
+    ],
+    "gameplay_scope": "New PvP is separately tested. Existing Events._start gets exact assert_no_active_pvp guard; other 30-module AST remains checked."
+  }
 }

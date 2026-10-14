@@ -62,7 +62,7 @@
   "class.none": {
     "full": "Без класса",
     "short": "Без класса",
-    "emoji": "",
+    "emoji": "▪️",
     "icon_key": "icon.class.none"
   },
   "class.magical": {
@@ -72,9 +72,9 @@
     "icon_key": "icon.class.magical"
   },
   "class.technical": {
-    "full": "Технический класс",
-    "short": "Технический класс",
-    "emoji": "",
+    "full": "Техник",
+    "short": "Техник",
+    "emoji": "🔧",
     "icon_key": "icon.class.technical"
   },
   "class.martial": {
@@ -86,19 +86,19 @@
   "class.warrior": {
     "full": "Воин",
     "short": "Воин",
-    "emoji": "",
+    "emoji": "🔪",
     "icon_key": "icon.class.warrior"
   },
   "class.guardian": {
     "full": "Страж",
     "short": "Страж",
-    "emoji": "",
+    "emoji": "🛡",
     "icon_key": "icon.class.guardian"
   },
   "class.mage": {
     "full": "Маг",
     "short": "Маг",
-    "emoji": "",
+    "emoji": "🧹",
     "icon_key": "icon.class.mage"
   },
   "class.ranger": {
@@ -110,19 +110,19 @@
   "class.sneaky": {
     "full": "Плут",
     "short": "Плут",
-    "emoji": "",
+    "emoji": "🕯",
     "icon_key": "icon.class.sneaky"
   },
   "class.healer": {
     "full": "Целитель",
     "short": "Целитель",
-    "emoji": "",
+    "emoji": "🧑‍🔬",
     "icon_key": "icon.class.healer"
   },
   "class.beast": {
     "full": "Зверь",
     "short": "Зверь",
-    "emoji": "",
+    "emoji": "🐺",
     "icon_key": "icon.class.beast"
   },
   "range.melee": {

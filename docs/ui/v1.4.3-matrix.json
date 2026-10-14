@@ -1333,7 +1333,7 @@
         ],
         [
           {
-            "text": "Технический класс",
+            "text": "Техник",
             "callback": "mini:select:999999:9999999999:c0.s28.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1786,7 +1786,7 @@
     },
     {
       "screen": "hero_card",
-      "status": "updated",
+      "status": "updated by follow-up",
       "renderer": "app.mini.ui.hero_cards.hero_card_menu",
       "image_contract": "{hero.image}",
       "design_targets": [
@@ -1827,15 +1827,6 @@
         ],
         [
           {
-            "text": "💱 Продать осколки",
-            "callback": "mini:heroshards:999999:9999999999:100000001~aabbccdd",
-            "handlers": [
-              "app.mini.ui.heroes.hero_shards_callback"
-            ]
-          }
-        ],
-        [
-          {
             "text": "📚 Коллекция",
             "callback": "mini:collectionopen:999999:9999999999:0",
             "handlers": [
@@ -1857,7 +1848,7 @@
     },
     {
       "screen": "shards_sell",
-      "status": "updated",
+      "status": "closed compatibility screen; no new sale path",
       "renderer": "app.mini.ui.heroes._shard_sell_menu",
       "image_contract": "",
       "design_targets": [
@@ -1866,39 +1857,12 @@
         "shards_sell",
         "hero_card"
       ],
-      "action": "owned heroes/filter/page; active/upgrade/favorite/sell → existing services; back → owner-bound stored context",
+      "action": "Old heroshards/shardsell callbacks show closure without economic action; renderer provides only back",
       "buttons": [
         [
           {
-            "text": "Продать 1 → +1 🪙",
-            "callback": "mini:shardsell:999999:9999999999:100000001,1,11223344~aabbccdd",
-            "handlers": [
-              "app.mini.ui.heroes.shard_sell_callback"
-            ]
-          }
-        ],
-        [
-          {
-            "text": "Продать 10 → +10 🪙",
-            "callback": "mini:shardsell:999999:9999999999:100000001,10,11223344~aabbccdd",
-            "handlers": [
-              "app.mini.ui.heroes.shard_sell_callback"
-            ]
-          }
-        ],
-        [
-          {
-            "text": "Продать все 120 → +120 🪙",
-            "callback": "mini:shardsell:999999:9999999999:100000001,all,11223344~aabbccdd",
-            "handlers": [
-              "app.mini.ui.heroes.shard_sell_callback"
-            ]
-          }
-        ],
-        [
-          {
-            "text": "⬅️ К герою",
-            "callback": "mini:hero:999999:9999999999:100000001.aabbccdd",
+            "text": "⬅️ Назад",
+            "callback": "mini:hero:999999:9999999999:100000001",
             "handlers": [
               "app.mini.ui.heroes.hero_card_callback"
             ]
@@ -4514,7 +4478,7 @@
     },
     {
       "screen": "events_rps",
-      "status": "updated",
+      "status": "updated by follow-up",
       "renderer": "app.mini.events.handlers._screen",
       "image_contract": "",
       "design_targets": [
@@ -4524,10 +4488,19 @@
       "buttons": [
         [
           {
-            "text": "🎲 Играть",
+            "text": "Против бота",
             "callback": "mini:ev:999999:9999999999:bets",
             "handlers": [
               "app.mini.events.handlers.event_game_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Против игрока",
+            "callback": "mini:pvp:999999:9999999999:home",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
             ]
           }
         ],
@@ -6330,7 +6303,7 @@
     },
     {
       "screen": "rules",
-      "status": "preserved",
+      "status": "updated by follow-up",
       "renderer": "app.mini.ui.activities.rules_menu",
       "image_contract": "",
       "design_targets": [
@@ -6435,6 +6408,15 @@
             "callback": "mini:rulespage:999999:9999999999:streak",
             "handlers": [
               "app.mini.ui.activities.rules_section_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "📚 Учебник по бою",
+            "callback": "mini:guide:999999:9999999999:0",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
             ]
           }
         ],
@@ -6670,5 +6652,471 @@
       ],
       "test": "tests.v1_4_2.test_screen_contracts.ScreenContractTests.test_screen_rules_streak"
     }
-  ]
+  ],
+  "additional_screens": [
+    {
+      "screen": "hero_resident_collection",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "⬆️ Улучшить · ⭐1 · 10 🧩",
+            "callback": "mini:heroupgrade:999999:9999999999:100000001.0.c",
+            "handlers": [
+              "app.mini.ui.heroes.hero_upgrade_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "✅ Сделать активным",
+            "callback": "mini:heroactive:999999:9999999999:100000001.c",
+            "handlers": [
+              "app.mini.ui.heroes.hero_active_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "⭐ Сделать избранным",
+            "callback": "mini:favorite:999999:9999999999:add.100000001",
+            "handlers": [
+              "app.mini.ui.heroes.favorite_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "🏘 Выселить из деревни",
+            "callback": "mini:hevict:999999:9999999999:1njcht.3.c",
+            "handlers": [
+              "app.mini.ui.heroes.hero_evict_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "📚 Коллекция",
+            "callback": "mini:collectionopen:999999:9999999999:0",
+            "handlers": [
+              "app.mini.ui.heroes.collection_open_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "hero_resident_profile",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "⬆️ Улучшить · 10 🧩",
+            "callback": "mini:heroupgrade:999999:9999999999:100000001.0.p",
+            "handlers": [
+              "app.mini.ui.heroes.hero_upgrade_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "🏘 Выселить из деревни",
+            "callback": "mini:hevict:999999:9999999999:1njcht.3.p",
+            "handlers": [
+              "app.mini.ui.heroes.hero_evict_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "callback": "mini:home:999999:9999999999",
+            "handlers": [
+              "app.mini.handlers.home_callback"
+            ]
+          },
+          {
+            "text": "⬅️ Назад",
+            "callback": "mini:heroarea:999999:9999999999",
+            "handlers": [
+              "app.mini.handlers.submenu_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_lobby",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Создать вызов",
+            "callback": "mini:pvp:999999:9999999999:create.11223344",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "callback": "mini:ev:999999:9999999999:rps",
+            "handlers": [
+              "app.mini.events.handlers.event_game_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_open_private",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "Отменить вызов",
+            "callback": "mini:pvp:999999:9999999999:cancel.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Обновить",
+            "callback": "mini:pvp:999999:9999999999:view.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "callback": "mini:pvp:999999:9999999999:home",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_choice_private",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "😇 Святоша",
+            "callback": "mini:pvp:999999:9999999999:pick.77.s",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "😈 Демон",
+            "callback": "mini:pvp:999999:9999999999:pick.77.d",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "🧑 Житель",
+            "callback": "mini:pvp:999999:9999999999:pick.77.v",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Обновить",
+            "callback": "mini:pvp:999999:9999999999:view.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "callback": "mini:pvp:999999:9999999999:home",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_wait_private",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "Обновить",
+            "callback": "mini:pvp:999999:9999999999:view.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "callback": "mini:pvp:999999:9999999999:home",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_public_open",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Принять вызов",
+            "callback": "mini:pvp:999999:0:join.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_public_choosing",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "Открыть свой выбор",
+            "callback": "mini:pvp:999999:0:view.77",
+            "handlers": [
+              "app.mini.events.pvp_handlers.action"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_public_win",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_public_draw",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "pvp_public_expired",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "combat_guide_0",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "Следующая глава →",
+            "callback": "mini:guide:999999:9999999999:1",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "К правилам",
+            "callback": "mini:rules:999999:9999999999",
+            "handlers": [
+              "app.mini.ui.activities.rules_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "combat_guide_1",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "← Предыдущая глава",
+            "callback": "mini:guide:999999:9999999999:0",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Следующая глава →",
+            "callback": "mini:guide:999999:9999999999:2",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "К правилам",
+            "callback": "mini:rules:999999:9999999999",
+            "handlers": [
+              "app.mini.ui.activities.rules_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "combat_guide_2",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "← Предыдущая глава",
+            "callback": "mini:guide:999999:9999999999:1",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Следующая глава →",
+            "callback": "mini:guide:999999:9999999999:3",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "К правилам",
+            "callback": "mini:rules:999999:9999999999",
+            "handlers": [
+              "app.mini.ui.activities.rules_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "combat_guide_3",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "← Предыдущая глава",
+            "callback": "mini:guide:999999:9999999999:2",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Следующая глава →",
+            "callback": "mini:guide:999999:9999999999:4",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "К правилам",
+            "callback": "mini:rules:999999:9999999999",
+            "handlers": [
+              "app.mini.ui.activities.rules_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    },
+    {
+      "screen": "combat_guide_4",
+      "status": "implemented; real Telegram staging pending",
+      "renderer": "tests.v1_4_3.test_followup_screens.render_additional delegates to production builders",
+      "action": "owner/world/topic and current SQLite state for mutations; pure guide navigation",
+      "buttons": [
+        [
+          {
+            "text": "← Предыдущая глава",
+            "callback": "mini:guide:999999:9999999999:3",
+            "handlers": [
+              "app.mini.ui.activities.combat_guide_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "К правилам",
+            "callback": "mini:rules:999999:9999999999",
+            "handlers": [
+              "app.mini.ui.activities.rules_callback"
+            ]
+          }
+        ]
+      ],
+      "test": "tests.v1_4_3.test_followup_screens.FollowupScreenTests.test_additional_matrix_matches_actual_builders_and_registered_handlers"
+    }
+  ],
+  "staging": "docs/ui/v1.4.3-staging.md"
 }
