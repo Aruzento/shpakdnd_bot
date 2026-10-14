@@ -1,9 +1,20 @@
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, EphemeralMessageParameters, InlineKeyboardMarkup
+
+
+def callback_delivery(callback,world):
+    """Registration can open Mini in private chat; keep subsequent UI there."""
+    chat=getattr(getattr(callback,'message',None),'chat',None)
+    if chat is not None and getattr(chat,'type',None)=='private' and chat.id==callback.from_user.id:
+        return {'chat_id':chat.id}
+    return {'chat_id':world['chat_id'],'message_thread_id':world['thread_id'] or None}
 
 
 def replacement_ephemeral_kwargs(callback: CallbackQuery) -> dict:
     """Параметры нового ephemeral-сообщения по текущему callback."""
+    chat=getattr(getattr(callback,'message',None),'chat',None)
+    if chat is not None and getattr(chat,'type',None)=='private' and chat.id==callback.from_user.id:
+        return {}
     return {
         "ephemeral_message_parameters": EphemeralMessageParameters(
             receiver_user_id=callback.from_user.id,
@@ -20,8 +31,7 @@ async def send_private_text_from_callback(
     reply_markup: InlineKeyboardMarkup,
 ):
     sent = await callback.bot.send_message(
-        chat_id=world["chat_id"],
-        message_thread_id=world["thread_id"] or None,
+        **callback_delivery(callback,world),
         text=text,
         reply_markup=reply_markup,
         **replacement_ephemeral_kwargs(callback),
@@ -92,10 +102,13 @@ async def edit_private(
         await delete_current_ephemeral(callback)
         return sent
 
-    # Резерв для старого публичного меню, если оно осталось после обновления.
-    # Публичный launcher здесь не удаляем.
-    return await callback.message.edit_text(
-        text=text,
-        reply_markup=reply_markup,
-    )
-
+    # A legacy group menu must not be edited to expose personal data publicly.
+    if getattr(callback.message.chat,'type',None)!='private':
+        return await send_private_text_from_callback(callback,
+            {'chat_id':callback.message.chat.id,'thread_id':callback.message.message_thread_id or 0},
+            text,reply_markup)
+    try:
+        return await callback.message.edit_text(text=text,reply_markup=reply_markup)
+    except TelegramBadRequest as error:
+        if 'message is not modified' in str(error).lower():return callback.message
+        return await callback.bot.send_message(chat_id=callback.from_user.id,text=text,reply_markup=reply_markup)

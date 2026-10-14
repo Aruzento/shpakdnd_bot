@@ -45,8 +45,8 @@ class ShadowHitTests(unittest.TestCase):
             'shadow_one_punch_mob':'shadow_oneshot',
             'shadow_simple_village_guy':'shadow_simple'}
         shadows=[h for h in load_hero_catalog()['heroes'] if h['rarity']=='shadow']
-        self.assertEqual(len(shadows),5)
-        self.assertEqual({h['code']:h['passive_key'] for h in shadows},expected)
+        self.assertTrue(expected.items()<={h['code']:h['passive_key'] for h in shadows}.items())
+        self.assertTrue(all(h['passive_key'] in ability_catalog.configured_ability_keys() for h in shadows))
         self.assertEqual(set(expected.values()),keys)
         self.assertEqual(json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes'],[])
 

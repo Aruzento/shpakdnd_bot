@@ -174,7 +174,7 @@ class OwnedInactiveTests(OwnedInactiveCase):
         for field in FIELDS + ('passive_key', 'passive_text'):
             self.assertEqual(snapshot[field], self.engineer[field])
         set_active_hero(self.pid, self.villager['id'], self.db)
-        select_hero(self.pid, self.villager['id'], self.db)
+        with self.assertRaises(ValueError):select_hero(self.pid, self.villager['id'], self.db)
         self.sql('UPDATE mini_player_heroes SET stars=3 WHERE player_id=? AND hero_id=?', (self.pid, self.eid))
         init_mini_db(self.db)
         self.assertEqual(get_state(self.pid, self.db)['attempt']['hero_json'], attempt['hero_json'])
@@ -272,6 +272,8 @@ class OwnedInactiveUITests(OwnedInactiveCase, unittest.IsolatedAsyncioTestCase):
                 side_effect=partial(getattr(favorites, name), db_path=self.db)))
         for name, function in (('get_player_hero', get_player_hero), ('get_gacha_state', get_gacha_state)):
             stack.enter_context(patch(f'app.mini.ui.heroes.{name}', side_effect=partial(function, db_path=self.db)))
+        from app.mini.ui.state import claim_publication
+        stack.enter_context(patch('app.mini.ui.heroes.claim_publication',side_effect=partial(claim_publication,db_path=self.db)))
         stack.enter_context(patch('app.mini.ui.hero_cards.get_hero_image', return_value=None))
         return stack
 

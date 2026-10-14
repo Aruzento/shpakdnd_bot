@@ -4,6 +4,7 @@ from app.mini.boss.repository import (
     active_loadouts,
     save_start_loadout,
     freeze_start_forms,
+    apply_round_forms,
     mark_battle_started,
     participant_for_hit,
     record_primary_attack,
@@ -94,7 +95,9 @@ def start_battle(
             phantom_potion = consume_effect_charge(
                 conn, int(row["player_id"]), EFFECT_BOSS_PHANTOM
             )
-            save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion)
+            from app.mini.shadow import eligible_shadow_target
+            lantern = bool(eligible_shadow_target(conn, boss)) and consume_effect_charge(conn, int(row['player_id']), 'spirit_lantern')
+            save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, lantern)
 
         mark_battle_started(conn, boss_id, now)
         fresh = refresh_boss(conn, int(boss_id))
@@ -102,6 +105,7 @@ def start_battle(
         fresh = refresh_boss(conn, int(boss_id))
         # Finalize effective Shadow forms once, before shared creature/class hooks.
         freeze_start_forms(conn, dict(fresh))
+        start_events.extend(apply_round_forms(conn, dict(fresh), now))
         # The snapshots just persisted, rather than the live catalog, drive bonuses.
         start_events.extend(apply_boss_effects(
             conn, fresh, creatures.battle_start(dict(fresh), active_loadouts(conn, boss_id)), now))
@@ -372,6 +376,9 @@ def hit_boss(
             seal_state["grave_seal"] = True
             apply_boss_effects(conn, fresh, {"boss_changes": {"ability_state_json": json.dumps(seal_state)}}, now)
         fresh=refresh_boss(conn,int(boss_id))
+        if after_attack.get('restore_shield') and fresh['reward_shields'] < fresh['reward_shields_max']:
+            boss_events.extend(apply_boss_effects(conn,fresh,{'boss_changes':{'reward_shields':fresh['reward_shields']+1}},now,actor_id=int(player_id)))
+            fresh=refresh_boss(conn,int(boss_id))
         class_plan=classes.on_hit(dict(fresh),hero,after_attack['state'],successful=damage>0)
         save_hero_state(conn,int(boss_id),int(player_id),class_plan['state'])
         boss_events.extend(apply_boss_effects(conn,fresh,class_plan,now,actor_id=int(player_id)))
@@ -406,6 +413,10 @@ def hit_boss(
         hero_events = []
         battle_ended = False
         bonus_shards = 0
+        if hp_after > 0 and calculation['reachable'] and attack_resolution.get('banish_boss'):
+            from app.mini.boss.rewards import finish_banishment
+            rewards=finish_banishment(conn,refresh_boss(conn,int(boss_id)),now)
+            battle_ended=True
         if hp_after <= 0:
             refreshed = refresh_boss(conn, int(boss_id))
             death = finish_boss_death(conn, refreshed, now, actor_id=int(player_id))

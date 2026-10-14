@@ -32,12 +32,13 @@ class SelectorViewTests(unittest.TestCase):
             self.assertEqual(text,'⭐ Избранные')
             self.assertEqual(markup.inline_keyboard[0][0].text,'🟣 Герой 3 ★3')
             self.assertEqual(markup.inline_keyboard[0][0].callback_data,expected)
-            self.assertEqual([r[0].text for r in markup.inline_keyboard[2:4]],['👥 Показать всех','🔎 Поиск по фильтру'])
+            if mode=='c':self.assertEqual([b.text for b in markup.inline_keyboard[1]],['👥 Все','🔎 Найти'])
+            else:self.assertEqual([r[0].text for r in markup.inline_keyboard[2:4]],['👥 Показать всех','🔎 Поиск по фильтру'])
 
     def test_empty_and_missing_favorites_keep_both_paths(self):
         text,markup=render_selector(self.heroes,[999],'c',1,42)
         self.assertEqual(text,'⭐ Избранные\nПока никого нет.')
-        self.assertEqual([r[0].text for r in markup.inline_keyboard[:2]],['👥 Показать всех','🔎 Поиск по фильтру'])
+        self.assertEqual([b.text for b in markup.inline_keyboard[0]],['👥 Все','🔎 Найти'])
 
     def test_all_six_per_page_two_per_row_no_details(self):
         text,markup=render_selector(self.heroes,[],'b',1,42,12,view='all')
@@ -79,7 +80,7 @@ class SelectorViewTests(unittest.TestCase):
         _,markup=render_selector(self.heroes,[],'c',1,42,view='filter',token=token_for(class_tag='guardian'))
         labels=[b.text for b in buttons(markup)]
         self.assertIn('Класс: Страж',labels)
-        for phrase in ('Посмотреть результаты','Сбросить','Назад'):
+        for phrase in ('Показать результаты','Сбросить','Назад'):
             self.assertTrue(any(phrase in label for label in labels))
         for n in range(6):
             _,values=render_selector(self.heroes,[],'c',1,42,view=f'f{n}')
@@ -97,8 +98,8 @@ class SelectorViewTests(unittest.TestCase):
 
     def test_submenu_entries_and_back_no_old_upgrades(self):
         expected={'adventures':['🔥 Босс','🏰 Испытания','⚔️ Ежедневный бой','⚔️ Дуэли'],
-            'heroarea':['👤 Профиль','📚 Коллекция','🛡 Экипировка','🎒 Инвентарь','✨ Мифические герои'],
-            'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить']}
+            'heroarea':['👤 Профиль','🎒 Инвентарь','🛡 Экипировка','📚 Коллекция'],
+            'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить','✨ Мифические герои']}
         for action,labels in expected.items():
             _,markup=submenu(action,1,42)
             self.assertEqual([b.text for b in buttons(markup)],labels+['⬅️ Назад'])
@@ -226,7 +227,8 @@ class SelectorCallbackTests(unittest.IsolatedAsyncioTestCase):
             c=self.callback(tail)
             with patch('app.mini.ui.hero_selector.load_extended_context',return_value=({'id':1,'chat_id':-1,'thread_id':1},{'id':2},tail)), \
                  patch('app.mini.ui.hero_selector.get_player_heroes',return_value=[hero]), \
-                 patch('app.mini.ui.hero_selector.get_favorites',return_value=[]):
+                 patch('app.mini.ui.hero_selector.get_favorites',return_value=[]), \
+                 patch('app.mini.ui.state.remember',return_value='test-nav'):
                 await selector_callback(c)
             c.bot.send_message.assert_awaited_once();c.message.delete_ephemeral.assert_awaited_once()
             if '.s2' in tail:self.assertIn('Класс: Страж',[b.text for b in buttons(c.bot.send_message.call_args.kwargs['reply_markup'])])

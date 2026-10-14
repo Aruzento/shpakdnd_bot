@@ -263,6 +263,8 @@ def use_inventory_item(
 
         previous = _load_previous_use(conn, player_id, operation_key)
         if previous is not None:
+            if previous.get('item_id')!=int(item_id):
+                raise ItemUseError('Ключ уже использован для другого предмета.')
             conn.commit()
             return previous
 
@@ -357,6 +359,11 @@ def use_inventory_item(
         conn.commit()
 
     return result
+
+
+def get_previous_item_use(player_id,operation_key,db_path=DB_PATH):
+    with connect_mini_db(db_path) as conn:
+        return _load_previous_use(conn,player_id,operation_key)
 
 
 def grant_item_in_transaction(conn, player_id, code, quantity):

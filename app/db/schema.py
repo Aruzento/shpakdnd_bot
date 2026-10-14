@@ -1,3 +1,4 @@
+from contextlib import closing
 import sqlite3
 
 from app.config import DB_PATH, LEGACY_DB_PATH
@@ -194,7 +195,8 @@ def migrate_inventory_table(conn: sqlite3.Connection):
 def init_db():
     migrate_database_file()
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn, conn:
+        conn.execute('PRAGMA foreign_keys=ON')
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS timers (
@@ -259,5 +261,8 @@ def init_db():
 
         create_character_profiles_table(conn)
         create_characters_table(conn)
+
+        from app.db.dnd_items import migrate as migrate_dnd_items
+        migrate_dnd_items(conn)
 
         conn.commit()

@@ -71,13 +71,15 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
                 VALUES(?,1,?,2,'eq_helmet_010')""",(player,won))
             conn.execute("INSERT INTO mini_gacha_guarantees(player_id,forced_legendary) VALUES(?,1)",(player,))
+            conn.execute("INSERT INTO mini_gacha_pity(player_id,uncommon_count,rare_count,legendary_count) VALUES(?,10,24,84)",(player,))
             conn.execute("""INSERT INTO mini_superadmin_audit
                 (admin_user_id,action,world_id,target_user_id,player_id,resource,operation_key)
                 VALUES(555,'superluck',?,555,?,'gacha_guarantee','fixture')""",(world,player))
         from app.mini.favorites import add_favorite
         add_favorite(player,hero,self.db)
         from app.mini.tower.service import select_hero
-        select_hero(player,hero,self.db)
+        # Seed persisted selection directly: live changes are prohibited during a fight.
+        with connect_mini_db(self.db) as conn:conn.execute('INSERT INTO mini_tower_selections VALUES(?,?)',(player,hero))
         from app.mini.titles.service import issue_title
         issue_title(player,'Хранитель',86400,555,'fixture:title',self.db,now=1000)
         with connect_mini_db(self.db) as conn:
@@ -94,6 +96,24 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute("INSERT INTO mini_shadow_rolls VALUES(?,?,?,5,'future_shadow',0)",(boss,player,hero))
             duel=conn.execute("INSERT INTO mini_duels(challenger_id,defender_id,challenger_hero_id,challenger_snapshot,expires_at,operation_key) VALUES(?,?,?,'{}',1120,'fixture')",(player,other,hero)).lastrowid
             conn.execute('INSERT INTO mini_duel_locks VALUES(?,?)',(player,duel))
+        from app.mini.gacha import perform_gacha_batch
+        perform_gacha_batch(player,self.db,operation_key='fixture:batch')
+        # Keep the legacy seed balance; batch economy has its own integration tests.
+        with connect_mini_db(self.db) as conn:
+            conn.execute('UPDATE mini_players SET coins=900,shards=17 WHERE id=?',(player,))
+            conn.execute('UPDATE mini_player_heroes SET shards=0 WHERE player_id=?',(player,))
+            conn.execute('UPDATE mini_player_heroes SET copies=4 WHERE player_id=? AND hero_id=?',(player,hero))
+        with connect_mini_db(self.db) as conn:
+            conn.execute("INSERT INTO mini_registration_sessions VALUES('fixture',?,555,9999999999,0,1)",(world,))
+            conn.execute("INSERT INTO mini_public_shares VALUES(?,'fixture')",(player,))
+            conn.execute("INSERT INTO mini_registration_requests VALUES('fixture',?,555,9999999999,0,?)",(world,player))
+            conn.execute("INSERT INTO mini_ui_navigation VALUES('fixture',?,'collection','{}')",(player,))
+            conn.execute("INSERT INTO mini_ui_publications VALUES(?,'fixture','sent')",(player,))
+            lost=conn.execute("""INSERT INTO mini_tower_attempts
+                (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,status)
+                VALUES(?,2,?,?,?,10,10,'lost')""",(player,hero,snapshot,json.dumps(get_floor(2)))).lastrowid
+            active=conn.execute("SELECT id FROM mini_tower_attempts WHERE player_id=? AND status='active'",(player,)).fetchone()[0]
+            conn.execute('INSERT INTO mini_tower_retries VALUES(?,?)',(lost,active))
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):
@@ -118,7 +138,7 @@ class MiniMigrationTests(unittest.TestCase):
             conn.execute('ALTER TABLE mini_players DROP COLUMN shards')
             conn.execute('ALTER TABLE mini_player_heroes DROP COLUMN stars')
             conn.execute('ALTER TABLE mini_worlds DROP COLUMN launcher_message_id')
-            conn.execute('UPDATE mini_player_heroes SET shards=23')
+            conn.execute('UPDATE mini_player_heroes SET shards=23 WHERE player_id=? AND hero_id=(SELECT active_hero_id FROM mini_players WHERE id=?)',(player,player))
             old_wallet=conn.execute('SELECT id,player_id,amount,balance_after,reason,reference_type,reference_id,created_at FROM mini_wallet_transactions').fetchall()
         init_mini_db(self.db); init_boss_db(self.db)
         with connect_mini_db(self.db) as conn:

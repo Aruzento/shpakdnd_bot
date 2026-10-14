@@ -94,7 +94,8 @@ def load_boss_catalog() -> dict:
     if not isinstance(bosses, list):
         raise BossCatalogError("В bosses.json поле bosses должно быть списком.")
 
-    known_items = {item["code"] for item in list_boss_reward_items(active_only=False)}
+    from app.mini.item_registry import load_definitions
+    known_items = {code for code,item in load_definitions().items() if item['kind']=='consumable'}
     seen = set()
     normalized = []
     shadow_targets = None
@@ -214,7 +215,7 @@ def boss_image_path(image_name: str) -> Path | None:
 
 
 def sync_boss_reward_items(db_path=None) -> int:
-    """Синхронизирует только предметы-награды boss-модуля в mini_items."""
+    """Синхронизирует канонические расходники Mini, сохраняя ID наград боссов."""
     from app.config import DB_PATH
     from app.mini.db import connect_mini_db
 
@@ -228,29 +229,7 @@ def sync_boss_reward_items(db_path=None) -> int:
         if exists is None:
             return 0
 
-        for item in items:
-            conn.execute(
-                """
-                INSERT INTO mini_items (
-                    code, name, category, description, effect_key, stackable, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(code) DO UPDATE SET
-                    name = excluded.name,
-                    category = excluded.category,
-                    description = excluded.description,
-                    effect_key = excluded.effect_key,
-                    stackable = excluded.stackable,
-                    active = excluded.active
-                """,
-                (
-                    item["code"],
-                    item["name"],
-                    item.get("category", "boss_reward"),
-                    item.get("description", ""),
-                    item.get("effect_key", ""),
-                    1 if item.get("stackable", True) else 0,
-                    1 if item.get("active", True) else 0,
-                ),
-            )
+        from app.mini.item_registry import sync_in_transaction
+        sync_in_transaction(conn)
         conn.commit()
     return len(items)

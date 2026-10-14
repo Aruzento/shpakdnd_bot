@@ -1,9 +1,11 @@
+from app.mini.ui.state import legacy_operation
 from app.mini.ui.context import (
     personal_callback as _personal_callback,
     load_personal_context as _load_personal_context,
     shop_context as _shop_context,
 )
 from app.mini.ui.transport import edit_private as _edit_private
+import secrets
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from app.mini.shop import (
@@ -86,7 +88,7 @@ def _shop_item_menu(
                 InlineKeyboardButton(
                     text=f"✅ Купить за {price} 🪙",
                     callback_data=(
-                        f"mini:shopbuy:{world_id}:{user_id}:{offer_id}"
+                        f"mini:shopbuy:{world_id}:{user_id}:{offer_id}.{secrets.token_hex(4)}"
                     ),
                 )
             ],
@@ -116,7 +118,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
             [
                 InlineKeyboardButton(
                     text="⬅️ На главную",
-                    callback_data=_personal_callback("fair", world_id, user_id),
+                    callback_data=_personal_callback("home", world_id, user_id),
                 )
             ],
         ]
@@ -234,7 +236,7 @@ async def shop_buy_callback(callback: CallbackQuery):
 
     world, player, offer_id_text = context
     try:
-        offer_id = int(offer_id_text)
+        offer_id = int(offer_id_text.split(".")[0])
     except ValueError:
         await callback.answer("Некорректный товар.", show_alert=True)
         return
@@ -244,6 +246,7 @@ async def shop_buy_callback(callback: CallbackQuery):
             player["id"],
             world["id"],
             offer_id,
+            operation_key="shop:"+offer_id_text if "." in offer_id_text else legacy_operation(callback,"legacy-shop:"+offer_id_text),
         )
     except ShopInsufficientFunds as error:
         await callback.answer(str(error), show_alert=True)

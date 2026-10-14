@@ -1,5 +1,5 @@
 """Ephemeral UI for Mini events; no economic state lives in the router."""
-from app.mini.ui.context import load_extended_context, load_personal_context, personal_callback
+from app.mini.ui.context import load_extended_context, load_personal_context, personal_callback, validate_callback_location
 from app.mini.ui.transport import send_private_text_from_callback
 from app.topic_guard import is_mini_topic
 import secrets
@@ -61,6 +61,7 @@ def _screen(world_id: int, user_id: int, player: dict, screen: str,
                 [button("⬅️ Назад", "events")]]
     else:
         raise EventError("Неизвестный экран.")
+    if screen=='rps':rows.append([button('⬅️ Назад','events')])
     text += "\n\n" + _balance(player)
     if notice:
         text += "\n\n" + notice
@@ -112,6 +113,8 @@ def _session_screen(world_id: int, user_id: int, player: dict,
                     "🧩 Получено: 3 осколка")
         rows = [[button("🔁 Ещё раз — 5 монет", f"again.{sid}")],
                 [button("🎪 К событиям", "events")]]
+    if session['status']=='active' or session['game_type']=='rps':
+        rows.append([InlineKeyboardButton(text='⬅️ Выйти к ярмарке',callback_data=personal_callback('fair',world_id,user_id))])
     return text + "\n\n" + _balance(player), InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -131,17 +134,7 @@ async def _show(callback, world, player, *, screen="events", session=None, notic
 
 
 async def _valid_location(callback, world) -> bool:
-    if not is_mini_topic(world["chat_id"], world["thread_id"]):
-        await callback.answer("Эта тема больше не работает в режиме Mini.", show_alert=True)
-        return False
-    message = callback.message
-    if message is None or message.chat.id != world["chat_id"] or (
-        (message.message_thread_id or 0) != int(world["thread_id"] or 0)
-    ):
-        await callback.answer("Эта кнопка из другого мира.", show_alert=True)
-        return False
-    return True
-
+    return await validate_callback_location(callback,world,callback.from_user.id)
 
 @router.callback_query(F.data.startswith("mini:events:"))
 async def events_callback(callback: CallbackQuery):

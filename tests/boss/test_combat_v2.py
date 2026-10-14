@@ -207,6 +207,7 @@ class CombatV2IntegrationTests(unittest.TestCase):
         self.boss = create_boss_event(self.world, "training_golem", 999, self.db)
         # Synthetic ordinary boss keeps mechanics tests independent of live assignments.
         self.update_boss(min_players=2, max_hp=1000, current_hp=1000, reward_coins=60,
+                         reward_shields=3, reward_shields_max=3, reward_decay_percent=10,
                          faction="commoners", ability_key="none", features_json="[]",
                          ability_config_json="{}")
         for player in self.players:
@@ -620,8 +621,8 @@ class CombatV2CatalogTests(unittest.TestCase):
             "wild_berserker": ("beasts", "critical_strike"),
             "fallen_sun_champion": ("dark", "rapier"),
         }
-        expected.update(mister_inversion=("neutral","collapse"),flying_schoolboy=("commoners","waste_of_time"),
-            training_dummy=("neutral","training"),doppelganger=("neutral","transformation"),
+        expected.update(mister_inversion=("dark","collapse"),flying_schoolboy=("commoners","waste_of_time"),
+            training_dummy=("warriors","training"),doppelganger=("dark","transformation"),
             one_punch_mob=("monsters","oneshot"),simple_village_guy=("commoners","simple"))
         bosses = load_boss_catalog()["bosses"]
         self.assertEqual({boss["code"] for boss in bosses}, set(expected))

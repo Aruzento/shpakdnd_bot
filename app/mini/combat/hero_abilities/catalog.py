@@ -40,6 +40,11 @@ def load_ability_catalog() -> dict:
             )
 
         new_effects = {
+            'every_n_banish_boss': ('attack', {'every': (1,1000), 'chance_percent': (0,100)}),
+            'every_n_restore_shield': ('after_attack', {'every': (1,1000)}),
+            'chance_shadow_faction': ('round_start', {'chance_percent': (0,100)}),
+            'chance_extra_attack': ('attack', {'chance_percent': (0,100)}),
+            'chance_current_hp_pure': ('attack', {'chance_percent': (0,100), 'damage_percent': (0,100)}),
             'every_n_pure_base_hit': ('attack', {'every': (1,1000), 'multiplier_percent': (1,1000)}),
             'every_n_zero_then_double_hit': ('attack', {'every': (2,1000)}),
             'pure_primary_hit': ('attack', {}),

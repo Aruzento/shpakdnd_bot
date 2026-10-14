@@ -41,6 +41,8 @@ def sync_shop_catalog(
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
 
+        from app.mini.item_registry import sync_in_transaction
+        sync_in_transaction(conn)
         catalog_codes = []
         for product in catalog["products"]:
             product_code = product["code"]
@@ -50,36 +52,6 @@ def sync_shop_catalog(
 
             if delivery == "inventory":
                 item = product["item"]
-                conn.execute(
-                    """
-                    INSERT INTO mini_items (
-                        code,
-                        name,
-                        category,
-                        description,
-                        effect_key,
-                        stackable,
-                        active
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(code) DO UPDATE SET
-                        name = excluded.name,
-                        category = excluded.category,
-                        description = excluded.description,
-                        effect_key = excluded.effect_key,
-                        stackable = excluded.stackable,
-                        active = excluded.active
-                    """,
-                    (
-                        item["code"],
-                        item["name"],
-                        product["category"],
-                        item.get("description", product.get("description", "")),
-                        item.get("effect_key", ""),
-                        1 if item.get("stackable", True) else 0,
-                        1 if product.get("active", True) else 0,
-                    ),
-                )
                 row = conn.execute(
                     "SELECT id FROM mini_items WHERE code = ?",
                     (item["code"],),
@@ -277,7 +249,10 @@ def purchase_offer(
     world_id: int,
     offer_id: int,
     db_path: str | Path = DB_PATH,
+    *, operation_key: str = '',
 ) -> dict:
+    if not isinstance(operation_key, str):
+        raise ShopError('Некорректный ключ покупки.')
     sync_shop_catalog(world_id, db_path)
 
     with connect_mini_db(db_path) as conn:
@@ -296,6 +271,12 @@ def purchase_offer(
         if player is None or int(player["world_id"]) != int(world_id):
             conn.rollback()
             raise ShopError("Mini-игрок не найден в этом мире.")
+
+        if operation_key:
+            old=conn.execute('SELECT offer_id,result_json FROM mini_purchases WHERE player_id=? AND operation_key=?',(player_id,operation_key)).fetchone()
+            if old:
+                if old['offer_id']!=offer_id: raise ShopError('Ключ уже использован для другого товара.')
+                return {**json.loads(old['result_json']),'repeated':True}
 
         offer_row = conn.execute(
             """
@@ -399,17 +380,19 @@ def purchase_offer(
                 "shop", purchase_id, f"shop:{purchase_id}",
             )["balance"]
 
+        result = {
+            "purchase_id": purchase_id,
+            "title": offer["title"],
+            "description": offer["description"],
+            "delivery": delivery,
+            "price": price,
+            "balance": new_balance,
+            "status": purchase_status,
+        }
+        if operation_key:
+            conn.execute('UPDATE mini_purchases SET operation_key=?,result_json=? WHERE id=?',(operation_key,json.dumps(result,ensure_ascii=False),purchase_id))
         conn.commit()
-
-    return {
-        "purchase_id": purchase_id,
-        "title": offer["title"],
-        "description": offer["description"],
-        "delivery": delivery,
-        "price": price,
-        "balance": new_balance,
-        "status": purchase_status,
-    }
+    return result
 
 
 def get_player_goods(

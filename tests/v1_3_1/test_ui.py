@@ -5,6 +5,7 @@ from app.mini.rules import RULES_TEXT,SECTIONS
 from app.mini.ui.activities import rules_menu,rules_callback,rules_section_callback
 from app.mini.tower.handlers import render_state,render_hero_selection
 from app.mini.tower.catalog import get_floor
+from app.mini.tower.selection import render_selection
 from app.mini.equipment.handlers import render_equipment
 from app.mini.ui.inventory import _inventory_menu
 
@@ -26,6 +27,27 @@ class ReleaseUIContractTests(unittest.TestCase):
         self.assertTrue(text.startswith('🏰 Испытания: 11/200\n\nМоб ● Простолюдины\n\nHP: 24'))
         self.assertIn('Режущий | Страж\nБлижний бой | Нет особого свойства\n\nОсобенности: нет',text)
         for value in ('commoners','guardian','Equipment','matchup'):self.assertNotIn(value,text)
+
+    def test_new_selection_uses_buttons_and_separate_gear_bonus(self):
+        enemy=dict(get_floor(1),name='Скелет-вахтёр: смена 1',features=[])
+        state=dict(floor=enemy,equipment_bonus=5,completed=False,attempt=None)
+        heroes=[dict(id=1,rarity='common',name='Азраэль',faction='dark',attack=1135),dict(id=2,rarity='common',name='Багбир-засадник',faction='monsters',attack=9)]
+        text,markup,_=render_selection(state,heroes,1,20)
+        self.assertIn('Выбери редкость',text)
+        self.assertIn('Скелет-вахтёр: смена 1',text)
+        self.assertNotIn('Азраэль',text);self.assertNotIn('Багбир',text)
+        self.assertEqual(markup.inline_keyboard[0][0].text,'⚪ Обычный · 2')
+        state['equipment_bonus']=0
+        _,markup,_=render_selection(state,heroes,1,20)
+        self.assertNotIn('+0',markup.inline_keyboard[0][0].text)
+
+    def test_new_selection_paginates_and_can_return(self):
+        heroes=[dict(id=i,rarity='common',name=str(i),faction='dark',attack=3) for i in range(17)]
+        _,markup,_=render_selection(dict(floor=get_floor(1),equipment_bonus=0,completed=False,attempt=None),heroes,1,20)
+        self.assertEqual(len([b for row in markup.inline_keyboard for b in row if ':pick.' in b.callback_data]),0)
+        self.assertTrue(any(':rarity.' in b.callback_data for row in markup.inline_keyboard for b in row))
+        self.assertEqual(markup.inline_keyboard[-1][-1].callback_data,'mini:tower:1:20')
+        self.assertTrue(all(len(b.callback_data.encode())<=64 for row in markup.inline_keyboard for b in row))
 
     def test_selection_uses_buttons_and_separate_gear_bonus(self):
         enemy=dict(get_floor(1),name='Скелет-вахтёр: смена 1',features=[])

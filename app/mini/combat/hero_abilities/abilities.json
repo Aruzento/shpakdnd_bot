@@ -373,6 +373,63 @@
           "message": "Shadow Simple"
         }
       ]
+    },
+    "shadow_banishment": {
+      "name": "СПОКОЙНО",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "every_n_banish_boss",
+          "message": "СПОКОЙНО",
+          "every": 5,
+          "chance_percent": 50
+        }
+      ]
+    },
+    "shadow_hydra_regeneration": {
+      "name": "Теневая регенерация",
+      "effects": [
+        {
+          "trigger": "after_attack",
+          "type": "every_n_restore_shield",
+          "message": "Теневая регенерация",
+          "every": 4
+        }
+      ]
+    },
+    "shadow_shapeshifter": {
+      "name": "Перевёртыш",
+      "effects": [
+        {
+          "trigger": "round_start",
+          "type": "chance_shadow_faction",
+          "message": "Перевёртыш",
+          "chance_percent": 50
+        }
+      ]
+    },
+    "shadow_critical_strike": {
+      "name": "Дикая ярость",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "chance_extra_attack",
+          "message": "Дикая ярость",
+          "chance_percent": 10
+        }
+      ]
+    },
+    "shadow_rapier": {
+      "name": "Чёрная рапира",
+      "effects": [
+        {
+          "trigger": "attack",
+          "type": "chance_current_hp_pure",
+          "message": "Чёрная рапира",
+          "chance_percent": 10,
+          "damage_percent": 2
+        }
+      ]
     }
   }
 }

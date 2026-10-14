@@ -1,6 +1,7 @@
 from aiogram.types import CallbackQuery
 from app.mini.players import get_mini_player, touch_mini_player
 from app.mini.worlds import get_mini_world_by_id
+from app.topic_guard import is_mini_topic
 
 
 def username_from_user(user) -> str:
@@ -10,7 +11,25 @@ def username_from_user(user) -> str:
 
 
 def personal_callback(action: str, world_id: int, user_id: int) -> str:
-    return f"mini:{action}:{world_id}:{user_id}"
+    data=f"mini:{action}:{world_id}:{user_id}"
+    if len(data.encode())>64:raise ValueError("Слишком длинная кнопка.")
+    return data
+
+
+def callback_location_allowed(callback,world,owner_id):
+    message=getattr(callback,'message',None)
+    chat=getattr(message,'chat',None)
+    private=chat is not None and getattr(chat,'type',None)=='private' and chat.id==owner_id
+    topic=chat is not None and chat.id==world['chat_id'] and (getattr(message,'message_thread_id',None) or 0)==world['thread_id']
+    return is_mini_topic(world['chat_id'],world['thread_id']) and (private or topic)
+
+
+async def validate_callback_location(callback,world,owner_id):
+    if callback_location_allowed(callback,world,owner_id):return True
+    error=('Эта кнопка недоступна в этом чате или теме.' if is_mini_topic(world['chat_id'],world['thread_id'])
+           else 'Эта тема больше не работает в режиме Mini.')
+    await callback.answer(error,show_alert=True)
+    return False
 
 
 def parse_extended_callback(
@@ -45,6 +64,9 @@ async def load_extended_context(
     world = get_mini_world_by_id(world_id)
     if not world or not world["enabled"]:
         await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
+        return None
+
+    if not await validate_callback_location(callback,world,owner_id):
         return None
 
     player = get_mini_player(world_id, owner_id)
@@ -96,6 +118,9 @@ async def load_personal_context(
             "D&D Mini сейчас недоступен.",
             show_alert=True,
         )
+        return None
+
+    if not await validate_callback_location(callback,world,owner_id):
         return None
 
     player = get_mini_player(world_id, owner_id)
@@ -150,6 +175,9 @@ async def shop_context(
     if not world or not world["enabled"]:
         await callback.answer("D&D Mini сейчас недоступен.", show_alert=True)
         return None
+    if not await validate_callback_location(callback,world,owner_id):
+        return None
+
     player = get_mini_player(world_id, owner_id)
     if player is None:
         await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
@@ -157,9 +185,11 @@ async def shop_context(
     return world, player, tail
 
 
-def load_world(world_id: int) -> dict | None:
+def load_world(world_id: int, callback=None) -> dict | None:
     world = get_mini_world_by_id(world_id)
-    return world if world and world["enabled"] else None
+    if not world or not world['enabled']:return None
+    if callback is not None and not callback_location_allowed(callback,world,callback.from_user.id):return None
+    return world
 
 
 def load_player(world_id: int, callback: CallbackQuery) -> dict | None:
@@ -168,3 +198,8 @@ def load_player(world_id: int, callback: CallbackQuery) -> dict | None:
         touch_mini_player(world_id, callback.from_user.id, username_from_user(callback.from_user))
         player = get_mini_player(world_id, callback.from_user.id)
     return player
+
+
+async def valid_world_callback(callback,world):
+    """Earlier draft entry point; use the canonical owner/location validation."""
+    return await validate_callback_location(callback,world,callback.from_user.id)

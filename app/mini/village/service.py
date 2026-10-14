@@ -77,7 +77,8 @@ def _state(conn,player_id,now):
         (player_id,now,now))}
     for building,resource in (('market','coins'),('mine','shards')):
         if resource in boosts: hourly[building] *= Decimal('1.25')
-    return {**v,'capacity' :v['houses']*10,'residents':residents,'rates':rates,
+    unsettled=conn.execute('SELECT COUNT(*) FROM mini_player_heroes ph WHERE ph.player_id=? AND NOT EXISTS (SELECT 1 FROM mini_village_residents r WHERE r.player_id=ph.player_id AND r.hero_id=ph.hero_id)',(player_id,)).fetchone()[0]
+    return {**v,'unsettled_count':unsettled,'capacity' :v['houses']*10,'residents':residents,'rates':rates,
         'hourly':hourly,'boosts':boosts,
         'fed':rates['fed'],'next_price':PRICES[v['houses']] if v['houses']<5 else None,
         'seconds_left':max(0,v['cycle_started']+CAP_SECONDS-now),
@@ -127,6 +128,16 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
                 raise ValueError('Этот герой не живёт в деревне.')
         elif action=='assign':
             if building not in (*BUILDINGS,None): raise ValueError('Неизвестное производство.')
+            resident=conn.execute('''SELECT v.building FROM mini_village_residents v
+                JOIN mini_player_heroes ph ON ph.player_id=v.player_id AND ph.hero_id=v.hero_id
+                WHERE v.player_id=? AND v.hero_id=?''',(player_id,hero_id)).fetchone()
+            if not resident: raise ValueError('Работник должен принадлежать игроку и жить в деревне.')
+            if building is not None and resident['building'] is not None and resident['building']!=building:
+                raise ValueError('Герой уже работает. Сначала сними его с производства.')
+            if resident['building']==building:
+                result={'applied':False,'action':action,'coins':0,'shards':0,'status':'Герой уже работает здесь.' if building else 'Герой уже не работает.'}
+                conn.execute('INSERT INTO mini_village_operations VALUES(?,?,?,?)',(player_id,operation_key,payload,json.dumps(result)))
+                return result
             if not conn.execute('UPDATE mini_village_residents SET building=? WHERE player_id=? AND hero_id=?',(building,player_id,hero_id)).rowcount:
                 raise ValueError('Работник должен жить в деревне.')
         elif action=='collect':

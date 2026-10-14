@@ -78,7 +78,7 @@ class NotificationTests(MiniCase,unittest.IsolatedAsyncioTestCase):
             await publish_pending_notifications(bot,self.db,**kwargs)
         msg=SimpleNamespace(from_user=SimpleNamespace(id=900124,username='newuser'),chat=SimpleNamespace(id=self.world['chat_id']),
             message_thread_id=self.world['thread_id'],text='/minicreate "Фактическое имя"',bot=self.bot())
-        with patch('app.mini.handlers.ensure_configured_mini_world',return_value=dict(self.world,enabled=True)),patch('app.mini.handlers.get_mini_player',return_value=None),patch('app.mini.handlers.create_mini_player',side_effect=lambda *a:create_mini_player(*a,db_path=self.db)),patch('app.mini.handlers.publish_pending_notifications',side_effect=publish),patch('app.mini.handlers._send_private',AsyncMock()) as private:
+        with patch('app.mini.handlers.ensure_configured_mini_world',return_value=dict(self.world,enabled=True)),patch('app.mini.handlers.get_mini_player',return_value=None),patch('app.mini.handlers.get_active_hero',return_value=None),patch('app.mini.handlers.create_mini_player',side_effect=lambda *a:create_mini_player(*a,db_path=self.db)),patch('app.mini.handlers.publish_pending_notifications',side_effect=publish),patch('app.mini.handlers._send_private',AsyncMock()) as private:
             await minicreate_handler(msg)
         self.assertEqual(msg.bot.send_message.call_args.kwargs['text'],'🎉 Приветствуем нового героя: Фактическое имя — @newuser')
         self.assertIn('3 билета призыва',private.call_args.args[1])

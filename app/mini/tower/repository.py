@@ -48,3 +48,8 @@ def selected_hero(conn,player_id):
 def save_selection(conn,player_id,hero_id):
     conn.execute("""INSERT INTO mini_tower_selections(player_id,hero_id) VALUES(?,?)
         ON CONFLICT(player_id) DO UPDATE SET hero_id=excluded.hero_id""",(player_id,hero_id))
+
+
+def last_lost_attempt(conn,player_id,floor):
+    row=conn.execute("SELECT * FROM mini_tower_attempts WHERE player_id=? AND floor=? ORDER BY id DESC LIMIT 1",(player_id,floor)).fetchone()
+    return dict(row) if row and row['status']=='lost' else None

@@ -179,10 +179,12 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
         ])
     elif status == "defeated":
         lines.extend(["", (
+            "👋 Босс изгнан живым. Сокровища выданы участникам; извлечение тени недоступно."
+            if boss.get('battle_result') == 'banished' else (
             "🏆 Победа! Награда выдана всем зарегистрированным участникам."
             if boss.get("battle_result") == "admin_victory"
             else "🏆 Победа! Награда выдана участникам боя и фантомным участникам."
-        )])
+        ))])
     elif status == "failed":
         lines.extend(["", "💥 Награда уничтожена — бой проигран.",
                       f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
@@ -236,7 +238,8 @@ def format_public_turn(
         else:
             lines.extend(["", "⚠️ Не удалось определить текущего игрока."])
     elif status == "defeated":
-        lines.extend(["", "🏆 Босс повержен!", f"🎁 Итог: {_reward_line(boss)}"])
+        outcome = '👋 Босс изгнан живым — извлечение тени недоступно.' if boss.get('battle_result') == 'banished' else '🏆 Босс повержен!'
+        lines.extend(["", outcome, f"🎁 Итог: {_reward_line(boss)}"])
     elif status == "failed":
         lines.extend(["", "💀 Бой проигран: награда уничтожена.",
                       f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])

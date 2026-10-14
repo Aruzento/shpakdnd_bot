@@ -23,6 +23,21 @@ def shard_casket(ctx: ItemEffectContext) -> None:
     ctx.result.update(amount=amount, shards=shards)
 
 
+def rarity_coupon(ctx):
+    import secrets
+    from app.mini.gacha import grant_summoned_hero_in_transaction, _settings
+    rarity = ctx.row['effect_key'].removeprefix('rarity_coupon_')
+    heroes = ctx.conn.execute("SELECT * FROM mini_heroes WHERE active=1 AND rarity=? ORDER BY code", (rarity,)).fetchall()
+    if rarity not in ('uncommon', 'rare', 'legendary') or not heroes:
+        raise ItemUseError('В этой редкости пока нет активных героев. Купон сохранён.')
+    hero = secrets.choice(heroes)
+    player = ctx.conn.execute('SELECT * FROM mini_players WHERE id=?', (ctx.player_id,)).fetchone()
+    result = dict(hero)
+    result.update(grant_summoned_hero_in_transaction(ctx.conn, player, hero, _settings()['duplicate_shards']))
+    result.update(payment='coupon', cost_coins=0, used_ticket=False, balance=player['coins'], luck_used=False, forced_legendary=False)
+    ctx.result['summon_result'] = result
+
+
 def charged_effect(ctx: ItemEffectContext) -> None:
     ctx.result["charges"] = ctx.add_charge(ctx.conn, ctx.player_id, ctx.result["effect_key"], 1)
 

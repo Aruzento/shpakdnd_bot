@@ -1,0 +1,3012 @@
+{
+  "start_sha": "293693d87692bb9e7f4567bcca895e799e7455d2",
+  "screens": [
+    {
+      "screen": "launcher",
+      "source": "app/mini/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎮 Открыть D&D Mini"
+        ]
+      ],
+      "targets": [
+        "home"
+      ],
+      "actions": [
+        "launch_personal_ui"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "registration",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "👤 Создать персонажа"
+        ]
+      ],
+      "targets": [
+        "registration"
+      ],
+      "actions": [
+        "begin_registration_name_input"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "home",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "{main_char.image}",
+      "rows": [
+        [
+          "⚔️ Приключения",
+          "🧙 Герой"
+        ],
+        [
+          "✨ Призвать героя"
+        ],
+        [
+          "🎪 Ярмарка",
+          "📖 Ещё"
+        ]
+      ],
+      "targets": [
+        "adventures",
+        "heroarea",
+        "gacha",
+        "fair",
+        "more"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "adventures",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🔥 Босс",
+          "🏰 Испытания"
+        ],
+        [
+          "⚔️ Ежедневный бой",
+          "⚔️ Дуэли"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "tower",
+        "daily_result",
+        "duels",
+        "home"
+      ],
+      "actions": [
+        "claim_daily"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "heroarea",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "👤 Профиль",
+          "🎒 Инвентарь"
+        ],
+        [
+          "🛡 Экипировка",
+          "📚 Коллекция"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "character",
+        "inventory",
+        "equipment",
+        "collection",
+        "home"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "fair",
+      "source": "app/mini/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🛒 Магазин"
+        ],
+        [
+          "🎪 События"
+        ],
+        [
+          "🏘 Моя деревня"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "shop",
+        "events",
+        "village",
+        "home"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "more",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "📖 Правила"
+        ],
+        [
+          "🔄 Обновить"
+        ],
+        [
+          "✨ Мифические герои"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "rules",
+        "home",
+        "mythic",
+        "home"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "character",
+      "source": "app/mini/handlers.py; app/mini/ui/hero_cards.py",
+      "plan": "изменить",
+      "image": "{active_hero.image}",
+      "rows": [
+        [
+          "⬆️ Улучшить · {hero.upgrade_cost} 🧩"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "character",
+        "home",
+        "heroarea"
+      ],
+      "actions": [
+        "hero_upgrade_active"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "character_no_hero",
+      "source": "app/mini/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "home",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "gacha",
+      "source": "app/mini/ui/heroes.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🪙 Призвать 1 раз · {gacha.pull_price}",
+          "✨ Призвать 10 раз"
+        ],
+        [
+          "🎟 Призвать за билет · {gacha.tickets}",
+          "🎟 Использовать купон"
+        ],
+        [
+          "🏠 Главная",
+          "📚 Коллекция",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "gacha_result",
+        "gacha_batch_result",
+        "gacha_result",
+        "gacha_coupon",
+        "home",
+        "collection",
+        "home"
+      ],
+      "actions": [
+        "gacha_pull:coins",
+        "gacha_pull:coins_10",
+        "gacha_pull:ticket",
+        "gacha_coupon_open",
+        "ui_back"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "gacha_batch_result",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🎴 {gacha.batch_hero_label}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "✨ Ещё 10"
+        ],
+        [
+          "🏠 Главная",
+          "📚 Коллекция",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "hero_card",
+        "gacha_batch_result",
+        "gacha_batch_result",
+        "gacha_batch_result",
+        "gacha_batch_result",
+        "home",
+        "collection",
+        "gacha"
+      ],
+      "actions": [
+        "gacha_repeat:coins_10"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "gacha_coupon",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "✅ Применить купон"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "gacha",
+        "home",
+        "gacha"
+      ],
+      "actions": [
+        "redeem_gacha_coupon"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "gacha_result",
+      "source": "app/mini/ui/hero_cards.py; app/mini/ui/heroes.py",
+      "plan": "изменить",
+      "image": "{hero.image}",
+      "rows": [
+        [
+          "✅ Сделать активным",
+          "📣 Похвастаться"
+        ],
+        [
+          "🪙 Ещё призыв",
+          "✨ Ещё 10"
+        ],
+        [
+          "🏠 Главная",
+          "📚 Коллекция",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "gacha_result",
+        "gacha_result",
+        "gacha_result",
+        "gacha_batch_result",
+        "home",
+        "collection",
+        "gacha"
+      ],
+      "actions": [
+        "set_active_hero",
+        "share_hero_public",
+        "gacha_repeat:coins",
+        "gacha_repeat:coins_10",
+        "ui_back"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection",
+      "source": "app/mini/ui/heroes.py; app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "⭐ Избранные"
+        ],
+        [
+          "👥 Все",
+          "🔎 Найти"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_favorites",
+        "collection_all",
+        "collection_filter",
+        "home",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_favorites",
+      "source": "app/mini/ui/hero_selector.py (existing favorites view; new navigation)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{favorite_hero.name} ★{favorite_hero.stars}"
+        ],
+        [
+          "👥 Все",
+          "🔎 Найти"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "hero_card",
+        "collection_all",
+        "collection_filter",
+        "home",
+        "collection"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_all",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}"
+        ],
+        [
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}"
+        ],
+        [
+          "◀️",
+          "{page} / {pages}",
+          "▶️"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "collection_all",
+        "collection_all",
+        "collection_all",
+        "home",
+        "collection"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Редкость: {filter.rarity_label}",
+          "Фракция: {filter.faction_label}",
+          "Класс: {filter.class_tag_label}"
+        ],
+        [
+          "Урон: {filter.damage_type_label}",
+          "Дальность: {filter.attack_range_label}",
+          "Свойство: {filter.special_trait_label}"
+        ],
+        [
+          "{filter.upgradeable_label}"
+        ],
+        [
+          "🔎 Показать результаты",
+          "🔄 Сбросить"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter_option_rarity",
+        "collection_filter_option_faction",
+        "collection_filter_option_class_tag",
+        "collection_filter_option_damage_type",
+        "collection_filter_option_attack_range",
+        "collection_filter_option_special_trait",
+        "collection_filter",
+        "collection_results",
+        "collection_filter",
+        "home",
+        "collection"
+      ],
+      "actions": [
+        "toggle_filter_upgradeable",
+        "reset_filters"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_rarity",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:rarity",
+        "choose_filter:rarity"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_faction",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:faction",
+        "choose_filter:faction"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_class_tag",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:class_tag",
+        "choose_filter:class_tag"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_damage_type",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:damage_type",
+        "choose_filter:damage_type"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_attack_range",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:attack_range",
+        "choose_filter:attack_range"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_filter_option_special_trait",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "collection_filter",
+        "collection_filter",
+        "collection_filter",
+        "collection",
+        "heroarea"
+      ],
+      "actions": [
+        "clear_filter:special_trait",
+        "choose_filter:special_trait"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "collection_results",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}"
+        ],
+        [
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+          "{hero.rarity.ico} {hero.name} ★{hero.stars}"
+        ],
+        [
+          "◀️",
+          "{page} / {pages}",
+          "▶️"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "collection_results",
+        "collection_results",
+        "collection_results",
+        "home",
+        "collection_filter"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "hero_card",
+      "source": "app/mini/ui/hero_cards.py; app/mini/ui/heroes.py",
+      "plan": "изменить",
+      "image": "{hero.image}",
+      "rows": [
+        [
+          "⬆️ Улучшить · ⭐{hero.next_star} · {hero.upgrade_cost} 🧩"
+        ],
+        [
+          "✅ Сделать активным"
+        ],
+        [
+          "☆ Убрать из избранного"
+        ],
+        [
+          "⭐ Сделать избранным"
+        ],
+        [
+          "📚 Коллекция"
+        ]
+      ],
+      "targets": [
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "hero_card",
+        "collection"
+      ],
+      "actions": [
+        "hero_upgrade",
+        "set_active_hero",
+        "remove_favorite",
+        "add_favorite"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "shards_sell",
+      "source": "app/mini/ui/heroes.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Продать 1 → +1 🪙"
+        ],
+        [
+          "Продать 10 → +10 🪙"
+        ],
+        [
+          "Продать все {hero.shards} → +{hero.shards} 🪙"
+        ],
+        [
+          "⬅️ К герою"
+        ]
+      ],
+      "targets": [
+        "shards_sell",
+        "shards_sell",
+        "shards_sell",
+        "hero_card"
+      ],
+      "actions": [
+        "sell_hero_shards:1",
+        "sell_hero_shards:10",
+        "sell_hero_shards:all"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "mythic",
+      "source": "app/mini/mythic/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Создать: {mythic_hero.name}"
+        ],
+        [
+          "←",
+          "→"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "mythic",
+        "mythic",
+        "mythic",
+        "heroarea"
+      ],
+      "actions": [
+        "craft_mythic"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "daily_result",
+      "source": "app/mini/ui/activities.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎒 Инвентарь",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "inventory",
+        "adventures"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "inventory",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "✨ Использовать предмет",
+          "🛡 Экипировка в инвентаре"
+        ],
+        [
+          "🛒 Магазин",
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "useitems",
+        "equipment_inventory",
+        "shop",
+        "home",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "useitems",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎒 {item.name}{item.quantity_suffix}"
+        ],
+        [
+          "🎫 {certificate.title}"
+        ],
+        [
+          "⬅️ В инвентарь"
+        ]
+      ],
+      "targets": [
+        "usepick_item",
+        "usepick_certificate",
+        "inventory"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "usepick_item",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "✅ Использовать"
+        ],
+        [
+          "⬅️ К выбору"
+        ]
+      ],
+      "targets": [
+        "item_use_result",
+        "useitems"
+      ],
+      "actions": [
+        "use_inventory_item"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "usepick_certificate",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "✅ Использовать"
+        ],
+        [
+          "⬅️ К выбору"
+        ]
+      ],
+      "targets": [
+        "certificate_result",
+        "useitems"
+      ],
+      "actions": [
+        "request_certificate_use"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "item_use_result",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎒 В инвентарь"
+        ],
+        [
+          "⬅️ На главную"
+        ]
+      ],
+      "targets": [
+        "inventory",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "certificate_result",
+      "source": "app/mini/ui/inventory.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎒 В инвентарь"
+        ],
+        [
+          "⬅️ На главную"
+        ]
+      ],
+      "targets": [
+        "inventory",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "shop",
+      "source": "app/mini/ui/shop.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🎴 Призывы · 1"
+        ],
+        [
+          "⚔️ Для Mini · 1"
+        ],
+        [
+          "🎲 Для D&D · 2"
+        ],
+        [
+          "🎉 Приколы · 2"
+        ],
+        [
+          "🎒 Инвентарь"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "shop_category",
+        "shop_category",
+        "shop_category",
+        "shop_category",
+        "inventory",
+        "fair"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "shop_category",
+      "source": "app/mini/ui/shop.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{offer.title} — {offer.price} 🪙"
+        ],
+        [
+          "⬅️ К категориям"
+        ]
+      ],
+      "targets": [
+        "shop_item",
+        "shop"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "shop_item",
+      "source": "app/mini/ui/shop.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "✅ Купить за {offer.price} 🪙"
+        ],
+        [
+          "⬅️ В магазин"
+        ]
+      ],
+      "targets": [
+        "shop_purchase",
+        "shop"
+      ],
+      "actions": [
+        "purchase_shop_offer"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "shop_purchase",
+      "source": "app/mini/ui/shop.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🎒 Инвентарь",
+          "🛒 Магазин"
+        ],
+        [
+          "⬅️ На главную"
+        ]
+      ],
+      "targets": [
+        "inventory",
+        "shop",
+        "fair"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "equipment",
+      "source": "app/mini/equipment/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Надеть..."
+        ],
+        [
+          "Снять..."
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "equipment_choose_equip",
+        "equipment_choose_remove",
+        "heroarea"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "equipment_choose_equip",
+      "source": "app/mini/equipment/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{equipment_item.name} · {equipment_item.slot} · +{equipment_item.attack_bonus}"
+        ],
+        [
+          "⬅️",
+          "➡️"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "equipment",
+        "equipment_choose_equip",
+        "equipment_choose_equip",
+        "equipment"
+      ],
+      "actions": [
+        "equip_item"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "equipment_choose_remove",
+      "source": "app/mini/equipment/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{equipment.slot_label}: {equipment.item_name} +{equipment.attack_bonus}"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "equipment",
+        "equipment"
+      ],
+      "actions": [
+        "unequip_item"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "equipment_inventory",
+      "source": "app/mini/equipment/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "⬅️",
+          "➡️"
+        ],
+        [
+          "Надеть..."
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "equipment_inventory",
+        "equipment_inventory",
+        "equipment_choose_equip",
+        "inventory"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🎴 Выбрать героя",
+          "🛡 Экипировка"
+        ],
+        [
+          "⚔️ Начать бой"
+        ],
+        [
+          "⚔️ Атаковать"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_select",
+        "equipment",
+        "tower_active",
+        "tower_active",
+        "home",
+        "adventures"
+      ],
+      "actions": [
+        "start_tower_battle",
+        "tower_hit"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_select",
+      "source": "app/mini/tower/handlers.py; app/mini/ui/hero_selector.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{rarity.ico} {rarity.name} · {rarity.available_count}"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_heroes_by_rarity",
+        "home",
+        "tower"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_heroes_by_rarity",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.name} ★{hero.stars}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_hero_card",
+        "tower_heroes_by_rarity",
+        "tower_heroes_by_rarity",
+        "tower_heroes_by_rarity",
+        "home",
+        "tower_select"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_hero_card",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "{hero.image}",
+      "rows": [
+        [
+          "✅ Выбрать этого героя"
+        ],
+        [
+          "✅ Герой выбран"
+        ],
+        [
+          "◀️ Предыдущий",
+          "Следующий ▶️"
+        ],
+        [
+          "🏰 К испытанию",
+          "⬅️ К героям"
+        ],
+        [
+          "🏠 Главная"
+        ]
+      ],
+      "targets": [
+        "tower_hero_card",
+        "tower_hero_card",
+        "tower_hero_card",
+        "tower_hero_card",
+        "tower_ready",
+        "tower_heroes_by_rarity",
+        "home"
+      ],
+      "actions": [
+        "select_tower_hero_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_selector_all",
+      "source": "app/mini/ui/hero_selector.py; app/mini/tower/handlers.py",
+      "plan": "legacy совместимость",
+      "image": "",
+      "rows": [
+        [
+          "{hero.label}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🔎 Изменить фильтр"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_ready",
+        "tower_selector_all",
+        "tower_selector_all",
+        "tower_selector_all",
+        "tower_selector_filter",
+        "tower_select",
+        "tower"
+      ],
+      "actions": [
+        "select_tower_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_selector_filter",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "legacy совместимость",
+      "image": "",
+      "rows": [
+        [
+          "{filter.field_label}: {filter.chosen_value}"
+        ],
+        [
+          "🔎 Посмотреть результаты"
+        ],
+        [
+          "🔄 Сбросить"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_selector_option",
+        "tower_selector_results",
+        "tower_selector_filter",
+        "tower_select",
+        "tower"
+      ],
+      "actions": [
+        "reset_filters"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_selector_option",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "legacy совместимость",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{filter.option}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_selector_filter",
+        "tower_selector_filter",
+        "tower_selector_filter",
+        "tower_select",
+        "tower"
+      ],
+      "actions": [
+        "clear_filter",
+        "set_filter"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_selector_results",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "legacy совместимость",
+      "image": "",
+      "rows": [
+        [
+          "{hero.label}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🔎 Изменить фильтр"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_ready",
+        "tower_selector_results",
+        "tower_selector_results",
+        "tower_selector_results",
+        "tower_selector_filter",
+        "tower_select",
+        "tower"
+      ],
+      "actions": [
+        "select_tower_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_ready",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🎴 Выбрать героя",
+          "🛡 Экипировка"
+        ],
+        [
+          "⚔️ Начать бой"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_select",
+        "equipment",
+        "tower_active",
+        "home",
+        "adventures"
+      ],
+      "actions": [
+        "start_tower_battle"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_active",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "⚔️ Атаковать"
+        ],
+        [
+          "🛡 Экипировка"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_active",
+        "equipment",
+        "home",
+        "adventures"
+      ],
+      "actions": [
+        "tower_hit"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_lost",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🔄 Сменить героя",
+          "🛡 Экипировка"
+        ],
+        [
+          "🔄 Повторить бой"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "tower_select",
+        "equipment",
+        "tower",
+        "home",
+        "adventures"
+      ],
+      "actions": [
+        "retry_tower_battle"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_won",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": null,
+      "rows": [
+        [
+          "🛡 Экипировка"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "equipment",
+        "home",
+        "adventures"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "tower_completed",
+      "source": "app/mini/tower/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🛡 Экипировка"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "equipment",
+        "home",
+        "adventures"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_none",
+      "source": "app/mini/boss/ui.py; app/mini/boss/presentation.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "➕ Объявить босса"
+        ],
+        [
+          "⬅️ На главную"
+        ]
+      ],
+      "targets": [
+        "boss_create",
+        "adventures"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss",
+      "source": "app/mini/boss/ui.py; app/mini/boss/presentation.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "⚔️ Записаться на босса"
+        ],
+        [
+          "🚪 Выйти из регистрации"
+        ],
+        [
+          "🎴 Выбрать героя"
+        ],
+        [
+          "👥 Участники"
+        ],
+        [
+          "🔒 Закрыть регистрацию"
+        ],
+        [
+          "▶️ Начать бой"
+        ],
+        [
+          "🔓 Открыть регистрацию снова"
+        ],
+        [
+          "⚡ Завершить бой"
+        ],
+        [
+          "📣 Повторить анонс"
+        ],
+        [
+          "❌ Отменить босса"
+        ],
+        [
+          "⬅️ На главную"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss",
+        "boss_hero_select",
+        "boss_participants",
+        "boss",
+        "boss_public_turn",
+        "boss",
+        "boss",
+        "boss",
+        "boss_none",
+        "adventures"
+      ],
+      "actions": [
+        "boss_join",
+        "boss_leave",
+        "boss_close_registration",
+        "boss_start",
+        "boss_reopen_registration",
+        "boss_force_finish",
+        "boss_republish",
+        "boss_cancel"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_create",
+      "source": "app/mini/boss/registration.py; app/mini/boss/presentation.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "👹 {boss_template.name} • {boss_template.max_hp} HP"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss_preview",
+        "boss"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_preview",
+      "source": "app/mini/boss/registration.py; app/mini/boss/presentation.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "📣 Объявить и открыть регистрацию"
+        ],
+        [
+          "⬅️ К списку боссов"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss_create"
+      ],
+      "actions": [
+        "boss_announce"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_participants",
+      "source": "app/mini/boss/registration.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "⬅️ К боссу"
+        ]
+      ],
+      "targets": [
+        "boss"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_hero_select",
+      "source": "app/mini/boss/selection.py; app/mini/ui/hero_selector.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.label}"
+        ],
+        [
+          "👥 Показать всех"
+        ],
+        [
+          "🔎 Поиск по фильтру"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss_selector_all",
+        "boss_selector_filter",
+        "boss"
+      ],
+      "actions": [
+        "select_boss_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_selector_all",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.label}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🔎 Изменить фильтр"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss_selector_all",
+        "boss_selector_all",
+        "boss_selector_all",
+        "boss_selector_filter",
+        "boss_hero_select",
+        "boss"
+      ],
+      "actions": [
+        "select_boss_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_selector_filter",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{filter.field_label}: {filter.value}"
+        ],
+        [
+          "🔎 Посмотреть результаты"
+        ],
+        [
+          "🔄 Сбросить"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss_selector_option",
+        "boss_selector_results",
+        "boss_selector_filter",
+        "boss_hero_select",
+        "boss"
+      ],
+      "actions": [
+        "reset_filters"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_selector_option",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Любое"
+        ],
+        [
+          "{option.label}"
+        ],
+        [
+          "⬅️ К фильтрам"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss_selector_filter",
+        "boss_selector_filter",
+        "boss_selector_filter",
+        "boss_hero_select",
+        "boss"
+      ],
+      "actions": [
+        "clear_filter",
+        "set_filter"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_selector_results",
+      "source": "app/mini/ui/hero_selector.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.label}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🔎 Изменить фильтр"
+        ],
+        [
+          "⬅️ Избранные"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss_selector_results",
+        "boss_selector_results",
+        "boss_selector_results",
+        "boss_selector_filter",
+        "boss_hero_select",
+        "boss"
+      ],
+      "actions": [
+        "select_boss_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_public_announcement",
+      "source": "app/mini/boss/public.py; app/mini/boss/ui.py",
+      "plan": "сохранить",
+      "image": "{boss.image}",
+      "rows": [
+        [
+          "⚔️ Записаться",
+          "🚪 Выйти"
+        ],
+        [
+          "👥 Участники"
+        ]
+      ],
+      "targets": [
+        "boss",
+        "boss",
+        "boss_participants"
+      ],
+      "actions": [
+        "boss_join",
+        "boss_leave"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "boss_public_turn",
+      "source": "app/mini/boss/public.py; app/mini/boss/handlers.py",
+      "plan": "сохранить",
+      "image": "{boss.current_hero_image}",
+      "rows": [
+        [
+          "⚔️ Ударить босса"
+        ],
+        [
+          "👥 Участники"
+        ]
+      ],
+      "targets": [
+        "boss_public_turn",
+        "boss_participants"
+      ],
+      "actions": [
+        "boss_hit"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events",
+      "source": "app/mini/events/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "😇 Святоша, Демон, Житель"
+        ],
+        [
+          "🌀 Лабиринт интуиции"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "events_rps",
+        "events_lab",
+        "fair"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_rps",
+      "source": "app/mini/events/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🎲 Играть"
+        ]
+      ],
+      "targets": [
+        "events_rps_bets"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_rps_bets",
+      "source": "app/mini/events/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🪙 1",
+          "🪙 5",
+          "🪙 10"
+        ],
+        [
+          "⬅️ Выйти"
+        ]
+      ],
+      "targets": [
+        "events_rps_choice",
+        "events_rps_choice",
+        "events_rps_choice",
+        "events"
+      ],
+      "actions": [
+        "start_rps_game:1",
+        "start_rps_game:5",
+        "start_rps_game:10"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_rps_choice",
+      "source": "app/mini/events/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "😇 Святоша"
+        ],
+        [
+          "😈 Демон"
+        ],
+        [
+          "🧑 Житель"
+        ]
+      ],
+      "targets": [
+        "events_rps_result",
+        "events_rps_result",
+        "events_rps_result"
+      ],
+      "actions": [
+        "choose_rps_saint",
+        "choose_rps_demon",
+        "choose_rps_villager"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_rps_result",
+      "source": "app/mini/events/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🔁 Ещё раз!"
+        ],
+        [
+          "💰 Поменять ставку"
+        ]
+      ],
+      "targets": [
+        "events_rps_choice",
+        "events_rps_bets"
+      ],
+      "actions": [
+        "repeat_rps_game"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_lab",
+      "source": "app/mini/events/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🚪 Войти в лабиринт — 5 монет"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "events_lab_active",
+        "events"
+      ],
+      "actions": [
+        "start_labyrinth"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_lab_active",
+      "source": "app/mini/events/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "⬅️ Влево",
+          "➡️ Вправо"
+        ]
+      ],
+      "targets": [
+        "events_lab_active",
+        "events_lab_active"
+      ],
+      "actions": [
+        "labyrinth_left",
+        "labyrinth_right"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_lab_win",
+      "source": "app/mini/events/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🔁 Ещё раз — 5 монет"
+        ],
+        [
+          "🎪 К событиям"
+        ]
+      ],
+      "targets": [
+        "events_lab_active",
+        "events"
+      ],
+      "actions": [
+        "repeat_labyrinth"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "events_lab_loss",
+      "source": "app/mini/events/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🔁 Ещё раз — 5 монет"
+        ],
+        [
+          "🎪 К событиям"
+        ]
+      ],
+      "targets": [
+        "events_lab_active",
+        "events"
+      ],
+      "actions": [
+        "repeat_labyrinth"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duels",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Вызвать игрока"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duel_select_hero",
+        "adventures"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duels_pending_defender",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Выбрать / сменить героя"
+        ],
+        [
+          "Согласен"
+        ],
+        [
+          "Отказ"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duel_pick_defender_hero",
+        "duels",
+        "duels",
+        "adventures"
+      ],
+      "actions": [
+        "accept_duel",
+        "refuse_duel"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duels_pending_challenger",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Отменить вызов"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duels",
+        "adventures"
+      ],
+      "actions": [
+        "cancel_duel"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duel_select_hero",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.name} • атака {hero.attack}"
+        ],
+        [
+          "←"
+        ],
+        [
+          "→"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duel_select_rival",
+        "duel_select_hero",
+        "duel_select_hero",
+        "duels"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duel_pick_defender_hero",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.name} • атака {hero.attack}"
+        ],
+        [
+          "←"
+        ],
+        [
+          "→"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duels",
+        "duel_pick_defender_hero",
+        "duel_pick_defender_hero",
+        "duels"
+      ],
+      "actions": [
+        "select_duel_defender_hero"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duel_select_rival",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "{rival.character_name} • {rival.username}"
+        ],
+        [
+          "←"
+        ],
+        [
+          "→"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "duels_pending_challenger",
+        "duel_select_rival",
+        "duel_select_rival",
+        "duels"
+      ],
+      "actions": [
+        "challenge_duel_player"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "duel_public_challenge",
+      "source": "app/mini/duels/handlers.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "Открыть вызов"
+        ]
+      ],
+      "targets": [
+        "duels_pending_defender"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🏠 Дома",
+          "📦 Собрать"
+        ],
+        [
+          "⛏ Шахта",
+          "🏪 Рынок",
+          "🏹 Охота"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_houses",
+        "village",
+        "village_mine",
+        "village_market",
+        "village_hunt",
+        "home",
+        "fair"
+      ],
+      "actions": [
+        "collect_village_output"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_houses",
+      "source": "app/mini/village/handlers.py + NEW houses menu",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🏠 Купить дом · {village.next_price} 🪙"
+        ],
+        [
+          "👥 Поселить",
+          "🚪 Выселить"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_houses",
+        "village_add",
+        "village_evict",
+        "home",
+        "village"
+      ],
+      "actions": [
+        "buy_house"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_residents",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name} • {resident.job_label}"
+        ],
+        [
+          "➕ Поселить"
+        ],
+        [
+          "←",
+          "→"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "village_resident",
+        "village_add",
+        "village_residents",
+        "village_residents",
+        "village"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_add",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{hero.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_add",
+        "village_add",
+        "village_add",
+        "village_add",
+        "home",
+        "village_houses"
+      ],
+      "actions": [
+        "settle_hero_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_evict",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "🚪 {resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "🏠 Главная",
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_evict",
+        "village_evict",
+        "village_evict",
+        "village_evict",
+        "home",
+        "village_houses"
+      ],
+      "actions": [
+        "evict_resident_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_mine",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "➕ Добавить",
+          "➖ Убрать"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_mine_add",
+        "village_mine_remove",
+        "village"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_mine_add",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_mine_add",
+        "village_mine_add",
+        "village_mine_add",
+        "village_mine_add",
+        "village_mine"
+      ],
+      "actions": [
+        "assign_resident:mine_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_mine_remove",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_mine_remove",
+        "village_mine_remove",
+        "village_mine_remove",
+        "village_mine_remove",
+        "village_mine"
+      ],
+      "actions": [
+        "unassign_resident:mine_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_market",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "➕ Добавить",
+          "➖ Убрать"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_market_add",
+        "village_market_remove",
+        "village"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_market_add",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_market_add",
+        "village_market_add",
+        "village_market_add",
+        "village_market_add",
+        "village_market"
+      ],
+      "actions": [
+        "assign_resident:market_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_market_remove",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_market_remove",
+        "village_market_remove",
+        "village_market_remove",
+        "village_market_remove",
+        "village_market"
+      ],
+      "actions": [
+        "unassign_resident:market_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_hunt",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "➕ Добавить",
+          "➖ Убрать"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_hunt_add",
+        "village_hunt_remove",
+        "village"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_hunt_add",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_hunt_add",
+        "village_hunt_add",
+        "village_hunt_add",
+        "village_hunt_add",
+        "village_hunt"
+      ],
+      "actions": [
+        "assign_resident:hunt_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_hunt_remove",
+      "source": "NEW DESIGN (not yet in code)",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "{resident.name}"
+        ],
+        [
+          "◀️",
+          "{page}/{pages}",
+          "▶️"
+        ],
+        [
+          "⬅️ Назад"
+        ]
+      ],
+      "targets": [
+        "village_hunt_remove",
+        "village_hunt_remove",
+        "village_hunt_remove",
+        "village_hunt_remove",
+        "village_hunt"
+      ],
+      "actions": [
+        "unassign_resident:hunt_stay"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "village_resident",
+      "source": "app/mini/village/handlers.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "⛏ Шахта"
+        ],
+        [
+          "🏪 Рынок"
+        ],
+        [
+          "🏹 Охота"
+        ],
+        [
+          "Снять с производства"
+        ],
+        [
+          "Выселить"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "village",
+        "village",
+        "village",
+        "village",
+        "village",
+        "village"
+      ],
+      "actions": [
+        "assign_resident:mine",
+        "assign_resident:market",
+        "assign_resident:hunt",
+        "unassign_resident",
+        "evict_resident"
+      ],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "сохранить",
+      "image": "",
+      "rows": [
+        [
+          "🚀 Быстрый старт"
+        ],
+        [
+          "🎴 Герои и гача"
+        ],
+        [
+          "👹 Боссы"
+        ],
+        [
+          "🔄 Фракции и особенности"
+        ],
+        [
+          "🏰 Испытания"
+        ],
+        [
+          "🛡 Экипировка"
+        ],
+        [
+          "💰 Монеты и осколки"
+        ],
+        [
+          "🏘 Моя деревня"
+        ],
+        [
+          "⚔️ Дуэли"
+        ],
+        [
+          "🔥 Серия приключений"
+        ],
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules_start",
+        "rules_heroes",
+        "rules_bosses",
+        "rules_factions",
+        "rules_tower",
+        "rules_equipment",
+        "rules_money",
+        "rules_village",
+        "rules_duels",
+        "rules_streak",
+        "more"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_start",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_heroes",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_bosses",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_factions",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_tower",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_equipment",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_money",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_village",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_duels",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    },
+    {
+      "screen": "rules_streak",
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "plan": "изменить",
+      "image": "",
+      "rows": [
+        [
+          "Назад"
+        ]
+      ],
+      "targets": [
+        "rules"
+      ],
+      "actions": [],
+      "verification": "план: runtime layout + callback/переходы, regression; Telegram вручную"
+    }
+  ]
+}

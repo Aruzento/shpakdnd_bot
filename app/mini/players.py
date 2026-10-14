@@ -1,8 +1,22 @@
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
+
+
+def validate_character_name(value):
+    if not isinstance(value,str):
+        raise ValueError("Некорректное имя персонажа.")
+    if any(unicodedata.category(c).startswith('C') for c in value):
+        raise ValueError("В имени нельзя использовать управляющие или скрытые символы.")
+    name = " ".join(value.strip().split())
+    if not name or len(name)>64:
+        raise ValueError("Имя должно содержать от 1 до 64 символов.")
+    if name.startswith('/') or any(c in name for c in '<>'):
+        raise ValueError("В имени нельзя использовать команды или HTML-разметку.")
+    return name
 
 
 def get_mini_player(
@@ -49,7 +63,7 @@ def create_mini_player(
     character_name: str,
     db_path: str | Path = DB_PATH,
 ) -> dict:
-    character_name = " ".join(character_name.strip().split())
+    character_name = validate_character_name(character_name)
     username = username.strip().lower()
 
     if not character_name:

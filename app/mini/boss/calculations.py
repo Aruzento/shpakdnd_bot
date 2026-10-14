@@ -87,6 +87,8 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
         hero_final_damage = damage
         damage = creatures.feature_damage(boss, hero, hero_final_damage)
         damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and (extra_percent is None or extra_uses_primary_base))
+    if reachable:
+        damage += int(attack_resolution.get('pure_bonus', 0))
     # Absolute Boss rules run once after every hero-side damage mode.
     final = boss_abilities.final_hero_damage(dict(boss), hero, damage,
         base_attack=max(1, int(participant["attack"]) * (extra_percent or 100) // 100), raw_damage=ability_damage if reachable or mode == "normal" else 0)

@@ -1,0 +1,4823 @@
+{
+  "_meta": {
+    "title": "D&D Mini — предложенная пользователем новая карта UI (17 пунктов)",
+    "repo": "https://github.com/Aruzento/shpakdnd_bot",
+    "branch": "main",
+    "commit": "f06c0d129fdad0fef4fde0889915faac26b94f4a",
+    "format_version": "ui-map-proposal-2",
+    "status": "DESIGN PROPOSAL, NOT IMPLEMENTED, NOT RUNTIME CONFIG",
+    "scope": "Интерактивные экраны и клавиатуры Mini, личные и публичные. Не включает тексты всех команд без Inline-кнопок, Toast-уведомления, каждый отдельный вариант боевого события или весь текст legacy D&D.",
+    "button_rows": "Каждый вложенный массив buttons — отдельная строка кнопок. Динамические списки описаны одной шаблонной кнопкой и visible_if.",
+    "editable_fields": [
+      "id (переименование требует mapping callback)",
+      "image",
+      "desc",
+      "buttons[].text",
+      "buttons[].color",
+      "buttons (порядок и количество рядов)"
+    ],
+    "color_values": {
+      "default": "Обычная кнопка",
+      "primary": "Синяя кнопка",
+      "success": "Зелёная кнопка",
+      "danger": "Красная кнопка"
+    },
+    "important": "Это ПРОЕКТ. В main нет реализации renderer/hot reload. JSON не должен исполнять произвольные actions/visible_if и не может менять защищённую экономику. Динамические кнопки требуют серверного построения callback_data и проверки авторизации.",
+    "images": "image=плейсхолдер означает фактический источник динамической картинки, а не готовый путь к локальному файлу. Пустое image означает текстовый экран.",
+    "transition_notes": "next_msg_id=проектный ID экрана из этого файла. actions=проектные названия уже существующей серверной операции. Без отдельного адаптера это не Telegram callback_data.",
+    "runtime_notes": [
+      "Некоторые экраны собираются из нескольких функций и отличаются состояниями.",
+      "Для длинных динамических описаний placeholders обозначают данные из БД или каталога, не являются существующими переменными Python.",
+      "Текст правил перенесён из app/mini/rules.py, включая возможные несовпадения с реализацией.",
+      "Условия видимости не исполняются из JSON и потребуют заранее определённых условий на стороне Python."
+    ],
+    "based_on_commit": "f06c0d129fdad0fef4fde0889915faac26b94f4a",
+    "proposal_date": "2026-10-09",
+    "deprecated_screens": [
+      "create_help",
+      "created"
+    ],
+    "new_feature_warnings": [
+      "10x gacha: not existing per reviewed handlers, requires economics/idempotency",
+      "coupon: mechanics and service unspecified",
+      "inline name entry for onboarding: new handler required",
+      "tower 3-step selector: new UI/state architecture",
+      "village stay-on-screen and worker-filter views: new callbacks/service integration"
+    ],
+    "replaces_old_screens": false,
+    "unchanged_screens": "Неизменённые экраны сохранены из исходного снимка main f06c0d1. Они могут содержать пути назад, соответствующие старому UI, пока не будет выполнено сквозное обновление навигации."
+  },
+  "variables": {
+    "world.name": "Имя Mini-мира из БД",
+    "world.currency_name": "Валюта Mini-мира",
+    "main_char.*": "Текущий активный герой; источник app.mini.heroes.get_active_hero, app.mini.presentation, get_hero_image",
+    "hero.*": "Выбранный герой (состояние, паспорт героя, улучшения)",
+    "coins_num": "Текущий player[\"coins\"]",
+    "shards_num": "Текущий player[\"shards\"]",
+    "gacha.*": "Данные get_gacha_state, get_collection_summary и результат perform_gacha_pull",
+    "collection.*": "Сводка get_collection_summary + get_favorites",
+    "filter.*": "Состояние фильтра render_selector, набор значений из каталога героев",
+    "item.*": "Текущая позиция мини-инвентаря",
+    "certificate.*": "Текущий купленный сертификат",
+    "inventory.*": "Данные get_player_goods",
+    "shop.*": "Товарные категории и предложения",
+    "category.*": "Категория магазина",
+    "offer.*": "Предложение магазина",
+    "purchase.*": "Результат покупки",
+    "equipment.*": "get_equipment(player_id)",
+    "equipment_item.*": "Конкретный предмет экипировки",
+    "tower.*": "get_state(player_id), текущая попытка, противник, награда",
+    "boss.*": "get_active_boss/get_boss/list_participants, format_public_boss",
+    "events.*": "Состояние mini_event_sessions, результат текущей мини-игры",
+    "duel.*": "get_state(pid) из duels.service",
+    "village.*": "get_state(player_id) из village.service",
+    "resident.*": "Житель деревни",
+    "daily.*": "Результат claim_daily(player_id, name)",
+    "page/pages": "Текущая страница и число страниц в списках",
+    "topic.admin": "Администратор темы, в текущем коде fallback @arukozento",
+    "home.registration_notice": "Однократный success-баннер в home после создания Mini-персонажа, не выводить при обычном открытии.",
+    "home.onboarding_gift_text": "Существующий стартовый подарок STARTER_MESSAGE; не терять данные.",
+    "home.hero_summary": "Вычисляемый блок активного героя или приглашения к первому призыву.",
+    "gacha.batch_*": "Проектные поля нового батч-результата; должны формироваться из атомарного service.",
+    "gacha.coupon_*": "Новые поля, пока отсутствует подтверждённая модель купона.",
+    "rarity.*": "Список редкостей из реально доступных в Испытании героев.",
+    "tower.selected_hero_*": "Выбранный для текущего этажа герой, не менять во время боя.",
+    "village.idle_count": "Количество поселённых героев без работы.",
+    "village.capacity_free": "Количество свободных мест в построенных домах.",
+    "village.<job>_workers_list": "Список работников здания, вычисляется по актуальной БД.",
+    "ui_back": "Серверный переход к предыдущему безопасному UI-экрану, нельзя вычислять из необработанного пользовательского ввода."
+  },
+  "msg": [
+    {
+      "id": "launcher",
+      "image": "",
+      "desc": "🎲 {world.name}\n━━━━━━━━━━━━━━\n\nЕжедневные приключения, боссы,\nгерои, награды и магазин.\n\nНажми кнопку — личное меню увидишь только ты.",
+      "buttons": [
+        [
+          {
+            "text": "🎮 Открыть D&D Mini",
+            "next_msg_id": "home",
+            "actions": [
+              "launch_personal_ui"
+            ],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "public",
+      "notes": "Публичная закрепляемая панель /minipanel; если Mini-персонажа нет, ведёт на registration."
+    },
+    {
+      "id": "registration",
+      "image": "",
+      "desc": "🎲 {world.name}\n\nУ тебя пока нет Mini-персонажа.\nСоздай персонажа, чтобы начать приключения.\n\nРезервный способ: /minicreate \"Имя персонажа\".",
+      "buttons": [
+        [
+          {
+            "text": "👤 Создать персонажа",
+            "next_msg_id": "registration",
+            "actions": [
+              "begin_registration_name_input"
+            ],
+            "color": "success"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "when": "Mini-игрок не зарегистрирован",
+      "notes": "СЛИЯНИЕ registration + create_help. Предлагается запрос имени непосредственно после нажатия через безопасный ввод (личный чат или корректная Telegram-схема ввода), с сохранением /minicreate. Новое UI-действие пока не реализовано. Не показывать отдельный экран create_help.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "home",
+      "image": "{main_char.image}",
+      "desc": "{home.registration_notice}{home.onboarding_gift_text}{home.hero_summary}\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Приключения",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🧙 Герой",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "✨ Призвать героя",
+            "next_msg_id": "gacha",
+            "actions": [],
+            "color": "success"
+          }
+        ],
+        [
+          {
+            "text": "🎪 Ярмарка",
+            "next_msg_id": "fair",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📖 Ещё",
+            "next_msg_id": "more",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Сразу после успешного создания показывается home: registration_notice = «✅ Персонаж создан! Теперь призови своего первого героя!», gift_text сохраняет стартовый подарок из onboarding; при повторном открытии уведомление больше не повторяется. Если героя нет — hero_summary показывает приглашение к первому призыву; иначе сохраняет существующую карточку с изображением. Менять механику выдачи стартового подарка нельзя.",
+      "variants": {
+        "just_created_no_hero": "✅ Персонаж создан! Теперь призови своего первого героя!\n\n{onboarding.gift_text}\n\n🎴 У тебя пока нет активного героя.",
+        "no_hero": "🎴 У тебя пока нет активного героя. Призови своего первого героя!",
+        "with_hero": "{main_char.name} • {main_char.faction.label} • ⭐ {main_char.stars}\n\n{main_char.damage_type.label} | {main_char.class_tag.label}\n{main_char.attack_range.label} | {main_char.special_trait.label}\n⚔️ Урон: {main_char.attack}"
+      },
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "adventures",
+      "image": "",
+      "desc": "⚔️ Приключения",
+      "buttons": [
+        [
+          {
+            "text": "🔥 Босс",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🏰 Испытания",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Ежедневный бой",
+            "next_msg_id": "daily_result",
+            "actions": [
+              "claim_daily"
+            ],
+            "color": "default"
+          },
+          {
+            "text": "⚔️ Дуэли",
+            "next_msg_id": "duels",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Заданы три ряда (2/2/1). Daily — действие получения награды, результат зависит от даты и сохраняет защиту повторов.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "heroarea",
+      "image": "",
+      "desc": "🧙 Герой",
+      "buttons": [
+        [
+          {
+            "text": "👤 Профиль",
+            "next_msg_id": "character",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🎒 Инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📚 Коллекция",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Три ряда (2/2/1). Вход в Мифических героев временно перенесён в «Ещё» (more), чтобы не потерять доступ. Это перенос навигации на согласование.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "fair",
+      "image": "",
+      "desc": "🎪 Ярмарка",
+      "buttons": [
+        [
+          {
+            "text": "🛒 Магазин",
+            "next_msg_id": "shop",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🎪 События",
+            "next_msg_id": "events",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏘 Моя деревня",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "notes": "SUBMENUS: в текущем коде строго одна кнопка на строку."
+    },
+    {
+      "id": "more",
+      "image": "",
+      "desc": "📖 Ещё",
+      "buttons": [
+        [
+          {
+            "text": "📖 Правила",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔄 Обновить",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "✨ Мифические герои",
+            "next_msg_id": "mythic",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Добавлена доступность мифических героев после удаления кнопки из heroarea; расположение требует согласования.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "character",
+      "image": "{active_hero.image}",
+      "desc": "{hero.rarity.ico} {hero.name} • {hero.faction.label} • ⭐ {hero.stars}\n{hero.damage_type.label} | {hero.class_tag.label}\n{hero.attack_range.label} | {hero.special_trait.label}\n\n⚔️ Урон: {hero.attack}\n\n{hero.description}\n\n💫 Особый эффект: {hero.passive_text}\n{hero.special_trait_description}",
+      "buttons": [
+        [
+          {
+            "text": "⬆️ Улучшить · {hero.upgrade_cost} 🧩",
+            "next_msg_id": "character",
+            "actions": [
+              "hero_upgrade_active"
+            ],
+            "color": "default",
+            "visible_if": "hero.can_upgrade"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py; app/mini/ui/hero_cards.py",
+      "kind": "ephemeral",
+      "when": "Активный герой существует",
+      "notes": "Улучшение активного героя должно применять существующий upgrade-движок с expected_stars, idempotency и проверками, затем оставаться на character; при максимуме скрывать кнопку, не изменять стоимость.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "character_no_hero",
+      "image": "",
+      "desc": "🎴 Активный герой пока не выбран.",
+      "buttons": [
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/handlers.py",
+      "kind": "ephemeral",
+      "when": "Нет активного героя",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "gacha",
+      "image": "",
+      "desc": "✨ Призыв героев\n\n🪙 Цена: {gacha.pull_price}\n🎟 Билеты: {gacha.tickets}\n🪙 Монеты: {gacha.coins}\n🧩 Осколки: {gacha.shards}\n\n{gacha.luck_line}Текущие шансы редкостей:\n⚪ Обычный — {gacha.common_chance}%\n🟢 Необычный — {gacha.uncommon_chance}%\n🟣 Редкий — {gacha.rare_chance}%\n🟡 Легендарный — {gacha.legendary_chance}%\n\nГероев в коллекции: {gacha.owned}\nДоступно сейчас: {gacha.total}",
+      "buttons": [
+        [
+          {
+            "text": "🪙 Призвать 1 раз · {gacha.pull_price}",
+            "next_msg_id": "gacha_result",
+            "actions": [
+              "gacha_pull:coins"
+            ],
+            "color": "default"
+          },
+          {
+            "text": "✨ Призвать 10 раз",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [
+              "gacha_pull:coins_10"
+            ],
+            "color": "success"
+          }
+        ],
+        [
+          {
+            "text": "🎟 Призвать за билет · {gacha.tickets}",
+            "next_msg_id": "gacha_result",
+            "actions": [
+              "gacha_pull:ticket"
+            ],
+            "color": "default",
+            "visible_if": "gacha.tickets > 0"
+          },
+          {
+            "text": "🎟 Использовать купон",
+            "next_msg_id": "gacha_coupon",
+            "actions": [
+              "gacha_coupon_open"
+            ],
+            "color": "default",
+            "visible_if": "gacha.coupon_available"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📚 Коллекция",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "home",
+            "actions": [
+              "ui_back"
+            ],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/heroes.py",
+      "kind": "ephemeral",
+      "notes": "НОВОЕ: ×10 призыв отсутствует в подтверждённых обработчиках; нужна атомарная операция, точная цена, сохранение 10 результатов и защита повторных callback. Механика купона не определена, НЕ считать его билетом или зельем удачи без ТЗ. Назад — previous_screen с безопасным fallback home, не просто home.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "gacha_batch_result",
+      "image": "",
+      "desc": "✨ Результаты 10 призывов\n\n{gacha.batch_summary}\n\n🪙 Потрачено: {gacha.batch_spent}\n🧩 Осколки: {gacha.batch_shards_awarded}\n\n{gacha.batch_heroes_list}",
+      "buttons": [
+        [
+          {
+            "text": "🎴 {gacha.batch_hero_label}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "по 1 выбранному герою/странице из сохранённых 10 результатов"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page < pages"
+          }
+        ],
+        [
+          {
+            "text": "✨ Ещё 10",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [
+              "gacha_repeat:coins_10"
+            ],
+            "color": "success"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📚 Коллекция",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "gacha",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "НОВАЯ ЭКРАННАЯ МОДЕЛЬ: результаты 10 независимых выдач (повторные герои, автоактивация, осколки, эффекты удачи и события) фиксируются атомарно. Кол-во доступных героев не гарантировано; поведение при недостаче требует ТЗ.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "gacha_coupon",
+      "image": "",
+      "desc": "🎟 Использование купона\n\n{gacha.coupon_description}\n{gacha.coupon_balance}",
+      "buttons": [
+        [
+          {
+            "text": "✅ Применить купон",
+            "next_msg_id": "gacha",
+            "actions": [
+              "redeem_gacha_coupon"
+            ],
+            "color": "success",
+            "visible_if": "gacha.coupon_valid"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "gacha",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "НОВАЯ НЕОПРЕДЕЛЁННАЯ МЕХАНИКА. Нужен контракт: где хранятся купоны, тип, применение, ограничения, привязка к игроку, срок и однократность. Нельзя списывать ничего без транзакционного service.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "gacha_result",
+      "image": "{hero.image}",
+      "desc": "{hero.card_caption}\n{gacha.pull_result}",
+      "buttons": [
+        [
+          {
+            "text": "✅ Сделать активным",
+            "next_msg_id": "gacha_result",
+            "actions": [
+              "set_active_hero"
+            ],
+            "color": "default",
+            "visible_if": "not hero.is_active"
+          },
+          {
+            "text": "📣 Похвастаться",
+            "next_msg_id": "gacha_result",
+            "actions": [
+              "share_hero_public"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🪙 Ещё призыв",
+            "next_msg_id": "gacha_result",
+            "actions": [
+              "gacha_repeat:coins"
+            ],
+            "color": "success"
+          },
+          {
+            "text": "✨ Ещё 10",
+            "next_msg_id": "gacha_batch_result",
+            "actions": [
+              "gacha_repeat:coins_10"
+            ],
+            "color": "success"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📚 Коллекция",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "gacha",
+            "actions": [
+              "ui_back"
+            ],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_cards.py; app/mini/ui/heroes.py",
+      "kind": "ephemeral",
+      "notes": "Улучшение героя остаётся доступным в hero_card/character; отдельная кнопка в результате гачи удалена по макету. «Ещё 10» — новое транзакционное действие. Назад возвращает в предыдущее безопасное окно, по умолчанию в gacha.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "collection",
+      "image": "",
+      "desc": "📚 Коллекция\n\nГероев в коллекции: {collection.owned}\nДоступно в текущей гаче: {collection.total_active}\n⭐ Активный герой: {collection.active_hero_name}\n🪙 Монеты: {coins_num}\n🧩 Осколки: {shards_num}",
+      "buttons": [
+        [
+          {
+            "text": "⭐ Избранные",
+            "next_msg_id": "collection_favorites",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "👥 Все",
+            "next_msg_id": "collection_all",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🔎 Найти",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/heroes.py; app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Кнопка избранных вместо прямой выдачи трёх фаворитов в collection: создаётся отдельный экран favorites.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "collection_favorites",
+      "image": "",
+      "desc": "⭐ Избранные\n\n{collection.favorites_hint}",
+      "buttons": [
+        [
+          {
+            "text": "{favorite_hero.name} ★{favorite_hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "до 3 избранных, по 1 или 2 в строке — динамический список"
+          }
+        ],
+        [
+          {
+            "text": "👥 Все",
+            "next_msg_id": "collection_all",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🔎 Найти",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py (existing favorites view; new navigation)",
+      "kind": "ephemeral",
+      "notes": "Предусмотренная текущим selector страница избранных теперь выделена как отдельный экран UI-карты.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "collection_all",
+      "image": "",
+      "desc": "👥 Все герои",
+      "buttons": [
+        [
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 1 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          },
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 2 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          }
+        ],
+        [
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 3 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          },
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 4 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "collection_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page} / {pages}",
+            "next_msg_id": "collection_all",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "collection_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page < pages"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Строго 4 героя на страницу, 2×2. PAGE_SIZE=4 только в режиме collection; общий selector для босса НЕ менять. Фильтр нужно сохранить между страницами и при переходе в карточку.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "collection_filter",
+      "image": "",
+      "desc": "🔎 Поиск по фильтру\nВыбери свойства подходящего героя.",
+      "buttons": [
+        [
+          {
+            "text": "Редкость: {filter.rarity_label}",
+            "next_msg_id": "collection_filter_option_rarity",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "Фракция: {filter.faction_label}",
+            "next_msg_id": "collection_filter_option_faction",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "Класс: {filter.class_tag_label}",
+            "next_msg_id": "collection_filter_option_class_tag",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Урон: {filter.damage_type_label}",
+            "next_msg_id": "collection_filter_option_damage_type",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "Дальность: {filter.attack_range_label}",
+            "next_msg_id": "collection_filter_option_attack_range",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "Свойство: {filter.special_trait_label}",
+            "next_msg_id": "collection_filter_option_special_trait",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{filter.upgradeable_label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "toggle_filter_upgradeable"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Показать результаты",
+            "next_msg_id": "collection_results",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🔄 Сбросить",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "reset_filters"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "ШЕСТЬ фильтров расположены в 2 ряда по три. Длинные названия могут обрезаться в Telegram; краткие подписи и выбранные значения можно вынести в desc. Остальные управляющие кнопки вынесены ниже. Только режим collection.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "collection_filter_option_rarity",
+      "image": "",
+      "desc": "🔎 Редкость",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:rarity"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:rarity"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_filter_option_faction",
+      "image": "",
+      "desc": "🔎 Фракция",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:faction"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:faction"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_filter_option_class_tag",
+      "image": "",
+      "desc": "🔎 Класс",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:class_tag"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:class_tag"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_filter_option_damage_type",
+      "image": "",
+      "desc": "🔎 Тип урона",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:damage_type"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:damage_type"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_filter_option_attack_range",
+      "image": "",
+      "desc": "🔎 Дальность",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:attack_range"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:attack_range"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_filter_option_special_trait",
+      "image": "",
+      "desc": "🔎 Особое свойство",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "clear_filter:special_trait"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "collection_filter",
+            "actions": [
+              "choose_filter:special_trait"
+            ],
+            "color": "default",
+            "visible_if": "для каждого значения из справочника"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "collection_results",
+      "image": "",
+      "desc": "🔎 Результаты подбора\n{collection.empty_filter_hint}",
+      "buttons": [
+        [
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 1 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          },
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 2 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          }
+        ],
+        [
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 3 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          },
+          {
+            "text": "{hero.rarity.ico} {hero.name} ★{hero.stars}",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "элемент 4 текущей страницы (до 4 героев), событие выбора сохраняет hero_id"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "collection_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page} / {pages}",
+            "next_msg_id": "collection_results",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "collection_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page < pages"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "collection_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Строго 4 героя на страницу, 2×2. PAGE_SIZE=4 только в режиме collection; общий selector для босса НЕ менять. Фильтр нужно сохранить между страницами и при переходе в карточку.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "hero_card",
+      "image": "{hero.image}",
+      "desc": "{hero.rarity.ico} {hero.name} • {hero.faction.label} • ⭐ {hero.stars}\n{hero.damage_type.label} | {hero.class_tag.label}\n{hero.attack_range.label} | {hero.special_trait.label}\n\n⚔️ Урон: {hero.attack}\n\n{hero.description}\n\n💫 Особый эффект: {hero.passive_text}\n{hero.special_trait_description}\n\nРедкость: {hero.rarity.name}\nКопий: {hero.copies} · Осколки: {hero.shards}\n{hero.upgrade_status}",
+      "buttons": [
+        [
+          {
+            "text": "⬆️ Улучшить · ⭐{hero.next_star} · {hero.upgrade_cost} 🧩",
+            "next_msg_id": "hero_card",
+            "actions": [
+              "hero_upgrade"
+            ],
+            "color": "default",
+            "visible_if": "hero.can_upgrade"
+          }
+        ],
+        [
+          {
+            "text": "✅ Сделать активным",
+            "next_msg_id": "hero_card",
+            "actions": [
+              "set_active_hero"
+            ],
+            "color": "default",
+            "visible_if": "not hero.is_active"
+          }
+        ],
+        [
+          {
+            "text": "☆ Убрать из избранного",
+            "next_msg_id": "hero_card",
+            "actions": [
+              "remove_favorite"
+            ],
+            "color": "default",
+            "visible_if": "hero.is_favorite"
+          }
+        ],
+        [
+          {
+            "text": "⭐ Сделать избранным",
+            "next_msg_id": "hero_card",
+            "actions": [
+              "add_favorite"
+            ],
+            "color": "default",
+            "visible_if": "not hero.is_favorite"
+          }
+        ],
+        [
+          {
+            "text": "📚 Коллекция",
+            "next_msg_id": "collection",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_cards.py; app/mini/ui/heroes.py",
+      "kind": "ephemeral",
+      "notes": "Карточка из коллекции: hero_caption(full=True). Ветка по hero ID, отсутствует отдельная кнопка «Назад к списку»: используется «📚 Коллекция»."
+    },
+    {
+      "id": "shards_sell",
+      "image": "",
+      "desc": "💱 Продажа осколков\n\n{hero.name}\n🧩 Осколки: {hero.shards}\n💰 Баланс: {coins_num}\n\nКурс: 1 осколок = 1 монета.\nПроданные осколки исчезают навсегда.",
+      "buttons": [
+        [
+          {
+            "text": "Продать 1 → +1 🪙",
+            "next_msg_id": "shards_sell",
+            "actions": [
+              "sell_hero_shards:1"
+            ],
+            "color": "default",
+            "visible_if": "hero.shards >= 1"
+          }
+        ],
+        [
+          {
+            "text": "Продать 10 → +10 🪙",
+            "next_msg_id": "shards_sell",
+            "actions": [
+              "sell_hero_shards:10"
+            ],
+            "color": "default",
+            "visible_if": "hero.shards >= 10"
+          }
+        ],
+        [
+          {
+            "text": "Продать все {hero.shards} → +{hero.shards} 🪙",
+            "next_msg_id": "shards_sell",
+            "actions": [
+              "sell_hero_shards:all"
+            ],
+            "color": "default",
+            "visible_if": "hero.shards > 0"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К герою",
+            "next_msg_id": "hero_card",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/heroes.py",
+      "kind": "ephemeral",
+      "notes": "Код экрана и обработчик shardsell присутствуют; в текущей hero_card_menu() прямой кнопки открытия продажи нет. Отмечен как не подтверждённый переход."
+    },
+    {
+      "id": "mythic",
+      "image": "",
+      "desc": "✨ Мифические герои\n{mythic.heroes_fragment_progress}",
+      "buttons": [
+        [
+          {
+            "text": "Создать: {mythic_hero.name}",
+            "next_msg_id": "mythic",
+            "actions": [
+              "craft_mythic"
+            ],
+            "color": "default",
+            "visible_if": "hero not owned AND fragments >= fragment_cost"
+          }
+        ],
+        [
+          {
+            "text": "←",
+            "next_msg_id": "mythic",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "→",
+            "next_msg_id": "mythic",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page < pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/mythic/handlers.py",
+      "kind": "ephemeral",
+      "notes": "По 6 мифических героев на страницу; для каждого показано Фрагменты N/N и Получен при владении."
+    },
+    {
+      "id": "daily_result",
+      "image": "",
+      "desc": "{daily.result_prefix}\n\n🔥 Серия: {daily.streak} {daily.streak_days}\n📅 День цикла: {daily.cycle_day}/7\n🪙 Бонус: +{daily.bonus_percent}%\n{daily.weekly_chest_line}\n{daily.story_text}{daily.rare_line}\n\n🪙 {daily.reward_line}\n💰 Баланс: {daily.balance}\n\nСледующий дейлик будет доступен завтра.",
+      "buttons": [
+        [
+          {
+            "text": "🎒 Инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/activities.py",
+      "kind": "ephemeral",
+      "notes": "Кнопка «Ежедневный бой» сразу выполняет claim_daily и показывает результат; отдельного предварительного экрана нет. Уже полученная награда не начисляется повторно."
+    },
+    {
+      "id": "inventory",
+      "image": "",
+      "desc": "🎒 Инвентарь\n\nВалюты:\n🪙 Монеты: {coins_num}\n🧩 Осколки: {shards_num}\n\n{inventory.items_lines}\n{inventory.certificates_lines}\n{inventory.active_effects_lines}\n{inventory.empty_hint}",
+      "buttons": [
+        [
+          {
+            "text": "✨ Использовать предмет",
+            "next_msg_id": "useitems",
+            "actions": [],
+            "color": "default",
+            "visible_if": "есть предметы Mini или сертификаты"
+          },
+          {
+            "text": "🛡 Экипировка в инвентаре",
+            "next_msg_id": "equipment_inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🛒 Магазин",
+            "next_msg_id": "shop",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral",
+      "notes": "Ровно 2 ряда. Первая строка использует кнопку «Использовать» только при доступных предметах. Подписи можно укоротить для ширины мобильного Telegram.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "useitems",
+      "image": "",
+      "desc": "✨ Использовать предмет\n\n{inventory.usable_hint}",
+      "buttons": [
+        [
+          {
+            "text": "🎒 {item.name}{item.quantity_suffix}",
+            "next_msg_id": "usepick_item",
+            "actions": [],
+            "color": "default",
+            "visible_if": "для каждого используемого предмета"
+          }
+        ],
+        [
+          {
+            "text": "🎫 {certificate.title}",
+            "next_msg_id": "usepick_certificate",
+            "actions": [],
+            "color": "default",
+            "visible_if": "для каждого сертификата"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ В инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral",
+      "notes": "Пустой вариант: «Используемых предметов сейчас нет.»; непустой: «Выбери предмет или сертификат.»."
+    },
+    {
+      "id": "usepick_item",
+      "image": "",
+      "desc": "🎒 {item.name}\n\n{item.description}\n\nЭффект: {item.effect_description}\nКоличество: {item.quantity}",
+      "buttons": [
+        [
+          {
+            "text": "✅ Использовать",
+            "next_msg_id": "item_use_result",
+            "actions": [
+              "use_inventory_item"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К выбору",
+            "next_msg_id": "useitems",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral",
+      "notes": "Существует особый маршрут для gacha_ticket: использование открывает экран результата призыва."
+    },
+    {
+      "id": "usepick_certificate",
+      "image": "",
+      "desc": "🎫 {certificate.title}\n\n{certificate.description}\n\nПосле использования бот позовёт {topic.admin} и сообщит, что награду нужно применить вручную.",
+      "buttons": [
+        [
+          {
+            "text": "✅ Использовать",
+            "next_msg_id": "certificate_result",
+            "actions": [
+              "request_certificate_use"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К выбору",
+            "next_msg_id": "useitems",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "item_use_result",
+      "image": "",
+      "desc": "{item.use_result_text}",
+      "buttons": [
+        [
+          {
+            "text": "🎒 В инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ На главную",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral",
+      "notes": "Варианты: кошель (+монеты), шкатулка (+осколки), зелья удачи/урона/фантомного участия, усиление деревни, сундук экипировки, обычный предмет."
+    },
+    {
+      "id": "certificate_result",
+      "image": "",
+      "desc": "✅ Сертификат использован.\n\n{topic.admin} получил сообщение о том, что для {player.name} нужно применить «{certificate.title}».",
+      "buttons": [
+        [
+          {
+            "text": "🎒 В инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ На главную",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/inventory.py",
+      "kind": "ephemeral",
+      "notes": "Также публикуется уведомление администратору; это отдельное публичное сообщение без клавиатуры."
+    },
+    {
+      "id": "shop",
+      "image": "",
+      "desc": "🛒 Магазин\n\n🪙 Баланс: {coins_num} {world.currency_name}\n\nВыбери раздел. Каталог лежит в app/mini/content/shop.json.",
+      "buttons": [
+        [
+          {
+            "text": "🎴 Призывы · 1",
+            "next_msg_id": "shop_category",
+            "actions": [],
+            "color": "default",
+            "notes": "Текущий код категории: summons"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Для Mini · 1",
+            "next_msg_id": "shop_category",
+            "actions": [],
+            "color": "default",
+            "notes": "Текущий код категории: mini"
+          }
+        ],
+        [
+          {
+            "text": "🎲 Для D&D · 2",
+            "next_msg_id": "shop_category",
+            "actions": [],
+            "color": "default",
+            "notes": "Текущий код категории: dnd"
+          }
+        ],
+        [
+          {
+            "text": "🎉 Приколы · 2",
+            "next_msg_id": "shop_category",
+            "actions": [],
+            "color": "default",
+            "notes": "Текущий код категории: fun"
+          }
+        ],
+        [
+          {
+            "text": "🎒 Инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "fair",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/shop.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "shop_category",
+      "image": "",
+      "desc": "{category.title}\n\n{category.description}\n\n{shop.category_status}",
+      "buttons": [
+        [
+          {
+            "text": "{offer.title} — {offer.price} 🪙",
+            "next_msg_id": "shop_item",
+            "actions": [],
+            "color": "default",
+            "visible_if": "для каждого активного товара данной категории"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К категориям",
+            "next_msg_id": "shop",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/shop.py",
+      "kind": "ephemeral",
+      "notes": "Есть товары: «🪙 Баланс: N\nВыбери товар:». Нет: «Здесь пока нет активных товаров.»."
+    },
+    {
+      "id": "shop_item",
+      "image": "",
+      "desc": "{offer.title}\n\n{offer.description}\n\nЦена: {offer.price} 🪙\nТвой баланс: {coins_num} 🪙\n{offer.purchase_limits}",
+      "buttons": [
+        [
+          {
+            "text": "✅ Купить за {offer.price} 🪙",
+            "next_msg_id": "shop_purchase",
+            "actions": [
+              "purchase_shop_offer"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ В магазин",
+            "next_msg_id": "shop",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/shop.py",
+      "kind": "ephemeral",
+      "notes": "Действие покупки выполняется транзакционно старым обработчиком mini:shopbuy, а не из конфигурации UI."
+    },
+    {
+      "id": "shop_purchase",
+      "image": "",
+      "desc": "✅ Покупка успешна!\n\n{purchase.title}\nСписано: {purchase.price} 🪙\nОсталось: {purchase.balance} 🪙\n\n{purchase.delivery_text}",
+      "buttons": [
+        [
+          {
+            "text": "🎒 Инвентарь",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🛒 Магазин",
+            "next_msg_id": "shop",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ На главную",
+            "next_msg_id": "fair",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/shop.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "equipment",
+      "image": "",
+      "desc": "🛡 Экипировка\n\nНадетая экипировка даёт бонусы в «Испытаниях».\n\nШлем: {equipment.helmet}\nКольцо: {equipment.ring}\nПлащ: {equipment.cloak}\n\nНенадетые предметы можно посмотреть в «Инвентаре».",
+      "buttons": [
+        [
+          {
+            "text": "Надеть...",
+            "next_msg_id": "equipment_choose_equip",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Снять...",
+            "next_msg_id": "equipment_choose_remove",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "heroarea",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/equipment/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "equipment_choose_equip",
+      "image": "",
+      "desc": "🛡 Надеть экипировку\n\n{equipment.owned_hint}",
+      "buttons": [
+        [
+          {
+            "text": "{equipment_item.name} · {equipment_item.slot} · +{equipment_item.attack_bonus}",
+            "next_msg_id": "equipment",
+            "actions": [
+              "equip_item"
+            ],
+            "color": "default",
+            "visible_if": "каждый доступный не надетый предмет, до 8 на страницу"
+          }
+        ],
+        [
+          {
+            "text": "⬅️",
+            "next_msg_id": "equipment_choose_equip",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "➡️",
+            "next_msg_id": "equipment_choose_equip",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/equipment/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Кнопка предмета выполняет equip и возвращает режим home. Нет предметов: текст про сундук на каждом пятом этаже."
+    },
+    {
+      "id": "equipment_choose_remove",
+      "image": "",
+      "desc": "🛡 Снять экипировку\n\nВыбери слот. Снятый предмет останется в инвентаре.",
+      "buttons": [
+        [
+          {
+            "text": "{equipment.slot_label}: {equipment.item_name} +{equipment.attack_bonus}",
+            "next_msg_id": "equipment",
+            "actions": [
+              "unequip_item"
+            ],
+            "color": "default",
+            "visible_if": "каждый занятый слот из helmet/ring/cloak"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/equipment/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Если все слоты пусты: «Все слоты пусты.»."
+    },
+    {
+      "id": "equipment_inventory",
+      "image": "",
+      "desc": "🎒 Экипировка в инвентаре\n\n{equipment.owned_items_lines}\n{equipment.empty_hint}",
+      "buttons": [
+        [
+          {
+            "text": "⬅️",
+            "next_msg_id": "equipment_inventory",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "➡️",
+            "next_msg_id": "equipment_inventory",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Надеть...",
+            "next_msg_id": "equipment_choose_equip",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "inventory",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/equipment/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "tower",
+      "image": "",
+      "desc": "🏰 Испытания: {tower.floor}/200\n\n{tower.current_state_content}",
+      "buttons": [
+        [
+          {
+            "text": "🎴 Выбрать героя",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default",
+            "visible_if": "нет активной попытки"
+          },
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Начать бой",
+            "next_msg_id": "tower_active",
+            "actions": [
+              "start_tower_battle"
+            ],
+            "color": "default",
+            "visible_if": "выбран герой, но бой не начат"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Атаковать",
+            "next_msg_id": "tower_active",
+            "actions": [
+              "tower_hit"
+            ],
+            "color": "default",
+            "visible_if": "active"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "ОБЪЕДИНЯЮЩЕЕ представление входного callback mini:tower. Реальный renderer выбирает tower_select / tower_ready / tower_active / tower_lost / tower_won / tower_completed по состоянию, НЕ отображает все эти кнопки вместе. | Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_select",
+      "image": "",
+      "desc": "🎴 Выбор героя для Испытания\n\n{tower.enemy.summary}\n\nВыбери редкость героя.",
+      "buttons": [
+        [
+          {
+            "text": "{rarity.ico} {rarity.name} · {rarity.available_count}",
+            "next_msg_id": "tower_heroes_by_rarity",
+            "actions": [],
+            "color": "default",
+            "visible_if": "для каждой редкости с доступными героями; динамически выводить 2 кнопки в ряду"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py; app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Первый этап выбора: РЕДКОСТЬ. Герои из гачи игрока за исключением недоступных (например, занятых в деревне и конфликтующих боях). После выбора редкости — tower_heroes_by_rarity.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_heroes_by_rarity",
+      "image": "",
+      "desc": "🎴 {rarity.name}\n\n{tower.enemy.summary}\n\nВыбери героя.",
+      "buttons": [
+        [
+          {
+            "text": "{hero.name} ★{hero.stars}",
+            "next_msg_id": "tower_hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "список доступных героев выбранной редкости, максимум 6 на страницу; 2 кнопки в ряду"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "tower_heroes_by_rarity",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "tower_heroes_by_rarity",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "tower_heroes_by_rarity",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Новый второй этап: листание героев только выбранной редкости. Отдельная пагинация; не меняет mode=b (боссы).",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "tower_hero_card",
+      "image": "{hero.image}",
+      "desc": "{hero.card_caption}\n\n{tower.enemy.matchup_hint}\n\n{tower.selected_hero_note}",
+      "buttons": [
+        [
+          {
+            "text": "✅ Выбрать этого героя",
+            "next_msg_id": "tower_hero_card",
+            "actions": [
+              "select_tower_hero_stay"
+            ],
+            "color": "success",
+            "visible_if": "герой доступен, не выбран, попытка не начата"
+          }
+        ],
+        [
+          {
+            "text": "✅ Герой выбран",
+            "next_msg_id": "tower_hero_card",
+            "actions": [],
+            "color": "success",
+            "visible_if": "hero.is_selected"
+          }
+        ],
+        [
+          {
+            "text": "◀️ Предыдущий",
+            "next_msg_id": "tower_hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "есть предыдущий герой в данной редкости"
+          },
+          {
+            "text": "Следующий ▶️",
+            "next_msg_id": "tower_hero_card",
+            "actions": [],
+            "color": "default",
+            "visible_if": "есть следующий герой в данной редкости"
+          }
+        ],
+        [
+          {
+            "text": "🏰 К испытанию",
+            "next_msg_id": "tower_ready",
+            "actions": [],
+            "color": "default",
+            "visible_if": "tower.selected_hero_id exists"
+          },
+          {
+            "text": "⬅️ К героям",
+            "next_msg_id": "tower_heroes_by_rarity",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Третий этап: одна карточка героя с переключением назад/вперёд. Нажатие выбора сохраняет героя текущего этажа и остаётся в этой карточке, меняя состояние кнопки; «Назад/К испытанию» — отдельное действие. Выбор старой кнопкой/во время активной попытки должен быть отвергнут.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "tower_selector_all",
+      "image": "",
+      "desc": "{tower.enemy.summary}\n\n👥 Все герои",
+      "buttons": [
+        [
+          {
+            "text": "{hero.label}",
+            "next_msg_id": "tower_ready",
+            "actions": [
+              "select_tower_hero"
+            ],
+            "color": "default",
+            "visible_if": "до 6 доступных героев на страницу, по 2 в ряду"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "tower_selector_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "tower_selector_all",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "tower_selector_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Изменить фильтр",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py; app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "design_status": "deprecated_by_tower_rarity_flow",
+      "superseded_by": "tower_select",
+      "notes": " | Новый UI не должен направлять сюда; старые callback доступны только в совместимом legacy режиме до истечения кнопок."
+    },
+    {
+      "id": "tower_selector_filter",
+      "image": "",
+      "desc": "{tower.enemy.summary}\n\n🔎 Поиск по фильтру\nВыбери свойства подходящего героя.",
+      "buttons": [
+        [
+          {
+            "text": "{filter.field_label}: {filter.chosen_value}",
+            "next_msg_id": "tower_selector_option",
+            "actions": [],
+            "color": "default",
+            "visible_if": "по одной кнопке для каждой из 6 категорий"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Посмотреть результаты",
+            "next_msg_id": "tower_selector_results",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔄 Сбросить",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [
+              "reset_filters"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Опции и результаты аналогичны коллекции, но исключают недоступных для боя героев; фильтр «Можно улучшить» в режиме t отсутствует. | Новый UI не должен направлять сюда; старые callback доступны только в совместимом legacy режиме до истечения кнопок.",
+      "design_status": "deprecated_by_tower_rarity_flow",
+      "superseded_by": "tower_select"
+    },
+    {
+      "id": "tower_selector_option",
+      "image": "",
+      "desc": "🔎 {filter.field_label}",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [
+              "clear_filter"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{filter.option}",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [
+              "set_filter"
+            ],
+            "color": "default",
+            "visible_if": "все значения поля из каталога"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "design_status": "deprecated_by_tower_rarity_flow",
+      "superseded_by": "tower_select",
+      "notes": " | Новый UI не должен направлять сюда; старые callback доступны только в совместимом legacy режиме до истечения кнопок."
+    },
+    {
+      "id": "tower_selector_results",
+      "image": "",
+      "desc": "{tower.enemy.summary}\n\n🔎 Результаты подбора",
+      "buttons": [
+        [
+          {
+            "text": "{hero.label}",
+            "next_msg_id": "tower_ready",
+            "actions": [
+              "select_tower_hero"
+            ],
+            "color": "default",
+            "visible_if": "до 6 героев, по 2 на строке"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "tower_selector_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "tower_selector_results",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "tower_selector_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Изменить фильтр",
+            "next_msg_id": "tower_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "tower",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "design_status": "deprecated_by_tower_rarity_flow",
+      "superseded_by": "tower_select",
+      "notes": " | Новый UI не должен направлять сюда; старые callback доступны только в совместимом legacy режиме до истечения кнопок."
+    },
+    {
+      "id": "tower_ready",
+      "image": "",
+      "desc": "🏰 Испытания: {tower.floor}/200\n\n{tower.enemy.name} ● {tower.enemy.faction}\n\nHP: {tower.enemy.max_hp}\n\n{tower.enemy.damage_type} | {tower.enemy.class_tag}\n{tower.enemy.attack_range} | {tower.enemy.special_trait}\n\nОсобенности: {tower.enemy.features}\n\nБонус экипировки: +{equipment.attack_bonus} к атаке\n🛡 Новая попытка: 3/3\nВыбери героя под фракцию и особенности противника.\n{tower.enemy.prepare_notice}\n\nТекущий герой:\n{tower.selected_hero_label}",
+      "buttons": [
+        [
+          {
+            "text": "🎴 Выбрать героя",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default",
+            "visible_if": "нет активной попытки"
+          },
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Начать бой",
+            "next_msg_id": "tower_active",
+            "actions": [
+              "start_tower_battle"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Только когда выбран герой и нет активной попытки. | Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_active",
+      "image": "",
+      "desc": "🏰 Испытания: {tower.floor}/200\n\n{tower.enemy.name} ● {tower.enemy.faction}\n\nHP: {tower.enemy.max_hp}\n\n{tower.enemy.damage_type} | {tower.enemy.class_tag}\n{tower.enemy.attack_range} | {tower.enemy.special_trait}\n\nОсобенности: {tower.enemy.features}\n\nHP сейчас: {tower.current_hp}/{tower.enemy.max_hp}\nГерой: {tower.hero_label}\nУрон по фракции: ×{tower.faction_multiplier}\n🛡 Щиты: {tower.shields}/3\n{tower.combat_event_lines}",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Атаковать",
+            "next_msg_id": "tower_active",
+            "actions": [
+              "tower_hit"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "| Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_lost",
+      "image": "",
+      "desc": "🏰 Испытания: {tower.floor}/200\n\n{tower.enemy.name} ● {tower.enemy.faction}\n\nHP: {tower.enemy.max_hp}\n\n{tower.enemy.damage_type} | {tower.enemy.class_tag}\n{tower.enemy.attack_range} | {tower.enemy.special_trait}\n\nОсобенности: {tower.enemy.features}\n\nHP сейчас: {tower.current_hp}/{tower.enemy.max_hp}\n🛡 Щиты: {tower.shields}/3\n{tower.combat_event_lines}\n💀 Щиты закончились. Можно повторить бой или сменить героя.",
+      "buttons": [
+        [
+          {
+            "text": "🔄 Сменить героя",
+            "next_msg_id": "tower_select",
+            "actions": [],
+            "color": "default",
+            "visible_if": "нет активной попытки"
+          },
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔄 Повторить бой",
+            "next_msg_id": "tower",
+            "actions": [
+              "retry_tower_battle"
+            ],
+            "color": "default",
+            "implementation": "requires_fix: existing empty-tail callback may not restart lost attempt"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "В исходнике кнопка «🔄 Повторить бой» отправляет mini:tower без хвоста, а обработчик при сохранённой lost-попытке может показать тот же экран снова. Это требует отдельной проверки, карту не считать доказательством работоспособности повтора. | Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_won",
+      "image": null,
+      "desc": "🏰 Испытания: {tower.floor}/200\n\n{tower.enemy.name} ● {tower.enemy.faction}\n\nHP: {tower.enemy.max_hp}\n\n{tower.enemy.damage_type} | {tower.enemy.class_tag}\n{tower.enemy.attack_range} | {tower.enemy.special_trait}\n\nОсобенности: {tower.enemy.features}\n\n🏆 Этаж пройден!\n💎 Награда: {tower.reward_shards} осколков\n{tower.chest_line}",
+      "buttons": [
+        [
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Уведомление о награде выводится после завершения попытки, а не на каждом последующем открытии. | Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "tower_completed",
+      "image": "",
+      "desc": "🏰 Испытания: 200/200\n\n🏁 Все 200 этажей пройдены!",
+      "buttons": [
+        [
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/tower/handlers.py",
+      "kind": "ephemeral",
+      "notes": "| Макет: выбор героя + экипировка рядом, домашняя + назад рядом; выбор героя во время активной попытки запрещён. Для tower_lost «Повторить бой» требует проверенного service/retry; не обозначать готовым.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "boss_none",
+      "image": "",
+      "desc": "👹 Боссы\n\nСейчас активного босса нет.\n{boss.admin_hint}",
+      "buttons": [
+        [
+          {
+            "text": "➕ Объявить босса",
+            "next_msg_id": "boss_create",
+            "actions": [],
+            "color": "default",
+            "visible_if": "is_topic_admin"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ На главную",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/ui.py; app/mini/boss/presentation.py",
+      "kind": "ephemeral",
+      "notes": "Администратору дополнительно показывается: «Ты администратор темы — можешь объявить нового босса.»"
+    },
+    {
+      "id": "boss",
+      "image": "",
+      "desc": "👹 {boss.name} • {boss.faction.label}\n\n{boss.description}\n\n❤️ HP: {boss.current_hp}/{boss.max_hp}\n💫 Способность: {boss.ability_text}\n\n‼️ Особенности: {boss.features}\n\n🎁 Награда: {boss.reward_coins} монет • 🛡 Щиты: {boss.reward_shields}\n🎁 Доп. награда: {boss.reward_items}\n{boss.extra_reward_state}\n{boss.participants_and_status}\n{boss.feature_details}\n\n{boss.private_joined_status}",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Записаться на босса",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_join"
+            ],
+            "color": "default",
+            "visible_if": "status=announced AND not joined"
+          }
+        ],
+        [
+          {
+            "text": "🚪 Выйти из регистрации",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_leave"
+            ],
+            "color": "default",
+            "visible_if": "status=announced AND joined"
+          }
+        ],
+        [
+          {
+            "text": "🎴 Выбрать героя",
+            "next_msg_id": "boss_hero_select",
+            "actions": [],
+            "color": "default",
+            "visible_if": "joined AND status IN (announced, ready)"
+          }
+        ],
+        [
+          {
+            "text": "👥 Участники",
+            "next_msg_id": "boss_participants",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔒 Закрыть регистрацию",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_close_registration"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status=announced"
+          }
+        ],
+        [
+          {
+            "text": "▶️ Начать бой",
+            "next_msg_id": "boss_public_turn",
+            "actions": [
+              "boss_start"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status=ready"
+          }
+        ],
+        [
+          {
+            "text": "🔓 Открыть регистрацию снова",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_reopen_registration"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status=ready"
+          }
+        ],
+        [
+          {
+            "text": "⚡ Завершить бой",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_force_finish"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status=fighting"
+          }
+        ],
+        [
+          {
+            "text": "📣 Повторить анонс",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_republish"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status IN (announced, ready)"
+          }
+        ],
+        [
+          {
+            "text": "❌ Отменить босса",
+            "next_msg_id": "boss_none",
+            "actions": [
+              "boss_cancel"
+            ],
+            "color": "default",
+            "visible_if": "admin AND status IN (announced, ready)"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ На главную",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/ui.py; app/mini/boss/presentation.py",
+      "kind": "ephemeral",
+      "notes": "Все ветки состояния собраны в одной записи; эти кнопки не появляются одновременно. В личном меню текст обычно БЕЗ фото (код show_boss_home передаёт текст)."
+    },
+    {
+      "id": "boss_create",
+      "image": "",
+      "desc": "👹 Выбор босса\n\nВыбери босса из boss/content/bosses.json.\n{boss.empty_catalog_hint}",
+      "buttons": [
+        [
+          {
+            "text": "👹 {boss_template.name} • {boss_template.max_hp} HP",
+            "next_msg_id": "boss_preview",
+            "actions": [],
+            "color": "default",
+            "visible_if": "для каждого активного шаблона босса"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/registration.py; app/mini/boss/presentation.py",
+      "kind": "ephemeral",
+      "when": "Администратор, когда нет активного босса"
+    },
+    {
+      "id": "boss_preview",
+      "image": "",
+      "desc": "👹 {boss.name} • {boss.faction.label}\n\n{boss.description}\n\n❤️ HP: {boss.current_hp}/{boss.max_hp}\n💫 Способность: {boss.ability_text}\n\n‼️ Особенности: {boss.features}\n\n🎁 Награда: {boss.reward_coins} монет • 🛡 Щиты: {boss.reward_shields}\n🎁 Доп. награда: {boss.reward_items}\n{boss.extra_reward_state}\n{boss.participants_and_status}\n{boss.feature_details}",
+      "buttons": [
+        [
+          {
+            "text": "📣 Объявить и открыть регистрацию",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_announce"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К списку боссов",
+            "next_msg_id": "boss_create",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/registration.py; app/mini/boss/presentation.py",
+      "kind": "ephemeral",
+      "notes": "Заголовок, особенности и награды формируются format_public_boss из конкретного шаблона."
+    },
+    {
+      "id": "boss_participants",
+      "image": "",
+      "desc": "👥 Участники: {boss.name}\n\n{boss.participant_lines}\n\nВсего: {boss.participant_count} • минимум: {boss.min_players}",
+      "buttons": [
+        [
+          {
+            "text": "⬅️ К боссу",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/registration.py",
+      "kind": "ephemeral",
+      "notes": "Если игрок не зарегистрирован в Mini, кнопка фактически перезапрашивает список, а не открывает личного босса."
+    },
+    {
+      "id": "boss_hero_select",
+      "image": "",
+      "desc": "👹 {boss.name} • {boss.faction.label}\n\n{boss.description}\n\n❤️ HP: {boss.current_hp}/{boss.max_hp}\n💫 Способность: {boss.ability_text}\n\n‼️ Особенности: {boss.features}\n\n🎁 Награда: {boss.reward_coins} монет • 🛡 Щиты: {boss.reward_shields}\n🎁 Доп. награда: {boss.reward_items}\n{boss.extra_reward_state}\n{boss.participants_and_status}\n{boss.feature_details}\n\n🎴 Выбери активного героя\n⭐ Избранные\n{selector.favorites_hint}",
+      "buttons": [
+        [
+          {
+            "text": "{hero.label}",
+            "next_msg_id": "boss",
+            "actions": [
+              "select_boss_hero"
+            ],
+            "color": "default",
+            "visible_if": "до 3 избранных героев, доступных для участия"
+          }
+        ],
+        [
+          {
+            "text": "👥 Показать всех",
+            "next_msg_id": "boss_selector_all",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Поиск по фильтру",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/selection.py; app/mini/ui/hero_selector.py",
+      "kind": "ephemeral",
+      "notes": "Зависит от регистрации и status announced/ready. Выбранный герой также становится активным."
+    },
+    {
+      "id": "boss_selector_all",
+      "image": "",
+      "desc": "👥 Все герои",
+      "buttons": [
+        [
+          {
+            "text": "{hero.label}",
+            "next_msg_id": "boss",
+            "actions": [
+              "select_boss_hero"
+            ],
+            "color": "default",
+            "visible_if": "до 6 героев на страницу, по 2 на строке"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "boss_selector_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "boss_selector_all",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "boss_selector_all",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Изменить фильтр",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "boss_hero_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "boss_selector_filter",
+      "image": "",
+      "desc": "🔎 Поиск по фильтру\nВыбери свойства подходящего героя.",
+      "buttons": [
+        [
+          {
+            "text": "{filter.field_label}: {filter.value}",
+            "next_msg_id": "boss_selector_option",
+            "actions": [],
+            "color": "default",
+            "visible_if": "6 фильтров"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Посмотреть результаты",
+            "next_msg_id": "boss_selector_results",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔄 Сбросить",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [
+              "reset_filters"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "boss_hero_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "boss_selector_option",
+      "image": "",
+      "desc": "🔎 {filter.field_label}",
+      "buttons": [
+        [
+          {
+            "text": "Любое",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [
+              "clear_filter"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "{option.label}",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [
+              "set_filter"
+            ],
+            "color": "default",
+            "visible_if": "все варианты выбранного поля"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ К фильтрам",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "boss_hero_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "boss_selector_results",
+      "image": "",
+      "desc": "🔎 Результаты подбора",
+      "buttons": [
+        [
+          {
+            "text": "{hero.label}",
+            "next_msg_id": "boss",
+            "actions": [
+              "select_boss_hero"
+            ],
+            "color": "default",
+            "visible_if": "динамический список по 2 героя на строку"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "boss_selector_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "boss_selector_results",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "boss_selector_results",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "🔎 Изменить фильтр",
+            "next_msg_id": "boss_selector_filter",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Избранные",
+            "next_msg_id": "boss_hero_select",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "boss",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/ui/hero_selector.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "boss_public_announcement",
+      "image": "{boss.image}",
+      "desc": "👹 {boss.name} • {boss.faction.label}\n\n{boss.description}\n\n❤️ HP: {boss.current_hp}/{boss.max_hp}\n💫 Способность: {boss.ability_text}\n\n‼️ Особенности: {boss.features}\n\n🎁 Награда: {boss.reward_coins} монет • 🛡 Щиты: {boss.reward_shields}\n🎁 Доп. награда: {boss.reward_items}\n{boss.extra_reward_state}\n{boss.participants_and_status}\n{boss.feature_details}",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Записаться",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_join"
+            ],
+            "color": "default",
+            "visible_if": "status=announced"
+          },
+          {
+            "text": "🚪 Выйти",
+            "next_msg_id": "boss",
+            "actions": [
+              "boss_leave"
+            ],
+            "color": "default",
+            "visible_if": "status=announced"
+          }
+        ],
+        [
+          {
+            "text": "👥 Участники",
+            "next_msg_id": "boss_participants",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/public.py; app/mini/boss/ui.py",
+      "kind": "public",
+      "notes": "Изображение берётся из boss_image_path; если Telegram отклонил фото — текст. При состоянии ready/fighting остаётся кнопка «Участники»."
+    },
+    {
+      "id": "boss_public_turn",
+      "image": "{boss.current_hero_image}",
+      "desc": "РАУНД {boss.current_round}\n\n👹 {boss.name} - ❤️ HP: {boss.current_hp}/{boss.max_hp}\n\n🛡 Щиты: {boss.reward_shields}/{boss.reward_shields_max} • 💎 Состояние награды: {boss.reward_percent}%\n{boss.reward_extra}\n\n⚔️ Ход: {boss.current_player_name} - «{boss.current_hero_name}»\n⏳ На ход: {boss.skip_after_hours} ч.\n{boss.turn_notice}",
+      "buttons": [
+        [
+          {
+            "text": "⚔️ Ударить босса",
+            "next_msg_id": "boss_public_turn",
+            "actions": [
+              "boss_hit"
+            ],
+            "color": "default",
+            "visible_if": "status=fighting"
+          }
+        ],
+        [
+          {
+            "text": "👥 Участники",
+            "next_msg_id": "boss_participants",
+            "actions": [],
+            "color": "default",
+            "visible_if": "status=fighting"
+          }
+        ]
+      ],
+      "source": "app/mini/boss/public.py; app/mini/boss/handlers.py",
+      "kind": "public",
+      "notes": "Каждый ход публикуется новая публичная карточка с проверкой токена раунда/позиции; при завершении боя кнопок нет."
+    },
+    {
+      "id": "events",
+      "image": "",
+      "desc": "🎪 События\n\nЗдесь можно испытать удачу и интуицию — и немного заработать. Выбери игру.\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "😇 Святоша, Демон, Житель",
+            "next_msg_id": "events_rps",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🌀 Лабиринт интуиции",
+            "next_msg_id": "events_lab",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "fair",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "events_rps",
+      "image": "",
+      "desc": "😇 Святоша, Демон, Житель\n\nСвятоша побеждает Демона, Демон — Жителя, а Житель — Святошу. Выбери ставку, затем своего бойца — бот сделает выбор одновременно с тобой.\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🎲 Играть",
+            "next_msg_id": "events_rps_bets",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral",
+      "notes": "На этом экране в текущем коде нет кнопки Назад."
+    },
+    {
+      "id": "events_rps_bets",
+      "image": "",
+      "desc": "😇 Святоша, Демон, Житель\n\nВыбери ставку.\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🪙 1",
+            "next_msg_id": "events_rps_choice",
+            "actions": [
+              "start_rps_game:1"
+            ],
+            "color": "default"
+          },
+          {
+            "text": "🪙 5",
+            "next_msg_id": "events_rps_choice",
+            "actions": [
+              "start_rps_game:5"
+            ],
+            "color": "default"
+          },
+          {
+            "text": "🪙 10",
+            "next_msg_id": "events_rps_choice",
+            "actions": [
+              "start_rps_game:10"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Выйти",
+            "next_msg_id": "events",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "events_rps_choice",
+      "image": "",
+      "desc": "😇 Святоша, Демон, Житель\n\nСтавка принята: 🪙 {events.stake}\nВыбери своего бойца.\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "😇 Святоша",
+            "next_msg_id": "events_rps_result",
+            "actions": [
+              "choose_rps_saint"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "😈 Демон",
+            "next_msg_id": "events_rps_result",
+            "actions": [
+              "choose_rps_demon"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🧑 Житель",
+            "next_msg_id": "events_rps_result",
+            "actions": [
+              "choose_rps_villager"
+            ],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Три кнопки расположены каждая отдельно, а не рядом."
+    },
+    {
+      "id": "events_rps_result",
+      "image": "",
+      "desc": "Ты: {events.player_choice_label}\nБот: {events.bot_choice_label}\n\n{events.outcome_text}\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🔁 Ещё раз!",
+            "next_msg_id": "events_rps_choice",
+            "actions": [
+              "repeat_rps_game"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "💰 Поменять ставку",
+            "next_msg_id": "events_rps_bets",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Результат: победа +ставка, проигрыш −ставка, ничья — возврат ставки."
+    },
+    {
+      "id": "events_lab",
+      "image": "",
+      "desc": "🌀 Лабиринт интуиции\n\nПеред тобой появляется проход, стены которого постоянно меняются. Трижды выбери правильное направление — и лабиринт выпустит тебя с наградой.\n\nСтоимость попытки: 🪙 5\nНаграда: 🪙 10\nПри поражении: 🧩 3 осколка\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🚪 Войти в лабиринт — 5 монет",
+            "next_msg_id": "events_lab_active",
+            "actions": [
+              "start_labyrinth"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "events",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "events_lab_active",
+      "image": "",
+      "desc": "🌀 Лабиринт интуиции\n\n{events.lab_story}\n\nПуть: {events.step}/3\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "⬅️ Влево",
+            "next_msg_id": "events_lab_active",
+            "actions": [
+              "labyrinth_left"
+            ],
+            "color": "default"
+          },
+          {
+            "text": "➡️ Вправо",
+            "next_msg_id": "events_lab_active",
+            "actions": [
+              "labyrinth_right"
+            ],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Если выбор завершил игру, переход идёт на events_lab_win или events_lab_loss вместо events_lab_active."
+    },
+    {
+      "id": "events_lab_win",
+      "image": "",
+      "desc": "🏆 Вы находите выход!\n\nВ центре последнего зала вас ждёт маленький сундук.\n\n🪙 Получено: 10 монет\nИтог попытки: +5 монет\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🔁 Ещё раз — 5 монет",
+            "next_msg_id": "events_lab_active",
+            "actions": [
+              "repeat_labyrinth"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🎪 К событиям",
+            "next_msg_id": "events",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "events_lab_loss",
+      "image": "",
+      "desc": "💀 Проход захлопывается за вашей спиной.\n\nЛабиринт выбрасывает вас обратно ко входу, но в кармане остаётся несколько мерцающих осколков.\n\n🪙 Потеряно: 5 монет\n🧩 Получено: 3 осколка\n\n🪙 {coins_num} монет • 🧩 {shards_num} осколков",
+      "buttons": [
+        [
+          {
+            "text": "🔁 Ещё раз — 5 монет",
+            "next_msg_id": "events_lab_active",
+            "actions": [
+              "repeat_labyrinth"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🎪 К событиям",
+            "next_msg_id": "events",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/events/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "duels",
+      "image": "",
+      "desc": "⚔️ Дуэли\n\nСтавка: 10 монет с каждого. Победитель получает 17 монет, проигравший — 3 осколка. При ничьей ставки возвращаются.\n{duel.last_result}",
+      "buttons": [
+        [
+          {
+            "text": "Вызвать игрока",
+            "next_msg_id": "duel_select_hero",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral",
+      "when": "Нет ожидающего вызова; может отображаться последняя дуэль"
+    },
+    {
+      "id": "duels_pending_defender",
+      "image": "",
+      "desc": "⚔️ Вызов #{duel.id}\n\nИнициатор: {duel.challenger_name}\nЗащитник: {duel.defender_name}\nДо истечения: {duel.seconds_left} сек.\nСтавка: 10 монет с каждого.",
+      "buttons": [
+        [
+          {
+            "text": "Выбрать / сменить героя",
+            "next_msg_id": "duel_pick_defender_hero",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Согласен",
+            "next_msg_id": "duels",
+            "actions": [
+              "accept_duel"
+            ],
+            "color": "default",
+            "visible_if": "defender_hero_selected"
+          }
+        ],
+        [
+          {
+            "text": "Отказ",
+            "next_msg_id": "duels",
+            "actions": [
+              "refuse_duel"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral",
+      "when": "Вызов pending, текущий игрок — защитник"
+    },
+    {
+      "id": "duels_pending_challenger",
+      "image": "",
+      "desc": "⚔️ Вызов #{duel.id}\n\nИнициатор: {duel.challenger_name}\nЗащитник: {duel.defender_name}\nДо истечения: {duel.seconds_left} сек.\nСтавка: 10 монет с каждого.",
+      "buttons": [
+        [
+          {
+            "text": "Отменить вызов",
+            "next_msg_id": "duels",
+            "actions": [
+              "cancel_duel"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "adventures",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral",
+      "when": "Вызов pending, текущий игрок — инициатор"
+    },
+    {
+      "id": "duel_select_hero",
+      "image": "",
+      "desc": "🎴 Выбери героя для дуэли.",
+      "buttons": [
+        [
+          {
+            "text": "{hero.name} • атака {hero.attack}",
+            "next_msg_id": "duel_select_rival",
+            "actions": [],
+            "color": "default",
+            "visible_if": "каждый доступный герой из текущей страницы, до 8"
+          }
+        ],
+        [
+          {
+            "text": "←",
+            "next_msg_id": "duel_select_hero",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          }
+        ],
+        [
+          {
+            "text": "→",
+            "next_msg_id": "duel_select_hero",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "duels",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "duel_pick_defender_hero",
+      "image": "",
+      "desc": "🎴 Выбери героя для дуэли.",
+      "buttons": [
+        [
+          {
+            "text": "{hero.name} • атака {hero.attack}",
+            "next_msg_id": "duels",
+            "actions": [
+              "select_duel_defender_hero"
+            ],
+            "color": "default",
+            "visible_if": "каждый доступный герой, до 8 на странице"
+          }
+        ],
+        [
+          {
+            "text": "←",
+            "next_msg_id": "duel_pick_defender_hero",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          }
+        ],
+        [
+          {
+            "text": "→",
+            "next_msg_id": "duel_pick_defender_hero",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "duels",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "duel_select_rival",
+      "image": "",
+      "desc": "⚔️ Выбери соперника. Выбранный герой закрепится после отправки вызова.",
+      "buttons": [
+        [
+          {
+            "text": "{rival.character_name} • {rival.username}",
+            "next_msg_id": "duels_pending_challenger",
+            "actions": [
+              "challenge_duel_player"
+            ],
+            "color": "default",
+            "visible_if": "для каждого игрока, до 8 на странице"
+          }
+        ],
+        [
+          {
+            "text": "←",
+            "next_msg_id": "duel_select_rival",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          }
+        ],
+        [
+          {
+            "text": "→",
+            "next_msg_id": "duel_select_rival",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "duels",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "ephemeral",
+      "notes": "После отправки вызова в публичной теме публикуется отдельный анонс."
+    },
+    {
+      "id": "duel_public_challenge",
+      "image": "",
+      "desc": "⚔️ {challenger.name} вызывает на дуэль! Вызов #{duel.id} • срок 2 минуты • ставка 10 монет.",
+      "buttons": [
+        [
+          {
+            "text": "Открыть вызов",
+            "next_msg_id": "duels_pending_defender",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/duels/handlers.py",
+      "kind": "public",
+      "notes": "Кнопка персонально адресована Telegram ID защитника; другие игроки не смогут воспользоваться."
+    },
+    {
+      "id": "village",
+      "image": "",
+      "desc": "🏘 Моя деревня\n\n🏠 Дома {village.houses}/5\n👥 Жители {village.resident_count}/{village.capacity}\n\n🍖 Еда +{village.hunt_per_hour}/ч\n🍽 Расход {village.food_consumption}/ч\n\n⛏ Шахта +{village.mine_per_hour} shards/ч{village.production_stop_note}\n🏪 Рынок +{village.market_per_hour} coins/ч{village.production_stop_note}\n🏹 Охота +{village.hunt_per_hour} food/ч\n\nНакоплено: {village.coins} монет • {village.shards} осколков\n{village.time_until_stop}\n{village.boost_lines}",
+      "buttons": [
+        [
+          {
+            "text": "🏠 Дома",
+            "next_msg_id": "village_houses",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "📦 Собрать",
+            "next_msg_id": "village",
+            "actions": [
+              "collect_village_output"
+            ],
+            "color": "success"
+          }
+        ],
+        [
+          {
+            "text": "⛏ Шахта",
+            "next_msg_id": "village_mine",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🏪 Рынок",
+            "next_msg_id": "village_market",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "🏹 Охота",
+            "next_msg_id": "village_hunt",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "fair",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Горизонтальные ряды 2/3/2; сбор сохраняет ревизию, токен операции и атомарные начисления. В исходнике кнопка «Назад» шла в home, теперь в fair (родительский раздел).",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "village_houses",
+      "image": "",
+      "desc": "🏠 Дома\n\nПостроено: {village.houses}/5\nВместимость: {village.resident_count}/{village.capacity}\nСледующий дом: {village.next_price_text}",
+      "buttons": [
+        [
+          {
+            "text": "🏠 Купить дом · {village.next_price} 🪙",
+            "next_msg_id": "village_houses",
+            "actions": [
+              "buy_house"
+            ],
+            "color": "success",
+            "visible_if": "next_price exists"
+          }
+        ],
+        [
+          {
+            "text": "👥 Поселить",
+            "next_msg_id": "village_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "есть свободные места и не поселённые герои"
+          },
+          {
+            "text": "🚪 Выселить",
+            "next_msg_id": "village_evict",
+            "actions": [],
+            "color": "default",
+            "visible_if": "есть поселенцы"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py + NEW houses menu",
+      "kind": "ephemeral",
+      "notes": "НОВЫЙ UI экран домов. Покупка дома остаётся в village_houses и требует прежней защиты ревизии/баланса. Когда куплено 5 домов — кнопка покупки скрывается или заменяется информативным состоянием.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_residents",
+      "image": "",
+      "desc": "👥 Жители\n\nВыбери жителя, чтобы изменить место работы или выселить.\n{village.empty_hint}\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name} • {resident.job_label}",
+            "next_msg_id": "village_resident",
+            "actions": [],
+            "color": "default",
+            "visible_if": "по одному на строку, до 8 на страницу"
+          }
+        ],
+        [
+          {
+            "text": "➕ Поселить",
+            "next_msg_id": "village_add",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "←",
+            "next_msg_id": "village_residents",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page > 0"
+          },
+          {
+            "text": "→",
+            "next_msg_id": "village_residents",
+            "actions": [],
+            "color": "default",
+            "visible_if": "has_more_pages"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "design_status": "legacy_not_main_navigation",
+      "notes": " | Сохранено для анализа и обратной совместимости; новая основная навигация: village_houses / village_add / village_evict / village_<job>_add/remove."
+    },
+    {
+      "id": "village_add",
+      "image": "",
+      "desc": "👥 Поселить героя\n\nВыбери героя из коллекции, который ещё не живёт в деревне.\nСвободных мест: {village.capacity_free}\n{village.empty_hint}\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{hero.name}",
+            "next_msg_id": "village_add",
+            "actions": [
+              "settle_hero_stay"
+            ],
+            "color": "default",
+            "visible_if": "только НЕ поселённые герои; не более 8 на страницу; исчезает после поселения"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_houses",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "После успешного поселения НЕ возвращать на village: остаёмся в списке и пересчитываем доступных героев/вместимость/страницы. Поселение использует текущий service с проверками ревизии и идемпотентности. После исчерпания мест не предлагать неработающие кнопки.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "village_evict",
+      "image": "",
+      "desc": "🚪 Выселить героя\n\nВыбери поселенца.\n{village.empty_hint}\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "🚪 {resident.name}",
+            "next_msg_id": "village_evict",
+            "actions": [
+              "evict_resident_stay"
+            ],
+            "color": "default",
+            "visible_if": "только поселённые; после выселения кнопка исчезает"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_evict",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_evict",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_evict",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "🏠 Главная",
+            "next_msg_id": "home",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_houses",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Новое представление существующей операции evict; выселение снимает с производства по текущим правилам, сразу убирает героя из списка и оставляет на экране.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_mine",
+      "image": "",
+      "desc": "⛏ Шахта\n\nПроизводство: {village.mine_per_hour}/ч\nЗанятых: {village.mine_workers}\n{village.mine_workers_list}",
+      "buttons": [
+        [
+          {
+            "text": "➕ Добавить",
+            "next_msg_id": "village_mine_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "➖ Убрать",
+            "next_msg_id": "village_mine_remove",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Первая линия Добавить/Убрать; вторая Назад. Действие «Убрать» снимает с работы, но не выселяет из деревни.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "village_mine_add",
+      "image": "",
+      "desc": "⛏ Шахта — назначить работника\n\nТолько жители без работы.\n{village.idle_count} свободны\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_mine_add",
+            "actions": [
+              "assign_resident:mine_stay"
+            ],
+            "color": "default",
+            "visible_if": "ТОЛЬКО поселенцы с building=None (без работы), после назначения строка исчезает"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_mine_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_mine_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_mine_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_mine",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "После назначения работника остаёмся на экране добавления; список пересчитывается, только idle жители, проверка revision+expected_houses и повторного callback обязательна.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_mine_remove",
+      "image": "",
+      "desc": "⛏ Шахта — снять с производства\n\nВыбери работника.\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_mine_remove",
+            "actions": [
+              "unassign_resident:mine_stay"
+            ],
+            "color": "default",
+            "visible_if": "только работники здания mine; после снятия кнопка исчезает, остаётся жителем деревни"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_mine_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_mine_remove",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_mine_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_mine",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Снять с производства != выселить. После снятия список пересчитывается без возврата в деревню.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_market",
+      "image": "",
+      "desc": "🏪 Рынок\n\nПроизводство: {village.market_per_hour}/ч\nЗанятых: {village.market_workers}\n{village.market_workers_list}",
+      "buttons": [
+        [
+          {
+            "text": "➕ Добавить",
+            "next_msg_id": "village_market_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "➖ Убрать",
+            "next_msg_id": "village_market_remove",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Первая линия Добавить/Убрать; вторая Назад. Действие «Убрать» снимает с работы, но не выселяет из деревни.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "village_market_add",
+      "image": "",
+      "desc": "🏪 Рынок — назначить работника\n\nТолько жители без работы.\n{village.idle_count} свободны\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_market_add",
+            "actions": [
+              "assign_resident:market_stay"
+            ],
+            "color": "default",
+            "visible_if": "ТОЛЬКО поселенцы с building=None (без работы), после назначения строка исчезает"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_market_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_market_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_market_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_market",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "После назначения работника остаёмся на экране добавления; список пересчитывается, только idle жители, проверка revision+expected_houses и повторного callback обязательна.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_market_remove",
+      "image": "",
+      "desc": "🏪 Рынок — снять с производства\n\nВыбери работника.\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_market_remove",
+            "actions": [
+              "unassign_resident:market_stay"
+            ],
+            "color": "default",
+            "visible_if": "только работники здания market; после снятия кнопка исчезает, остаётся жителем деревни"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_market_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_market_remove",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_market_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_market",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Снять с производства != выселить. После снятия список пересчитывается без возврата в деревню.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_hunt",
+      "image": "",
+      "desc": "🏹 Охота\n\nПроизводство: {village.hunt_per_hour}/ч\nЗанятых: {village.hunt_workers}\n{village.hunt_workers_list}",
+      "buttons": [
+        [
+          {
+            "text": "➕ Добавить",
+            "next_msg_id": "village_hunt_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "➖ Убрать",
+            "next_msg_id": "village_hunt_remove",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "Первая линия Добавить/Убрать; вторая Назад. Действие «Убрать» снимает с работы, но не выселяет из деревни.",
+      "design_status": "changed_in_user_proposal_2026-10-09"
+    },
+    {
+      "id": "village_hunt_add",
+      "image": "",
+      "desc": "🏹 Охота — назначить работника\n\nТолько жители без работы.\n{village.idle_count} свободны\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_hunt_add",
+            "actions": [
+              "assign_resident:hunt_stay"
+            ],
+            "color": "default",
+            "visible_if": "ТОЛЬКО поселенцы с building=None (без работы), после назначения строка исчезает"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_hunt_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_hunt_add",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_hunt_add",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_hunt",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "После назначения работника остаёмся на экране добавления; список пересчитывается, только idle жители, проверка revision+expected_houses и повторного callback обязательна.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_hunt_remove",
+      "image": "",
+      "desc": "🏹 Охота — снять с производства\n\nВыбери работника.\nСтраница {page}/{pages}",
+      "buttons": [
+        [
+          {
+            "text": "{resident.name}",
+            "next_msg_id": "village_hunt_remove",
+            "actions": [
+              "unassign_resident:hunt_stay"
+            ],
+            "color": "default",
+            "visible_if": "только работники здания hunt; после снятия кнопка исчезает, остаётся жителем деревни"
+          }
+        ],
+        [
+          {
+            "text": "◀️",
+            "next_msg_id": "village_hunt_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page>0"
+          },
+          {
+            "text": "{page}/{pages}",
+            "next_msg_id": "village_hunt_remove",
+            "actions": [],
+            "color": "default"
+          },
+          {
+            "text": "▶️",
+            "next_msg_id": "village_hunt_remove",
+            "actions": [],
+            "color": "default",
+            "visible_if": "page<pages"
+          }
+        ],
+        [
+          {
+            "text": "⬅️ Назад",
+            "next_msg_id": "village_hunt",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "NEW DESIGN (not yet in code)",
+      "kind": "ephemeral",
+      "notes": "Снять с производства != выселить. После снятия список пересчитывается без возврата в деревню.",
+      "design_status": "new_proposed_screen_2026-10-09"
+    },
+    {
+      "id": "village_resident",
+      "image": "",
+      "desc": "👥 {resident.name}\nМесто работы: {resident.job_label}\n\nЖитель недоступен для Boss, Tower и дуэлей.",
+      "buttons": [
+        [
+          {
+            "text": "⛏ Шахта",
+            "next_msg_id": "village",
+            "actions": [
+              "assign_resident:mine"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏪 Рынок",
+            "next_msg_id": "village",
+            "actions": [
+              "assign_resident:market"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏹 Охота",
+            "next_msg_id": "village",
+            "actions": [
+              "assign_resident:hunt"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Снять с производства",
+            "next_msg_id": "village",
+            "actions": [
+              "unassign_resident"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Выселить",
+            "next_msg_id": "village",
+            "actions": [
+              "evict_resident"
+            ],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "village",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/village/handlers.py",
+      "kind": "ephemeral",
+      "notes": "В коде после изменения назначения/выселения возвращает на главную деревни, а не к списку жителей. | Сохранено для анализа и обратной совместимости; новая основная навигация: village_houses / village_add / village_evict / village_<job>_add/remove.",
+      "design_status": "legacy_not_main_navigation"
+    },
+    {
+      "id": "rules",
+      "image": "",
+      "desc": "📖 D&D Mini — как играть\n\nСобирай героев, усиливай их и используй подходящих персонажей против разных противников.\n\nПолучай монеты и осколки, сражайся с боссами, проходи Испытания, находи экипировку и развивай свою коллекцию.\n\nЕсли играешь впервые — начни с «🚀 Быстрый старт».",
+      "buttons": [
+        [
+          {
+            "text": "🚀 Быстрый старт",
+            "next_msg_id": "rules_start",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🎴 Герои и гача",
+            "next_msg_id": "rules_heroes",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "👹 Боссы",
+            "next_msg_id": "rules_bosses",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔄 Фракции и особенности",
+            "next_msg_id": "rules_factions",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏰 Испытания",
+            "next_msg_id": "rules_tower",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🛡 Экипировка",
+            "next_msg_id": "rules_equipment",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "💰 Монеты и осколки",
+            "next_msg_id": "rules_money",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🏘 Моя деревня",
+            "next_msg_id": "rules_village",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "⚔️ Дуэли",
+            "next_msg_id": "rules_duels",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "🔥 Серия приключений",
+            "next_msg_id": "rules_streak",
+            "actions": [],
+            "color": "default"
+          }
+        ],
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "more",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_start",
+      "image": "",
+      "desc": "🚀 Быстрый старт\n\n1. 💰 Получай монеты\nВыполняй ежедневные активности, развивай деревню и побеждай боссов.\n\n2. 🎴 Призывай героев\nЗа монеты или билеты можно получать новых героев в Гаче.\n\nЕсли выпал герой, который у тебя уже есть, ты получишь осколки. Они нужны для повышения звёзд героя.\n\n3. ⭐ Усиливай коллекцию\nЧем больше звёзд у героя, тем сильнее его атака.\n\nНо самый сильный герой не всегда лучший: против разных врагов полезны разные фракции, классы и особенности.\n\n4. 👹 Сражайся с боссами\nЗапишись на бой и выбери героя.\n\nВыбранный герой становится активным. До начала боя его можно менять в коллекции или меню босса. После старта герой фиксируется для этого боя.\n\nИгроки атакуют босса по очереди. На свой ход даётся 4 часа.\n\n5. 🔄 Подбирай героя под противника\nУ героев и врагов есть фракции и особенности.\n\nПравильный герой может наносить значительно больше урона или противодействовать способности противника.\n\nПеред боем всегда посмотри информацию о враге.\n\n6. 🏰 Проходи Испытания\nИспытания — одиночные бои по этажам.\n\nНа каждом этаже тебя ждёт новый противник. Подбирай героя под его фракцию и особенности.\n\nЗа прохождение можно получать награды и экипировку.\n\n7. 🛡 Собирай экипировку\nУ игрока есть три слота экипировки:\n• шлем;\n• кольцо;\n• плащ.\n\nЭкипировка усиливает игрока и работает в Испытаниях.\n\nГлавное правило: не ищи одного «самого сильного» героя. Собирай разных персонажей и выбирай того, кто лучше подходит под конкретного врага.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_heroes",
+      "image": "",
+      "desc": "🎴 Герои и гача\n\nОткрой «🎴 Коллекция» → «✨ Призвать героя». Выбери призыв за монеты или «🎟 Использовать билет». Один билет даёт один призыв без траты монет.\n\nНовый герой попадает в коллекцию. Если он уже есть, ты получишь осколки вместо второй копии.\n\nНа карточке героя можно повысить звёзды за осколки, выбрать его активным или похвастаться в чате. Звёзды повышают атаку.\n\nВыбор героя в коллекции и меню босса меняет одного активного героя. После старта босса герой этого боя закреплён. Для каждого этажа Испытаний можно подобрать другого героя. Смотри фракцию, класс и свойства, а не только атаку.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_bosses",
+      "image": "",
+      "desc": "👹 Боссы\n\nБосс — общий бой нескольких игроков.\n\nПеред боем ты увидишь:\n• здоровье босса;\n• его фракцию;\n• способность и особенности;\n• награду за победу.\n\n🎴 Выбор героя\n\nВыбранный в коллекции или меню босса герой становится активным. До начала боя его можно менять. После старта босса герой фиксируется для этого боя.\n\n⚔️ Как проходит бой\n\nИгроки атакуют по очереди.\n\nНа свой ход у тебя есть 4 часа. Если не успел — ход пропускается, но в следующем раунде ты снова сможешь атаковать.\n\nПосле каждого полного раунда босс атакует награду.\n\n🛡 Награда\n\nСначала атаки босса ломают защитные щиты награды. Когда щитов не останется, босс начинает уменьшать саму награду.\n\nЕсли победить босса раньше — участники получают сохранившуюся награду.\n\nЧтобы получить награду, нужно принять участие в бою хотя бы одной атакой, если предмет или эффект не говорит обратного.\n\nЕсли награда уничтожена полностью, бой считается проигранным.\n\nНажми «👹 Босс» → зарегистрируйся → «🎴 Выбрать героя». Смена активного героя в коллекции не меняет уже начавшийся бой.\n\nЗелье фантомного участия позволяет получить награду без атаки. При проигрыше участники с правом на награду получают утешительные осколки: исходное число монет награды делится на 10 с округлением вниз.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_factions",
+      "image": "",
+      "desc": "🔄 Фракции\n\nУ каждого героя и многих противников есть фракция.\n\nПростолюдины → Звери → Монстры → Воины → Тьма → Простолюдины\n\nЕсли твоя фракция сильна против врага:\n⚔️ урон ×2\n\nЕсли враг силён против твоей:\n⚠️ урон ×0.25\n\nОстальные сочетания:\n➖ урон ×1\n\nПример:\n\nЗвери сильны против Монстров.\n\nЗверь нанесёт Монстру двойной урон, а Монстр Зверю — только четверть обычного.\n\n🏷 Особенности\n\nУ героев также есть класс, тип атаки, дальность и особые свойства.\n\nОни нужны не для того, чтобы сделать героя просто «сильнее», а чтобы подходить или не подходить под конкретные механики врагов.\n\nНапример, маг может быть нужен против магического щита, а технический герой — против определённых механизмов.\n\nПоэтому сначала изучи противника, а потом выбирай героя.\n\nПротив летающего врага нужен дальний бой или летающий герой. Броня снижает физический урон, а нежить может воскреснуть. Технический герой мешает восстановлению конструкта, демонический — святого врага.\n\nМаг снимает магический щит, но сам удар при этом не ранит босса. Следующие атаки уже могут наносить урон. Свойства конкретного противника описаны на его карточке.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_tower",
+      "image": "",
+      "desc": "🏰 Испытания\n\nЭто одиночные бои на 200 этажах. Открой «🏰 Испытания», изучи противника и нажми «🎴 Выбрать героя». Затем подтверди начало боя и атакуй кнопкой.\n\nНа попытку даётся три щита. Ответные удары врага расходуют щиты; некоторые враги сначала готовятся к атаке. Победи до потери последнего щита.\n\nЕсли проиграл, попробуй другого героя. За первое прохождение этажа выдаются осколки. Каждый пятый этаж даёт сундук с экипировкой.\n\nГерой и бонус надетой экипировки сохраняются на всю попытку. Смена экипировки и повышение звёзд помогут в следующем бою. После 200-го этажа Испытания завершены.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_equipment",
+      "image": "",
+      "desc": "🛡 Экипировка\n\nШлем, кольцо и плащ добавляют атаку в Испытаниях. В каждом слоте можно носить один предмет; бонусы трёх слотов складываются.\n\nНаходи экипировку в сундуках каждого пятого этажа. Открой «🛡 Экипировка» → «Надеть...», чтобы выбрать предмет. «Снять...» освобождает слот.\n\nЗаменённые и снятые предметы остаются у тебя. Ненадетые предметы смотри в «🎒 Инвентаре».\n\nБонус показан отдельно от атаки героя. Изменения действуют со следующей попытки Испытаний; в боях с боссами экипировка не добавляет атаку.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_money",
+      "image": "",
+      "desc": "💰 Монеты и осколки\n\nМонеты нужны для призыва героев, покупок в магазине и ставок в событиях. Получай их через «⚔️ Дейлик», события и победы над боссами. Ежедневную награду можно забрать один раз в день.\n\nОсколки нужны для повышения звёзд. Их дают повторные герои, Испытания и некоторые награды. Открой карточку героя в коллекции, чтобы увидеть цену усиления.\n\nНа карточке героя можно также обменять осколки на монеты. Перед обменом реши, не нужны ли они для звёзд.\n\nБаланс и предметы смотри в «🎒 Инвентаре». Купленные зелья используй там же; сертификаты отправляют запрос администратору.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_village",
+      "image": "",
+      "desc": "🏘 Моя деревня\n\nПокупай до 5 домов: 10, 50, 100, 200 и 300 монет. Каждый дом даёт 10 мест и требует 0,5 еды в час.\nПосели героев и назначь их в шахту, рынок или охоту. Жители недоступны для Boss, Испытаний и дуэлей до выселения.\nШахта производит осколки, рынок — монеты, охота — еду. Еда не копится: если охотники не покрывают расход, шахта и рынок останавливаются.\nПроизводство зависит от редкости и звёзд (не более 6); накопление прекращается через 8 часов до сбора.\nУсиления дают +25% рынку или шахте на 8 часов. Повторное использование продлевает срок.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_duels",
+      "image": "",
+      "desc": "⚔️ Дуэли\n\nВыбери героя, затем игрока и отправь вызов. Твои 10 монет резервируются. Соперник может менять героя до согласия.\nСрок вызова — 2 минуты. Отказ, отмена и истечение возвращают ставку.\nПри согласии второй игрок вносит 10 монет. Удары в каждом раунде одновременны, здоровье героя — тройная атака.\nПобедитель получает 17 монет, проигравший — 3 осколка. При одновременной гибели каждому возвращаются 10 монет.\nОдновременно можно участвовать только в одной незавершённой дуэли.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    },
+    {
+      "id": "rules_streak",
+      "image": "",
+      "desc": "🔥 Серия приключений\n\nПолучай дейлик каждый календарный день. Пропуск дня обнуляет непрерывную серию.\nБонус недельного цикла: 0%, 10%, 20%, 30%, 40%, 50%, 60%. В седьмой день выдаётся один случайный сундук.\nЗатем цикл начинается снова; общая серия продолжает расти.\nТеневые герои добываются только способностью Arise после победы над подходящим боссом. Повторная тень получает +1 звезду.\nМифические герои создаются из персональных фрагментов; ни тени, ни мифические герои не выпадают из обычного призыва.",
+      "buttons": [
+        [
+          {
+            "text": "Назад",
+            "next_msg_id": "rules",
+            "actions": [],
+            "color": "default"
+          }
+        ]
+      ],
+      "source": "app/mini/rules.py; app/mini/ui/activities.py",
+      "kind": "ephemeral"
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+name: Linux release
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-release:
+    name: Linux release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      BOT_TOKEN: '123456:offline-linux-release-checks'
+      PYTHONIOENCODING: utf-8
+      PYTHONUNBUFFERED: '1'
+      # Fixed code baselines, never a supplied production database.
+      LEGACY_REF: f06c0d129fdad0fef4fde0889915faac26b94f4a
+      PRE_UI_REF: 293693d87692bb9e7f4567bcca895e799e7455d2
+      INTERMEDIATE_REF: e27153e7aa8e471a73b87051b73a58e0080f5b59
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Isolate application SQLite paths
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          workspace = Path(os.environ['GITHUB_WORKSPACE']).resolve()
+          sandbox = Path(os.environ['RUNNER_TEMP']) / 'linux-release'
+          startup = sandbox / 'python'
+          startup.mkdir(parents=True, exist_ok=True)
+          # CI-only import hook: no application/config or test edits. Archived
+          # rollback processes use another cwd and their own explicit DB copy.
+          (startup / 'sitecustomize.py').write_text('''import os
+          import sys
+          from importlib.abc import Loader, MetaPathFinder
+          from importlib.machinery import PathFinder
+          from pathlib import Path
+
+          class ConfigLoader(Loader):
+              def __init__(self, wrapped):
+                  self.wrapped = wrapped
+
+              def create_module(self, spec):
+                  return self.wrapped.create_module(spec)
+
+              def exec_module(self, module):
+                  self.wrapped.exec_module(module)
+                  sandbox = Path(os.environ['RUNNER_TEMP']) / 'linux-release'
+                  module.DB_PATH = sandbox / 'startup.db'
+                  module.LEGACY_DB_PATH = sandbox / 'legacy-unused.db'
+
+          class ConfigFinder(MetaPathFinder):
+              def find_spec(self, fullname, path=None, target=None):
+                  if fullname != 'app.config':
+                      return None
+                  spec = PathFinder.find_spec(fullname, path)
+                  expected = Path(os.environ['GITHUB_WORKSPACE']) / 'app' / 'config.py'
+                  if spec and spec.origin and Path(spec.origin).resolve() == expected.resolve():
+                      spec.loader = ConfigLoader(spec.loader)
+                      return spec
+                  return None
+
+          # Do not eagerly import config: pure domain import tests must remain
+          # independent. Also leave archived/fixture app.config modules alone.
+          if Path.cwd().resolve() == Path(os.environ['GITHUB_WORKSPACE']).resolve():
+              sys.meta_path.insert(0, ConfigFinder())
+          ''', encoding='utf-8')
+          with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as env:
+              env.write(f'PYTHONPATH={startup}{os.pathsep}{workspace}\n')
+              env.write(f'RELEASE_SANDBOX={sandbox}\n')
+          PY
+
+      - name: Verify SQLite isolation
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import app.config as config
+          assert config.DB_PATH == Path(os.environ['RELEASE_SANDBOX']) / 'startup.db'
+          assert config.LEGACY_DB_PATH == Path(os.environ['RELEASE_SANDBOX']) / 'legacy-unused.db'
+          assert not config.DB_PATH.is_relative_to(config.BASE_DIR)
+          print('Application SQLite is isolated outside the checkout.')
+          PY
+
+      - name: Full unittest suite
+        run: python -m unittest discover -s tests -q
+
+      - name: Startup on isolated SQLite
+        run: python check_bot.py
+
+      - name: Compile Python modules
+        run: python -m compileall -q bot.py app
+
+      - name: Validate hero abilities
+        run: python -m app.mini.combat.hero_abilities.validate
+
+      - name: Validate boss abilities
+        run: python -m app.mini.boss.boss_abilities.validate
+
+      - name: Validate Tower
+        run: python -m app.mini.tower.validate
+
+      - name: Validate V1.4.2 catalogs
+        run: python -m app.mini.validate_v142
+
+      - name: Create synthetic legacy SQLite fixture
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import zipfile
+
+          sandbox = Path(os.environ['RELEASE_SANDBOX'])
+          archive = sandbox / 'legacy-code.zip'
+          code = sandbox / 'legacy-code'
+          code.mkdir()
+          subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(archive),
+                          os.environ['LEGACY_REF'], 'app', 'check_bot.py'], check=True)
+          with zipfile.ZipFile(archive) as source:
+              source.extractall(code)
+          fixture = sandbox / 'legacy-fixture.db'
+          # Bootstrap inside old code; redirect before importing any services.
+          bootstrap = '''import sys
+          from pathlib import Path
+          import sqlite3
+          from unittest.mock import patch
+          import app.config as config
+          config.DB_PATH = Path(sys.argv[1])
+          config.LEGACY_DB_PATH = config.DB_PATH.with_name('unused-legacy.db')
+          import check_bot
+          check_bot.main()
+          from app.mini.worlds import sync_configured_mini_worlds
+          from app.mini.players import create_mini_player
+          from app.mini.wallet import add_coins
+          from app.mini.gacha import perform_gacha_pull
+          world = sync_configured_mini_worlds()[0]
+          player = create_mini_player(world['id'], 900000001, 'ci_fixture', 'CI fixture')
+          add_coins(player['id'], 1000, 'Synthetic CI fixture', operation_key='ci:seed')
+          with patch('app.mini.gacha._choose_hero_code', return_value='Villager'):
+              for index in range(2):
+                  perform_gacha_pull(player['id'], operation_key=f'ci:legacy:{index}')
+          with sqlite3.connect(config.DB_PATH) as conn:
+              assert conn.execute('SELECT COUNT(*) FROM mini_gacha_pulls').fetchone()[0] == 2
+              assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
+              assert not conn.execute('PRAGMA foreign_key_check').fetchall()
+          print('Created populated legacy fixture:', config.DB_PATH)
+          '''
+          subprocess.run([sys.executable, '-c', bootstrap, str(fixture)], cwd=code, check=True)
+          PY
+
+      - name: Verify repeated SQLite migration on a copy
+        run: |
+          python deploy/verify-v142-migration.py \
+            --source "$RELEASE_SANDBOX/legacy-fixture.db" \
+            --copy-dir "$RELEASE_SANDBOX"
+
+      - name: Verify old-code rollback compatibility on a separate copy
+        run: |
+          python deploy/verify-v142-rollback.py \
+            --source "$RELEASE_SANDBOX/legacy-fixture.db" \
+            --old-ref "$PRE_UI_REF" \
+            --old-ref "$LEGACY_REF" \
+            --old-ref "$INTERMEDIATE_REF"
+
+      - name: Check diff whitespace
+        run: |
+          git diff --check
+          git diff --check origin/main...HEAD
