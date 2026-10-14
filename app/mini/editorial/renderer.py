@@ -6,9 +6,10 @@ from .validation import EditorialError
 log = logging.getLogger(__name__)
 
 class Text(str):
-    def __new__(cls, value, key="", icon_key=None):
+    def __new__(cls, value, key="", icon_key=None, *, show_fallback=True):
         obj = super().__new__(cls, value)
         obj.key, obj.icon_key = key, icon_key
+        obj.show_fallback = show_fallback
         return obj
 
 def render(key, values, schema, parameters, defaults=None):

@@ -8,7 +8,7 @@ import threading
 from collections.abc import Mapping
 from contextlib import contextmanager
 from .loader import Loader
-from .renderer import render, render_icon
+from .renderer import Text, render, render_icon
 
 _current = contextvars.ContextVar("mini_editorial_snapshot", default=None)
 _registry = None
@@ -39,7 +39,8 @@ class Registry:
     def glossary(self, key, variant="full", *, decorated=False):
         entry = self.snapshot()[key]
         label = entry[variant]
-        return f"{self.icon(entry['icon_key'])} {label}".strip() if decorated else label
+        value = f"{self.icon(entry['icon_key'])} {label}".strip() if decorated else label
+        return Text(value, key, entry["icon_key"], show_fallback=decorated or variant=="emoji")
     def icon(self, key, *, html_mode=False):
         return render_icon(self.snapshot()[key], html_mode=html_mode, enabled=custom_emoji_enabled())
 

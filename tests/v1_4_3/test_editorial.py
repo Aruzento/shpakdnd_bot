@@ -229,6 +229,26 @@ class RenderingTests(EditorialCase):
         self.assertEqual(result.icon_custom_emoji_id,"123456789")
         self.assertEqual(result.text,"Призвать героя")
 
+    def test_glossary_icon_reaches_actual_faction_and_damage_filter_buttons(self):
+        from app.mini.ui.hero_selector import render_selector
+        from tests.v1_4_2.test_screen_contracts import sample_heroes
+        heroes=sample_heroes()
+        for view,key in (("f1","icon.faction.commoners"),("f3","icon.damage.slashing")):
+            with self.subTest(view=view):
+                _,before=render_selector(heroes,[],"c",1,2,view=view)
+                self.write("icons.json",{key:{"custom_emoji_id":"123456789"}})
+                with patch.dict(os.environ,{"MINI_CUSTOM_EMOJI_ENABLED":"true"}):
+                    _,after=render_selector(heroes,[],"c",1,2,view=view)
+                configured=[b for row in after.inline_keyboard for b in row if b.icon_custom_emoji_id=="123456789"]
+                self.assertEqual(len(configured),1)
+                original=next(b for row in before.inline_keyboard for b in row if b.callback_data==configured[0].callback_data)
+                self.assertEqual(original.style,configured[0].style)
+                self.assertNotIn(self.registry.loader.defaults[key]["fallback"],configured[0].text)
+                self.write("icons.json",{})
+                _,fallback=render_selector(heroes,[],"c",1,2,view=view)
+                self.assertEqual([[b.text for b in row] for row in before.inline_keyboard],
+                                 [[b.text for b in row] for row in fallback.inline_keyboard])
+
     def test_custom_disabled_keeps_fallback(self):
         self.write("icons.json", {"icon.gacha.summon":{"custom_emoji_id":"123456789"}})
         result = button(key="gacha.summon",callback_data="action")

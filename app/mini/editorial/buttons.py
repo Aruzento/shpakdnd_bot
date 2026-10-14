@@ -17,8 +17,9 @@ def button(*, key=None, text=None, icon_key=None, **properties):
     if entry:
         original = registry.loader.defaults[icon_key]["fallback"]
         label = str(text)
+        show_fallback = getattr(text, "show_fallback", True)
         for prefix in dict.fromkeys((original, entry["fallback"])):
-            if prefix and label.startswith(prefix):
+            if prefix and label.startswith(prefix) and (show_fallback or (entry["custom_emoji_id"] and custom_emoji_enabled() and supported)):
                 label = label[len(prefix):].lstrip()
                 break
         if entry["custom_emoji_id"] and custom_emoji_enabled() and supported and entry["fallback"]:
@@ -26,7 +27,7 @@ def button(*, key=None, text=None, icon_key=None, **properties):
             text = label
         else:
             properties.pop("icon_custom_emoji_id", None)
-            text = (entry["fallback"]+" "+label).strip()
+            text = (entry["fallback"]+" "+label).strip() if show_fallback else label
     elif not custom_emoji_enabled() or not supported:
         properties.pop("icon_custom_emoji_id", None)
     if not text or not str(text).strip():
