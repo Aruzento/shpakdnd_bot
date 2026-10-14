@@ -83,6 +83,10 @@ class TelegramHTML(HTMLParser):
         except ValueError:
             raise EditorialError("invalid numeric HTML entity")
     def finish(self, value):
+        # HTMLParser versions differ in their handling of unfinished tags at EOF.
+        # Reject incomplete raw '<' syntax before feeding the parser.
+        if "<" in re.sub(r"<[^<>]*>", "", value):
+            raise EditorialError("incomplete or malformed Telegram tag")
         self.feed(value)
         self.close()
         if self.stack:
