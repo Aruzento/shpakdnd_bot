@@ -4313,13 +4313,6 @@
     ],
     "limit": 200
   },
-  "errors.admin_grants.grant_mini_item.04": {
-    "kind": "text",
-    "parameters": [
-      "value_1"
-    ],
-    "limit": 200
-  },
   "errors.admin_grants.grant_mini_hero.02": {
     "kind": "text",
     "parameters": [],

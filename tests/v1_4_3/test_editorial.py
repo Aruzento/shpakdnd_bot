@@ -202,6 +202,7 @@ for name, filename, value in [
     ("conversion", "buttons.json", {"general.back": "{value!r}"}),
     ("format", "buttons.json", {"general.back": "{value:04d}"}),
     ("html_plain", "buttons.json", {"general.back": "<b>Назад</b>"}),
+    ("legacy_control_message", "errors.json", {"errors.admin_grants.grant_mini_item.04": "Новое сообщение"}),
     ("unknown_key", "buttons.json", {"does.not.exist": "Назад"}),
     ("wrong_file", "buttons.json", {"rules.overview": "Правила"}),
     ("unknown_catalog", "unknown.json", {"general.back": "Назад"}),

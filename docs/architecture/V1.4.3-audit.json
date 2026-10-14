@@ -2918,11 +2918,6 @@
     },
     {
       "file": "app/mini/admin_grants.py",
-      "function": "grant_mini_item",
-      "key": "errors.admin_grants.grant_mini_item.04"
-    },
-    {
-      "file": "app/mini/admin_grants.py",
       "function": "grant_mini_hero",
       "key": "errors.admin_grants.grant_mini_hero.02"
     },
@@ -6854,8 +6849,14 @@
       "line": 146,
       "reason": "non-editorial service/catalog or persisted data",
       "example": "Производство деревни"
+    },
+    {
+      "file": "app/mini/admin_grants.py",
+      "line": 174,
+      "reason": "legacy bulk-grant control flow inspects 'не складывается'; message cannot be editorial until a typed exception replaces substring matching",
+      "example": "Предмет «{name}» не складывается и уже есть у игрока."
     }
   ],
-  "total_migrated_expressions": 846,
-  "editorial_entries": 1148
+  "total_migrated_expressions": 845,
+  "editorial_entries": 1147
 }

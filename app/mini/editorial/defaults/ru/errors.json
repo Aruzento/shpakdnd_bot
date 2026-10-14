@@ -7,7 +7,6 @@
   "errors.admin_grants.grant_mini_hero_all.01": "Не указан code персонажа.",
   "errors.admin_grants.grant_mini_item.02": "Mini-игрок не найден.",
   "errors.admin_grants.grant_mini_item.03": "Предмет «{value_1}» не найден.",
-  "errors.admin_grants.grant_mini_item.04": "Предмет «{value_1}» не складывается и уже есть у игрока.",
   "errors.admin_grants.grant_mini_hero.02": "Mini-игрок не найден.",
   "errors.admin_grants.grant_mini_hero.03": "Персонаж «{value_1}» не найден.",
   "errors.admin_grants.grant_mini_hero_all.02": "Персонаж «{value_1}» не найден.",

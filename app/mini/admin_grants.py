@@ -171,7 +171,7 @@ def grant_mini_item(
         if existing is not None and not bool(item["stackable"]):
             conn.rollback()
             raise ValueError(
-                editorial_text('errors.admin_grants.grant_mini_item.04', value_1=f"{item['name']}")
+                f"Предмет «{item['name']}» не складывается и уже есть у игрока."
             )
 
         conn.execute(
