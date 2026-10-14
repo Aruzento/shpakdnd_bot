@@ -5,6 +5,7 @@ hero from ordinary/forced gacha pools; existing or admin-granted ownership stays
 fully usable in Collection, Favorites, Boss and Tower. active_hero_id/is_active
 are the player's selection and have a separate meaning.
 """
+from app.mini.editorial import text as editorial_text
 import sqlite3
 from pathlib import Path
 
@@ -246,7 +247,7 @@ def set_active_hero_in_transaction(
         (int(player_id), int(hero_id)),
     ).fetchone()
     if owned is None:
-        raise ValueError("Этого героя нет в твоей коллекции.")
+        raise ValueError(editorial_text('errors.heroes.set_active_hero_in_transaction.01'))
     from app.mini.availability import assert_available
     assert_available(conn,player_id,hero_id)
     conn.execute(

@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.ui.context import load_world as _load_world, load_player as _load_player
 from app.mini.ui.transport import send_private_text_from_callback as _send_private
 from aiogram import F, Router
@@ -11,8 +12,10 @@ from app.mini.boss.public import format_public_boss
 from app.mini.favorites import get_favorites
 from app.mini.ui.hero_selector import render_selector
 
+
 router = Router(name="mini_boss_selection")
 
+@editorial_screen
 async def _hero_selection_context(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
     try:
@@ -20,30 +23,31 @@ async def _hero_selection_context(callback: CallbackQuery):
             raise ValueError
         world_id, owner_id, boss_id, value = map(int, parts[2:])
     except ValueError:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_06'), show_alert=True)
         return None
     if callback.from_user.id != owner_id:
-        await callback.answer("Это меню другого игрока.", show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_01'), show_alert=True)
         return None
     world = _load_world(world_id,callback)
     if world is None:
-        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_02'),show_alert=True)
         return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or player is None or boss is None or int(boss["world_id"]) != world_id:
-        await callback.answer("Босс больше не актуален.", show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_03'), show_alert=True)
         return None
     if boss["status"] not in {"announced", "ready"}:
-        await callback.answer("Героя можно выбрать только до начала боя.", show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_04'), show_alert=True)
         return None
     if not is_joined(player["id"], list_participants(boss_id)):
-        await callback.answer("Ты не зарегистрирован на этого босса.", show_alert=True)
+        await callback.answer(editorial_text('boss.hero_selection_context.line_05'), show_alert=True)
         return None
     return world, player, boss, value
 
 
 @router.callback_query(F.data.startswith("miniboss:heroes:"))
+@editorial_screen
 async def boss_heroes_callback(callback: CallbackQuery):
     context = await _hero_selection_context(callback)
     if context is None:
@@ -53,11 +57,12 @@ async def boss_heroes_callback(callback: CallbackQuery):
     heroes = filter_heroes(get_player_heroes(player["id"], sync_catalog=False), player["id"])
     text,markup=render_selector(heroes,get_favorites(player['id']),'b',world['id'],callback.from_user.id,boss['id'])
     await callback.answer()
-    await _send_private(callback,world,format_public_boss(boss,list_participants(boss['id']))+'\n\n🎴 Выбери активного героя\n'+text,markup)
+    await _send_private(callback,world,format_public_boss(boss,list_participants(boss['id']))+editorial_text('boss.boss_heroes_callback.line_01')+text,markup)
 
 
 
 @router.callback_query(F.data.startswith("miniboss:hero:"))
+@editorial_screen
 async def boss_select_hero_callback(callback: CallbackQuery):
     context = await _hero_selection_context(callback)
     if context is None:
@@ -68,6 +73,5 @@ async def boss_select_hero_callback(callback: CallbackQuery):
     except BossError as error:
         await callback.answer(str(error), show_alert=True)
         return
-    await callback.answer(f"⭐ Активный герой: {hero['name']}"[:200])
+    await callback.answer(editorial_text('boss.boss_select_hero_callback.line_01', name=f"{hero['name']}")[:200])
     await show_boss_home(callback, world, player)
-

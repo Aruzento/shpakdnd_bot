@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.boss.errors import BossError, BossRegistrationClosed, BossNotEnoughPlayers
 import json
 import sqlite3
@@ -83,7 +84,7 @@ def create_boss_event(
         if existing is not None:
             conn.rollback()
             raise BossError(
-                f"Сначала заверши текущего босса: {existing['name']}."
+                editorial_text('errors.boss.service.create_boss_event.02', value_1=f"{existing['name']}")
             )
 
         cursor = conn.execute(
@@ -134,7 +135,7 @@ def create_boss_event(
         )
         if cursor.rowcount != 1:
             conn.rollback()
-            raise BossError("D&D Mini-мир не найден.")
+            raise BossError(editorial_text('errors.boss.service.create_boss_event.03'))
         boss_id = int(cursor.lastrowid)
         conn.execute(
             """UPDATE mini_bosses SET faction = ?, ability_key = ?, ability_text = ?,
@@ -149,7 +150,7 @@ def create_boss_event(
 
     boss = get_boss(boss_id, db_path)
     if boss is None:
-        raise BossError("Не удалось создать босса.")
+        raise BossError(editorial_text('errors.boss.service.create_boss_event.01'))
     return boss
 
 
@@ -250,10 +251,10 @@ def register_player(
         ).fetchone()
         if boss is None:
             conn.rollback()
-            raise BossError("Босс не найден.")
+            raise BossError(editorial_text('errors.boss.service.register_player.01'))
         if boss["status"] != "announced":
             conn.rollback()
-            raise BossRegistrationClosed("Регистрация на этого босса закрыта.")
+            raise BossRegistrationClosed(editorial_text('errors.boss.service.register_player.02'))
 
         player = conn.execute(
             """
@@ -265,10 +266,10 @@ def register_player(
         ).fetchone()
         if player is None or int(player["world_id"]) != int(boss["world_id"]):
             conn.rollback()
-            raise BossError("Mini-персонаж не найден в этом мире.")
+            raise BossError(editorial_text('errors.boss.service.register_player.03'))
         if player["active_hero_id"] is None:
             conn.rollback()
-            raise BossError("Сначала выбери активного героя в коллекции.")
+            raise BossError(editorial_text('errors.boss.service.register_player.04'))
 
         from app.mini.availability import assert_available
         try:
@@ -327,10 +328,10 @@ def unregister_player(
         ).fetchone()
         if boss is None:
             conn.rollback()
-            raise BossError("Босс не найден.")
+            raise BossError(editorial_text('errors.boss.service.unregister_player.01'))
         if boss["status"] != "announced":
             conn.rollback()
-            raise BossRegistrationClosed("Регистрация на этого босса закрыта.")
+            raise BossRegistrationClosed(editorial_text('errors.boss.service.unregister_player.02'))
 
         cursor = conn.execute(
             """
@@ -378,10 +379,10 @@ def close_registration(
         ).fetchone()
         if boss is None:
             conn.rollback()
-            raise BossError("Босс не найден.")
+            raise BossError(editorial_text('errors.boss.service.close_registration.02'))
         if boss["status"] != "announced":
             conn.rollback()
-            raise BossError("Регистрация уже не открыта.")
+            raise BossError(editorial_text('errors.boss.service.close_registration.03'))
 
         participants = conn.execute(
             """
@@ -397,7 +398,7 @@ def close_registration(
         if count < minimum:
             conn.rollback()
             raise BossNotEnoughPlayers(
-                f"Нужно минимум {minimum} игроков. Сейчас: {count}."
+                editorial_text('errors.boss.service.close_registration.04', value_1=f'{minimum}', value_2=f'{count}')
             )
 
         # Фиксируем непрерывный порядок перед будущим боем.
@@ -423,7 +424,7 @@ def close_registration(
 
     result = get_boss(boss_id, db_path)
     if result is None:
-        raise BossError("Босс не найден после закрытия регистрации.")
+        raise BossError(editorial_text('errors.boss.service.close_registration.01'))
     return result
 
 
@@ -439,10 +440,10 @@ def reopen_registration(
         ).fetchone()
         if row is None:
             conn.rollback()
-            raise BossError("Босс не найден.")
+            raise BossError(editorial_text('errors.boss.service.reopen_registration.02'))
         if row[0] != "ready":
             conn.rollback()
-            raise BossError("Открыть снова можно только закрытую регистрацию.")
+            raise BossError(editorial_text('errors.boss.service.reopen_registration.03'))
         conn.execute(
             """
             UPDATE mini_bosses
@@ -454,7 +455,7 @@ def reopen_registration(
         conn.commit()
     result = get_boss(boss_id, db_path)
     if result is None:
-        raise BossError("Босс не найден после открытия регистрации.")
+        raise BossError(editorial_text('errors.boss.service.reopen_registration.01'))
     return result
 
 
@@ -470,10 +471,10 @@ def cancel_boss(
         ).fetchone()
         if row is None:
             conn.rollback()
-            raise BossError("Босс не найден.")
+            raise BossError(editorial_text('errors.boss.service.cancel_boss.02'))
         if row[0] not in ACTIVE_STATUSES:
             conn.rollback()
-            raise BossError("Этот босс уже завершён или отменён.")
+            raise BossError(editorial_text('errors.boss.service.cancel_boss.03'))
         conn.execute(
             """
             UPDATE mini_bosses
@@ -485,7 +486,7 @@ def cancel_boss(
         conn.commit()
     result = get_boss(boss_id, db_path)
     if result is None:
-        raise BossError("Босс не найден после отмены.")
+        raise BossError(editorial_text('errors.boss.service.cancel_boss.01'))
     return result
 
 
@@ -507,9 +508,9 @@ def select_battle_hero(
             (int(boss_id), int(player_id)),
         ).fetchone()
         if participant is None:
-            raise BossError("Ты не зарегистрирован на этого босса.")
+            raise BossError(editorial_text('errors.boss.service.select_battle_hero.01'))
         if participant["status"] not in ("announced", "ready"):
-            raise BossRegistrationClosed("Героя можно выбрать только до начала боя.")
+            raise BossRegistrationClosed(editorial_text('errors.boss.service.select_battle_hero.02'))
         try:
             from app.mini.availability import assert_available
             assert_available(conn, player_id, hero_id)

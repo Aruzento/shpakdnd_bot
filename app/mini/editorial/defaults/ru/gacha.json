@@ -1,0 +1,12 @@
+{
+  "summons.batch_screen.line_01": "✨ Призыв ×10",
+  "summons.batch_screen.line_02": "🪙 Потрачено: {cost_coins} · Баланс: {balance}",
+  "summons.batch_screen.line_03": "🧩 Получено осколков: {shards_awarded}",
+  "summons.coupon_screen.line_01": "🎟 Купоны призыва\n\nВыбери купон, затем подтверди применение.",
+  "summons.coupon_screen.line_02": "🎟 Купонов пока нет.",
+  "summons.batch_screen.line_04": "дубликат +{shards_awarded} 🧩",
+  "summons.batch_screen.line_05": "новый",
+  "summons.batch_callback.line_01": "Результат сохранён. Повтори эту кнопку или открой меню ещё раз.",
+  "summons.batch_result_callback.line_01": "Результат сохранён. Повтори эту кнопку или открой меню ещё раз.",
+  "summons.coupon_callback.line_01": "Не удалось показать купоны. Открой «Призвать героя» ещё раз."
+}

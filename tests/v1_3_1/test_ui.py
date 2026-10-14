@@ -74,7 +74,7 @@ class ReleaseUIContractTests(unittest.TestCase):
     def test_equipment_three_slots_and_requested_buttons(self):
         state=dict(attack_bonus=5,owned=[],equipped=dict(helmet=dict(name='Ведро паладина на больничном',attack_bonus=1),ring=dict(name='Кольцо некроманта-вегетарианца',attack_bonus=4)))
         text,markup=render_equipment(state,1,20)
-        for value in ('Надетая экипировка даёт бонусы в «Испытаниях».','Шлем: Ведро паладина на больничном +1','Кольцо: Кольцо некроманта-вегетарианца +4','Плащ: пусто','Ненадетые предметы можно посмотреть в «Инвентаре».'):self.assertIn(value,text)
+        for value in ('Надетая экипировка даёт бонусы в «Испытаниях».','[+1] Ведро паладина на больничном · Шлем','[+4] Кольцо некроманта-вегетарианца · Кольцо','Плащ: пусто','Ненадетые предметы можно посмотреть в «Инвентаре».'):self.assertIn(value,text)
         self.assertEqual([row[0].text for row in markup.inline_keyboard],['Надеть...','Снять...','Назад'])
         for value in ('Tower','Equipment','Во владении'):self.assertNotIn(value,text)
 

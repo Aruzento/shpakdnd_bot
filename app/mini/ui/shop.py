@@ -1,3 +1,5 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
 from app.mini.ui.state import legacy_operation
 from app.mini.ui.context import (
     personal_callback as _personal_callback,
@@ -7,7 +9,7 @@ from app.mini.ui.context import (
 from app.mini.ui.transport import edit_private as _edit_private
 import secrets
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from app.mini.shop import (
     ShopError,
     ShopInsufficientFunds,
@@ -21,13 +23,15 @@ from app.mini.shop import (
 )
 
 
+
 router = Router(name="mini_shop")
 
+@editorial_screen
 def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     rows = []
     for category in get_shop_categories(world_id):
         count = int(category.get("product_count", 0))
-        suffix = f" · {count}" if count else " · скоро"
+        suffix = f" · {count}" if count else editorial_text('shop.shop_main_menu.line_01')
         rows.append([
             InlineKeyboardButton(
                 text=f"{category['title']}{suffix}",
@@ -39,19 +43,20 @@ def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
 
     rows.append([
         InlineKeyboardButton(
-            text="🎒 Инвентарь",
+            text=editorial_text('navigation.inventory'),
             callback_data=f"mini:goods:{world_id}:{user_id}",
         )
     ])
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ Назад",
+            text=editorial_text('navigation.back'),
             callback_data=_personal_callback("fair", world_id, user_id),
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def _shop_category_menu(
     world_id: int,
     user_id: int,
@@ -61,7 +66,7 @@ def _shop_category_menu(
     for offer in get_offers_by_category(world_id, category):
         rows.append([
             InlineKeyboardButton(
-                text=f"{offer['title']} — {offer['price']} 🪙",
+                text=editorial_text('shop.shop_category_menu.line_02', title=f"{offer['title']}", price=f"{offer['price']}"),
                 callback_data=(
                     f"mini:shopitem:{world_id}:{user_id}:{offer['id']}"
                 ),
@@ -69,13 +74,14 @@ def _shop_category_menu(
         ])
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ К категориям",
+            text=editorial_text('shop.shop_category_menu.line_01'),
             callback_data=_personal_callback("shop", world_id, user_id),
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def _shop_item_menu(
     world_id: int,
     user_id: int,
@@ -86,7 +92,7 @@ def _shop_item_menu(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"✅ Купить за {price} 🪙",
+                    text=editorial_text('shop.shop_item_menu.line_01', price=f'{price}'),
                     callback_data=(
                         f"mini:shopbuy:{world_id}:{user_id}:{offer_id}.{secrets.token_hex(4)}"
                     ),
@@ -94,7 +100,7 @@ def _shop_item_menu(
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ В магазин",
+                    text=editorial_text('shop.shop_item_menu.line_02'),
                     callback_data=_personal_callback("shop", world_id, user_id),
                 )
             ],
@@ -102,22 +108,23 @@ def _shop_item_menu(
     )
 
 
+@editorial_screen
 def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎒 Инвентарь",
+                    text=editorial_text('navigation.inventory'),
                     callback_data=f"mini:goods:{world_id}:{user_id}",
                 ),
                 InlineKeyboardButton(
-                    text="🛒 Магазин",
+                    text=editorial_text('navigation.shop'),
                     callback_data=_personal_callback("shop", world_id, user_id),
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ На главную",
+                    text=editorial_text('shop.shop_after_purchase_menu.line_03'),
                     callback_data=_personal_callback("home", world_id, user_id),
                 )
             ],
@@ -126,6 +133,7 @@ def _shop_after_purchase_menu(world_id: int, user_id: int) -> InlineKeyboardMark
 
 
 @router.callback_query(F.data.startswith("mini:shop:"))
+@editorial_screen
 async def shop_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
     if context is None:
@@ -137,14 +145,13 @@ async def shop_callback(callback: CallbackQuery):
     await callback.answer()
     await _edit_private(
         callback,
-        "🛒 Магазин\n\n"
-        f"🪙 Баланс: {player['coins']} {world['currency_name']}\n\n"
-        "Выбери раздел. Каталог лежит в app/mini/content/shop.json.",
+        editorial_text('shop.shop_callback.line_01', coins=f"{player['coins']}", currency_name=f"{world['currency_name']}"),
         _shop_main_menu(world["id"], callback.from_user.id),
     )
 
 
 @router.callback_query(F.data.startswith("mini:shopcat:"))
+@editorial_screen
 async def shop_category_callback(callback: CallbackQuery):
     context = await _shop_context(callback, "shopcat")
     if context is None:
@@ -157,7 +164,7 @@ async def shop_category_callback(callback: CallbackQuery):
     }
     category = categories.get(category_code)
     if category is None:
-        await callback.answer("Категория не найдена.", show_alert=True)
+        await callback.answer(editorial_text('shop.shop_category_callback.line_03'), show_alert=True)
         return
 
     offers = get_offers_by_category(world["id"], category_code)
@@ -165,16 +172,11 @@ async def shop_category_callback(callback: CallbackQuery):
 
     if not offers:
         text = (
-            f"{category['title']}\n\n"
-            f"{category.get('description', '')}\n\n"
-            "Здесь пока нет активных товаров."
+            editorial_text('shop.shop_category_callback.line_01', title=f"{category['title']}", value_2=f"{category.get('description', '')}")
         )
     else:
         text = (
-            f"{category['title']}\n\n"
-            f"{category.get('description', '')}\n\n"
-            f"🪙 Баланс: {player['coins']}\n"
-            "Выбери товар:"
+            editorial_text('shop.shop_category_callback.line_02', title=f"{category['title']}", value_2=f"{category.get('description', '')}", coins=f"{player['coins']}")
         )
 
     await _edit_private(
@@ -187,6 +189,7 @@ async def shop_category_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:shopitem:"))
+@editorial_screen
 async def shop_item_callback(callback: CallbackQuery):
     context = await _shop_context(callback, "shopitem")
     if context is None:
@@ -196,28 +199,25 @@ async def shop_item_callback(callback: CallbackQuery):
     try:
         offer_id = int(offer_id_text)
     except ValueError:
-        await callback.answer("Некорректный товар.", show_alert=True)
+        await callback.answer(editorial_text('shop.shop_item_callback.line_05'), show_alert=True)
         return
 
     offer = get_offer(world["id"], offer_id)
     if offer is None or not offer["active"]:
-        await callback.answer("Товар больше не доступен.", show_alert=True)
+        await callback.answer(editorial_text('shop.shop_item_callback.line_03'), show_alert=True)
         return
 
     bought = get_offer_purchase_count(player["id"], offer_id)
     limits = []
     if offer["max_per_player"] is not None:
-        limits.append(f"Лимит на игрока: {bought}/{offer['max_per_player']}")
+        limits.append(editorial_text('shop.shop_item_callback.line_01', bought=f'{bought}', max_per_player=f"{offer['max_per_player']}"))
     if offer["stock"] is not None:
-        limits.append(f"Общий запас: {offer['stock']}")
+        limits.append(editorial_text('shop.shop_item_callback.line_02', stock=f"{offer['stock']}"))
 
     await callback.answer()
     await _edit_private(
         callback,
-        f"{offer['title']}\n\n"
-        f"{offer['description']}\n\n"
-        f"Цена: {offer['price']} 🪙\n"
-        f"Твой баланс: {player['coins']} 🪙"
+        editorial_text('shop.shop_item_callback.line_04', title=f"{offer['title']}", description=f"{offer['description']}", price=f"{offer['price']}", coins=f"{player['coins']}")
         + (("\n" + "\n".join(limits)) if limits else ""),
         _shop_item_menu(
             world["id"],
@@ -229,6 +229,7 @@ async def shop_item_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:shopbuy:"))
+@editorial_screen
 async def shop_buy_callback(callback: CallbackQuery):
     context = await _shop_context(callback, "shopbuy")
     if context is None:
@@ -238,7 +239,7 @@ async def shop_buy_callback(callback: CallbackQuery):
     try:
         offer_id = int(offer_id_text.split(".")[0])
     except ValueError:
-        await callback.answer("Некорректный товар.", show_alert=True)
+        await callback.answer(editorial_text('shop.shop_buy_callback.line_05'), show_alert=True)
         return
 
     try:
@@ -256,19 +257,14 @@ async def shop_buy_callback(callback: CallbackQuery):
         return
 
     delivery_text = (
-        "Предмет добавлен в инвентарь."
+        editorial_text('shop.shop_buy_callback.line_01')
         if result["delivery"] == "inventory"
-        else "Сертификат сохранён в инвентаре."
+        else editorial_text('shop.shop_buy_callback.line_02')
     )
 
-    await callback.answer("Покупка успешна")
+    await callback.answer(editorial_text('shop.shop_buy_callback.line_03'))
     await _edit_private(
         callback,
-        "✅ Покупка успешна!\n\n"
-        f"{result['title']}\n"
-        f"Списано: {result['price']} 🪙\n"
-        f"Осталось: {result['balance']} 🪙\n\n"
-        f"{delivery_text}",
+        editorial_text('shop.shop_buy_callback.line_04', title=f"{result['title']}", price=f"{result['price']}", balance=f"{result['balance']}", delivery_text=f'{delivery_text}'),
         _shop_after_purchase_menu(world["id"], callback.from_user.id),
     )
-

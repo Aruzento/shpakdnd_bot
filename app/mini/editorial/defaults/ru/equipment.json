@@ -1,0 +1,13 @@
+{
+  "equipment.item": "[{bonus}] {name} · {slot}",
+  "equipment.render_equipment.line_02": "Надетая экипировка даёт бонусы в «Испытаниях».",
+  "equipment.render_equipment.line_03": "Ненадетые предметы можно посмотреть в «Инвентаре».",
+  "equipment.render_equipment.line_04": "🛡 Снять экипировку",
+  "equipment.render_equipment.line_05": "Выбери слот. Снятый предмет останется в инвентаре.",
+  "equipment.equipment_callback.line_01": "Эта тема больше не работает в режиме Mini.",
+  "equipment.render_equipment.line_06": "{value_1}: пусто",
+  "equipment.render_equipment.line_09": "Все слоты пусты.",
+  "equipment.render_equipment.line_10": "🛡 Надеть экипировку",
+  "equipment.render_equipment.line_11": "🎒 Экипировка в инвентаре",
+  "equipment.render_equipment.line_12": "Предметов пока нет. Сундук с экипировкой ждёт на каждом пятом этаже Испытаний."
+}

@@ -21,6 +21,8 @@ from app.services.timers import restore_timers
 
 
 async def main():
+    from app.mini.editorial.registry import get_registry
+    get_registry()
     load_boss_catalog()
     init_db()
     init_mini_db()
@@ -48,6 +50,8 @@ async def main():
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
+    from app.mini.editorial.middleware import EditorialMiddleware
+    dp.update.outer_middleware(EditorialMiddleware())
 
     try:
         await configure_mini_commands(bot)

@@ -1,9 +1,12 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
+from app.mini.editorial.registry import LiveMapping
 from app.mini.presentation import format_player_mention
 import asyncio
 import json
 
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import FSInputFile, InlineKeyboardMarkup
 
 from app.mini.boss.catalog import list_boss_reward_items
 from app.mini.catalog import hero_image_path
@@ -12,9 +15,11 @@ from app.mini.combat import creatures,classes
 from app.mini.boss.service import get_boss, list_participants, set_turn_message
 
 
+
 _TURN_PUBLISH_LOCKS: dict[int, asyncio.Lock] = {}
 
 
+@editorial_screen
 def _turn_publish_lock(boss_id: int) -> asyncio.Lock:
     """Один publisher на босса внутри процесса, чтобы сообщения хода не гонялись."""
     boss_id = int(boss_id)
@@ -25,6 +30,7 @@ def _turn_publish_lock(boss_id: int) -> asyncio.Lock:
     return lock
 
 
+@editorial_screen
 def _turn_state_key(boss: dict) -> tuple:
     """Версия видимого состояния хода без привязки к Telegram message_id."""
     return (
@@ -41,16 +47,10 @@ def _turn_state_key(boss: dict) -> tuple:
     )
 
 
-STATUS_TEXT = {
-    "announced": "🟢 Регистрация открыта",
-    "ready": "🟡 Регистрация закрыта",
-    "fighting": "🔴 Бой идёт",
-    "cancelled": "⚫ Босс отменён",
-    "defeated": "🏆 Босс побеждён",
-    "failed": "💀 Бой проигран",
-}
+STATUS_TEXT = LiveMapping({'announced': 'status.announced', 'ready': 'status.ready', 'fighting': 'status.fighting', 'cancelled': 'status.cancelled', 'defeated': 'status.defeated', 'failed': 'status.failed'}, terms=True, decorated=True)
 
 
+@editorial_screen
 def _item_names() -> dict[str, str]:
     return {
         item["code"]: item["name"]
@@ -58,6 +58,7 @@ def _item_names() -> dict[str, str]:
     }
 
 
+@editorial_screen
 def reward_items(boss: dict) -> list[dict]:
     try:
         raw = json.loads(boss.get("reward_items_json") or "[]")
@@ -83,21 +84,24 @@ def reward_items(boss: dict) -> list[dict]:
     return result
 
 
+@editorial_screen
 def participant_label(row: dict) -> str:
-    hero = str(row.get("hero_name") or "без героя").strip()
+    hero = str(row.get("hero_name") or editorial_text('boss.participant_label.line_02')).strip()
     who = format_player_mention(row)
     extra = ""
     if int(row.get("battle_attack") or 0) > 0:
-        extra = f" • ⚔️ {int(row['battle_attack'])}"
+        extra = editorial_text('boss.participant_label.line_01', battle_attack=f"{int(row['battle_attack'])}")
     return f"{row['queue_position']}. {who} — {hero}{extra}"
 
 
+@editorial_screen
 def format_participants(participants: list[dict]) -> str:
     if not participants:
-        return "Пока никто не записался."
+        return editorial_text('boss.format_participants.line_01')
     return "\n".join(participant_label(row) for row in participants)
 
 
+@editorial_screen
 def current_participant(boss: dict, participants: list[dict]) -> dict | None:
     if boss.get("status") != "fighting":
         return None
@@ -108,23 +112,26 @@ def current_participant(boss: dict, participants: list[dict]) -> dict | None:
     return None
 
 
+@editorial_screen
 def _participant_mention(row: dict | None) -> str:
     if not row:
-        return "Игрок"
+        return editorial_text('boss.participant_mention.line_01')
     return format_player_mention(row)
 
 
+@editorial_screen
 def _reward_line(boss: dict) -> str:
     percent = max(0, min(100, int(boss.get("reward_percent", 100))))
     coins = classes.real_reward(boss)
-    parts = [f"{coins} 🪙"] if int(boss.get("reward_coins", 0)) > 0 else []
+    parts = [editorial_text('boss.reward_line.line_02', coins=f'{coins}')] if int(boss.get("reward_coins", 0)) > 0 else []
     for item in reward_items(boss):
         suffix = f" ×{item['quantity']}" if item["quantity"] > 1 else ""
         parts.append(f"{item['name']}{suffix}")
-    return " + ".join(parts) if parts else "без предметной награды"
+    return " + ".join(parts) if parts else editorial_text('boss.reward_line.line_01')
 
 
 
+@editorial_screen
 def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
     """Форматирует публичные сообщения пассивок, сработавших на атаке босса."""
     if not reward_event:
@@ -139,12 +146,13 @@ def boss_attack_passive_lines(reward_event: dict | None) -> list[str]:
         lines.append(f"{who}: {message}")
     return lines
 
+@editorial_screen
 def format_public_boss(boss: dict, participants: list[dict]) -> str:
     """Boss announcement with Combat v2 traits and unchanged reward amounts."""
     percent = max(0, min(100, int(boss.get("reward_percent", 100))))
     coins = classes.real_reward(boss)
     features = json.loads(boss.get("features_json") or "[]")
-    feature_text = ", ".join(tag_label(tag, TRAIT_LABELS) for tag in features) or "Нет."
+    feature_text = ", ".join(tag_label(tag, TRAIT_LABELS) for tag in features) or editorial_text('boss.format_public_boss.line_01')
     feature_details = ("\n".join(FEATURE_DESCRIPTIONS[creatures.canonical_trait(tag)]
                                     for tag in features if creatures.canonical_trait(tag) in FEATURE_DESCRIPTIONS)
                        if creatures.rules_enabled(boss) else "")
@@ -153,44 +161,51 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
         for item in reward_items(boss)
     ]
     lines = [
-        f"👹 {boss['name']} • {faction_label(boss.get('faction', 'commoners'))}",
+        editorial_text('boss.format_public_boss.line_02', name=f"{boss['name']}", value_2=f"{faction_label(boss.get('faction', 'commoners'))}"),
         "",
-        str(boss.get("description") or "Без описания.")[:120],
+        str(boss.get("description") or editorial_text('boss.format_public_boss.line_09'))[:120],
         "",
         f"❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
-        f"💫 Способность: {str(boss.get('ability_text') or 'Нет особой способности.')[:200]}",
+        editorial_text('boss.format_public_boss.line_03', value_1=f"{str(boss.get('ability_text') or 'Нет особой способности.')[:200]}"),
         "",
-        f"‼️ Особенности: {feature_text}",
+        editorial_text('boss.format_public_boss.line_04', feature_text=f'{feature_text}'),
         "",
-        f"🎁 Награда: {coins} монет • 🛡 Щиты: {boss.get('reward_shields', 3)}",
-        f"🎁 Доп. награда: {', '.join(items) if items else 'Нет.'}",
+        editorial_text('boss.format_public_boss.line_05', coins=f'{coins}', value_2=f"{boss.get('reward_shields', 3)}"),
+        editorial_text('boss.format_public_boss.line_06', value_1=f"{(', '.join(items) if items else 'Нет.')}"),
     ]
     if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
-            f"💎 Запас награды: {creatures.effective_reward_percent(boss)}%"
-            f" • Временный: +{int(boss.get('reward_temp_hp', 0))}%"
-            f" • Порча: {int(boss.get('reward_corruption', 0))}%"
+            editorial_text('boss.format_public_boss.line_07', value_1=f'{creatures.effective_reward_percent(boss)}', value_2=f"{int(boss.get('reward_temp_hp', 0))}", value_3=f"{int(boss.get('reward_corruption', 0))}")
         )
     status = str(boss["status"])
     if status in ("announced", "ready"):
         lines.extend([
-            "", f"👥 Участники: {len(participants)} • минимум {boss.get('min_players', 1)}",
+            "", editorial_text('boss.format_public_boss.line_08', value_1=f'{len(participants)}', value_2=f"{boss.get('min_players', 1)}"),
             STATUS_TEXT[status],
         ])
     elif status == "defeated":
         lines.extend(["", (
-            "👋 Босс изгнан живым. Сокровища выданы участникам; извлечение тени недоступно."
+            editorial_text('boss.format_public_boss.line_10')
             if boss.get('battle_result') == 'banished' else (
-            "🏆 Победа! Награда выдана всем зарегистрированным участникам."
+            editorial_text('boss.format_public_boss.line_13')
             if boss.get("battle_result") == "admin_victory"
-            else "🏆 Победа! Награда выдана участникам боя и фантомным участникам."
+            else editorial_text('boss.format_public_boss.line_14')
         ))])
     elif status == "failed":
-        lines.extend(["", "💥 Награда уничтожена — бой проигран.",
-                      f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
+        lines.extend(["", editorial_text('boss.format_public_boss.line_11'),
+                      editorial_text('boss.format_public_boss.line_12', value_1=f"{int(boss.get('reward_coins', 0)) // 10}")])
     elif status == "cancelled":
-        lines.extend(["", "Босс отменён."])
+        lines.extend(["", editorial_text('boss.format_public_boss.line_15')])
     text = "\n".join(lines)
+    if len(text.encode("utf-16-le")) // 2 > 1024:
+        from app.mini.editorial.registry import get_registry
+        registry = get_registry()
+        # Re-render with the trusted defaults if editorial prose exceeds the caption budget.
+        if registry.snapshot() is not registry.loader.defaults_snapshot:
+            import logging
+            logging.getLogger(__name__).warning("Editorial boss caption exceeds 1024 units; using defaults")
+            with registry.read(registry.loader.defaults_snapshot):
+                return format_public_boss.__wrapped__(boss, participants)
     if feature_details:
         available = 1024 - len(text) - 2
         # Include complete descriptions only; never truncate the reward fields.
@@ -204,6 +219,7 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     return text[:1024]
 
 
+@editorial_screen
 def format_public_turn(
     boss: dict,
     participants: list[dict],
@@ -212,37 +228,32 @@ def format_public_turn(
 ) -> str:
     status = str(boss.get("status") or "")
     lines = [
-        f"РАУНД {boss['current_round']}",
+        editorial_text('boss.format_public_turn.line_01', current_round=f"{boss['current_round']}"),
         "",
-        f"👹 {boss['name']} - ❤️ HP: {boss['current_hp']}/{boss['max_hp']}",
+        editorial_text('boss.format_public_turn.line_02', name=f"{boss['name']}", current_hp=f"{boss['current_hp']}", max_hp=f"{boss['max_hp']}"),
         "",
-        f"🛡 Щиты: {boss.get('reward_shields', 0)}/{boss.get('reward_shields_max', 0)}"
-        f" • 💎 Состояние награды: {creatures.effective_reward_percent(boss) if classes.enabled(boss) else boss.get('reward_percent',100)}%",
+        editorial_text('boss.format_public_turn.line_03', value_1=f"{boss.get('reward_shields', 0)}", value_2=f"{boss.get('reward_shields_max', 0)}", value_3=f"{(creatures.effective_reward_percent(boss) if classes.enabled(boss) else boss.get('reward_percent', 100))}"),
     ]
     if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
-            f"💎 Реальная награда: {classes.real_reward(boss)} монет"
-            f" • Временный запас: +{int(boss.get('reward_temp_hp', 0))}%"
-            f" • Порча: {int(boss.get('reward_corruption', 0))}%"
-            f" • Эффективный запас: {creatures.effective_reward_percent(boss)}%"
-            f" ({classes.effective_reward(boss) if classes.enabled(boss) else int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100} монет)"
+            editorial_text('boss.format_public_turn.line_04', value_1=f'{classes.real_reward(boss)}', value_2=f"{int(boss.get('reward_temp_hp', 0))}", value_3=f"{int(boss.get('reward_corruption', 0))}", value_4=f'{creatures.effective_reward_percent(boss)}', value_5=f"{(classes.effective_reward(boss) if classes.enabled(boss) else int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100)}")
         )
     if status == "fighting":
         current = current_participant(boss, participants)
         if current is not None:
             lines.extend([
                 "",
-                f"⚔️ Ход: {_participant_mention(current)} - \"{current.get('hero_name') or 'герой'}\"",
-                f"⏳ На ход: {boss['skip_after_hours']} ч.",
+                editorial_text('boss.format_public_turn.line_07', value_1=f'{_participant_mention(current)}', value_2=f"{current.get('hero_name') or 'герой'}"),
+                editorial_text('boss.format_public_turn.line_08', skip_after_hours=f"{boss['skip_after_hours']}"),
             ])
         else:
-            lines.extend(["", "⚠️ Не удалось определить текущего игрока."])
+            lines.extend(["", editorial_text('boss.format_public_turn.line_09')])
     elif status == "defeated":
-        outcome = '👋 Босс изгнан живым — извлечение тени недоступно.' if boss.get('battle_result') == 'banished' else '🏆 Босс повержен!'
-        lines.extend(["", outcome, f"🎁 Итог: {_reward_line(boss)}"])
+        outcome = editorial_text('boss.format_public_turn.line_05') if boss.get('battle_result') == 'banished' else editorial_text('boss.format_public_turn.line_06')
+        lines.extend(["", outcome, editorial_text('boss.format_public_turn.line_10', value_1=f'{_reward_line(boss)}')])
     elif status == "failed":
-        lines.extend(["", "💀 Бой проигран: награда уничтожена.",
-                      f"🧩 Награда за участие: {int(boss.get('reward_coins', 0)) // 10} осколков."])
+        lines.extend(["", editorial_text('boss.format_public_turn.line_11'),
+                      editorial_text('boss.format_public_turn.line_12', value_1=f"{int(boss.get('reward_coins', 0)) // 10}")])
     else:
         lines.extend(["", STATUS_TEXT.get(status, status)])
     if not notice:
@@ -258,22 +269,24 @@ def format_public_turn(
     return "\n".join(lines)[:4096]
 
 
+@editorial_screen
 def _turn_image(boss: dict, participants: list[dict]):
     current = current_participant(boss, participants)
     return hero_image_path(current.get("hero_image_path", "")) if current else None
 
 
+@editorial_screen
 def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
     rows = []
     if boss["status"] == "announced":
         rows.append(
             [
                 InlineKeyboardButton(
-                    text="⚔️ Записаться",
+                    text=editorial_text('boss.join'),
                     callback_data=f"miniboss:join:{world_id}:{boss['id']}",
                 ),
                 InlineKeyboardButton(
-                    text="🚪 Выйти",
+                    text=editorial_text('boss.leave'),
                     callback_data=f"miniboss:leave:{world_id}:{boss['id']}",
                 ),
             ]
@@ -282,7 +295,7 @@ def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
     rows.append(
         [
             InlineKeyboardButton(
-                text="👥 Участники",
+                text=editorial_text('boss.public_boss_menu.line_01'),
                 callback_data=f"miniboss:list:{world_id}:{boss['id']}",
             )
         ]
@@ -290,6 +303,7 @@ def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
     if boss.get("status") != "fighting":
         return None
@@ -297,7 +311,7 @@ def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚔️ Ударить босса",
+                    text=editorial_text('boss.attack'),
                     callback_data=(
                         f"miniboss:hit:{world_id}:{boss['id']}:"
                         f"{boss.get('current_round', 0)}:"
@@ -307,7 +321,7 @@ def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
             ],
             [
                 InlineKeyboardButton(
-                    text="👥 Участники",
+                    text=editorial_text('boss.public_turn_menu.line_02'),
                     callback_data=f"miniboss:list:{world_id}:{boss['id']}",
                 )
             ],
@@ -315,6 +329,7 @@ def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
     )
 
 
+@editorial_screen
 async def refresh_public_boss(bot, world: dict, boss: dict) -> bool:
     """Обновляет старую статичную карточку регистрации/босса на её месте."""
     message_id = boss.get("signup_message_id")
@@ -351,6 +366,7 @@ async def refresh_public_boss(bot, world: dict, boss: dict) -> bool:
         return False
 
 
+@editorial_screen
 async def _send_public_turn_locked(
     bot,
     world: dict,
@@ -421,6 +437,7 @@ async def _send_public_turn_locked(
     return True
 
 
+@editorial_screen
 async def replace_public_turn(
     bot,
     world: dict,
@@ -515,6 +532,7 @@ async def replace_public_turn(
         return applied
 
 
+@editorial_screen
 async def publish_admin_victory(
     bot,
     world: dict,
@@ -524,10 +542,7 @@ async def publish_admin_victory(
 ) -> bool:
     """Публикует аварийную победу и убирает старую карточку текущего хода."""
     text = (
-        "⚡ Сами боги услышали клич, и раскат грома ударил по боссу. "
-        "Босс пал.\n\n"
-        "🏆 Поздравляю, вы победили!\n\n"
-        "🎁 Награда выдана всем, кто зарегистрировался на бой."
+        editorial_text('boss.publish_admin_victory.line_01')
     )
 
     try:
@@ -564,6 +579,7 @@ async def publish_admin_victory(
     return True
 
 
+@editorial_screen
 async def ensure_public_turn(bot, world: dict, boss: dict) -> bool:
     """Recover one current turn message, preserving photo/text and dedup locks."""
     if boss.get("status") != "fighting":

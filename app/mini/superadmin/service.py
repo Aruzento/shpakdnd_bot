@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.presentation import format_player_mention
 """Mini admin use cases. Each mutation and its audit commit in one transaction."""
 import sqlite3
@@ -16,7 +17,7 @@ def _world(conn,command):
     row=conn.execute("SELECT * FROM mini_worlds WHERE chat_id=? AND thread_id=? AND enabled=1",
                      (command.chat_id,command.thread_id)).fetchone()
     if row is None:
-        raise ValueError("Mini-мир не найден или отключён.")
+        raise ValueError(editorial_text('errors.superadmin.service.world.01'))
     return dict(row)
 
 
@@ -26,7 +27,7 @@ def _player(conn,world_id,target):
     else:
         rows=conn.execute("SELECT * FROM mini_players WHERE world_id=? AND lower(username)=?",(world_id,target)).fetchall()
     if len(rows)!=1:
-        raise ValueError("Mini-игрок не найден или username неоднозначен. Используй numeric Telegram ID.")
+        raise ValueError(editorial_text('errors.superadmin.service.player.01'))
     return dict(rows[0])
 
 
@@ -61,7 +62,7 @@ def _look(conn,player,flags):
 
 def _hero(conn,player,value,deleting):
     hero=conn.execute("SELECT * FROM mini_heroes WHERE lower(code)=lower(?)",(value,)).fetchone()
-    if hero is None: raise ValueError("Герой не найден.")
+    if hero is None: raise ValueError(editorial_text('errors.superadmin.service.hero.01'))
     owned=conn.execute("SELECT 1 FROM mini_player_heroes WHERE player_id=? AND hero_id=?",(player['id'],hero['id'])).fetchone()
     if not deleting:
         if owned: return False,"Герой уже есть."
@@ -69,15 +70,15 @@ def _hero(conn,player,value,deleting):
         if player['active_hero_id'] is None:
             conn.execute("UPDATE mini_players SET active_hero_id=? WHERE id=?",(hero['id'],player['id']))
         return True,f"Выдан герой {hero['name']}."
-    if not owned: raise ValueError("У игрока нет этого героя.")
+    if not owned: raise ValueError(editorial_text('errors.superadmin.service.hero.02'))
     if conn.execute("SELECT 1 FROM mini_tower_attempts WHERE player_id=? AND hero_id=? AND status='active'",(player['id'],hero['id'])).fetchone():
-        raise ValueError("Герой используется активной попыткой Tower.")
+        raise ValueError(editorial_text('errors.superadmin.service.hero.03'))
     if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='mini_boss_participants'").fetchone():
         busy=conn.execute("""SELECT 1 FROM mini_boss_participants bp JOIN mini_bosses b ON b.id=bp.boss_id
             WHERE bp.player_id=? AND b.status IN ('announced','ready','fighting')
             AND CASE WHEN b.status IN ('announced','ready') THEN ? ELSE bp.hero_id END=?""",
             (player['id'],player['active_hero_id'],hero['id'])).fetchone()
-        if busy: raise ValueError("Герой используется активным Boss battle.")
+        if busy: raise ValueError(editorial_text('errors.superadmin.service.hero.04'))
     from app.mini.availability import assert_available, assert_not_committed
     from app.mini.village.service import timestamp
     assert_available(conn,player['id'],hero['id'])
@@ -96,14 +97,14 @@ def _item(conn,player_id,code,deleting):
         else: grant_in_transaction(conn,player_id,eq[0])
         return
     item=conn.execute("SELECT * FROM mini_items WHERE lower(code)=lower(?)",(code,)).fetchone()
-    if item is None: raise ValueError("Mini item/equipment code не найден.")
+    if item is None: raise ValueError(editorial_text('errors.superadmin.service.item.01'))
     owned=conn.execute("SELECT quantity FROM mini_inventory WHERE player_id=? AND item_id=?",(player_id,item['id'])).fetchone()
     quantity=int(owned[0]) if owned else 0
     if deleting:
-        if quantity<=0: raise ValueError("У игрока нет этого предмета.")
+        if quantity<=0: raise ValueError(editorial_text('errors.superadmin.service.item.02'))
         conn.execute("UPDATE mini_inventory SET quantity=quantity-1 WHERE player_id=? AND item_id=?",(player_id,item['id']))
     else:
-        if not item['stackable'] and quantity>0: raise ValueError("Нестакируемый предмет уже есть.")
+        if not item['stackable'] and quantity>0: raise ValueError(editorial_text('errors.superadmin.service.item.03'))
         conn.execute("""INSERT INTO mini_inventory(player_id,item_id,quantity) VALUES(?,?,1)
             ON CONFLICT(player_id,item_id) DO UPDATE SET quantity=quantity+1,updated_at=CURRENT_TIMESTAMP""",(player_id,item['id']))
 
@@ -124,7 +125,7 @@ def _mutate_player(conn,admin_user_id,command,world,player,operation_key):
         resource={'-c':'coins','-s':'shards','-p':'hero','-i':'item'}[flag];entity=command.value
         if flag in {'-c','-s'}:
             amount=int(command.value)
-            if amount<=0: raise ValueError("Количество должно быть положительным.")
+            if amount<=0: raise ValueError(editorial_text('errors.superadmin.service.mutate_player.01'))
             delta=-amount if deleting else amount
             if flag=='-c':
                 balance=change_balance_in_transaction(conn,player['id'],delta,'Mini superadmin',
@@ -174,7 +175,7 @@ def execute(admin_user_id,command,*,operation_key='',db_path=None):
         conn.row_factory=sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
         if command.action in {'superadd','superdel','superluck'}:
-            if not operation_key: raise ValueError("Для мутации нужен стабильный operation key.")
+            if not operation_key: raise ValueError(editorial_text('errors.superadmin.service.execute.01'))
             conn.execute("BEGIN IMMEDIATE")
         world=_world(conn,command)
         if command.action=='superchars':

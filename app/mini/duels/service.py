@@ -1,4 +1,5 @@
 """Pending locks, escrow, resolution and payout share one SQLite transaction."""
+from app.mini.editorial import text as editorial_text
 import json
 import sqlite3
 from app.config import DB_PATH
@@ -39,8 +40,8 @@ def expire(db_path=DB_PATH,*,now=None):
 
 
 def challenge(challenger_id,defender_id,hero_id,operation_key,db_path=DB_PATH,*,now=None):
-    if challenger_id==defender_id: raise ValueError('Нельзя вызвать себя на дуэль.')
-    if not operation_key: raise ValueError('Нужен ключ вызова.')
+    if challenger_id==defender_id: raise ValueError(editorial_text('errors.duels.service.challenge.01'))
+    if not operation_key: raise ValueError(editorial_text('errors.duels.service.challenge.02'))
     now=timestamp(now)
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
@@ -48,12 +49,12 @@ def challenge(challenger_id,defender_id,hero_id,operation_key,db_path=DB_PATH,*,
         expire_in_transaction(conn,now)
         old=conn.execute('SELECT * FROM mini_duels WHERE challenger_id=? AND operation_key=?',(challenger_id,operation_key)).fetchone()
         if old:
-            if (old['defender_id'],old['challenger_hero_id'])!=(defender_id,hero_id): raise ValueError('Ключ вызова уже использован.')
+            if (old['defender_id'],old['challenger_hero_id'])!=(defender_id,hero_id): raise ValueError(editorial_text('errors.duels.service.challenge.05'))
             return {**dict(old),'applied':False}
         players=conn.execute('SELECT id,world_id FROM mini_players WHERE id IN (?,?)',(challenger_id,defender_id)).fetchall()
-        if len(players)!=2 or players[0]['world_id']!=players[1]['world_id']: raise ValueError('Игроки должны находиться в одном Mini-мире.')
+        if len(players)!=2 or players[0]['world_id']!=players[1]['world_id']: raise ValueError(editorial_text('errors.duels.service.challenge.03'))
         if conn.execute('SELECT 1 FROM mini_duel_locks WHERE player_id IN (?,?)',(challenger_id,defender_id)).fetchone():
-            raise ValueError('Один из игроков уже участвует в дуэли.')
+            raise ValueError(editorial_text('errors.duels.service.challenge.04'))
         hero=_hero(conn,challenger_id,hero_id)
         cursor=conn.execute('''INSERT INTO mini_duels(challenger_id,defender_id,challenger_hero_id,challenger_snapshot,expires_at,operation_key)
             VALUES(?,?,?,?,?,?)''',(challenger_id,defender_id,hero_id,json.dumps(hero),now+EXPIRY,operation_key))
@@ -77,10 +78,10 @@ def act(duel_id,actor_id,action,db_path=DB_PATH,*,hero_id=None,expected_hero_id=
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
         expire_in_transaction(conn,timestamp(now))
         row=conn.execute('SELECT * FROM mini_duels WHERE id=?',(duel_id,)).fetchone()
-        if not row or actor_id not in (row['challenger_id'],row['defender_id']): raise ValueError('Это чужая дуэль.')
+        if not row or actor_id not in (row['challenger_id'],row['defender_id']): raise ValueError(editorial_text('errors.duels.service.act.01'))
         defender=actor_id==row['defender_id']
-        if action in ('select','accept','refuse') and not defender: raise ValueError('Действие доступно только защитнику.')
-        if action=='cancel' and defender: raise ValueError('Отменить вызов может только инициатор.')
+        if action in ('select','accept','refuse') and not defender: raise ValueError(editorial_text('errors.duels.service.act.02'))
+        if action=='cancel' and defender: raise ValueError(editorial_text('errors.duels.service.act.03'))
         if row['status']!='pending': return {**dict(row),'applied':False}
         if action=='select':
             hero=_hero(conn,actor_id,hero_id)
@@ -88,8 +89,8 @@ def act(duel_id,actor_id,action,db_path=DB_PATH,*,hero_id=None,expected_hero_id=
         elif action in ('refuse','cancel'): _close(conn,row,'refused' if action=='refuse' else 'cancelled')
         elif action=='accept':
             hid=row['defender_hero_id']
-            if hid is None: raise ValueError('Сначала выбери героя.')
-            if expected_hero_id is not None and hid!=expected_hero_id: raise ValueError('Выбор героя изменился. Открой дуэль заново.')
+            if hid is None: raise ValueError(editorial_text('errors.duels.service.act.05'))
+            if expected_hero_id is not None and hid!=expected_hero_id: raise ValueError(editorial_text('errors.duels.service.act.06'))
             defender_hero=_hero(conn,actor_id,hid)
             assert_available(conn,row['challenger_id'],row['challenger_hero_id'])
             balance=conn.execute('SELECT coins FROM mini_players WHERE id=?',(actor_id,)).fetchone()[0]
@@ -109,5 +110,5 @@ def act(duel_id,actor_id,action,db_path=DB_PATH,*,hero_id=None,expected_hero_id=
                     result.update(winner_id=winner,loser_id=loser)
                 conn.execute('UPDATE mini_duels SET defender_snapshot=? WHERE id=?',(json.dumps(defender_hero),duel_id))
                 _close(conn,row,'finished',refund=False,result=result)
-        else: raise ValueError('Неизвестное действие дуэли.')
+        else: raise ValueError(editorial_text('errors.duels.service.act.04'))
         return {**dict(conn.execute('SELECT * FROM mini_duels WHERE id=?',(duel_id,)).fetchone()),'applied':True}

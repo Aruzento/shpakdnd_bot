@@ -1,0 +1,5751 @@
+{
+  "faction.commoners": {
+    "kind": "glossary"
+  },
+  "icon.faction.commoners": {
+    "kind": "icon"
+  },
+  "faction.beasts": {
+    "kind": "glossary"
+  },
+  "icon.faction.beasts": {
+    "kind": "icon"
+  },
+  "faction.monsters": {
+    "kind": "glossary"
+  },
+  "icon.faction.monsters": {
+    "kind": "icon"
+  },
+  "faction.warriors": {
+    "kind": "glossary"
+  },
+  "icon.faction.warriors": {
+    "kind": "icon"
+  },
+  "faction.dark": {
+    "kind": "glossary"
+  },
+  "icon.faction.dark": {
+    "kind": "icon"
+  },
+  "faction.neutral": {
+    "kind": "glossary"
+  },
+  "icon.faction.neutral": {
+    "kind": "icon"
+  },
+  "damage.slashing": {
+    "kind": "glossary"
+  },
+  "icon.damage.slashing": {
+    "kind": "icon"
+  },
+  "damage.piercing": {
+    "kind": "glossary"
+  },
+  "icon.damage.piercing": {
+    "kind": "icon"
+  },
+  "damage.bludgeoning": {
+    "kind": "glossary"
+  },
+  "icon.damage.bludgeoning": {
+    "kind": "icon"
+  },
+  "damage.magic": {
+    "kind": "glossary"
+  },
+  "icon.damage.magic": {
+    "kind": "icon"
+  },
+  "class.none": {
+    "kind": "glossary"
+  },
+  "icon.class.none": {
+    "kind": "icon"
+  },
+  "class.magical": {
+    "kind": "glossary"
+  },
+  "icon.class.magical": {
+    "kind": "icon"
+  },
+  "class.technical": {
+    "kind": "glossary"
+  },
+  "icon.class.technical": {
+    "kind": "icon"
+  },
+  "class.martial": {
+    "kind": "glossary"
+  },
+  "icon.class.martial": {
+    "kind": "icon"
+  },
+  "class.warrior": {
+    "kind": "glossary"
+  },
+  "icon.class.warrior": {
+    "kind": "icon"
+  },
+  "class.guardian": {
+    "kind": "glossary"
+  },
+  "icon.class.guardian": {
+    "kind": "icon"
+  },
+  "class.mage": {
+    "kind": "glossary"
+  },
+  "icon.class.mage": {
+    "kind": "icon"
+  },
+  "class.ranger": {
+    "kind": "glossary"
+  },
+  "icon.class.ranger": {
+    "kind": "icon"
+  },
+  "class.sneaky": {
+    "kind": "glossary"
+  },
+  "icon.class.sneaky": {
+    "kind": "icon"
+  },
+  "class.healer": {
+    "kind": "glossary"
+  },
+  "icon.class.healer": {
+    "kind": "icon"
+  },
+  "class.beast": {
+    "kind": "glossary"
+  },
+  "icon.class.beast": {
+    "kind": "icon"
+  },
+  "range.melee": {
+    "kind": "glossary"
+  },
+  "icon.range.melee": {
+    "kind": "icon"
+  },
+  "range.ranged": {
+    "kind": "glossary"
+  },
+  "icon.range.ranged": {
+    "kind": "icon"
+  },
+  "trait.none": {
+    "kind": "glossary"
+  },
+  "icon.trait.none": {
+    "kind": "icon"
+  },
+  "trait.undead": {
+    "kind": "glossary"
+  },
+  "icon.trait.undead": {
+    "kind": "icon"
+  },
+  "trait.construct": {
+    "kind": "glossary"
+  },
+  "icon.trait.construct": {
+    "kind": "icon"
+  },
+  "trait.flying": {
+    "kind": "glossary"
+  },
+  "icon.trait.flying": {
+    "kind": "icon"
+  },
+  "trait.demon": {
+    "kind": "glossary"
+  },
+  "icon.trait.demon": {
+    "kind": "icon"
+  },
+  "trait.armored": {
+    "kind": "glossary"
+  },
+  "icon.trait.armored": {
+    "kind": "icon"
+  },
+  "trait.holy": {
+    "kind": "glossary"
+  },
+  "icon.trait.holy": {
+    "kind": "icon"
+  },
+  "trait.poisonous": {
+    "kind": "glossary"
+  },
+  "icon.trait.poisonous": {
+    "kind": "icon"
+  },
+  "trait.demonic": {
+    "kind": "glossary"
+  },
+  "icon.trait.demonic": {
+    "kind": "icon"
+  },
+  "rarity.common": {
+    "kind": "glossary"
+  },
+  "icon.rarity.common": {
+    "kind": "icon"
+  },
+  "rarity.uncommon": {
+    "kind": "glossary"
+  },
+  "icon.rarity.uncommon": {
+    "kind": "icon"
+  },
+  "rarity.rare": {
+    "kind": "glossary"
+  },
+  "icon.rarity.rare": {
+    "kind": "icon"
+  },
+  "rarity.legendary": {
+    "kind": "glossary"
+  },
+  "icon.rarity.legendary": {
+    "kind": "icon"
+  },
+  "rarity.mythic": {
+    "kind": "glossary"
+  },
+  "icon.rarity.mythic": {
+    "kind": "icon"
+  },
+  "rarity.shadow": {
+    "kind": "glossary"
+  },
+  "icon.rarity.shadow": {
+    "kind": "icon"
+  },
+  "slot.helmet": {
+    "kind": "glossary"
+  },
+  "icon.slot.helmet": {
+    "kind": "icon"
+  },
+  "slot.ring": {
+    "kind": "glossary"
+  },
+  "icon.slot.ring": {
+    "kind": "icon"
+  },
+  "slot.cloak": {
+    "kind": "glossary"
+  },
+  "icon.slot.cloak": {
+    "kind": "icon"
+  },
+  "resource.coins": {
+    "kind": "glossary"
+  },
+  "icon.resource.coins": {
+    "kind": "icon"
+  },
+  "resource.shards": {
+    "kind": "glossary"
+  },
+  "icon.resource.shards": {
+    "kind": "icon"
+  },
+  "resource.food": {
+    "kind": "glossary"
+  },
+  "icon.resource.food": {
+    "kind": "icon"
+  },
+  "resource.summon_ticket": {
+    "kind": "glossary"
+  },
+  "icon.resource.summon_ticket": {
+    "kind": "icon"
+  },
+  "resource.reward_shields": {
+    "kind": "glossary"
+  },
+  "icon.resource.reward_shields": {
+    "kind": "icon"
+  },
+  "resource.mythic_fragments": {
+    "kind": "glossary"
+  },
+  "icon.resource.mythic_fragments": {
+    "kind": "icon"
+  },
+  "resource.equipment_chest": {
+    "kind": "glossary"
+  },
+  "icon.resource.equipment_chest": {
+    "kind": "icon"
+  },
+  "section.adventures": {
+    "kind": "glossary"
+  },
+  "icon.section.adventures": {
+    "kind": "icon"
+  },
+  "section.heroarea": {
+    "kind": "glossary"
+  },
+  "icon.section.heroarea": {
+    "kind": "icon"
+  },
+  "section.gacha": {
+    "kind": "glossary"
+  },
+  "icon.section.gacha": {
+    "kind": "icon"
+  },
+  "section.fair": {
+    "kind": "glossary"
+  },
+  "icon.section.fair": {
+    "kind": "icon"
+  },
+  "section.more": {
+    "kind": "glossary"
+  },
+  "icon.section.more": {
+    "kind": "icon"
+  },
+  "section.character": {
+    "kind": "glossary"
+  },
+  "icon.section.character": {
+    "kind": "icon"
+  },
+  "section.collection": {
+    "kind": "glossary"
+  },
+  "icon.section.collection": {
+    "kind": "icon"
+  },
+  "section.equipment": {
+    "kind": "glossary"
+  },
+  "icon.section.equipment": {
+    "kind": "icon"
+  },
+  "section.inventory": {
+    "kind": "glossary"
+  },
+  "icon.section.inventory": {
+    "kind": "icon"
+  },
+  "section.mythic": {
+    "kind": "glossary"
+  },
+  "icon.section.mythic": {
+    "kind": "icon"
+  },
+  "section.shop": {
+    "kind": "glossary"
+  },
+  "icon.section.shop": {
+    "kind": "icon"
+  },
+  "section.events": {
+    "kind": "glossary"
+  },
+  "icon.section.events": {
+    "kind": "icon"
+  },
+  "section.village": {
+    "kind": "glossary"
+  },
+  "icon.section.village": {
+    "kind": "icon"
+  },
+  "section.boss": {
+    "kind": "glossary"
+  },
+  "icon.section.boss": {
+    "kind": "icon"
+  },
+  "section.tower": {
+    "kind": "glossary"
+  },
+  "icon.section.tower": {
+    "kind": "icon"
+  },
+  "section.daily": {
+    "kind": "glossary"
+  },
+  "icon.section.daily": {
+    "kind": "icon"
+  },
+  "section.duels": {
+    "kind": "glossary"
+  },
+  "icon.section.duels": {
+    "kind": "icon"
+  },
+  "section.rules": {
+    "kind": "glossary"
+  },
+  "icon.section.rules": {
+    "kind": "icon"
+  },
+  "section.home": {
+    "kind": "glossary"
+  },
+  "icon.section.home": {
+    "kind": "icon"
+  },
+  "job.none": {
+    "kind": "glossary"
+  },
+  "icon.job.none": {
+    "kind": "icon"
+  },
+  "job.mine": {
+    "kind": "glossary"
+  },
+  "icon.job.mine": {
+    "kind": "icon"
+  },
+  "job.market": {
+    "kind": "glossary"
+  },
+  "icon.job.market": {
+    "kind": "icon"
+  },
+  "job.hunt": {
+    "kind": "glossary"
+  },
+  "icon.job.hunt": {
+    "kind": "icon"
+  },
+  "status.announced": {
+    "kind": "glossary"
+  },
+  "icon.status.announced": {
+    "kind": "icon"
+  },
+  "status.ready": {
+    "kind": "glossary"
+  },
+  "icon.status.ready": {
+    "kind": "icon"
+  },
+  "status.fighting": {
+    "kind": "glossary"
+  },
+  "icon.status.fighting": {
+    "kind": "icon"
+  },
+  "status.cancelled": {
+    "kind": "glossary"
+  },
+  "icon.status.cancelled": {
+    "kind": "icon"
+  },
+  "status.defeated": {
+    "kind": "glossary"
+  },
+  "icon.status.defeated": {
+    "kind": "icon"
+  },
+  "status.failed": {
+    "kind": "glossary"
+  },
+  "icon.status.failed": {
+    "kind": "icon"
+  },
+  "rps.saint": {
+    "kind": "glossary"
+  },
+  "icon.rps.saint": {
+    "kind": "icon"
+  },
+  "rps.demon": {
+    "kind": "glossary"
+  },
+  "icon.rps.demon": {
+    "kind": "icon"
+  },
+  "rps.villager": {
+    "kind": "glossary"
+  },
+  "icon.rps.villager": {
+    "kind": "icon"
+  },
+  "presentation.feature_descriptions.armored": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.undead": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.construct": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.flying": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.poisonous": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.holy": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.feature_descriptions.demonic": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.undead": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.armored": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.construct": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.flying": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.poisonous": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.holy": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.demonic": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.trait_descriptions.demon": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.unknown_faction": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.overview": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.start.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.start.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.heroes.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.heroes.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.bosses.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.bosses.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.factions.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.factions.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.tower.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.tower.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.equipment.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.equipment.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.money.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.money.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.village.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.village.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.duels.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.duels.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.streak.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.streak.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "onboarding.starter_message": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.item": {
+    "kind": "text",
+    "parameters": [
+      "bonus",
+      "name",
+      "slot"
+    ],
+    "limit": 256,
+    "prefix": "[{bonus}] "
+  },
+  "heroes.filter.rarity": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.filter.faction": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.filter.class": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.filter.damage": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.filter.range": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.filter.trait": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.launcher_text.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 4096
+  },
+  "handlers.launch_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 4096
+  },
+  "handlers.minicreate_handler.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.character_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.launch_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.create_help_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.minipanel_handler.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.minipanel_handler.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.minipanel_handler.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.launch_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.launch_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.mini_handler.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 4096
+  },
+  "handlers.minicreate_handler.line_02": {
+    "kind": "text",
+    "parameters": [
+      "character_name"
+    ],
+    "limit": 4096
+  },
+  "handlers.minicreate_handler.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.minicreate_handler.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "handlers.create_help_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.create_help_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.create_help_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.create_help_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.navigation.back": {
+    "kind": "icon"
+  },
+  "navigation.back": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.back"
+  },
+  "handlers.launch_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.launch_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "handlers.minicreate_handler.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.handlers.launcher_menu.line_01": {
+    "kind": "icon"
+  },
+  "handlers.launcher_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.handlers.launcher_menu.line_01"
+  },
+  "icon.handlers.create_menu.line_01": {
+    "kind": "icon"
+  },
+  "handlers.create_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.handlers.create_menu.line_01"
+  },
+  "icon.handlers.create_help_callback.line_06": {
+    "kind": "icon"
+  },
+  "handlers.create_help_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.handlers.create_help_callback.line_06"
+  },
+  "presentation.hero_heading.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2",
+      "value_3"
+    ],
+    "limit": 4096
+  },
+  "presentation.faction_label.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.format_player_mention.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "presentation.tag_label.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "coins_earned",
+      "currency_name"
+    ],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "streak",
+      "days",
+      "value_3",
+      "value_4"
+    ],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_03": {
+    "kind": "text",
+    "parameters": [
+      "prefix",
+      "streak_line",
+      "story_text",
+      "rare_line",
+      "reward_line",
+      "balance"
+    ],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_07": {
+    "kind": "text",
+    "parameters": [
+      "coins_earned"
+    ],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "activities.daily_callback.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "activities.rules_section_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "activities.daily_callback.line_14": {
+    "kind": "text",
+    "parameters": [
+      "error"
+    ],
+    "limit": 200
+  },
+  "general.back": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "icon.navigation.inventory": {
+    "kind": "icon"
+  },
+  "navigation.inventory": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.inventory"
+  },
+  "context.validate_callback_location.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "context.validate_callback_location.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "context.load_extended_context.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_extended_context.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_extended_context.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_extended_context.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_personal_context.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_personal_context.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_personal_context.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.load_personal_context.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.shop_context.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.shop_context.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.shop_context.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "context.shop_context.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.format_shard_sell.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "shards",
+      "balance"
+    ],
+    "limit": 4096
+  },
+  "heroes.format_collection.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.format_collection.line_02": {
+    "kind": "text",
+    "parameters": [
+      "owned",
+      "total_active",
+      "active_text",
+      "coins",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "heroes.format_collection.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.format_gacha.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "heroes.format_gacha.line_02": {
+    "kind": "text",
+    "parameters": [
+      "pull_price",
+      "tickets",
+      "coins",
+      "shards",
+      "luck_line",
+      "value_6",
+      "value_7",
+      "value_8",
+      "value_9",
+      "owned",
+      "total"
+    ],
+    "limit": 4096
+  },
+  "heroes.collection_open_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_share_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_upgrade_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "stars",
+      "old_attack",
+      "attack"
+    ],
+    "limit": 200
+  },
+  "heroes.shard_sell_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "coins_earned"
+    ],
+    "limit": 200
+  },
+  "heroes.hero_active_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "icon.heroes.gacha_menu.line_01": {
+    "kind": "icon"
+  },
+  "heroes.gacha_menu.line_01": {
+    "kind": "text",
+    "parameters": [
+      "pull_price"
+    ],
+    "limit": 256,
+    "icon_key": "icon.heroes.gacha_menu.line_01"
+  },
+  "icon.heroes.gacha_menu.line_02": {
+    "kind": "icon"
+  },
+  "heroes.gacha_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.heroes.gacha_menu.line_02"
+  },
+  "icon.heroes.gacha_menu.line_03": {
+    "kind": "icon"
+  },
+  "heroes.gacha_menu.line_03": {
+    "kind": "text",
+    "parameters": [
+      "tickets"
+    ],
+    "limit": 256,
+    "icon_key": "icon.heroes.gacha_menu.line_03"
+  },
+  "icon.heroes.gacha_menu.line_04": {
+    "kind": "icon"
+  },
+  "heroes.gacha_menu.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.heroes.gacha_menu.line_04"
+  },
+  "icon.navigation.home": {
+    "kind": "icon"
+  },
+  "navigation.home": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.home"
+  },
+  "icon.navigation.collection": {
+    "kind": "icon"
+  },
+  "navigation.collection": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.collection"
+  },
+  "heroes.handle_gacha_pull.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_share_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_share_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_card_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_shards_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.shard_sell_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.favorite_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.heroes.shard_sell_menu.line_01": {
+    "kind": "icon"
+  },
+  "heroes.shard_sell_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.heroes.shard_sell_menu.line_01"
+  },
+  "heroes.collection_open_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_share_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_share_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_card_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_upgrade_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_shards_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.shard_sell_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_active_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.shard_sell_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "heroes.shard_sell_menu.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "heroes.shard_sell_menu.line_04": {
+    "kind": "text",
+    "parameters": [
+      "shards",
+      "shards_2"
+    ],
+    "limit": 256
+  },
+  "heroes.hero_card_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_upgrade_callback.line_03": {
+    "kind": "text",
+    "parameters": [
+      "stars",
+      "old_attack",
+      "attack"
+    ],
+    "limit": 200
+  },
+  "heroes.shard_sell_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "heroes.hero_active_callback.line_03": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 200
+  },
+  "heroes.favorite_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.heroes.favorite_callback.line_03": {
+    "kind": "icon"
+  },
+  "heroes.favorite_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.heroes.favorite_callback.line_03"
+  },
+  "hero_cards.hero_caption.line_01": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_02": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_share_caption.line_01": {
+    "kind": "text",
+    "parameters": [
+      "sharer",
+      "name",
+      "value_3"
+    ],
+    "limit": 4096
+  },
+  "hero_cards.show_gacha_pull_result.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 4096
+  },
+  "hero_cards.show_gacha_pull_result.line_02": {
+    "kind": "text",
+    "parameters": [
+      "shards_awarded"
+    ],
+    "limit": 4096
+  },
+  "hero_cards.hero_caption.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_05": {
+    "kind": "text",
+    "parameters": [
+      "rarity"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_06": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_07": {
+    "kind": "text",
+    "parameters": [
+      "balance"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_09": {
+    "kind": "text",
+    "parameters": [
+      "next_star",
+      "upgrade_cost"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_10": {
+    "kind": "text",
+    "parameters": [
+      "shards_awarded"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_11": {
+    "kind": "text",
+    "parameters": [
+      "copies",
+      "shards"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_share_caption.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_cards.hero_caption.line_16": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "hero_cards.hero_caption.line_18": {
+    "kind": "text",
+    "parameters": [
+      "cost_coins"
+    ],
+    "limit": 512
+  },
+  "icon.hero_cards.hero_card_menu.line_02": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_02"
+  },
+  "icon.hero_cards.hero_card_menu.line_03": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_03"
+  },
+  "icon.hero_cards.hero_card_menu.line_04": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_04"
+  },
+  "icon.hero_cards.hero_card_menu.line_05": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_05"
+  },
+  "hero_cards.show_gacha_pull_result.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.hero_cards.hero_card_menu.line_08": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_08": {
+    "kind": "text",
+    "parameters": [
+      "next_star",
+      "upgrade_cost"
+    ],
+    "limit": 256,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_08"
+  },
+  "icon.hero_cards.hero_card_menu.line_09": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_09"
+  },
+  "icon.hero_cards.hero_card_menu.line_10": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_10"
+  },
+  "icon.hero_cards.hero_card_menu.line_11": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_11"
+  },
+  "icon.hero_cards.hero_card_menu.line_12": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_12"
+  },
+  "icon.hero_cards.hero_card_menu.line_13": {
+    "kind": "icon"
+  },
+  "hero_cards.hero_card_menu.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_cards.hero_card_menu.line_13"
+  },
+  "icon.hero_cards.profile_menu.line_03": {
+    "kind": "icon"
+  },
+  "hero_cards.profile_menu.line_03": {
+    "kind": "text",
+    "parameters": [
+      "upgrade_cost"
+    ],
+    "limit": 256,
+    "icon_key": "icon.hero_cards.profile_menu.line_03"
+  },
+  "hero_selector.hero_label.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.hero_selector.render_selector.line_04": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_04"
+  },
+  "icon.hero_selector.render_selector.line_05": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_05"
+  },
+  "icon.hero_selector.render_selector.line_06": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_06"
+  },
+  "hero_selector.render_selector.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.hero_selector.render_selector.line_11": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_11"
+  },
+  "hero_selector.render_selector.line_12": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "hero_selector.selector_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.hero_selector.render_selector.line_14": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_14"
+  },
+  "icon.hero_selector.render_selector.line_15": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_15"
+  },
+  "icon.hero_selector.render_selector.line_16": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_16"
+  },
+  "icon.hero_selector.render_selector.line_17": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_17"
+  },
+  "icon.hero_selector.render_selector.line_19": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_19": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_19"
+  },
+  "hero_selector.render_selector.line_20": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "hero_selector.render_selector.line_21": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.hero_selector.render_selector.line_22": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_22": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_22"
+  },
+  "icon.hero_selector.render_selector.line_23": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_23": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_23"
+  },
+  "icon.hero_selector.render_selector.line_24": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_24": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_24"
+  },
+  "icon.hero_selector.render_selector.line_25": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_25": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_25"
+  },
+  "hero_selector.render_selector.line_26": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "icon.hero_selector.render_selector.line_27": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_27": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_27"
+  },
+  "icon.hero_selector.render_selector.line_28": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_28": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_28"
+  },
+  "icon.hero_selector.render_selector.line_29": {
+    "kind": "icon"
+  },
+  "hero_selector.render_selector.line_29": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.hero_selector.render_selector.line_29"
+  },
+  "home.home_content.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "home.home_content.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "home.home_content.line_03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "home.home_content.line_04": {
+    "kind": "text",
+    "parameters": [
+      "coins",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "icon.home.player_menu.line_01": {
+    "kind": "icon"
+  },
+  "home.player_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.home.player_menu.line_01"
+  },
+  "icon.home.player_menu.line_02": {
+    "kind": "icon"
+  },
+  "home.player_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.home.player_menu.line_02"
+  },
+  "icon.gacha.summon": {
+    "kind": "icon"
+  },
+  "gacha.summon": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.gacha.summon"
+  },
+  "icon.home.player_menu.line_04": {
+    "kind": "icon"
+  },
+  "home.player_menu.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.home.player_menu.line_04"
+  },
+  "icon.home.player_menu.line_05": {
+    "kind": "icon"
+  },
+  "home.player_menu.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.home.player_menu.line_05"
+  },
+  "inventory.format_wallet.line_01": {
+    "kind": "text",
+    "parameters": [
+      "currency_name",
+      "coins",
+      "value_3"
+    ],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_03": {
+    "kind": "text",
+    "parameters": [
+      "coins"
+    ],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_04": {
+    "kind": "text",
+    "parameters": [
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "inventory.format_wallet_history.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_items_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_items_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_item_pick_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2",
+      "value_3",
+      "quantity"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "amount",
+      "coins"
+    ],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.format_inventory.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.inventory.inventory_menu.line_01": {
+    "kind": "icon"
+  },
+  "inventory.inventory_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.inventory_menu.line_01"
+  },
+  "inventory.format_wallet_history.line_02": {
+    "kind": "text",
+    "parameters": [
+      "sign",
+      "amount",
+      "reason",
+      "balance_after"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_pick_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "value_2",
+      "admin"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "amount",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.inventory.inventory_menu.line_02": {
+    "kind": "icon"
+  },
+  "inventory.inventory_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.inventory_menu.line_02"
+  },
+  "inventory.use_item_confirm_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_05": {
+    "kind": "text",
+    "parameters": [
+      "admin",
+      "who",
+      "title"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_08": {
+    "kind": "text",
+    "parameters": [
+      "charges"
+    ],
+    "limit": 4096
+  },
+  "icon.inventory.use_items_menu.line_01": {
+    "kind": "icon"
+  },
+  "inventory.use_items_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.use_items_menu.line_01"
+  },
+  "inventory.use_item_pick_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_pick_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_pick_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.navigation.shop": {
+    "kind": "icon"
+  },
+  "navigation.shop": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.shop"
+  },
+  "icon.inventory.use_items_menu.line_02": {
+    "kind": "icon"
+  },
+  "inventory.use_items_menu.line_02": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "suffix"
+    ],
+    "limit": 256,
+    "icon_key": "icon.inventory.use_items_menu.line_02"
+  },
+  "icon.inventory.use_items_menu.line_03": {
+    "kind": "icon"
+  },
+  "inventory.use_items_menu.line_03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 256,
+    "icon_key": "icon.inventory.use_items_menu.line_03"
+  },
+  "inventory.use_item_pick_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_12": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "who",
+      "title",
+      "purchase_id"
+    ],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "inventory.use_item_confirm_callback.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.inventory.use_item_confirm_menu.line_01": {
+    "kind": "icon"
+  },
+  "inventory.use_item_confirm_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.use_item_confirm_menu.line_01"
+  },
+  "icon.inventory.use_item_confirm_menu.line_02": {
+    "kind": "icon"
+  },
+  "inventory.use_item_confirm_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.use_item_confirm_menu.line_02"
+  },
+  "icon.inventory.item_use_result_menu.line_01": {
+    "kind": "icon"
+  },
+  "inventory.item_use_result_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.item_use_result_menu.line_01"
+  },
+  "icon.inventory.item_use_result_menu.line_02": {
+    "kind": "icon"
+  },
+  "inventory.item_use_result_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.inventory.item_use_result_menu.line_02"
+  },
+  "inventory.use_item_confirm_callback.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "inventory.use_item_confirm_callback.line_18": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "registration.name_message.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "registration.start_private.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "registration.name_message.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "shop.shop_category_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_category_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "value_2",
+      "coins"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_buy_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "shop.shop_buy_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "shop.shop_main_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "shop.shop_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "coins",
+      "currency_name"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_item_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "bought",
+      "max_per_player"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_item_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "stock"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_buy_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "shop.shop_buy_callback.line_04": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "price",
+      "balance",
+      "delivery_text"
+    ],
+    "limit": 4096
+  },
+  "shop.shop_category_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "shop.shop_item_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "shop.shop_item_callback.line_04": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "description",
+      "price",
+      "coins"
+    ],
+    "limit": 4096
+  },
+  "icon.shop.shop_category_menu.line_01": {
+    "kind": "icon"
+  },
+  "shop.shop_category_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.shop.shop_category_menu.line_01"
+  },
+  "shop.shop_item_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "shop.shop_buy_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "shop.shop_category_menu.line_02": {
+    "kind": "text",
+    "parameters": [
+      "title",
+      "price"
+    ],
+    "limit": 256
+  },
+  "icon.shop.shop_item_menu.line_01": {
+    "kind": "icon"
+  },
+  "shop.shop_item_menu.line_01": {
+    "kind": "text",
+    "parameters": [
+      "price"
+    ],
+    "limit": 256,
+    "icon_key": "icon.shop.shop_item_menu.line_01"
+  },
+  "icon.shop.shop_item_menu.line_02": {
+    "kind": "icon"
+  },
+  "shop.shop_item_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.shop.shop_item_menu.line_02"
+  },
+  "icon.shop.shop_after_purchase_menu.line_03": {
+    "kind": "icon"
+  },
+  "shop.shop_after_purchase_menu.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.shop.shop_after_purchase_menu.line_03"
+  },
+  "summons.batch_screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "summons.batch_screen.line_02": {
+    "kind": "text",
+    "parameters": [
+      "cost_coins",
+      "balance"
+    ],
+    "limit": 4096
+  },
+  "summons.batch_screen.line_03": {
+    "kind": "text",
+    "parameters": [
+      "shards_awarded"
+    ],
+    "limit": 4096
+  },
+  "summons.coupon_screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "summons.coupon_screen.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "summons.batch_screen.line_04": {
+    "kind": "text",
+    "parameters": [
+      "shards_awarded"
+    ],
+    "limit": 4096
+  },
+  "summons.batch_screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.summons.batch_screen.line_06": {
+    "kind": "icon"
+  },
+  "summons.batch_screen.line_06": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "name"
+    ],
+    "limit": 256,
+    "icon_key": "icon.summons.batch_screen.line_06"
+  },
+  "icon.summons.batch_screen.line_07": {
+    "kind": "icon"
+  },
+  "summons.batch_screen.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.summons.batch_screen.line_07"
+  },
+  "summons.batch_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "summons.batch_result_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.summons.coupon_screen.line_05": {
+    "kind": "icon"
+  },
+  "summons.coupon_screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.summons.coupon_screen.line_05"
+  },
+  "summons.coupon_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.navigation.equipment": {
+    "kind": "icon"
+  },
+  "navigation.equipment": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.navigation.equipment"
+  },
+  "equipment.render_equipment.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.equipment_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "equipment.render_equipment.line_06": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "equipment.equip": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "equipment.unequip": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "equipment.render_equipment.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "equipment.render_equipment.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "equipment.render_equipment.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "tower.render_state.line_01": {
+    "kind": "text",
+    "parameters": [
+      "floor",
+      "TOTAL_FLOORS"
+    ],
+    "limit": 4096
+  },
+  "tower.enemy_lines.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_03": {
+    "kind": "text",
+    "parameters": [
+      "current_hp",
+      "max_hp"
+    ],
+    "limit": 4096
+  },
+  "tower.render_state.line_04": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "tower.render_state.line_05": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "tower.render_state.line_06": {
+    "kind": "text",
+    "parameters": [
+      "shields"
+    ],
+    "limit": 4096
+  },
+  "tower.render_state.line_07": {
+    "kind": "text",
+    "parameters": [
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "tower.enemy_lines.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_09": {
+    "kind": "text",
+    "parameters": [
+      "equipment_bonus"
+    ],
+    "limit": 4096
+  },
+  "tower.render_state.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_12": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "attack_bonus"
+    ],
+    "limit": 4096
+  },
+  "tower.tower_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "tower.render_state.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_state.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.tower.render_state.line_19": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_19": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_19"
+  },
+  "tower.render_state.line_20": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.tower_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "tower.render_hero_selection.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.tower.render_state.line_21": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_21": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_21"
+  },
+  "icon.tower.render_state.line_22": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_22": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_22"
+  },
+  "icon.tower.render_state.line_23": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_23": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_23"
+  },
+  "icon.tower.render_state.line_24": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_24": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_24"
+  },
+  "icon.tower.render_state.line_25": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_25": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_25"
+  },
+  "icon.tower.render_state.line_26": {
+    "kind": "icon"
+  },
+  "tower.render_state.line_26": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_state.line_26"
+  },
+  "village.screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_02": {
+    "kind": "text",
+    "parameters": [
+      "houses",
+      "value_2",
+      "capacity",
+      "hunt",
+      "consumption",
+      "mine",
+      "stopped",
+      "market",
+      "stopped_9",
+      "hunt_10",
+      "coins",
+      "shards",
+      "value_13",
+      "value_14"
+    ],
+    "limit": 4096
+  },
+  "village.screen.line_03": {
+    "kind": "text",
+    "parameters": [
+      "houses",
+      "value_2",
+      "capacity",
+      "hunt",
+      "consumption",
+      "mine",
+      "stopped",
+      "market",
+      "stopped_9",
+      "hunt_10",
+      "coins",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "village.screen.line_04": {
+    "kind": "text",
+    "parameters": [
+      "label",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "village.screen.line_05": {
+    "kind": "text",
+    "parameters": [
+      "houses",
+      "value_2",
+      "capacity"
+    ],
+    "limit": 4096
+  },
+  "village.screen.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_08": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "village.action.line_01": {
+    "kind": "text",
+    "parameters": [
+      "coins",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "icon.village.screen.line_09": {
+    "kind": "icon"
+  },
+  "village.screen.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_09"
+  },
+  "icon.village.screen.line_10": {
+    "kind": "icon"
+  },
+  "village.screen.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_10"
+  },
+  "icon.village.screen.line_11": {
+    "kind": "icon"
+  },
+  "village.screen.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_11"
+  },
+  "icon.village.screen.line_12": {
+    "kind": "icon"
+  },
+  "village.screen.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_12"
+  },
+  "icon.village.screen.line_13": {
+    "kind": "icon"
+  },
+  "village.screen.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_13"
+  },
+  "village.screen.line_14": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "pages"
+    ],
+    "limit": 4096
+  },
+  "village.action.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.village.screen.line_17": {
+    "kind": "icon"
+  },
+  "village.screen.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_17"
+  },
+  "icon.village.screen.line_18": {
+    "kind": "icon"
+  },
+  "village.screen.line_18": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_18"
+  },
+  "icon.village.screen.line_19": {
+    "kind": "icon"
+  },
+  "village.screen.line_19": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_19"
+  },
+  "village.screen.line_20": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_21": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.village.screen.line_24": {
+    "kind": "icon"
+  },
+  "village.screen.line_24": {
+    "kind": "text",
+    "parameters": [
+      "next_price"
+    ],
+    "limit": 256,
+    "icon_key": "icon.village.screen.line_24"
+  },
+  "village.screen.line_25": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "village.screen.line_26": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "village.screen.line_27": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_28": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_29": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.village.screen.line_31": {
+    "kind": "icon"
+  },
+  "village.screen.line_31": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_31"
+  },
+  "icon.village.screen.line_32": {
+    "kind": "icon"
+  },
+  "village.screen.line_32": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_32"
+  },
+  "village.screen.line_33": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_34": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "village.screen.line_35": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "village.screen.line_36": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "village.screen.line_37": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.village.screen.line_38": {
+    "kind": "icon"
+  },
+  "village.screen.line_38": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.village.screen.line_38"
+  },
+  "events.balance.line_01": {
+    "kind": "text",
+    "parameters": [
+      "coins",
+      "shards"
+    ],
+    "limit": 4096
+  },
+  "events.screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.screen.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_01": {
+    "kind": "text",
+    "parameters": [
+      "stake"
+    ],
+    "limit": 4096
+  },
+  "events.session_screen.line_02": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2",
+      "result"
+    ],
+    "limit": 4096
+  },
+  "events.screen.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_03": {
+    "kind": "text",
+    "parameters": [
+      "step"
+    ],
+    "limit": 4096
+  },
+  "events.session_screen.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.events.screen.line_04": {
+    "kind": "icon"
+  },
+  "events.screen.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.screen.line_04"
+  },
+  "icon.events.screen.line_05": {
+    "kind": "icon"
+  },
+  "events.screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.screen.line_05"
+  },
+  "events.screen.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_07": {
+    "kind": "text",
+    "parameters": [
+      "stake"
+    ],
+    "limit": 4096
+  },
+  "events.session_screen.line_08": {
+    "kind": "text",
+    "parameters": [
+      "stake"
+    ],
+    "limit": 4096
+  },
+  "events.session_screen.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.event_game_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "events.event_game_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "icon.events.screen.line_09": {
+    "kind": "icon"
+  },
+  "events.screen.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.screen.line_09"
+  },
+  "events.session_screen.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "events.session_screen.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.events.session_screen.line_12": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_12"
+  },
+  "icon.events.session_screen.line_13": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_13"
+  },
+  "icon.events.session_screen.line_14": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_14"
+  },
+  "icon.events.session_screen.line_15": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_15"
+  },
+  "icon.events.session_screen.line_16": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_16"
+  },
+  "icon.events.session_screen.line_17": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_17"
+  },
+  "icon.events.session_screen.line_18": {
+    "kind": "icon"
+  },
+  "events.session_screen.line_18": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.session_screen.line_18"
+  },
+  "events.event_game_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.events.screen.line_10": {
+    "kind": "icon"
+  },
+  "events.screen.line_10": {
+    "kind": "text",
+    "parameters": [
+      "stake"
+    ],
+    "limit": 256,
+    "icon_key": "icon.events.screen.line_10"
+  },
+  "icon.events.screen.line_11": {
+    "kind": "icon"
+  },
+  "events.screen.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.screen.line_11"
+  },
+  "icon.events.screen.line_12": {
+    "kind": "icon"
+  },
+  "events.screen.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.events.screen.line_12"
+  },
+  "duels.screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_02": {
+    "kind": "text",
+    "parameters": [
+      "id",
+      "name",
+      "value_3",
+      "left"
+    ],
+    "limit": 4096
+  },
+  "duels.screen.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.public_challenge_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_15": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "attack"
+    ],
+    "limit": 256
+  },
+  "duels.screen.line_16": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_17": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_18": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_19": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_20": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "duels.screen.line_21": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.screen.line_22": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "duels.action.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "mythic.screen.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "mythic.screen.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "mythic.screen.line_03": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "fragments",
+      "fragment_cost"
+    ],
+    "limit": 4096
+  },
+  "mythic.screen.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "mythic.screen.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "mythic.screen.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "mythic.screen.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "titles.supertitle_handler.line_01": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "tower.render_selection.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2",
+      "max_hp"
+    ],
+    "limit": 4096
+  },
+  "tower.render_selection.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_selection.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_selection.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_selection.line_07": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "tower.render_selection.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "tower.render_selection.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "tower.render_selection.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "icon.tower.render_selection.line_12": {
+    "kind": "icon"
+  },
+  "tower.render_selection.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_selection.line_12"
+  },
+  "icon.tower.render_selection.line_13": {
+    "kind": "icon"
+  },
+  "tower.render_selection.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_selection.line_13"
+  },
+  "icon.tower.render_selection.line_14": {
+    "kind": "icon"
+  },
+  "tower.render_selection.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_selection.line_14"
+  },
+  "icon.tower.render_selection.line_15": {
+    "kind": "icon"
+  },
+  "tower.render_selection.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.tower.render_selection.line_15"
+  },
+  "boss.publish_admin_victory.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.participant_label.line_01": {
+    "kind": "text",
+    "parameters": [
+      "battle_attack"
+    ],
+    "limit": 4096
+  },
+  "boss.format_participants.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.participant_mention.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.reward_line.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_public_boss.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_02": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "value_2"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_04": {
+    "kind": "text",
+    "parameters": [
+      "feature_text"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_05": {
+    "kind": "text",
+    "parameters": [
+      "coins",
+      "value_2"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_06": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_turn.line_01": {
+    "kind": "text",
+    "parameters": [
+      "current_round"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_02": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "current_hp",
+      "max_hp"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_03": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2",
+      "value_3"
+    ],
+    "limit": 4096
+  },
+  "boss.reward_line.line_02": {
+    "kind": "text",
+    "parameters": [
+      "coins"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_boss.line_07": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2",
+      "value_3"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_turn.line_04": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2",
+      "value_3",
+      "value_4",
+      "value_5"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_boss.line_08": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_turn.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.participant_label.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_public_boss.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_turn.line_07": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_08": {
+    "kind": "text",
+    "parameters": [
+      "skip_after_hours"
+    ],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_10": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "icon.boss.public_boss_menu.line_01": {
+    "kind": "icon"
+  },
+  "boss.public_boss_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.public_boss_menu.line_01"
+  },
+  "boss.format_public_boss.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_12": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 512
+  },
+  "boss.format_public_turn.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_public_turn.line_12": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "icon.boss.join": {
+    "kind": "icon"
+  },
+  "boss.join": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.join"
+  },
+  "icon.boss.leave": {
+    "kind": "icon"
+  },
+  "boss.leave": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.leave"
+  },
+  "boss.format_public_boss.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "boss.format_public_boss.line_15": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 512
+  },
+  "icon.boss.attack": {
+    "kind": "icon"
+  },
+  "boss.attack": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.attack"
+  },
+  "icon.boss.public_turn_menu.line_02": {
+    "kind": "icon"
+  },
+  "boss.public_turn_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.public_turn_menu.line_02"
+  },
+  "boss.boss_start_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_hit_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "attacker",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_start_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "who"
+    ],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_02": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_force_finish_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_09": {
+    "kind": "text",
+    "parameters": [
+      "shields"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_force_finish_callback.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_11": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_hit_callback.line_12": {
+    "kind": "text",
+    "parameters": [
+      "damage",
+      "suffix"
+    ],
+    "limit": 200
+  },
+  "boss.boss_start_callback.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_hit_callback.line_13": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "boss.boss_hit_callback.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.admin_action_context.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.admin_action_context.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.admin_action_context.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.admin_action_context.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.show_boss_home.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.admin_action_context.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.show_boss_home.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.selection_details.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_private_boss.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_private_boss.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.format_private_boss.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "icon.boss.boss_private_menu.line_01": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_01"
+  },
+  "icon.boss.boss_private_menu.line_02": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_02"
+  },
+  "icon.boss.no_boss_menu.line_01": {
+    "kind": "icon"
+  },
+  "boss.no_boss_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.no_boss_menu.line_01"
+  },
+  "icon.boss.template_menu.line_01": {
+    "kind": "icon"
+  },
+  "boss.template_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.template_menu.line_01"
+  },
+  "icon.boss.boss_private_menu.line_03": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_03"
+  },
+  "icon.boss.boss_private_menu.line_04": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_04"
+  },
+  "boss.boss_private_menu.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128
+  },
+  "icon.boss.boss_private_menu.line_06": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_06"
+  },
+  "icon.boss.boss_private_menu.line_07": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_07"
+  },
+  "icon.boss.boss_private_menu.line_08": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_08"
+  },
+  "icon.boss.boss_private_menu.line_09": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_09"
+  },
+  "icon.boss.no_boss_menu.line_02": {
+    "kind": "icon"
+  },
+  "boss.no_boss_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.no_boss_menu.line_02"
+  },
+  "icon.boss.template_menu.line_02": {
+    "kind": "icon"
+  },
+  "boss.template_menu.line_02": {
+    "kind": "text",
+    "parameters": [
+      "name",
+      "max_hp"
+    ],
+    "limit": 256,
+    "icon_key": "icon.boss.template_menu.line_02"
+  },
+  "icon.boss.boss_private_menu.line_10": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_10"
+  },
+  "icon.boss.boss_private_menu.line_11": {
+    "kind": "icon"
+  },
+  "boss.boss_private_menu.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.boss_private_menu.line_11"
+  },
+  "icon.boss.preview_menu.line_01": {
+    "kind": "icon"
+  },
+  "boss.preview_menu.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.preview_menu.line_01"
+  },
+  "icon.boss.preview_menu.line_02": {
+    "kind": "icon"
+  },
+  "boss.preview_menu.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 128,
+    "icon_key": "icon.boss.preview_menu.line_02"
+  },
+  "boss.hero_selection_context.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.hero_selection_context.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.hero_selection_context.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.hero_selection_context.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.hero_selection_context.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_select_hero_callback.line_01": {
+    "kind": "text",
+    "parameters": [
+      "name"
+    ],
+    "limit": 200
+  },
+  "boss.hero_selection_context.line_06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "boss.boss_heroes_callback.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.target.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_01": {
+    "kind": "text",
+    "parameters": [
+      "target"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_02": {
+    "kind": "text",
+    "parameters": [
+      "target"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_04": {
+    "kind": "text",
+    "parameters": [
+      "target"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_06": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_09": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_11": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_12": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_13": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.boss_event_line.line_14": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.timeout_event_lines.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "boss.reward_event_lines.line_01": {
+    "kind": "text",
+    "parameters": [
+      "shields"
+    ],
+    "limit": 4096
+  },
+  "boss.reward_event_lines.line_02": {
+    "kind": "text",
+    "parameters": [
+      "effective_reward_percent"
+    ],
+    "limit": 4096
+  },
+  "boss.reward_event_lines.line_03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 4096
+  },
+  "boss.reward_event_lines.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "pity.format_progress.line_01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "pity.format_progress.line_02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "pity.format_progress.line_03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "pity.format_progress.line_04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "pity.format_progress.line_05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "notifications.publish_pending_notifications.line_01": {
+    "kind": "text",
+    "parameters": [
+      "character_name",
+      "value_2"
+    ],
+    "limit": 4096
+  },
+  "notifications.publish_pending_notifications.line_02": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "title"
+    ],
+    "limit": 4096
+  },
+  "general.player": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096,
+    "parse_mode": null
+  },
+  "duels.mention": {
+    "kind": "text",
+    "parameters": [
+      "uid",
+      "name"
+    ],
+    "limit": 4096,
+    "parse_mode": "HTML"
+  },
+  "duels.challenge": {
+    "kind": "text",
+    "parameters": [
+      "challenger"
+    ],
+    "limit": 4096,
+    "parse_mode": "HTML"
+  },
+  "duels.challenge_details": {
+    "kind": "text",
+    "parameters": [
+      "duel_id"
+    ],
+    "limit": 4096,
+    "parse_mode": "HTML"
+  },
+  "errors.admin_grants.grant_mini_coins.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_coins_all.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item_all.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero_all.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item.03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item.04": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero.03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero_all.02": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_hero_all.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.admin_grants.grant_mini_item_all.02": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.availability.assert_available.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.availability.assert_available.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.availability.assert_not_committed.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.availability.assert_not_committed.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.availability.assert_not_committed.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.daily.normalize_claim_date.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.daily.claim_daily.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.daily.claim_daily.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.favorites.valid.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.favorites.add_favorite.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.favorites.replace_favorite.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.favorites.save_order.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.choose_hero_code.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_pull.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_pull.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.get_gacha_batch.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_batch.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.get_gacha_state.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_batch.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_batch.03": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.gacha.perform_gacha_batch.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.05": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.06": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.gacha.perform_pull_in_transaction.07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.heroes.set_active_hero_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.upgrade_cost_from_settings.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.sell_hero_shards.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.sell_hero_shards.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.upgrade_hero.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.upgrade_hero.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.upgrade_hero.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.upgrade_hero.04": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 200
+  },
+  "errors.hero_upgrades.sell_hero_shards.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.hero_upgrades.sell_hero_shards.04": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.items.grant_item_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.mark_certificate_requested.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.mark_certificate_requested.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.use_inventory_item.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.use_inventory_item.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.use_inventory_item.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.items.use_inventory_item.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.validate_character_name.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.validate_character_name.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.validate_character_name.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.validate_character_name.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.create_mini_player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.create_mini_player.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.players.create_mini_player.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.registration.begin.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.registration.activate.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.registration.complete.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.registration.complete.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shards.change_shards_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shards.change_shards_in_transaction.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.05": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.shop.purchase_offer.08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.get_balance.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance_in_transaction.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance_in_transaction.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance_in_transaction.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.change_balance.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.add_coins.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.wallet.spend_coins.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.worlds.register_mini_world.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.get_combat_state.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.start_battle.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.start_battle.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.start_battle.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.force_finish_battle.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.force_finish_battle.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.05": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.boss.combat.hit_boss.06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.start_battle.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.advance_expired_turns.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.advance_expired_turns.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.combat.advance_expired_turns.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.repository.apply_boss_effects.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.repository.apply_boss_effects.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.rewards.grant_victory_rewards.01": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.boss.runtime.advance_after_turn.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.create_boss_event.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.close_registration.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.reopen_registration.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.cancel_boss.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.create_boss_event.02": {
+    "kind": "text",
+    "parameters": [
+      "value_1"
+    ],
+    "limit": 200
+  },
+  "errors.boss.service.create_boss_event.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.register_player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.register_player.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.register_player.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.register_player.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.unregister_player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.unregister_player.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.close_registration.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.close_registration.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.close_registration.04": {
+    "kind": "text",
+    "parameters": [
+      "value_1",
+      "value_2"
+    ],
+    "limit": 200
+  },
+  "errors.boss.service.reopen_registration.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.reopen_registration.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.cancel_boss.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.cancel_boss.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.select_battle_hero.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.service.select_battle_hero.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.boss.ui.publish_boss.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.combat.resolve.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.handlers.screen.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.handlers.action.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.challenge.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.challenge.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.challenge.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.challenge.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.challenge.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.duels.service.act.06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.effects.builtins.coin_pouch.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.effects.builtins.shard_casket.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.effects.builtins.rarity_coupon.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.handlers.equipment_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.handlers.equipment_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.service.grant_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.service.remove_in_transaction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.service.unequip.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.equipment.service.equip.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.screen.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.event_game_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.event_game_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.event_game_callback.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.event_game_callback.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.handlers.event_game_callback.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.rps_outcome.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.session.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.start.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.start.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.resolve_rps.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.choose_direction.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.repeat_session.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.resolve_rps.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.events.service.choose_direction.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.handlers.action.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.mythic.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.grant_mythic_fragments.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.craft_by_id.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.craft.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.craft.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.mythic.service.grant_mythic_fragments.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.access.require_superadmin.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.world.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.hero.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.hero.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.hero.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.item.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.hero.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.item.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.item.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.mutate_player.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.superadmin.service.execute.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.handlers.supertitle_handler.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.parse_duration.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.validate_title.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.validate_title.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.parse_command.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.issue_title.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.issue_title.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.get_title_target.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.parse_command.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.titles.service.issue_title.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.handlers.tower_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.handlers.tower_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.handlers.tower_callback.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.handlers.tower_callback.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.selection.render_selection.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.selection.b.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.selection.render_selection.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.selection.render_selection.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.selection.render_selection.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.select_hero.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.select_hero.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.start_attempt.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.start_attempt.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.start_attempt.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.attack.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.attack.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.retry_attempt.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.retry_attempt.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.select_hero.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.tower.service.start_attempt.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.context.personal_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.heroes.hero_card_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.heroes.shard_sell_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.heroes.favorite_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.heroes.favorite_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.heroes.favorite_callback.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_cards.button.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.decode.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.decode.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.render_selector.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.decode.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.nav.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.selector_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.selector_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.selector_callback.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.selector_callback.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.selector_callback.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.render_selector.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.hero_selector.render_selector.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.state.remember.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.state.remember.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.state.remember.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.state.restore.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.state.split_context.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.summons.batch_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.summons.batch_result_callback.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.ui.summons.batch_result_callback.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.screen.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.action.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.action.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.screen.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.action.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.action.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.action.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.handlers.screen.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.timestamp.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.settle.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.previous.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.activate_boost.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.timestamp.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.previous.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.01": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.02": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.03": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.04": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.05": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.06": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.07": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.08": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.09": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "errors.village.service.mutate.10": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  },
+  "effect.rarity_coupon_uncommon.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.rarity_coupon_rare.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.rarity_coupon_legendary.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.spirit_lantern.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.spirit_lantern.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.village_gold_boost.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.village_shards_boost.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.tower_equipment_chest.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.gacha_ticket.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.gacha_luck.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.gacha_luck.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_damage_boost.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_damage_boost.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_phantom_participation.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_phantom_participation.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_coin_pouch.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.boss_shard_casket.description": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 1024
+  },
+  "effect.unconfigured": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 200
+  }
+}

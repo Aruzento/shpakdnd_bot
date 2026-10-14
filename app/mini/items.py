@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.effects.contracts import ItemEffectContext, ItemUseError
 from app.mini.effects.registry import EFFECT_GACHA_TICKET, EFFECT_GACHA_LUCK, EFFECT_BOSS_DAMAGE, EFFECT_BOSS_PHANTOM, EFFECT_COIN_POUCH, EFFECT_SHARD_CASKET, get_effect, effect_description, active_effect_title
 from app.mini.wallet import change_balance_in_transaction
@@ -195,10 +196,10 @@ def mark_certificate_requested(
         ).fetchone()
         if row is None:
             conn.rollback()
-            raise ItemUseError("Сертификат не найден.")
+            raise ItemUseError(editorial_text('errors.items.mark_certificate_requested.01'))
         if row["status"] != "active":
             conn.rollback()
-            raise ItemUseError("Этот сертификат уже использован или отправлен мастеру.")
+            raise ItemUseError(editorial_text('errors.items.mark_certificate_requested.02'))
 
         conn.execute(
             """
@@ -264,7 +265,7 @@ def use_inventory_item(
         previous = _load_previous_use(conn, player_id, operation_key)
         if previous is not None:
             if previous.get('item_id')!=int(item_id):
-                raise ItemUseError('Ключ уже использован для другого предмета.')
+                raise ItemUseError(editorial_text('errors.items.use_inventory_item.04'))
             conn.commit()
             return previous
 
@@ -291,16 +292,16 @@ def use_inventory_item(
         ).fetchone()
         if row is None:
             conn.rollback()
-            raise ItemUseError("Этого предмета больше нет в инвентаре.")
+            raise ItemUseError(editorial_text('errors.items.use_inventory_item.01'))
 
         effect_key = str(row["effect_key"] or "").strip()
         if effect_key == EFFECT_GACHA_TICKET:
             conn.rollback()
-            raise ItemUseError("Билет призыва используется через крутку героя.")
+            raise ItemUseError(editorial_text('errors.items.use_inventory_item.02'))
 
         definition = get_effect(effect_key)
         if definition is None or definition.handler is None:
-            raise ItemUseError("У этого предмета пока нет используемого эффекта.")
+            raise ItemUseError(editorial_text('errors.items.use_inventory_item.03'))
 
         conn.execute(
             """
@@ -372,7 +373,7 @@ def grant_item_in_transaction(conn, player_id, code, quantity):
         raise ValueError('Выдача предмета требует транзакции и положительного количества.')
     row=conn.execute('SELECT id FROM mini_items WHERE code=?',(code,)).fetchone()
     if row is None:
-        raise ValueError('Предмет не найден.')
+        raise ValueError(editorial_text('errors.items.grant_item_in_transaction.01'))
     conn.execute("""INSERT INTO mini_inventory(player_id,item_id,quantity,updated_at)
         VALUES(?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(player_id,item_id) DO UPDATE SET
         quantity=mini_inventory.quantity+excluded.quantity,updated_at=CURRENT_TIMESTAMP""",

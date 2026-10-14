@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.presentation import format_player_mention
 from app.mini.boss.errors import BossCombatError
 from app.mini.boss.clock import db_time
@@ -345,7 +346,7 @@ def advance_after_turn(
                 (int(boss["id"]),),
             ).fetchone()
             if next_row is None:
-                raise BossCombatError("У босса нет активных участников.")
+                raise BossCombatError(editorial_text('errors.boss.runtime.advance_after_turn.01'))
             conn.execute(
                 "UPDATE mini_bosses SET current_round = current_round + 1 WHERE id = ?",
                 (int(boss["id"]),),
@@ -368,4 +369,3 @@ def advance_after_turn(
                 "reward_events": reward_events, "forced_skip_events": forced_events,
             }
         forced_events.append(consume_forced_skip(conn, boss, current, when))
-

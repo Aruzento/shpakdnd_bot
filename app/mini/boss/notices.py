@@ -1,36 +1,41 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.presentation import format_player_mention
 """Combat notices shared by hit callbacks, home recovery and the watcher."""
 from app.mini.presentation import faction_label
 
 
+
+@editorial_screen
 def _target(event: dict, participants: list[dict]) -> str:
     player_id = event.get("player_id")
     row = next((p for p in participants if p.get("player_id") == player_id), {})
-    return format_player_mention(row) if row else "участника"
+    return format_player_mention(row) if row else editorial_text('boss.target.line_01')
 
 
+@editorial_screen
 def boss_event_line(event: dict, participants: list[dict]) -> str:
     target = _target(event, participants)
     kind = event.get("type")
     lines = {
-        "paralysis": f"⚡ Босс парализовал {target}: следующий ход будет пропущен.",
-        "paralysis_skip": f"⏭ {target} пропускает ход из-за паралича. Эффект снят.",
-        "critical_strike": "💥 Критический удар: босс атакует награду дважды.",
-        "banishment": f"🚪 Босс изгнал {target} до конца боя.",
-        "banishment_no_target": "🚪 Изгнание: подходящей цели нет — последний участник остаётся.",
-        "shapeshifter": f"🔄 Босс сменил фракцию: {faction_label(event.get('faction'))}.",
-        "shapeshifter_unchanged": "🔄 Перевёртыш не сработал: фракция босса осталась прежней.",
-        "rapier": "🗡 Рапира: босс ударил по награде, обойдя щиты.",
-        "hydra_regeneration": f"💚 Гидра восстановила {int(event.get('healed_hp', 0))} HP.",
-        "kamikaze_destroyed_reward": "💥 Взрыв босса уничтожил награду: бой проигран.",
-        "kamikaze_absorbed": "🛡 Щиты поглотили взрыв босса: победа сохранена.",
-        "magic_shield_activated": "🔮 Босс активировал магический щит.",
-        "magic_shield_removed": "🔮 Магический герой снял щит. Эта атака не наносит HP-урона.",
-        "magic_shield_blocked": "🔮 Магический щит заблокировал HP-урон.",
+        "paralysis": editorial_text('boss.boss_event_line.line_01', target=f'{target}'),
+        "paralysis_skip": editorial_text('boss.boss_event_line.line_02', target=f'{target}'),
+        "critical_strike": editorial_text('boss.boss_event_line.line_03'),
+        "banishment": editorial_text('boss.boss_event_line.line_04', target=f'{target}'),
+        "banishment_no_target": editorial_text('boss.boss_event_line.line_05'),
+        "shapeshifter": editorial_text('boss.boss_event_line.line_06', value_1=f"{faction_label(event.get('faction'))}"),
+        "shapeshifter_unchanged": editorial_text('boss.boss_event_line.line_07'),
+        "rapier": editorial_text('boss.boss_event_line.line_08'),
+        "hydra_regeneration": editorial_text('boss.boss_event_line.line_09', value_1=f"{int(event.get('healed_hp', 0))}"),
+        "kamikaze_destroyed_reward": editorial_text('boss.boss_event_line.line_10'),
+        "kamikaze_absorbed": editorial_text('boss.boss_event_line.line_11'),
+        "magic_shield_activated": editorial_text('boss.boss_event_line.line_12'),
+        "magic_shield_removed": editorial_text('boss.boss_event_line.line_13'),
+        "magic_shield_blocked": editorial_text('boss.boss_event_line.line_14'),
     }
     return lines.get(kind, str(event.get("message") or ""))
 
 
+@editorial_screen
 def reward_event_lines(event: dict) -> list[str]:
     # The outer event summarizes the last attack; attacks preserve both hits.
     attacks = event.get("attacks") or [event]
@@ -40,13 +45,13 @@ def reward_event_lines(event: dict) -> list[str]:
         if kind == "reward_guard":
             lines.append(str(attack["guard_event"]["message"]))
         elif kind == "shield":
-            lines.append(f"🛡 Босс разбил щит награды. Осталось: {attack['shields']}.")
+            lines.append(editorial_text('boss.reward_event_lines.line_01', shields=f"{attack['shields']}"))
             if attack.get("poisonous"):
-                lines.append(f"☠️ Яд повредил награду через щит: {attack['effective_reward_percent']}% запаса.")
+                lines.append(editorial_text('boss.reward_event_lines.line_02', effective_reward_percent=f"{attack['effective_reward_percent']}"))
         elif kind == "reward_damage":
-            lines.append(f"💎 Состояние награды: {attack.get('display_reward_percent',attack['reward_percent'])}%.")
+            lines.append(editorial_text('boss.reward_event_lines.line_03', value_1=f"{attack.get('display_reward_percent', attack['reward_percent'])}"))
         elif kind == "boss_skip":
-            lines.append("🎵 Босс пропустил весь ход.")
+            lines.append(editorial_text('boss.reward_event_lines.line_04'))
         for passive in attack.get("passive_events", []):
             who = format_player_mention(passive)
             if passive.get("message"):
@@ -54,6 +59,7 @@ def reward_event_lines(event: dict) -> list[str]:
     return lines
 
 
+@editorial_screen
 def combat_event_lines(result: dict) -> list[str]:
     participants = result.get("state", {}).get("participants", [])
     lines = []
@@ -75,8 +81,9 @@ def combat_event_lines(result: dict) -> list[str]:
     return lines
 
 
+@editorial_screen
 def timeout_event_lines(result: dict) -> list[str]:
     labels = [format_player_mention(row) for row in result.get("skipped", [])]
-    lines = ["⏭ По таймеру пропущен ход: " + ", ".join(labels)] if labels else []
+    lines = [editorial_text('boss.timeout_event_lines.line_01') + ", ".join(labels)] if labels else []
     lines.extend(combat_event_lines({key: value for key, value in result.items() if key != "timeout_result"}))
     return lines

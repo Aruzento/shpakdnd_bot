@@ -1,0 +1,20 @@
+{
+  "effect.rarity_coupon_uncommon.description": "Один случайный активный необычный герой; не изменяет гарант 10/25/85.",
+  "effect.rarity_coupon_rare.description": "Один случайный активный редкий герой; не изменяет гарант 10/25/85.",
+  "effect.rarity_coupon_legendary.description": "Один случайный активный легендарный герой; не изменяет гарант 10/25/85.",
+  "effect.spirit_lantern.description": "Гарантированный Arise в следующем подходящем бою: нужна победа и хотя бы один удар.",
+  "effect.spirit_lantern.title": "🏮 Гарант Arise — следующий подходящий бой",
+  "effect.village_gold_boost.description": "Рынок +25% на 8 часов; повтор продлевает срок.",
+  "effect.village_shards_boost.description": "Шахта +25% на 8 часов; повтор продлевает срок.",
+  "effect.tower_equipment_chest.description": "Случайная экипировка Испытаний.",
+  "effect.gacha_ticket.description": "Одна крутка героя без монет.",
+  "effect.gacha_luck.description": "Следующая крутка получает усиленные веса редкостей: легендарные +10%, редкие +30%.",
+  "effect.gacha_luck.title": "🍀 Удача — следующая крутка",
+  "effect.boss_damage_boost.description": "Следующий бой с боссом: весь твой итоговый урон после пассивки героя +10%.",
+  "effect.boss_damage_boost.title": "🧪 Урон +10% — следующий бой",
+  "effect.boss_phantom_participation.description": "Следующий бой с боссом: получишь награду даже если не нанесёшь ни одного удара.",
+  "effect.boss_phantom_participation.title": "👻 Фантомное участие — следующий бой",
+  "effect.boss_coin_pouch.description": "Открывается и даёт от 10 до 30 монет.",
+  "effect.boss_shard_casket.description": "Открывается и даёт от 10 до 30 осколков.",
+  "effect.unconfigured": "Эффект предмета не настроен."
+}

@@ -1,0 +1,4 @@
+{
+  "notifications.publish_pending_notifications.line_01": "🎉 Приветствуем нового героя: {character_name} — {value_2}",
+  "notifications.publish_pending_notifications.line_02": "{value_1} больше не \"{title}\". Какая жалость.."
+}

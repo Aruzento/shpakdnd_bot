@@ -1,4 +1,7 @@
+
 """Exact-rarity independent counters for standard pulls only."""
+from app.mini.editorial.registry import LiveMapping
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 LIMITS = {'uncommon': 10, 'rare': 25, 'legendary': 85}
 
 
@@ -20,8 +23,9 @@ def advance(conn, player_id, counts, rarity):
     return updated
 
 
+@editorial_screen
 def format_progress(counts):
-    labels = {'uncommon': '🟢 Необычный', 'rare': '🔵 Редкий', 'legendary': '🟡 Легендарный'}
-    return '🎴 Гарант призыва\n' + '\n'.join(
-        f'{labels[key]}: {counts.get(key, 0)}/{limit}' + (' — гарант готов' if counts.get(key, 0) >= limit else '')
+    labels = LiveMapping({key: "rarity."+key for key in LIMITS}, terms=True, decorated=True)
+    return editorial_text('pity.format_progress.line_04') + '\n'.join(
+        f'{labels[key]}: {counts.get(key, 0)}/{limit}' + (editorial_text('pity.format_progress.line_05') if counts.get(key, 0) >= limit else '')
         for key, limit in LIMITS.items())

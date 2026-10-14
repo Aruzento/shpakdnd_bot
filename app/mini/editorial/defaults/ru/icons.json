@@ -1,0 +1,802 @@
+{
+  "icon.faction.commoners": {
+    "custom_emoji_id": null,
+    "fallback": "🧑"
+  },
+  "icon.faction.beasts": {
+    "custom_emoji_id": null,
+    "fallback": "🐾"
+  },
+  "icon.faction.monsters": {
+    "custom_emoji_id": null,
+    "fallback": "👾"
+  },
+  "icon.faction.warriors": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.faction.dark": {
+    "custom_emoji_id": null,
+    "fallback": "🌑"
+  },
+  "icon.faction.neutral": {
+    "custom_emoji_id": null,
+    "fallback": "⚖️"
+  },
+  "icon.damage.slashing": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.damage.piercing": {
+    "custom_emoji_id": null,
+    "fallback": "🗡"
+  },
+  "icon.damage.bludgeoning": {
+    "custom_emoji_id": null,
+    "fallback": "🔨"
+  },
+  "icon.damage.magic": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.class.none": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.magical": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.technical": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.martial": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.warrior": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.guardian": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.mage": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.ranger": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.sneaky": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.healer": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.class.beast": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.range.melee": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.range.ranged": {
+    "custom_emoji_id": null,
+    "fallback": "🏹"
+  },
+  "icon.trait.none": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.undead": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.construct": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.flying": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.demon": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.armored": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.holy": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.poisonous": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.trait.demonic": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.rarity.common": {
+    "custom_emoji_id": null,
+    "fallback": "⚪"
+  },
+  "icon.rarity.uncommon": {
+    "custom_emoji_id": null,
+    "fallback": "🟢"
+  },
+  "icon.rarity.rare": {
+    "custom_emoji_id": null,
+    "fallback": "🟣"
+  },
+  "icon.rarity.legendary": {
+    "custom_emoji_id": null,
+    "fallback": "🟡"
+  },
+  "icon.rarity.mythic": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.rarity.shadow": {
+    "custom_emoji_id": null,
+    "fallback": "🌑"
+  },
+  "icon.slot.helmet": {
+    "custom_emoji_id": null,
+    "fallback": "🪖"
+  },
+  "icon.slot.ring": {
+    "custom_emoji_id": null,
+    "fallback": "💍"
+  },
+  "icon.slot.cloak": {
+    "custom_emoji_id": null,
+    "fallback": "🧥"
+  },
+  "icon.resource.coins": {
+    "custom_emoji_id": null,
+    "fallback": "🪙"
+  },
+  "icon.resource.shards": {
+    "custom_emoji_id": null,
+    "fallback": "🧩"
+  },
+  "icon.resource.food": {
+    "custom_emoji_id": null,
+    "fallback": "🍗"
+  },
+  "icon.resource.summon_ticket": {
+    "custom_emoji_id": null,
+    "fallback": "🎟"
+  },
+  "icon.resource.reward_shields": {
+    "custom_emoji_id": null,
+    "fallback": "🛡"
+  },
+  "icon.resource.mythic_fragments": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.resource.equipment_chest": {
+    "custom_emoji_id": null,
+    "fallback": "🎁"
+  },
+  "icon.section.adventures": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.section.heroarea": {
+    "custom_emoji_id": null,
+    "fallback": "🧙"
+  },
+  "icon.section.gacha": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.section.fair": {
+    "custom_emoji_id": null,
+    "fallback": "🎪"
+  },
+  "icon.section.more": {
+    "custom_emoji_id": null,
+    "fallback": "📖"
+  },
+  "icon.section.character": {
+    "custom_emoji_id": null,
+    "fallback": "👤"
+  },
+  "icon.section.collection": {
+    "custom_emoji_id": null,
+    "fallback": "📚"
+  },
+  "icon.section.equipment": {
+    "custom_emoji_id": null,
+    "fallback": "🛡"
+  },
+  "icon.section.inventory": {
+    "custom_emoji_id": null,
+    "fallback": "🎒"
+  },
+  "icon.section.mythic": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.section.shop": {
+    "custom_emoji_id": null,
+    "fallback": "🛒"
+  },
+  "icon.section.events": {
+    "custom_emoji_id": null,
+    "fallback": "🎪"
+  },
+  "icon.section.village": {
+    "custom_emoji_id": null,
+    "fallback": "🏘"
+  },
+  "icon.section.boss": {
+    "custom_emoji_id": null,
+    "fallback": "🔥"
+  },
+  "icon.section.tower": {
+    "custom_emoji_id": null,
+    "fallback": "🏰"
+  },
+  "icon.section.daily": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.section.duels": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.section.rules": {
+    "custom_emoji_id": null,
+    "fallback": "📖"
+  },
+  "icon.section.home": {
+    "custom_emoji_id": null,
+    "fallback": "🔄"
+  },
+  "icon.job.none": {
+    "custom_emoji_id": null,
+    "fallback": ""
+  },
+  "icon.job.mine": {
+    "custom_emoji_id": null,
+    "fallback": "⛏"
+  },
+  "icon.job.market": {
+    "custom_emoji_id": null,
+    "fallback": "🏪"
+  },
+  "icon.job.hunt": {
+    "custom_emoji_id": null,
+    "fallback": "🏹"
+  },
+  "icon.status.announced": {
+    "custom_emoji_id": null,
+    "fallback": "🟢"
+  },
+  "icon.status.ready": {
+    "custom_emoji_id": null,
+    "fallback": "🟡"
+  },
+  "icon.status.fighting": {
+    "custom_emoji_id": null,
+    "fallback": "🔴"
+  },
+  "icon.status.cancelled": {
+    "custom_emoji_id": null,
+    "fallback": "⚫"
+  },
+  "icon.status.defeated": {
+    "custom_emoji_id": null,
+    "fallback": "🏆"
+  },
+  "icon.status.failed": {
+    "custom_emoji_id": null,
+    "fallback": "💀"
+  },
+  "icon.rps.saint": {
+    "custom_emoji_id": null,
+    "fallback": "😇"
+  },
+  "icon.rps.demon": {
+    "custom_emoji_id": null,
+    "fallback": "😈"
+  },
+  "icon.rps.villager": {
+    "custom_emoji_id": null,
+    "fallback": "🧑"
+  },
+  "icon.navigation.back": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.handlers.launcher_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "🎮"
+  },
+  "icon.handlers.create_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "👤"
+  },
+  "icon.handlers.create_help_callback.line_06": {
+    "custom_emoji_id": null,
+    "fallback": "👤"
+  },
+  "icon.navigation.inventory": {
+    "custom_emoji_id": null,
+    "fallback": "🎒"
+  },
+  "icon.heroes.gacha_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "🪙"
+  },
+  "icon.heroes.gacha_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.heroes.gacha_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "🎟"
+  },
+  "icon.heroes.gacha_menu.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "🎟"
+  },
+  "icon.navigation.home": {
+    "custom_emoji_id": null,
+    "fallback": "🏠"
+  },
+  "icon.navigation.collection": {
+    "custom_emoji_id": null,
+    "fallback": "📚"
+  },
+  "icon.heroes.shard_sell_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.heroes.favorite_callback.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.hero_cards.hero_card_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.hero_cards.hero_card_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "📣"
+  },
+  "icon.hero_cards.hero_card_menu.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "🪙"
+  },
+  "icon.hero_cards.hero_card_menu.line_05": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.hero_cards.hero_card_menu.line_08": {
+    "custom_emoji_id": null,
+    "fallback": "⬆️"
+  },
+  "icon.hero_cards.hero_card_menu.line_09": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.hero_cards.hero_card_menu.line_10": {
+    "custom_emoji_id": null,
+    "fallback": "☆"
+  },
+  "icon.hero_cards.hero_card_menu.line_11": {
+    "custom_emoji_id": null,
+    "fallback": "⭐"
+  },
+  "icon.hero_cards.hero_card_menu.line_12": {
+    "custom_emoji_id": null,
+    "fallback": "💱"
+  },
+  "icon.hero_cards.hero_card_menu.line_13": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.hero_cards.profile_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "⬆️"
+  },
+  "icon.hero_selector.render_selector.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "⭐"
+  },
+  "icon.hero_selector.render_selector.line_05": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.hero_selector.render_selector.line_06": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_11": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.hero_selector.render_selector.line_14": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.hero_selector.render_selector.line_15": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_16": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.hero_selector.render_selector.line_17": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_19": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_22": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_23": {
+    "custom_emoji_id": null,
+    "fallback": "🔄"
+  },
+  "icon.hero_selector.render_selector.line_24": {
+    "custom_emoji_id": null,
+    "fallback": "🔎"
+  },
+  "icon.hero_selector.render_selector.line_25": {
+    "custom_emoji_id": null,
+    "fallback": "🔄"
+  },
+  "icon.hero_selector.render_selector.line_27": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.hero_selector.render_selector.line_28": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.hero_selector.render_selector.line_29": {
+    "custom_emoji_id": null,
+    "fallback": "⬆️"
+  },
+  "icon.home.player_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.home.player_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "🧙"
+  },
+  "icon.gacha.summon": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.home.player_menu.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "🎪"
+  },
+  "icon.home.player_menu.line_05": {
+    "custom_emoji_id": null,
+    "fallback": "📖"
+  },
+  "icon.inventory.inventory_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "🛡"
+  },
+  "icon.inventory.inventory_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.inventory.use_items_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.navigation.shop": {
+    "custom_emoji_id": null,
+    "fallback": "🛒"
+  },
+  "icon.inventory.use_items_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "🎒"
+  },
+  "icon.inventory.use_items_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "🎫"
+  },
+  "icon.inventory.use_item_confirm_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.inventory.use_item_confirm_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.inventory.item_use_result_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "🎒"
+  },
+  "icon.inventory.item_use_result_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.shop.shop_category_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.shop.shop_item_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.shop.shop_item_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.shop.shop_after_purchase_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.summons.batch_screen.line_06": {
+    "custom_emoji_id": null,
+    "fallback": "🎴"
+  },
+  "icon.summons.batch_screen.line_07": {
+    "custom_emoji_id": null,
+    "fallback": "✨"
+  },
+  "icon.summons.coupon_screen.line_05": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.navigation.equipment": {
+    "custom_emoji_id": null,
+    "fallback": "🛡"
+  },
+  "icon.tower.render_state.line_19": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.tower.render_state.line_21": {
+    "custom_emoji_id": null,
+    "fallback": "🔄"
+  },
+  "icon.tower.render_state.line_22": {
+    "custom_emoji_id": null,
+    "fallback": "🔄"
+  },
+  "icon.tower.render_state.line_23": {
+    "custom_emoji_id": null,
+    "fallback": "🎴"
+  },
+  "icon.tower.render_state.line_24": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.tower.render_state.line_25": {
+    "custom_emoji_id": null,
+    "fallback": "🎴"
+  },
+  "icon.tower.render_state.line_26": {
+    "custom_emoji_id": null,
+    "fallback": "➡️"
+  },
+  "icon.village.screen.line_09": {
+    "custom_emoji_id": null,
+    "fallback": "🏠"
+  },
+  "icon.village.screen.line_10": {
+    "custom_emoji_id": null,
+    "fallback": "📦"
+  },
+  "icon.village.screen.line_11": {
+    "custom_emoji_id": null,
+    "fallback": "⛏"
+  },
+  "icon.village.screen.line_12": {
+    "custom_emoji_id": null,
+    "fallback": "🏪"
+  },
+  "icon.village.screen.line_13": {
+    "custom_emoji_id": null,
+    "fallback": "🏹"
+  },
+  "icon.village.screen.line_17": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.village.screen.line_18": {
+    "custom_emoji_id": null,
+    "fallback": "🚪"
+  },
+  "icon.village.screen.line_19": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.village.screen.line_24": {
+    "custom_emoji_id": null,
+    "fallback": "🏠"
+  },
+  "icon.village.screen.line_31": {
+    "custom_emoji_id": null,
+    "fallback": "➕"
+  },
+  "icon.village.screen.line_32": {
+    "custom_emoji_id": null,
+    "fallback": "➖"
+  },
+  "icon.village.screen.line_38": {
+    "custom_emoji_id": null,
+    "fallback": "🚪"
+  },
+  "icon.events.screen.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "😇"
+  },
+  "icon.events.screen.line_05": {
+    "custom_emoji_id": null,
+    "fallback": "🌀"
+  },
+  "icon.events.screen.line_09": {
+    "custom_emoji_id": null,
+    "fallback": "🎲"
+  },
+  "icon.events.session_screen.line_12": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.events.session_screen.line_13": {
+    "custom_emoji_id": null,
+    "fallback": "➡️"
+  },
+  "icon.events.session_screen.line_14": {
+    "custom_emoji_id": null,
+    "fallback": "🔁"
+  },
+  "icon.events.session_screen.line_15": {
+    "custom_emoji_id": null,
+    "fallback": "💰"
+  },
+  "icon.events.session_screen.line_16": {
+    "custom_emoji_id": null,
+    "fallback": "🔁"
+  },
+  "icon.events.session_screen.line_17": {
+    "custom_emoji_id": null,
+    "fallback": "🎪"
+  },
+  "icon.events.session_screen.line_18": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.events.screen.line_10": {
+    "custom_emoji_id": null,
+    "fallback": "🪙"
+  },
+  "icon.events.screen.line_11": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.events.screen.line_12": {
+    "custom_emoji_id": null,
+    "fallback": "🚪"
+  },
+  "icon.tower.render_selection.line_12": {
+    "custom_emoji_id": null,
+    "fallback": "🏰"
+  },
+  "icon.tower.render_selection.line_13": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.tower.render_selection.line_14": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.tower.render_selection.line_15": {
+    "custom_emoji_id": null,
+    "fallback": "✅"
+  },
+  "icon.boss.public_boss_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.boss.join": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.boss.leave": {
+    "custom_emoji_id": null,
+    "fallback": "🚪"
+  },
+  "icon.boss.attack": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.boss.public_turn_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.boss.boss_private_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "👥"
+  },
+  "icon.boss.boss_private_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.boss.no_boss_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.boss.template_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  },
+  "icon.boss.boss_private_menu.line_03": {
+    "custom_emoji_id": null,
+    "fallback": "🎴"
+  },
+  "icon.boss.boss_private_menu.line_04": {
+    "custom_emoji_id": null,
+    "fallback": "🔒"
+  },
+  "icon.boss.boss_private_menu.line_06": {
+    "custom_emoji_id": null,
+    "fallback": "🔓"
+  },
+  "icon.boss.boss_private_menu.line_07": {
+    "custom_emoji_id": null,
+    "fallback": "⚡"
+  },
+  "icon.boss.boss_private_menu.line_08": {
+    "custom_emoji_id": null,
+    "fallback": "📣"
+  },
+  "icon.boss.boss_private_menu.line_09": {
+    "custom_emoji_id": null,
+    "fallback": "❌"
+  },
+  "icon.boss.no_boss_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "➕"
+  },
+  "icon.boss.template_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "👹"
+  },
+  "icon.boss.boss_private_menu.line_10": {
+    "custom_emoji_id": null,
+    "fallback": "🚪"
+  },
+  "icon.boss.boss_private_menu.line_11": {
+    "custom_emoji_id": null,
+    "fallback": "⚔️"
+  },
+  "icon.boss.preview_menu.line_01": {
+    "custom_emoji_id": null,
+    "fallback": "📣"
+  },
+  "icon.boss.preview_menu.line_02": {
+    "custom_emoji_id": null,
+    "fallback": "⬅️"
+  }
+}

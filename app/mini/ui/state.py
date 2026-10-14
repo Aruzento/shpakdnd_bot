@@ -1,4 +1,5 @@
 """Small persistent navigation records; never evaluate UI-map actions/conditions."""
+from app.mini.editorial import text as editorial_text
 import json
 import secrets
 import hashlib
@@ -8,11 +9,11 @@ from app.mini.db import connect_mini_db
 
 
 def remember(player_id,screen,context,db_path=DB_PATH):
-    if screen!='collection':raise ValueError('Неизвестный контекст меню.')
+    if screen!='collection':raise ValueError(editorial_text('errors.ui.state.remember.01'))
     from app.mini.ui.hero_selector import decode
     decode(context['filter'],'c')
-    if context['view'] not in ('home','all','results','collection'):raise ValueError('Неизвестный список.')
-    if type(context['page']) is not int or context['page']<0:raise ValueError('Некорректная страница.')
+    if context['view'] not in ('home','all','results','collection'):raise ValueError(editorial_text('errors.ui.state.remember.02'))
+    if type(context['page']) is not int or context['page']<0:raise ValueError(editorial_text('errors.ui.state.remember.03'))
     token=secrets.token_hex(4)
     with connect_mini_db(db_path) as conn:
         conn.execute('INSERT INTO mini_ui_navigation VALUES(?,?,?,?)',
@@ -29,14 +30,14 @@ def restore(player_id,token,db_path=DB_PATH):
     with connect_mini_db(db_path) as conn:
         row=conn.execute('SELECT context_json FROM mini_ui_navigation WHERE token=? AND player_id=? AND screen=?',
                          (token,int(player_id),'collection')).fetchone()
-    if not row:raise ValueError('Контекст карточки устарел. Открой коллекцию заново.')
+    if not row:raise ValueError(editorial_text('errors.ui.state.restore.01'))
     return json.loads(row[0])
 
 
 def split_context(payload):
     parts=payload.split('~')
     if len(parts)==3 and re.fullmatch(r'[ar]\d+',parts[1]):return parts[0],'~'.join(parts[1:])
-    if len(parts)>2:raise ValueError('Некорректный контекст.')
+    if len(parts)>2:raise ValueError(editorial_text('errors.ui.state.split_context.01'))
     return parts[0],parts[1] if len(parts)==2 else ''
 
 

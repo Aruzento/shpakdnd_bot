@@ -1,4 +1,5 @@
 """Timestamp accrual in 1/(32*3600) resource units; no floats or scheduler."""
+from app.mini.editorial import text as editorial_text
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -17,9 +18,9 @@ BUILDINGS = ('mine', 'market', 'hunt')
 def timestamp(now=None):
     if now is None: return int(datetime.now(timezone.utc).timestamp())
     if isinstance(now, datetime):
-        if now.tzinfo is None: raise ValueError('Требуется datetime с часовым поясом.')
+        if now.tzinfo is None: raise ValueError(editorial_text('errors.village.service.timestamp.02'))
         return int(now.timestamp())
-    if type(now) is not int: raise ValueError('Требуется целое время UTC.')
+    if type(now) is not int: raise ValueError(editorial_text('errors.village.service.timestamp.01'))
     return now
 
 
@@ -46,7 +47,7 @@ def production(conn, player_id, houses):
 def settle(conn, player_id, now):
     if not conn.in_transaction: raise RuntimeError('Village settlement requires a transaction.')
     village = ensure(conn, player_id, now)
-    if now < village['settled_at']: raise ValueError('Время деревни не может идти назад.')
+    if now < village['settled_at']: raise ValueError(editorial_text('errors.village.service.settle.01'))
     start = village['settled_at']
     end = max(start, min(now,village['cycle_started']+CAP_SECONDS))
     rates = production(conn,player_id,village['houses'])
@@ -93,10 +94,10 @@ def get_state(player_id,db_path=DB_PATH,*,now=None):
 
 
 def _previous(conn,pid,key,payload):
-    if not isinstance(key,str) or not key.strip(): raise ValueError('Нужен ключ операции.')
+    if not isinstance(key,str) or not key.strip(): raise ValueError(editorial_text('errors.village.service.previous.01'))
     row=conn.execute('SELECT * FROM mini_village_operations WHERE player_id=? AND operation_key=?',(pid,key)).fetchone()
     if row:
-        if row['payload'] != payload: raise ValueError('Ключ уже использован для другой операции.')
+        if row['payload'] != payload: raise ValueError(editorial_text('errors.village.service.previous.02'))
         return {**json.loads(row['result_json']),'applied':False}
 
 
@@ -110,10 +111,10 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
         if prior: return prior
         v=settle(conn,player_id,now)
         if expected_revision is not None and expected_revision != v['revision']:
-            raise ValueError('Кнопка деревни устарела. Открой меню заново.')
+            raise ValueError(editorial_text('errors.village.service.mutate.01'))
         if action=='buy':
-            if expected_houses is None or expected_houses != v['houses']: raise ValueError('Кнопка покупки устарела.')
-            if v['houses']>=5: raise ValueError('Все дома уже куплены.')
+            if expected_houses is None or expected_houses != v['houses']: raise ValueError(editorial_text('errors.village.service.mutate.02'))
+            if v['houses']>=5: raise ValueError(editorial_text('errors.village.service.mutate.03'))
             change_balance_in_transaction(conn,player_id,-PRICES[v['houses']], 'Покупка дома','village',player_id,'village:'+operation_key)
             conn.execute('UPDATE mini_villages SET houses=houses+1 WHERE player_id=?',(player_id,))
         elif action=='settle':
@@ -121,25 +122,25 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
             assert_available(conn,player_id,hero_id)
             assert_not_committed(conn,player_id,hero_id,now=now)
             count=conn.execute('SELECT COUNT(*) FROM mini_village_residents WHERE player_id=?',(player_id,)).fetchone()[0]
-            if count>=v['houses']*10: raise ValueError('В деревне нет свободных мест.')
+            if count>=v['houses']*10: raise ValueError(editorial_text('errors.village.service.mutate.04'))
             conn.execute('INSERT INTO mini_village_residents(player_id,hero_id) VALUES(?,?)',(player_id,hero_id))
         elif action=='evict':
             if not conn.execute('DELETE FROM mini_village_residents WHERE player_id=? AND hero_id=?',(player_id,hero_id)).rowcount:
-                raise ValueError('Этот герой не живёт в деревне.')
+                raise ValueError(editorial_text('errors.village.service.mutate.05'))
         elif action=='assign':
-            if building not in (*BUILDINGS,None): raise ValueError('Неизвестное производство.')
+            if building not in (*BUILDINGS,None): raise ValueError(editorial_text('errors.village.service.mutate.06'))
             resident=conn.execute('''SELECT v.building FROM mini_village_residents v
                 JOIN mini_player_heroes ph ON ph.player_id=v.player_id AND ph.hero_id=v.hero_id
                 WHERE v.player_id=? AND v.hero_id=?''',(player_id,hero_id)).fetchone()
-            if not resident: raise ValueError('Работник должен принадлежать игроку и жить в деревне.')
+            if not resident: raise ValueError(editorial_text('errors.village.service.mutate.07'))
             if building is not None and resident['building'] is not None and resident['building']!=building:
-                raise ValueError('Герой уже работает. Сначала сними его с производства.')
+                raise ValueError(editorial_text('errors.village.service.mutate.08'))
             if resident['building']==building:
                 result={'applied':False,'action':action,'coins':0,'shards':0,'status':'Герой уже работает здесь.' if building else 'Герой уже не работает.'}
                 conn.execute('INSERT INTO mini_village_operations VALUES(?,?,?,?)',(player_id,operation_key,payload,json.dumps(result)))
                 return result
             if not conn.execute('UPDATE mini_village_residents SET building=? WHERE player_id=? AND hero_id=?',(building,player_id,hero_id)).rowcount:
-                raise ValueError('Работник должен жить в деревне.')
+                raise ValueError(editorial_text('errors.village.service.mutate.09'))
         elif action=='collect':
             coins,shards=v['coins_units']//UNITS,v['shards_units']//UNITS
             if coins: change_balance_in_transaction(conn,player_id,coins,'Производство деревни','village',player_id,'village:'+operation_key)
@@ -148,7 +149,7 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
                 change_shards_in_transaction(conn,player_id,shards)
             conn.execute('UPDATE mini_villages SET coins_units=?,shards_units=?,cycle_started=?,settled_at=? WHERE player_id=?',
                 (v['coins_units']%UNITS,v['shards_units']%UNITS,now,now,player_id))
-        else: raise ValueError('Неизвестное действие деревни.')
+        else: raise ValueError(editorial_text('errors.village.service.mutate.10'))
         conn.execute('UPDATE mini_villages SET revision=revision+1 WHERE player_id=?',(player_id,))
         result={'applied':True,'action':action,'coins':coins if action=='collect' else 0,'shards':shards if action=='collect' else 0}
         conn.execute('INSERT INTO mini_village_operations VALUES(?,?,?,?)',(player_id,operation_key,payload,json.dumps(result)))
@@ -157,7 +158,7 @@ def mutate(player_id,action,db_path=DB_PATH,*,hero_id=None,building=None,expecte
 
 def activate_boost(conn,player_id,resource,*,now=None):
     now=timestamp(now)
-    if resource not in ('coins','shards'): raise ValueError('Неизвестный ресурс усиления.')
+    if resource not in ('coins','shards'): raise ValueError(editorial_text('errors.village.service.activate_boost.01'))
     settle(conn,player_id,now)
     old=conn.execute('SELECT * FROM mini_village_boosts WHERE player_id=? AND resource=?',(player_id,resource)).fetchone()
     start=old['starts_at'] if old and old['ends_at']>now else now

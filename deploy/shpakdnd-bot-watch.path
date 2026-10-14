@@ -31,5 +31,8 @@ PathModified=/opt/shpakdnd-bot/app/mini/village
 PathModified=/opt/shpakdnd-bot/app/mini/duels
 PathModified=/opt/shpakdnd-bot/app/mini/mythic
 
+PathModified=/opt/shpakdnd-bot/app/mini/editorial
+PathModified=/opt/shpakdnd-bot/app/mini/editorial/defaults/ru
+
 [Install]
 WantedBy=multi-user.target

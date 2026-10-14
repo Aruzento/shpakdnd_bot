@@ -1,3 +1,6 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
+from app.mini.editorial.registry import LiveMapping
 import secrets
 
 from app.mini.ui.transport import (
@@ -7,13 +10,15 @@ from app.mini.ui.transport import (
     delete_current_ephemeral as _delete_current_ephemeral,
 )
 from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
-from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup
 from app.mini.presentation import hero_heading, hero_trait_lines, rarity_emoji, TRAIT_DESCRIPTIONS
 from app.mini.gacha import get_gacha_state
 from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
 from app.mini.ui.navigation import clip
 
+
+@editorial_screen
 def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = False) -> str:
     description = clip(hero.get("description", ""), 220 if full else 300)
     passive = clip(hero.get("passive_text", ""), 200 if full else 300)
@@ -21,45 +26,45 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         f"{rarity_emoji(hero.get('rarity'))} {hero_heading(hero)}",
         *hero_trait_lines(hero),
         "",
-        f"⚔️ Урон: {int(hero.get('attack', 1))}",
+        editorial_text('hero_cards.hero_caption.line_01', value_1=f"{int(hero.get('attack', 1))}"),
         "",
-        description or "Без описания.",
+        description or editorial_text('hero_cards.hero_caption.line_03'),
         "",
-        f"💫 Особый эффект: {passive or 'Нет особых способностей.'}",
-        *([f"✨ Свойство: {TRAIT_DESCRIPTIONS[hero['special_trait']]}"]
+        editorial_text('hero_cards.hero_caption.line_02', value_1=f"{passive or 'Нет особых способностей.'}"),
+        *([editorial_text('hero_cards.hero_caption.line_16', value_1=f"{TRAIT_DESCRIPTIONS[hero['special_trait']]}")]
           if hero.get("special_trait") in TRAIT_DESCRIPTIONS else []),
     ]
 
     if full:
-        rarity={'common':'Обычный','uncommon':'Необычный','rare':'Редкий','legendary':'Легендарный','mythic':'Мифический','shadow':'Теневой'}.get(hero.get('rarity'),'Неизвестная редкость')
+        rarity=LiveMapping({key:"rarity."+key for key in ('common', 'uncommon', 'rare', 'legendary', 'mythic', 'shadow')}, terms=True).get(hero.get('rarity'),editorial_text('hero_cards.hero_caption.line_04'))
         upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
-        lines += ['', f"Редкость: {rarity}", f"Копий: {hero.get('copies',1)} · Осколки: {hero.get('shards',0)}",
-                  '⭐ Максимум звёзд' if upgrade['at_max'] else f"Улучшение до ★{upgrade['next_star']}: {upgrade['upgrade_cost']} осколков"]
+        lines += ['', editorial_text('hero_cards.hero_caption.line_05', rarity=f'{rarity}'), editorial_text('hero_cards.hero_caption.line_06', value_1=f"{hero.get('copies', 1)}", value_2=f"{hero.get('shards', 0)}"),
+                  editorial_text('hero_cards.hero_caption.line_08') if upgrade['at_max'] else editorial_text('hero_cards.hero_caption.line_09', next_star=f"{upgrade['next_star']}", upgrade_cost=f"{upgrade['upgrade_cost']}")]
     if pull_result is not None:
         lines.append("")
         if pull_result["is_duplicate"]:
             lines.append(
-                f"♻️ Дубликат: +{pull_result['shards_awarded']} осколков"
+                editorial_text('hero_cards.hero_caption.line_10', shards_awarded=f"{pull_result['shards_awarded']}")
             )
             lines.append(
-                f"Копий: {pull_result['copies']} • Общие осколки: {pull_result['shards']}"
+                editorial_text('hero_cards.hero_caption.line_11', copies=f"{pull_result['copies']}", shards=f"{pull_result['shards']}")
             )
         else:
-            lines.append("🎉 Новый герой добавлен в коллекцию!")
+            lines.append(editorial_text('hero_cards.hero_caption.line_12'))
 
         if pull_result.get('payment') == 'coupon':
-            lines.append('🎟 Потрачено: 1 купон целевой редкости')
+            lines.append(editorial_text('hero_cards.hero_caption.line_13'))
         elif pull_result["used_ticket"]:
-            lines.append("🎟 Потрачено: 1 билет призыва")
+            lines.append(editorial_text('hero_cards.hero_caption.line_17'))
         else:
-            lines.append(f"🪙 Потрачено: {pull_result['cost_coins']}")
+            lines.append(editorial_text('hero_cards.hero_caption.line_18', cost_coins=f"{pull_result['cost_coins']}"))
 
         if pull_result.get("luck_used"):
-            lines.append("🍀 Зелье удачи сработало на эту крутку.")
+            lines.append(editorial_text('hero_cards.hero_caption.line_14'))
 
-        lines.append(f"💰 Баланс: {pull_result['balance']}")
+        lines.append(editorial_text('hero_cards.hero_caption.line_07', balance=f"{pull_result['balance']}"))
         if pull_result["auto_activated"]:
-            lines.append("⭐ Первый герой автоматически выбран активным.")
+            lines.append(editorial_text('hero_cards.hero_caption.line_15'))
 
     caption = "\n".join(lines)
     if pull_result is not None and pull_result.get('pity') is not None:
@@ -69,59 +74,62 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
     return caption[:1020]
 
 
+@editorial_screen
 def hero_share_caption(hero: dict, sharer: str) -> str:
     description = clip(hero.get("description", ""), 760)
-    sharer = (sharer or "Игрок").strip()
+    sharer = (sharer or editorial_text('hero_cards.hero_share_caption.line_02')).strip()
     return (
-        f"{sharer}: «Смотри, что мне выпало: {hero['name']}!»\n\n"
-        f"{description or 'Без описания.'}"
+        editorial_text('hero_cards.hero_share_caption.line_01', sharer=f'{sharer}', name=f"{hero['name']}", value_3=f"{description or 'Без описания.'}")
     )[:1020]
 
 
+@editorial_screen
 def profile_menu(world,user,hero):
     rows=[]
     if hero:
         upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
         if not upgrade['at_max']:
-            rows.append([InlineKeyboardButton(text=f"⬆️ Улучшить · {upgrade['upgrade_cost']} 🧩",
+            rows.append([InlineKeyboardButton(text=editorial_text('hero_cards.profile_menu.line_03', upgrade_cost=f"{upgrade['upgrade_cost']}"),
                 callback_data=f"mini:heroupgrade:{world}:{user}:{hero['id']}.{int(hero.get('stars',0))}.p")])
-    rows.append([InlineKeyboardButton(text='🏠 Главная',callback_data=f'mini:home:{world}:{user}'),
-                 InlineKeyboardButton(text='⬅️ Назад',callback_data=f'mini:heroarea:{world}:{user}')])
+    rows.append([InlineKeyboardButton(text=editorial_text('navigation.home'),callback_data=f'mini:home:{world}:{user}'),
+                 InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=f'mini:heroarea:{world}:{user}')])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def hero_card_menu(world_id,user_id,hero,state,*,allow_share=False,collection=False,favorite=False,
                    nav_token='',return_callback=None,profile=False):
     if profile:return profile_menu(world_id,user_id,hero)
     token=secrets.token_hex(4)
     def button(text,action,tail=None):
         data=f'mini:{action}:{world_id}:{user_id}'+(':'+tail if tail is not None else '')
-        if len(data.encode())>64:raise ValueError('Слишком длинная кнопка.')
+        if len(data.encode())>64:raise ValueError(editorial_text('errors.ui.hero_cards.button.01'))
         return InlineKeyboardButton(text=text,callback_data=data)
     suffix=('~'+nav_token) if nav_token else ''
     rows=[];upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
     active=not int(hero.get('is_active',0))
     if collection:
         if not upgrade['at_max']:
-            rows.append([button(f"⬆️ Улучшить · ⭐{upgrade['next_star']} · {upgrade['upgrade_cost']} 🧩",
+            rows.append([button(editorial_text('hero_cards.hero_card_menu.line_08', next_star=f"{upgrade['next_star']}", upgrade_cost=f"{upgrade['upgrade_cost']}"),
                 'heroupgrade',f"{hero['id']}.{int(hero.get('stars',0))}.c{suffix}")])
-        if active:rows.append([button('✅ Сделать активным','heroactive',f"{hero['id']}.c{suffix}")])
-        rows.append([button('☆ Убрать из избранного' if favorite else '⭐ Сделать избранным','favorite',
+        if active:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_09'),'heroactive',f"{hero['id']}.c{suffix}")])
+        rows.append([button(editorial_text('hero_cards.hero_card_menu.line_10') if favorite else editorial_text('hero_cards.hero_card_menu.line_11'),'favorite',
                             f"{'remove' if favorite else 'add'}.{hero['id']}{suffix}")])
-        if int(hero.get('shards',0))>0:rows.append([button('💱 Продать осколки','heroshards',str(hero['id'])+suffix)])
-        rows.append([button('📚 Коллекция','collectionopen','0')])
-        if nav_token:rows.append([button('⬅️ К списку','collectionback',nav_token)])
+        if int(hero.get('shards',0))>0:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_12'),'heroshards',str(hero['id'])+suffix)])
+        rows.append([button(editorial_text('navigation.collection'),'collectionopen','0')])
+        if nav_token:rows.append([button(editorial_text('hero_cards.hero_card_menu.line_13'),'collectionback',nav_token)])
     else:
         first=[]
-        if active:first.append(button('✅ Сделать активным','heroactive',str(hero['id'])))
-        if allow_share:first.append(button('📣 Похвастаться','heroshare',f"{hero['id']}.{token}"))
+        if active:first.append(button(editorial_text('hero_cards.hero_card_menu.line_02'),'heroactive',str(hero['id'])))
+        if allow_share:first.append(button(editorial_text('hero_cards.hero_card_menu.line_03'),'heroshare',f"{hero['id']}.{token}"))
         if first:rows.append(first)
-        rows.append([button('🪙 Ещё призыв','gacharepeat','coins.'+token),button('✨ Ещё 10','gachabatch',token)])
-        rows.append([button('🏠 Главная','home'),button('📚 Коллекция','collection'),
-                     InlineKeyboardButton(text='⬅️ Назад',callback_data=return_callback or f'mini:gacha:{world_id}:{user_id}')])
+        rows.append([button(editorial_text('hero_cards.hero_card_menu.line_04'),'gacharepeat','coins.'+token),button(editorial_text('hero_cards.hero_card_menu.line_05'),'gachabatch',token)])
+        rows.append([button(editorial_text('navigation.home'),'home'),button(editorial_text('navigation.collection'),'collection'),
+                     InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=return_callback or f'mini:gacha:{world_id}:{user_id}')])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 async def send_hero_card(
     callback: CallbackQuery,
     world: dict,
@@ -155,6 +163,7 @@ async def send_hero_card(
     )
 
 
+@editorial_screen
 async def send_public_hero_share(
     callback: CallbackQuery,
     world: dict,
@@ -186,6 +195,7 @@ async def send_public_hero_share(
     )
 
 
+@editorial_screen
 async def show_gacha_pull_result(
     callback: CallbackQuery,
     world: dict,
@@ -219,15 +229,14 @@ async def show_gacha_pull_result(
     except TelegramAPIError as error:
         print(f"Ошибка показа результата гачи: {type(error).__name__}: {error}")
         await callback.answer(
-            "Герой получен, но карточку показать не удалось. Открой коллекцию.",
+            editorial_text('hero_cards.show_gacha_pull_result.line_03'),
             show_alert=True,
         )
         return
 
     toast = (
-        f"Новый герой: {hero['name']}"
+        editorial_text('hero_cards.show_gacha_pull_result.line_01', name=f"{hero['name']}")
         if not result["is_duplicate"]
-        else f"Дубликат: +{result['shards_awarded']} осколков"
+        else editorial_text('hero_cards.show_gacha_pull_result.line_02', shards_awarded=f"{result['shards_awarded']}")
     )
     await callback.answer(toast)
-

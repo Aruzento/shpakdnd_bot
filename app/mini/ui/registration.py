@@ -1,4 +1,5 @@
 """Registration name input is accepted only in the owner's private chat."""
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from aiogram import Router
 from aiogram.types import FSInputFile
 from aiogram.exceptions import TelegramBadRequest
@@ -9,11 +10,13 @@ from app.mini.heroes import get_active_hero,get_hero_image
 from app.mini.ui.home import player_menu,home_content
 from app.mini.worlds import get_mini_world_by_id
 from app.mini.ui.context import username_from_user
-from app.mini.onboarding import STARTER_MESSAGE
+from app.mini.onboarding import starter_message
+
 
 router=Router(name='mini_private_registration')
 
 
+@editorial_screen
 async def reply_home(message,world,player,prefix=''):
     active=get_active_hero(player['id'])
     text=prefix+home_content(player,active)
@@ -27,6 +30,7 @@ async def reply_home(message,world,player,prefix=''):
     return await message.answer(text,reply_markup=markup)
 
 
+@editorial_screen
 async def start_private(message):
     if message.chat.type!='private' or not message.from_user:
         return
@@ -39,7 +43,7 @@ async def start_private(message):
     if player:
         await reply_home(message,get_mini_world_by_id(request['world_id']),player)
     else:
-        await message.answer('👤 Создание Mini-персонажа\n\nОтправь имя здесь, в личном чате (1–64 символа). Для отмены: /cancel.')
+        await message.answer(editorial_text('registration.start_private.line_01'))
 
 
 class PendingName(Filter):
@@ -54,17 +58,18 @@ class PendingName(Filter):
 
 
 @router.message(PendingName())
+@editorial_screen
 async def name_message(message,registration_request):
     if message.chat.type!='private' or not message.from_user:
         return
     if message.text=='/cancel':
-        service.cancel(message.from_user.id);await message.answer('Регистрация отменена.');return
+        service.cancel(message.from_user.id);await message.answer(editorial_text('registration.name_message.line_02'));return
     try:
         player=service.complete(registration_request['token'],message.from_user.id,
                                 username_from_user(message.from_user),message.text)
     except ValueError as error:
         await message.answer(str(error));return
     world=get_mini_world_by_id(player['world_id'])
-    intro='✅ Персонаж создан! Теперь призови своего первого героя!\n\n' if player['newly_created'] else ''
-    gift=STARTER_MESSAGE+'\n\n' if player.get('onboarding_granted') else ''
+    intro=editorial_text('registration.name_message.line_01') if player['newly_created'] else ''
+    gift=starter_message()+'\n\n' if player.get('onboarding_granted') else ''
     await reply_home(message,world,player,intro+gift)

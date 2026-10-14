@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.wallet import change_balance_in_transaction
 import json
 import sqlite3
@@ -252,7 +253,7 @@ def purchase_offer(
     *, operation_key: str = '',
 ) -> dict:
     if not isinstance(operation_key, str):
-        raise ShopError('Некорректный ключ покупки.')
+        raise ShopError(editorial_text('errors.shop.purchase_offer.01'))
     sync_shop_catalog(world_id, db_path)
 
     with connect_mini_db(db_path) as conn:
@@ -270,12 +271,12 @@ def purchase_offer(
         ).fetchone()
         if player is None or int(player["world_id"]) != int(world_id):
             conn.rollback()
-            raise ShopError("Mini-игрок не найден в этом мире.")
+            raise ShopError(editorial_text('errors.shop.purchase_offer.02'))
 
         if operation_key:
             old=conn.execute('SELECT offer_id,result_json FROM mini_purchases WHERE player_id=? AND operation_key=?',(player_id,operation_key)).fetchone()
             if old:
-                if old['offer_id']!=offer_id: raise ShopError('Ключ уже использован для другого товара.')
+                if old['offer_id']!=offer_id: raise ShopError(editorial_text('errors.shop.purchase_offer.08'))
                 return {**json.loads(old['result_json']),'repeated':True}
 
         offer_row = conn.execute(
@@ -288,7 +289,7 @@ def purchase_offer(
         ).fetchone()
         if offer_row is None:
             conn.rollback()
-            raise ShopError("Товар больше не доступен.")
+            raise ShopError(editorial_text('errors.shop.purchase_offer.03'))
 
         offer = _offer_to_dict(offer_row)
         price = int(offer["price"])
@@ -307,7 +308,7 @@ def purchase_offer(
         max_per_player = offer["max_per_player"]
         if max_per_player is not None and bought_by_player >= int(max_per_player):
             conn.rollback()
-            raise ShopLimitReached("Лимит покупок этого товара уже исчерпан.")
+            raise ShopLimitReached(editorial_text('errors.shop.purchase_offer.04'))
 
         if offer["stock"] is not None:
             sold = conn.execute(
@@ -320,12 +321,12 @@ def purchase_offer(
             ).fetchone()[0]
             if int(sold) >= int(offer["stock"]):
                 conn.rollback()
-                raise ShopOutOfStock("Товар закончился.")
+                raise ShopOutOfStock(editorial_text('errors.shop.purchase_offer.06'))
 
         if balance < price:
             conn.rollback()
             raise ShopInsufficientFunds(
-                f"Не хватает {price - balance} монет."
+                editorial_text('errors.shop.purchase_offer.05', value_1=f'{price - balance}')
             )
 
         delivery = offer["metadata"].get("delivery", offer["offer_type"])
@@ -355,7 +356,7 @@ def purchase_offer(
             item_id = offer["item_id"]
             if item_id is None:
                 conn.rollback()
-                raise ShopError("У товара не настроен предмет выдачи.")
+                raise ShopError(editorial_text('errors.shop.purchase_offer.07'))
 
             conn.execute(
                 """

@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.boss.clock import db_time
 import json
 import sqlite3
@@ -94,7 +95,7 @@ def apply_boss_effects(
                "reward_shields", "reward_shields_max", "boss_damage", "sneaky_stolen"}
     changes = resolution.get("boss_changes", {})
     if not set(changes).issubset(allowed):
-        raise BossCombatError("Недопустимое изменение состояния способности босса.")
+        raise BossCombatError(editorial_text('errors.boss.repository.apply_boss_effects.01'))
     if changes:
         assignments = ", ".join(f"{field} = ?" for field in changes)
         conn.execute(
@@ -104,7 +105,7 @@ def apply_boss_effects(
     for change in resolution.get("participant_changes", []):
         fields = {key: value for key, value in change.items() if key != "player_id"}
         if not fields or not set(fields).issubset({"forced_skip_turns", "banished"}):
-            raise BossCombatError("Недопустимое изменение состояния участника.")
+            raise BossCombatError(editorial_text('errors.boss.repository.apply_boss_effects.02'))
         assignments = ", ".join(f"{field} = ?" for field in fields)
         conn.execute(
             f"UPDATE mini_boss_participants SET {assignments} WHERE boss_id = ? AND player_id = ?",

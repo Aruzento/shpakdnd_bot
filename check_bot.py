@@ -19,6 +19,8 @@ from app.mini.worlds import sync_configured_mini_worlds
 
 
 def main():
+    from app.mini.editorial.registry import get_registry
+    get_registry()
     from app.mini.item_registry import load_definitions
     load_definitions()
     init_db()

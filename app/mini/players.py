@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import sqlite3
 import unicodedata
 from pathlib import Path
@@ -8,14 +9,14 @@ from app.mini.db import connect_mini_db
 
 def validate_character_name(value):
     if not isinstance(value,str):
-        raise ValueError("Некорректное имя персонажа.")
+        raise ValueError(editorial_text('errors.players.validate_character_name.01'))
     if any(unicodedata.category(c).startswith('C') for c in value):
-        raise ValueError("В имени нельзя использовать управляющие или скрытые символы.")
+        raise ValueError(editorial_text('errors.players.validate_character_name.02'))
     name = " ".join(value.strip().split())
     if not name or len(name)>64:
-        raise ValueError("Имя должно содержать от 1 до 64 символов.")
+        raise ValueError(editorial_text('errors.players.validate_character_name.03'))
     if name.startswith('/') or any(c in name for c in '<>'):
-        raise ValueError("В имени нельзя использовать команды или HTML-разметку.")
+        raise ValueError(editorial_text('errors.players.validate_character_name.04'))
     return name
 
 
@@ -67,7 +68,7 @@ def create_mini_player(
     username = username.strip().lower()
 
     if not character_name:
-        raise ValueError("Имя персонажа не может быть пустым.")
+        raise ValueError(editorial_text('errors.players.create_mini_player.01'))
 
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -87,7 +88,7 @@ def create_mini_player(
 
         if existing is not None:
             raise ValueError(
-                "Mini-персонаж для этого игрока уже существует."
+                editorial_text('errors.players.create_mini_player.03')
             )
 
         cursor = conn.execute(
@@ -122,7 +123,7 @@ def create_mini_player(
     )
 
     if player is None:
-        raise RuntimeError("Не удалось создать Mini-персонажа.")
+        raise RuntimeError(editorial_text('errors.players.create_mini_player.02'))
 
     player["onboarding_granted"] = granted
     return player

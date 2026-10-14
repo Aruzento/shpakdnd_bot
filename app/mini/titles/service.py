@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import re
 import shlex
 import sqlite3
@@ -12,16 +13,16 @@ MAX_DAYS = 365
 def parse_duration(value):
     match = re.fullmatch(r'([1-9]\d*)d', value)
     if not match or int(match[1]) > MAX_DAYS:
-        raise ValueError('Срок: от 1d до 365d, например 7d.')
+        raise ValueError(editorial_text('errors.titles.service.parse_duration.01'))
     return int(match[1]) * 86400
 
 
 def validate_title(text):
     text = text.strip()
     if not text or len(text) > MAX_TITLE_LENGTH:
-        raise ValueError('Титул должен содержать от 1 до 48 символов.')
+        raise ValueError(editorial_text('errors.titles.service.validate_title.01'))
     if any(ord(c)<32 or c in '[]\u2028\u2029' for c in text):
-        raise ValueError('Титул должен быть одной строкой без квадратных скобок.')
+        raise ValueError(editorial_text('errors.titles.service.validate_title.02'))
     return text
 
 
@@ -29,9 +30,9 @@ def parse_command(text):
     try:
         args = shlex.split(text or '')
     except ValueError as error:
-        raise ValueError('Проверь кавычки титула.') from error
+        raise ValueError(editorial_text('errors.titles.service.parse_command.02')) from error
     if len(args)!=4 or args[0].split('@')[0]!='/supertitle' or not re.fullmatch(r'@[A-Za-z0-9_]{1,32}', args[1]):
-        raise ValueError('Использование: /supertitle @user 7d "Титул"')
+        raise ValueError(editorial_text('errors.titles.service.parse_command.01'))
     return args[1].lower(), parse_duration(args[2]), validate_title(args[3])
 
 
@@ -55,9 +56,9 @@ def issue_title(player_id, text, duration_seconds, admin_user_id, operation_key,
                 db_path=None, *, now=None):
     text=validate_title(text)
     if type(duration_seconds) is not int or not 86400<=duration_seconds<=MAX_DAYS*86400:
-        raise ValueError('Недопустимый срок титула.')
+        raise ValueError(editorial_text('errors.titles.service.issue_title.01'))
     if not operation_key:
-        raise ValueError('Не указан ключ выдачи титула.')
+        raise ValueError(editorial_text('errors.titles.service.issue_title.02'))
     when=int(time.time() if now is None else now)
     with connect_mini_db(config.DB_PATH if db_path is None else db_path) as conn:
         conn.row_factory=sqlite3.Row
@@ -67,7 +68,7 @@ def issue_title(player_id, text, duration_seconds, admin_user_id, operation_key,
             return dict(old)
         player=conn.execute('SELECT world_id FROM mini_players WHERE id=?',(player_id,)).fetchone()
         if not player:
-            raise ValueError('Mini-игрок не найден.')
+            raise ValueError(editorial_text('errors.titles.service.issue_title.03'))
         conn.execute("UPDATE mini_titles SET status='replaced' WHERE player_id=? AND status='active'",(player_id,))
         conn.execute("""UPDATE mini_public_notifications SET status='cancelled'
             WHERE player_id=? AND kind='title_expired' AND status='pending'""",(player_id,))
@@ -83,5 +84,5 @@ def get_title_target(world_id, username, db_path=None):
         rows=conn.execute('SELECT * FROM mini_players WHERE world_id=? AND lower(username)=?',
                           (world_id,username.lower())).fetchall()
     if len(rows)!=1:
-        raise ValueError('Mini-игрок не найден или имя пользователя неоднозначно.')
+        raise ValueError(editorial_text('errors.titles.service.get_title_target.01'))
     return dict(rows[0])

@@ -1,4 +1,5 @@
 """Persistent event rounds. Every economic transition uses one SQLite transaction."""
+from app.mini.editorial import text as editorial_text
 import json
 import secrets
 import sqlite3
@@ -20,7 +21,7 @@ class EventError(ValueError):
 
 def rps_outcome(choice: str, bot_choice: str) -> str:
     if choice not in RPS_CHOICES or bot_choice not in RPS_CHOICES:
-        raise EventError("Неизвестный боец.")
+        raise EventError(editorial_text('errors.events.service.rps_outcome.01'))
     if choice == bot_choice:
         return "draw"
     return "win" if RPS_BEATS[choice] == bot_choice else "loss"
@@ -32,7 +33,7 @@ def _player(conn, player_id: int, world_id: int):
         (player_id, world_id),
     ).fetchone()
     if row is None:
-        raise EventError("Mini-персонаж в этом мире не найден.")
+        raise EventError(editorial_text('errors.events.service.player.01'))
     return row
 
 
@@ -49,7 +50,7 @@ def _session(conn, player_id: int, world_id: int, session_id: int) -> dict:
         (session_id, player_id),
     ).fetchone()
     if row is None:
-        raise EventError("Это игра другого игрока или другого мира.")
+        raise EventError(editorial_text('errors.events.service.session.01'))
     return _decode(row)
 
 
@@ -81,9 +82,9 @@ def _start(conn, player_id, world_id, game_type, stake, start_key) -> dict:
     if (game_type == "rps" and stake not in RPS_STAKES) or (
         game_type == "labyrinth" and stake != 5
     ) or game_type not in {"rps", "labyrinth"}:
-        raise EventError("Некорректная игра или ставка.")
+        raise EventError(editorial_text('errors.events.service.start.01'))
     if not start_key or len(start_key) > 128:
-        raise EventError("Некорректный ключ запуска игры.")
+        raise EventError(editorial_text('errors.events.service.start.02'))
     # A button is consumed forever, even after its round has finished.
     existing = conn.execute(
         """SELECT s.* FROM mini_event_requests AS r
@@ -141,7 +142,7 @@ def repeat_session(player_id: int, world_id: int, session_id: int,
         conn.execute("BEGIN IMMEDIATE")
         previous = _session(conn, player_id, world_id, session_id)
         if previous["status"] != "resolved":
-            raise EventError("Сначала закончи текущую игру.")
+            raise EventError(editorial_text('errors.events.service.repeat_session.01'))
         return _start(conn, player_id, world_id, previous["game_type"],
                       previous["stake"], f"repeat:{session_id}")
 
@@ -175,13 +176,13 @@ def _finish(conn, session: dict, outcome: str, coins: int, shards: int = 0):
 def resolve_rps(player_id: int, world_id: int, session_id: int, choice: str,
                 db_path: str | Path = DB_PATH) -> dict:
     if choice not in RPS_CHOICES:
-        raise EventError("Неизвестный боец.")
+        raise EventError(editorial_text('errors.events.service.resolve_rps.01'))
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
         session = _session(conn, player_id, world_id, session_id)
         if session["game_type"] != "rps":
-            raise EventError("Это другая игра.")
+            raise EventError(editorial_text('errors.events.service.resolve_rps.02'))
         if session["status"] == "active":
             bot_choice = secrets.choice(RPS_CHOICES)
             outcome = rps_outcome(choice, bot_choice)
@@ -195,13 +196,13 @@ def choose_direction(player_id: int, world_id: int, session_id: int,
                      expected_step: int, direction: str,
                      db_path: str | Path = DB_PATH) -> dict:
     if direction not in DIRECTIONS or expected_step not in (0, 1, 2):
-        raise EventError("Некорректный проход.")
+        raise EventError(editorial_text('errors.events.service.choose_direction.01'))
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("BEGIN IMMEDIATE")
         session = _session(conn, player_id, world_id, session_id)
         if session["game_type"] != "labyrinth":
-            raise EventError("Это другая игра.")
+            raise EventError(editorial_text('errors.events.service.choose_direction.02'))
         if session["status"] == "active" and session["step"] == expected_step:
             if direction != session["payload"]["sequence"][expected_step]:
                 _finish(conn, session, "loss", 0, 3)

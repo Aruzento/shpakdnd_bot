@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import sqlite3
 from pathlib import Path
 
@@ -51,7 +52,7 @@ def register_mini_world(
         conn.commit()
 
     if row is None:
-        raise RuntimeError("Не удалось создать D&D Mini-мир")
+        raise RuntimeError(editorial_text('errors.worlds.register_mini_world.01'))
 
     return int(row[0])
 

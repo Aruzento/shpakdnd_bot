@@ -1,3 +1,5 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
 from app.mini.ui.state import legacy_operation
 from app.mini.presentation import format_player_mention
 from app.mini.ui.context import (
@@ -10,7 +12,7 @@ from app.mini.ui.context import (
 from app.mini.ui.transport import edit_private as _edit_private
 from aiogram import F, Router
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 from app.context import get_topic_admin
 from app.mini.gacha import GachaError, GachaNoHeroes, GachaNoTicket, perform_gacha_pull
 from app.mini.items import (
@@ -27,15 +29,17 @@ from app.mini.shop import get_player_goods
 from app.mini.ui.navigation import clip
 from app.mini.ui.hero_cards import show_gacha_pull_result
 
+
 router = Router(name="mini_inventory")
 
+@editorial_screen
 def _format_inventory(world: dict, player: dict, goods: dict) -> str:
     lines = [
-        "🎒 Инвентарь",
+        editorial_text('navigation.inventory'),
         "",
-        "Валюты:",
-        f"🪙 Монеты: {player['coins']}",
-        f"🧩 Осколки: {player['shards']}",
+        editorial_text('inventory.format_inventory.line_02'),
+        editorial_text('inventory.format_inventory.line_03', coins=f"{player['coins']}"),
+        editorial_text('inventory.format_inventory.line_04', shards=f"{player['shards']}"),
         "",
     ]
 
@@ -44,14 +48,14 @@ def _format_inventory(world: dict, player: dict, goods: dict) -> str:
     effects = goods.get("effects", [])
 
     if inventory:
-        lines.append("Предметы Mini:")
+        lines.append(editorial_text('inventory.format_inventory.line_05'))
         for item in inventory:
             suffix = f" ×{item['quantity']}" if int(item["quantity"]) > 1 else ""
             lines.append(f"• {item['name']}{suffix}")
         lines.append("")
 
     if certificates:
-        lines.append("Сертификаты:")
+        lines.append(editorial_text('inventory.format_inventory.line_06'))
         for certificate in certificates:
             lines.append(
                 f"• #{certificate['purchase_id']} {certificate['title']}"
@@ -59,7 +63,7 @@ def _format_inventory(world: dict, player: dict, goods: dict) -> str:
         lines.append("")
 
     if effects:
-        lines.append("Активные эффекты:")
+        lines.append(editorial_text('inventory.format_inventory.line_07'))
         for effect in effects:
             charges = int(effect.get("charges", 0))
             suffix = f" ×{charges}" if charges > 1 else ""
@@ -69,11 +73,12 @@ def _format_inventory(world: dict, player: dict, goods: dict) -> str:
         lines.append("")
 
     if not inventory and not certificates:
-        lines.append("Предметов пока нет.")
+        lines.append(editorial_text('inventory.format_inventory.line_08'))
 
     return "\n".join(lines).rstrip()
 
 
+@editorial_screen
 def _inventory_menu(
     world_id: int,
     user_id: int,
@@ -82,12 +87,13 @@ def _inventory_menu(
     def b(label,action,tail=''):
         return InlineKeyboardButton(text=label,callback_data=_personal_callback(action,world_id,user_id)+(':'+tail if tail else ''))
     first=[]
-    if goods.get('inventory') or goods.get('certificates'):first.append(b('✨ Использовать предмет','useitems'))
-    first.append(b('🛡 Экипировка в инвентаре','equipment','inventory.0'))
-    return InlineKeyboardMarkup(inline_keyboard=[first,[b('🛒 Магазин','shop'),b('🏠 Главная','home'),b('⬅️ Назад','heroarea')]])
+    if goods.get('inventory') or goods.get('certificates'):first.append(b(editorial_text('inventory.inventory_menu.line_02'),'useitems'))
+    first.append(b(editorial_text('inventory.inventory_menu.line_01'),'equipment','inventory.0'))
+    return InlineKeyboardMarkup(inline_keyboard=[first,[b(editorial_text('navigation.shop'),'shop'),b(editorial_text('navigation.home'),'home'),b(editorial_text('navigation.back'),'heroarea')]])
 
 
 
+@editorial_screen
 def _use_items_menu(
     world_id: int,
     user_id: int,
@@ -101,7 +107,7 @@ def _use_items_menu(
         suffix = f" ×{quantity}" if quantity > 1 else ""
         rows.append([
             InlineKeyboardButton(
-                text=f"🎒 {clip(item['name'], 28)}{suffix}",
+                text=editorial_text('inventory.use_items_menu.line_02', value_1=f"{clip(item['name'], 28)}", suffix=f'{suffix}'),
                 callback_data=(
                     f"mini:usepick:{world_id}:{user_id}:item,{item['item_id']}"
                 ),
@@ -111,7 +117,7 @@ def _use_items_menu(
     for certificate in goods.get("certificates", []):
         rows.append([
             InlineKeyboardButton(
-                text=f"🎫 {clip(certificate['title'], 28)}",
+                text=editorial_text('inventory.use_items_menu.line_03', value_1=f"{clip(certificate['title'], 28)}"),
                 callback_data=(
                     f"mini:usepick:{world_id}:{user_id}:cert,{certificate['purchase_id']}"
                 ),
@@ -120,13 +126,14 @@ def _use_items_menu(
 
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ В инвентарь",
+            text=editorial_text('inventory.use_items_menu.line_01'),
             callback_data=_personal_callback("inventory", world_id, user_id),
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def _use_item_confirm_menu(
     world_id: int,
     user_id: int,
@@ -137,7 +144,7 @@ def _use_item_confirm_menu(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Использовать",
+                    text=editorial_text('inventory.use_item_confirm_menu.line_01'),
                     callback_data=(
                         f"mini:useconfirm:{world_id}:{user_id}:{kind},{value},{__import__('secrets').token_hex(4)}"
                     ),
@@ -145,7 +152,7 @@ def _use_item_confirm_menu(
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ К выбору",
+                    text=editorial_text('inventory.use_item_confirm_menu.line_02'),
                     callback_data=_personal_callback("useitems", world_id, user_id),
                 )
             ],
@@ -153,18 +160,19 @@ def _use_item_confirm_menu(
     )
 
 
+@editorial_screen
 def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎒 В инвентарь",
+                    text=editorial_text('inventory.item_use_result_menu.line_01'),
                     callback_data=_personal_callback("inventory", world_id, user_id),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ На главную",
+                    text=editorial_text('inventory.item_use_result_menu.line_02'),
                     callback_data=_personal_callback("home", world_id, user_id),
                 )
             ],
@@ -172,11 +180,11 @@ def _item_use_result_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     )
 
 
+@editorial_screen
 def _format_wallet_history(history: list[dict]) -> str:
     if not history:
         return (
-            "История пока пустая.\n"
-            "Первые монеты можно будет получить в дейликах и за боссов."
+            editorial_text('inventory.format_wallet_history.line_01')
         )
 
     lines = []
@@ -184,21 +192,19 @@ def _format_wallet_history(history: list[dict]) -> str:
         amount = int(transaction["amount"])
         sign = "+" if amount > 0 else ""
         lines.append(
-            f"{sign}{amount} — {transaction['reason']} "
-            f"→ {transaction['balance_after']}"
+            editorial_text('inventory.format_wallet_history.line_02', sign=f'{sign}', amount=f'{amount}', reason=f"{transaction['reason']}", balance_after=f"{transaction['balance_after']}")
         )
     return "\n".join(lines)
 
 
+@editorial_screen
 def _format_wallet(world: dict, player: dict, history: list[dict]) -> str:
     return (
-        "💰 Кошелёк\n\n"
-        f"🪙 {world['currency_name']}: {player['coins']}\n\n"
-        "Последние операции:\n"
-        f"{_format_wallet_history(history)}"
+        editorial_text('inventory.format_wallet.line_01', currency_name=f"{world['currency_name']}", coins=f"{player['coins']}", value_3=f'{_format_wallet_history(history)}')
     )
 
 
+@editorial_screen
 async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
     goods = get_player_goods(player["id"])
     await _edit_private(
@@ -209,6 +215,7 @@ async def _open_inventory(callback: CallbackQuery, world: dict, player: dict):
 
 
 @router.callback_query(F.data.startswith("mini:inventory:"))
+@editorial_screen
 async def inventory_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
     if context is None:
@@ -220,6 +227,7 @@ async def inventory_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:wallet:"))
+@editorial_screen
 async def wallet_callback(callback: CallbackQuery):
     """Совместимость со старыми кнопками «Кошелёк»."""
     context = await _load_personal_context(callback)
@@ -232,6 +240,7 @@ async def wallet_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:useitems:"))
+@editorial_screen
 async def use_items_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
     if context is None:
@@ -241,9 +250,9 @@ async def use_items_callback(callback: CallbackQuery):
     goods = get_player_goods(player["id"])
     has_usable = bool(goods.get("inventory") or goods.get("certificates"))
     text = (
-        "✨ Использовать предмет\n\nВыбери предмет или сертификат."
+        editorial_text('inventory.use_items_callback.line_01')
         if has_usable
-        else "✨ Использовать предмет\n\nИспользуемых предметов сейчас нет."
+        else editorial_text('inventory.use_items_callback.line_02')
     )
     await callback.answer()
     await _edit_private(
@@ -254,6 +263,7 @@ async def use_items_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:usepick:"))
+@editorial_screen
 async def use_item_pick_callback(callback: CallbackQuery):
     context = await _load_extended_context(callback, "usepick")
     if context is None:
@@ -264,34 +274,28 @@ async def use_item_pick_callback(callback: CallbackQuery):
         kind, value_text = payload.split(",", 1)
         value = int(value_text)
     except (ValueError, IndexError):
-        await callback.answer("Некорректный предмет.", show_alert=True)
+        await callback.answer(editorial_text('inventory.use_item_pick_callback.line_03'), show_alert=True)
         return
 
     if kind == "item":
         item = get_inventory_item(player["id"], value)
         if item is None:
-            await callback.answer("Предмета больше нет в инвентаре.", show_alert=True)
+            await callback.answer(editorial_text('inventory.use_item_pick_callback.line_04'), show_alert=True)
             return
         text = (
-            f"🎒 {item['name']}\n\n"
-            f"{item.get('description') or 'Без описания.'}\n\n"
-            f"Эффект: {effect_description(item.get('effect_key', ''))}\n"
-            f"Количество: {item['quantity']}"
+            editorial_text('inventory.use_item_pick_callback.line_01', name=f"{item['name']}", value_2=f"{item.get('description') or 'Без описания.'}", value_3=f"{effect_description(item.get('effect_key', ''))}", quantity=f"{item['quantity']}")
         )
     elif kind == "cert":
         certificate = get_certificate_for_use(player["id"], value)
         if certificate is None:
-            await callback.answer("Сертификат уже использован или недоступен.", show_alert=True)
+            await callback.answer(editorial_text('inventory.use_item_pick_callback.line_06'), show_alert=True)
             return
         admin = get_topic_admin(int(world["chat_id"]), int(world["thread_id"])) or "@arukozento"
         text = (
-            f"🎫 {certificate['title']}\n\n"
-            f"{certificate.get('description') or 'Сертификат Mini.'}\n\n"
-            f"После использования бот позовёт {admin} и сообщит, "
-            "что награду нужно применить вручную."
+            editorial_text('inventory.use_item_pick_callback.line_02', title=f"{certificate['title']}", value_2=f"{certificate.get('description') or 'Сертификат Mini.'}", admin=f'{admin}')
         )
     else:
-        await callback.answer("Неизвестный тип предмета.", show_alert=True)
+        await callback.answer(editorial_text('inventory.use_item_pick_callback.line_05'), show_alert=True)
         return
 
     await callback.answer()
@@ -305,6 +309,7 @@ async def use_item_pick_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:useconfirm:"))
+@editorial_screen
 async def use_item_confirm_callback(callback: CallbackQuery):
     context = await _load_extended_context(callback, "useconfirm")
     if context is None:
@@ -317,14 +322,14 @@ async def use_item_confirm_callback(callback: CallbackQuery):
         operation_key = "itemuse:" + payload if len(parts)==3 else legacy_operation(callback,"itemuse:"+payload)
         value = int(value_text)
     except (ValueError, IndexError):
-        await callback.answer("Некорректный предмет.", show_alert=True)
+        await callback.answer(editorial_text('inventory.use_item_confirm_callback.line_09'), show_alert=True)
         return
 
     if kind == "cert":
         certificate = get_certificate_for_use(player["id"], value)
         if certificate is None:
             await callback.answer(
-                "Сертификат уже использован или отправлен мастеру.",
+                editorial_text('inventory.use_item_confirm_callback.line_10'),
                 show_alert=True,
             )
             return
@@ -336,10 +341,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
                 chat_id=world["chat_id"],
                 message_thread_id=world["thread_id"] or None,
                 text=(
-                    f"🔔 {format_player_mention(dict(world_id=world['id'],username=admin))}\n\n"
-                    f"{who} использовал «{certificate['title']}» "
-                    f"(сертификат #{certificate['purchase_id']}).\n"
-                    "Нужно применить награду вручную."
+                    editorial_text('inventory.use_item_confirm_callback.line_12', value_1=f"{format_player_mention(dict(world_id=world['id'], username=admin))}", who=f'{who}', title=f"{certificate['title']}", purchase_id=f"{certificate['purchase_id']}")
                 ),
             )
         except TelegramAPIError as error:
@@ -348,7 +350,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
                 f"{type(error).__name__}: {error}"
             )
             await callback.answer(
-                "Не удалось уведомить администратора. Сертификат не списан.",
+                editorial_text('inventory.use_item_confirm_callback.line_13'),
                 show_alert=True,
             )
             return
@@ -359,18 +361,16 @@ async def use_item_confirm_callback(callback: CallbackQuery):
             await callback.answer(str(error), show_alert=True)
             return
 
-        await callback.answer("Запрос отправлен администратору")
+        await callback.answer(editorial_text('inventory.use_item_confirm_callback.line_04'))
         await _edit_private(
             callback,
-            "✅ Сертификат использован.\n\n"
-            f"{admin} получил сообщение о том, что для {who} нужно "
-            f"применить «{certificate['title']}».",
+            editorial_text('inventory.use_item_confirm_callback.line_05', admin=f'{admin}', who=f'{who}', title=f"{certificate['title']}"),
             _item_use_result_menu(world["id"], callback.from_user.id),
         )
         return
 
     if kind != "item":
-        await callback.answer("Неизвестный тип предмета.", show_alert=True)
+        await callback.answer(editorial_text('inventory.use_item_confirm_callback.line_06'), show_alert=True)
         return
 
     item = get_inventory_item(player["id"], value)
@@ -386,7 +386,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
                 await show_gacha_pull_result(callback, world, player, previous_pull)
                 return
     if item is None:
-        await callback.answer("Предмета больше нет в инвентаре.", show_alert=True)
+        await callback.answer(editorial_text('inventory.use_item_confirm_callback.line_07'), show_alert=True)
         return
 
     if item.get("effect_key") == EFFECT_GACHA_TICKET:
@@ -415,42 +415,34 @@ async def use_item_confirm_callback(callback: CallbackQuery):
     effect_key = result.get("effect_key", "")
     if effect_key == "boss_coin_pouch":
         text = (
-            f"🪙 Кошель открыт: +{result['amount']} монет.\n"
-            f"Баланс: {result['coins']} 🪙"
+            editorial_text('inventory.use_item_confirm_callback.line_01', amount=f"{result['amount']}", coins=f"{result['coins']}")
         )
     elif effect_key == "boss_shard_casket":
         text = (
-            f"🧩 Шкатулка открыта: +{result['amount']} осколков.\n"
-            f"Осколки: {result['shards']} 🧩"
+            editorial_text('inventory.use_item_confirm_callback.line_02', amount=f"{result['amount']}", shards=f"{result['shards']}")
         )
     elif effect_key == 'spirit_lantern':
-        text = f"🏮 Фонарь активирован. Зарядов Arise: {result['charges']}.\nСледующий подходящий бой: нормальная победа и хотя бы один удар гарантируют тень."
+        text = editorial_text('inventory.use_item_confirm_callback.line_08', charges=f"{result['charges']}")
     elif effect_key == "gacha_luck":
         text = (
-            "🍀 Зелье удачи использовано.\n\n"
-            "Следующая крутка получит +10% к весу легендарных "
-            "и +30% к весу редких героев."
+            editorial_text('inventory.use_item_confirm_callback.line_11')
         )
     elif effect_key == "boss_damage_boost":
         text = (
-            "🧪 Зелье урона использовано.\n\n"
-            "В следующем бою с боссом твой итоговый урон после "
-            "всех способностей героя будет увеличен на 10%."
+            editorial_text('inventory.use_item_confirm_callback.line_14')
         )
     elif effect_key == "boss_phantom_participation":
         text = (
-            "👻 Зелье фантомного участия использовано.\n\n"
-            "В следующем бою ты сохранишь право на награду, даже "
-            "если не нанесёшь ни одного удара."
+            editorial_text('inventory.use_item_confirm_callback.line_15')
         )
     elif effect_key in ('village_gold_boost','village_shards_boost'):
-        text = "🏘 Производство усилено на 25%. Срок действия увеличен на 8 часов."
+        text = editorial_text('inventory.use_item_confirm_callback.line_16')
     elif effect_key == 'tower_equipment_chest':
-        text = "🛡 Сундук открыт: новая экипировка доступна в меню «Экипировка»."
+        text = editorial_text('inventory.use_item_confirm_callback.line_17')
     else:
-        text = "✅ Предмет использован."
+        text = editorial_text('inventory.use_item_confirm_callback.line_18')
 
-    await callback.answer("Предмет использован")
+    await callback.answer(editorial_text('inventory.use_item_confirm_callback.line_03'))
     await _edit_private(
         callback,
         text,
@@ -459,6 +451,7 @@ async def use_item_confirm_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:goods:"))
+@editorial_screen
 async def goods_callback(callback: CallbackQuery):
     context = await _shop_context(callback, "goods")
     if context is None:
@@ -473,4 +466,3 @@ async def goods_callback(callback: CallbackQuery):
         _format_inventory(world, player, goods),
         _inventory_menu(world["id"], callback.from_user.id, goods),
     )
-

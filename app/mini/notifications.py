@@ -4,6 +4,7 @@ Telegram sendMessage has no idempotency key. Reserve before sending so a restart
 cannot duplicate an announcement. Confirmed API rejections can be retried; a
 crash or an ambiguous timeout leaves a durable uncertain/sending record.
 """
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 import asyncio
 import json
 import sqlite3
@@ -12,6 +13,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, Teleg
 from app import config
 from app.mini.db import connect_mini_db
 from app.mini.presentation import format_player_mention
+
 
 
 def enqueue_expired_titles(db_path=None, *, now=None):
@@ -51,6 +53,7 @@ def finish_notification(notification_id,status,db_path=None, *, message_id=None,
             WHERE id=? AND status='sending'""",(status,message_id,error[:500],notification_id))
 
 
+@editorial_screen
 async def publish_pending_notifications(bot, db_path=None, *, player_id=None):
     db_path=config.DB_PATH if db_path is None else db_path
     with connect_mini_db(db_path) as conn:
@@ -62,10 +65,10 @@ async def publish_pending_notifications(bot, db_path=None, *, player_id=None):
             continue
         payload=json.loads(row['payload_json'])
         if row['kind']=='welcome':
-            text=f"🎉 Приветствуем нового героя: {payload['character_name']} — {format_player_mention(row,db_path)}"
+            text=editorial_text('notifications.publish_pending_notifications.line_01', character_name=f"{payload['character_name']}", value_2=f'{format_player_mention(row, db_path)}')
         else:
             # The title that just ended must not prefix its own expiration notice.
-            text=f"{format_player_mention(row,db_path,include_title=False)} больше не \"{payload['title']}\". Какая жалость.."
+            text=editorial_text('notifications.publish_pending_notifications.line_02', value_1=f'{format_player_mention(row, db_path, include_title=False)}', title=f"{payload['title']}")
         try:
             sent=await bot.send_message(chat_id=row['chat_id'],message_thread_id=row['thread_id'] or None,text=text)
         except (TelegramBadRequest,TelegramForbiddenError,TelegramRetryAfter) as error:

@@ -1,0 +1,17 @@
+{
+  "shop.shop_category_callback.line_01": "{title}\n\n{value_2}\n\nЗдесь пока нет активных товаров.",
+  "shop.shop_category_callback.line_02": "{title}\n\n{value_2}\n\n🪙 Баланс: {coins}\nВыбери товар:",
+  "shop.shop_buy_callback.line_01": "Предмет добавлен в инвентарь.",
+  "shop.shop_buy_callback.line_02": "Сертификат сохранён в инвентаре.",
+  "shop.shop_main_menu.line_01": " · скоро",
+  "shop.shop_callback.line_01": "🛒 Магазин\n\n🪙 Баланс: {coins} {currency_name}\n\nВыбери раздел. Каталог лежит в app/mini/content/shop.json.",
+  "shop.shop_item_callback.line_01": "Лимит на игрока: {bought}/{max_per_player}",
+  "shop.shop_item_callback.line_02": "Общий запас: {stock}",
+  "shop.shop_buy_callback.line_03": "Покупка успешна",
+  "shop.shop_buy_callback.line_04": "✅ Покупка успешна!\n\n{title}\nСписано: {price} 🪙\nОсталось: {balance} 🪙\n\n{delivery_text}",
+  "shop.shop_category_callback.line_03": "Категория не найдена.",
+  "shop.shop_item_callback.line_03": "Товар больше не доступен.",
+  "shop.shop_item_callback.line_04": "{title}\n\n{description}\n\nЦена: {price} 🪙\nТвой баланс: {coins} 🪙",
+  "shop.shop_item_callback.line_05": "Некорректный товар.",
+  "shop.shop_buy_callback.line_05": "Некорректный товар."
+}
