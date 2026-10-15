@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import sqlite3
 import sys
+import time
 from urllib import request
 
 
@@ -27,16 +28,31 @@ def check_database(path):
             raise DeployError('SQLite foreign_key_check failed.')
 
 
-def backup_database(source,destination):
+def backup_database(source,destination,*,max_seconds=30):
     destination=Path(destination)
-    # Exclusive reservation: never overwrite a previous backup.
+    source=Path(source).resolve()
+    if destination.resolve()==source or destination.exists() and destination.samefile(source):
+        raise DeployError('Backup destination aliases the source database.')
+    # Exclusive reservation: never overwrite a previous backup or follow a link.
     fd=os.open(destination,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    os.close(fd)
-    with closing(readonly_db(source)) as source_conn,closing(sqlite3.connect(destination)) as backup:
-        source_conn.backup(backup)
-    if not destination.is_file():raise DeployError('Backup file is missing.')
-    check_database(destination)
-    return destination
+    reserved=os.fstat(fd);os.close(fd)
+    deadline=time.monotonic()+max_seconds
+    def progress(status,remaining,total):
+        if time.monotonic()>deadline:
+            raise DeployError('SQLite snapshot exceeded its bounded backup window.')
+    try:
+        with closing(readonly_db(source)) as source_conn,closing(sqlite3.connect(destination)) as backup:
+            source_conn.backup(backup,pages=256,progress=progress,sleep=0.05)
+        if not destination.is_file():raise DeployError('Backup file is missing.')
+        check_database(destination)
+        return destination
+    except BaseException:
+        # Only remove the exact file reserved by this invocation.
+        if destination.exists() and not destination.is_symlink():
+            current=destination.stat()
+            if (current.st_dev,current.st_ino)==(reserved.st_dev,reserved.st_ino):
+                destination.unlink()
+        raise
 
 
 def enabled_worlds(db):

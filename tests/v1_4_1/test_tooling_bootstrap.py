@@ -1,0 +1,93 @@
+"""Atomic tooling bootstrap; real Bash/files, fake root ownership and lock."""
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import shlex
+import tempfile
+import unittest
+from tests.v1_3_3.test_deploy_shell import BASH, ROOT, DISPATCH, shell_path
+
+
+class ToolingBootstrapTests(unittest.TestCase):
+    def setUp(self):
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
+        self.root=Path(temp.name);self.checkout=self.root/'reviewed';self.checkout.mkdir()
+        self.source=self.checkout/'deploy';self.source.mkdir();(self.checkout/'scripts').mkdir()
+        from tests.v1_4_1.test_preflight import pref
+        names=set(pref.BUNDLE)|{'install-deploy-shpakdnd.sh','install-systemd-units.sh',
+            'update-shpakdnd-bot.sh','shpakdnd-bot-update.service','shpakdnd-bot-watch.path'}
+        for name in names:shutil.copy2(ROOT/'deploy'/name,self.source/name)
+        for name in pref.SHARED_SCRIPTS:shutil.copy2(ROOT/'scripts'/name,self.checkout/'scripts'/name)
+        (self.checkout/'.gitignore').write_text('__pycache__/\n*.pyc\n')
+        for args in [('init','-q'),('config','user.name','Fixture'),('config','user.email','fixture@example.invalid'),
+                     ('config','core.autocrlf','false'),('config','commit.gpgsign','false'),
+                     ('remote','add','origin','https://github.com/Aruzento/shpakdnd_bot.git'),('add','.'),('commit','-qm','Reviewed tooling')]:
+            subprocess.run(['git','-C',str(self.checkout),*args],check=True,capture_output=True)
+        self.sha=subprocess.check_output(['git','-C',str(self.checkout),'rev-parse','HEAD'],text=True).strip()
+        self.bin=self.root/'fake-bin';self.bin.mkdir();self.state=self.root/'state';self.state.mkdir()
+        for name in ('id','flock','install'):
+            file=self.bin/name;file.write_text(DISPATCH,encoding='utf-8',newline='\n');file.chmod(0o755)
+        self.dest=self.root/'installed';self.entry=self.root/'commands'
+        # Emulate root ownership ONLY within the fixture Python process; no
+        # production CLI flag/environment can weaken the root-owned path checks.
+        wrapper=self.root/'bootstrap-fixture.py'
+        wrapper.write_text("import os,runpy,sys\nfrom pathlib import Path\nsys.path.insert(0,"+repr(str(self.source))+")\nimport release_state as s\ns.TRUSTED_UID=getattr(os,'geteuid',lambda:0)()\ns.require_root=lambda:None\nargs=sys.argv[1:]\nif args[0]=='-c':\n sys.argv=['-c',*args[2:]];exec(compile(args[1],'<fixture cli>','exec'))\nelif args[0]=='-m':\n sys.argv=[args[1],*args[2:]];runpy.run_module(args[1],run_name='__main__')\nelse:raise SystemExit(s.main(args[1:]))\n",encoding='utf-8')
+        launcher=self.bin/'bootstrap-python'
+        launcher.write_text('#!/usr/bin/env bash\nexec '+shlex.quote(shell_path(sys.executable,preserve_symlink=True))+' '+shlex.quote(shell_path(wrapper))+' "$@"\n',encoding='utf-8',newline='\n');launcher.chmod(0o755)
+        self.env=dict(os.environ,FAKE_STATE=shell_path(self.state),SHPAKDND_TOOLING_DEST=shell_path(self.dest),
+                      SHPAKDND_TOOLING_BIN=shell_path(self.entry),SHPAKDND_LOCK=shell_path(self.root/'lock'),
+                      SHPAKDND_TOOLING_PYTHON=shell_path(launcher))
+
+    def install(self,**flags):
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(self.source/'install-deploy-shpakdnd.sh')+'" '+self.sha
+        return subprocess.run([BASH,'-c',command],env=dict(self.env,**flags),capture_output=True,text=True,encoding='utf-8',timeout=30)
+
+    def test_complete_bundle_is_installed_and_reinstallation_is_idempotent(self):
+        for _ in range(2):
+            result=self.install();self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        versions=list((self.dest/'versions').glob('tooling_*'));self.assertEqual(len(versions),1)
+        for name in ('release_preflight.py','preflight_data.py','deploy_helpers.py','deploy-shpakdnd.sh'):
+            self.assertEqual((versions[0]/name).read_bytes(),(self.source/name).read_bytes())
+        self.assertTrue((self.entry/'deploy-shpakdnd').exists())
+        if os.name=='posix':
+            self.assertEqual((self.entry/'deploy-shpakdnd').resolve(),versions[0]/'deploy-shpakdnd.sh')
+        self.assertFalse(list((self.dest/'versions').glob('.install.*')))
+        trace=(self.state/'trace').read_text()
+        for forbidden in ('systemctl','git switch','telegram','shpakdnd.db'):
+            self.assertNotIn(forbidden,trace)
+
+    def test_invalid_new_helper_never_replaces_working_installed_command(self):
+        result=self.install();self.assertEqual(result.returncode,0,result.stderr)
+        before=(self.entry/'deploy-shpakdnd').read_bytes()
+        (self.source/'release_preflight.py').write_text('invalid python syntax!\n')
+        failed=self.install();self.assertNotEqual(failed.returncode,0)
+        self.assertEqual((self.entry/'deploy-shpakdnd').read_bytes(),before)
+        self.assertEqual(len(list((self.dest/'versions').glob('tooling_*'))),1)
+        self.assertFalse(list((self.dest/'versions').glob('.install.*')))
+
+    def test_locked_deployment_prevents_bootstrap(self):
+        failed=self.install(FAKE_LOCKED='1');self.assertNotEqual(failed.returncode,0)
+        self.assertFalse(self.dest.exists());self.assertFalse(self.entry.exists())
+
+    def test_unsafe_versions_path_is_rejected_without_replacing_it(self):
+        self.dest.mkdir();file=self.dest/'versions';file.write_text('existing unrelated file')
+        failed=self.install();self.assertNotEqual(failed.returncode,0)
+        self.assertEqual(file.read_text(),'existing unrelated file');self.assertFalse(self.entry.exists())
+
+    def test_existing_lock_file_is_never_truncated(self):
+        lock=self.root/'lock';lock.write_text('existing lock metadata')
+        result=self.install();self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(lock.read_text(),'existing lock metadata')
+
+    def test_committed_invalid_auxiliary_helper_fails_compile_without_publication(self):
+        result=self.install();self.assertEqual(result.returncode,0,result.stderr)
+        before=(self.entry/'deploy-shpakdnd').read_bytes()
+        (self.source/'telegram-deploy-notice.py').write_text('def invalid(\n')
+        subprocess.run(['git','-C',str(self.checkout),'add','.'],check=True,capture_output=True)
+        subprocess.run(['git','-C',str(self.checkout),'commit','-qm','Invalid reviewed syntax fixture'],check=True,capture_output=True)
+        self.sha=subprocess.check_output(['git','-C',str(self.checkout),'rev-parse','HEAD'],text=True).strip()
+        failed=self.install();self.assertNotEqual(failed.returncode,0)
+        self.assertEqual((self.entry/'deploy-shpakdnd').read_bytes(),before)
+        self.assertFalse(list((self.dest/'versions').glob('.install.*')))

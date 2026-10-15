@@ -15,9 +15,11 @@ from app.mini.gacha import perform_gacha_pull
 from app.mini.daily import claim_daily
 from app.mini.items import use_inventory_item
 from app.mini.wallet import add_coins, change_balance_in_transaction, get_balance, get_wallet_history
+from tests.topic_fixtures import isolated_topics
 
 class EconomyTransactionTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         tmp=tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.db=Path(tmp.name)/'mini.db'; init_mini_db(self.db); init_boss_db(self.db)
         self.world=sync_configured_mini_worlds(self.db)[0]['id']

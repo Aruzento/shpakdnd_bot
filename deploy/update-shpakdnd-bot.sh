@@ -1,35 +1,11 @@
 #!/usr/bin/env bash
+# Read-only observer. Never install code, initialize SQLite, or control services.
 set -euo pipefail
-
-PROJECT="/opt/shpakdnd-bot"
-PYTHON="$PROJECT/.venv/bin/python"
-SERVICE="shpakdnd-bot.service"
-
-echo "Обнаружено изменение проекта."
-sleep 2
-
-cd "$PROJECT"
-
-echo "Проверяю синтаксис проекта..."
-"$PYTHON" -m compileall -q bot.py app
-
-echo "Синтаксис OK."
-
-# WinSCP может загрузить код от root. Меняем владельца только у файлов кода.
-if [ "$(stat -c '%U' "$PROJECT/bot.py")" != "shpakbot" ]; then
-    chown shpakbot:shpakbot "$PROJECT/bot.py"
-fi
-
-find "$PROJECT/app" ! -user shpakbot -exec chown shpakbot:shpakbot {} +
-
-echo "Перезапускаю бота..."
-systemctl restart "$SERVICE"
-sleep 2
-
-if systemctl is-active --quiet "$SERVICE"; then
-    echo "Бот успешно перезапущен."
-else
-    echo "ОШИБКА: бот после обновления не запустился."
-    systemctl --no-pager status "$SERVICE"
-    exit 1
-fi
+export GIT_OPTIONAL_LOCKS=0
+PROJECT="${SHPAKDND_PROJECT:-/opt/shpakdnd-bot}"
+[[ -d "$PROJECT" && ! -L "$PROJECT" ]] || { echo 'Observer: project unavailable'; exit 1; }
+head="$(git --no-optional-locks -c core.fsmonitor=false -C "$PROJECT" rev-parse --verify HEAD)" || exit 1
+[[ "$head" =~ ^[0-9a-f]{40}$ ]] || exit 1
+changes="$(git --no-optional-locks -c core.fsmonitor=false -c core.untrackedCache=false -C "$PROJECT" status --porcelain --untracked-files=normal)" || exit 1
+if [[ -n "$changes" ]]; then dirty=yes; else dirty=no; fi
+printf 'Observer: project change; HEAD=%s dirty=%s. Controlled deployment requires operator review.\n' "$head" "$dirty"

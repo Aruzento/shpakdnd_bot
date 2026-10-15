@@ -1,7 +1,10 @@
 [Unit]
-Description=Watch Shpak DnD project files
+Description=Observe Shpak DnD project changes; operator deployment required
 
 [Path]
+# Explicit directories: PathModified is not recursive. No generated/control files.
+TriggerLimitIntervalSec=30
+TriggerLimitBurst=100
 PathModified=/opt/shpakdnd-bot/bot.py
 PathModified=/opt/shpakdnd-bot/app
 PathModified=/opt/shpakdnd-bot/app/db

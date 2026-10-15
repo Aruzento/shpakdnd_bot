@@ -20,10 +20,12 @@ from app.mini.schema import init_mini_db
 from app.mini.shop import sync_shop_catalog
 from app.mini.wallet import get_balance, get_wallet_history
 from app.mini.worlds import sync_configured_mini_worlds
+from tests.topic_fixtures import isolated_topics
 
 
 class MiniAdminGrantTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(isolated_topics())
         self.tempdir = tempfile.TemporaryDirectory()
         self.db = Path(self.tempdir.name) / "mini.db"
         init_mini_db(self.db)
@@ -54,7 +56,7 @@ class MiniAdminGrantTests(unittest.TestCase):
         result = grant_mini_coins(
             self.player["id"],
             123,
-            "@arukozento",
+            "@testadmin",
             self.db,
         )
         self.assertEqual(result["balance"], 123)
@@ -100,7 +102,7 @@ class MiniAdminGrantTests(unittest.TestCase):
         result = grant_mini_coins_all(
             self.world_id,
             25,
-            "@arukozento",
+            "@testadmin",
             self.db,
         )
         self.assertEqual(result["players"], 2)
