@@ -63,9 +63,11 @@ def personal_screen(world_id,user_id,player_id,session):
     return body,InlineKeyboardMarkup(inline_keyboard=rows)
 
 @screen
-def lobby_screen(world_id,user_id,player_id,active,challenges):
+def lobby_screen(world_id,user_id,player_id,active,challenges,*,recent=None):
     if active:return personal_screen(world_id,user_id,player_id,active)
     rows=[[_button(world_id,user_id,text("pvp.create"),"create."+secrets.token_hex(4))]]
+    if recent:
+        rows.append([_button(world_id,user_id,text("pvp.latest"),f"view.{recent}")])
     for session in challenges:
         creator=next(m for m in session["members"] if m["player_id"]==session["creator_id"])
         rows.append([_button(world_id,user_id,text("pvp.lobby.challenge",name=_name(creator)),f"join.{session['id']}")])
@@ -78,7 +80,8 @@ async def _show(callback,world,player,session=None):
         body,markup=personal_screen(world["id"],callback.from_user.id,player["id"],session)
     else:
         active,challenges=pvp.lobby(player["id"],world["id"])
-        body,markup=lobby_screen(world["id"],callback.from_user.id,player["id"],active,challenges)
+        body,markup=lobby_screen(world["id"],callback.from_user.id,player["id"],active,challenges,
+            recent=pvp.latest_session(player["id"],world["id"]))
     await send_private_text_from_callback(callback,world,body,markup)
 
 @router.callback_query(F.data.startswith("mini:pvp:"))
@@ -121,7 +124,7 @@ async def action(callback):
                     except Exception as error:
                         # A missed ephemeral can always be recovered via Events
                         # or the public open-choice button until the DB deadline.
-                        print(f"PvP choice notice: {type(error).__name__}: {error}")
+                        print(f"PvP choice notice: {type(error).__name__}")
             elif act=="cancel":session=pvp.cancel(player["id"],wid,sid)
             else:session=pvp.get_session(wid,sid)
             if not any(m["player_id"]==player["id"] for m in session["members"]):

@@ -6109,5 +6109,23 @@
   },
   "icon.guide.title": {
     "kind": "icon"
+  },
+  "pvp.error.paused": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.error.publication_pending": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
+  },
+  "pvp.latest": {
+    "kind": "text",
+    "parameters": [],
+    "parse_mode": null,
+    "limit": 1024
   }
 }

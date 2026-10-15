@@ -169,11 +169,31 @@ failed_start() {
     # Do not leave an unhealthy Restart=always process looping.
     stop_stack || return 1
 }
+rollback_preflight() {
+    printf 'PvP rollback preflight: current=%s target=%s backup=%s\n' "$(head_now)" "$OLD_HEAD" "$BACKUP"
+    if [[ ! -f "$TOOLS/pvp_ops.py" ]]; then
+        printf '❌ Rollback заблокирован: helper_missing (frozen pvp_ops.py). Старый код не запускается.\n'
+        summary
+        return 1
+    fi
+    if ! as_bot "$PYTHON" "$TOOLS/pvp_ops.py" --db "$DB" rollback-check; then
+        printf '❌ Rollback заблокирован: PvP escrow/публикация не разрешены либо БД недоступна. Переход/запуск остановлен; текущий HEAD указан ниже.\n'
+        printf 'Сохраните текущий код, выполните штатный pause-new/drain либо оставьте стек остановленным для ручного восстановления. Обхода защиты нет.\n'
+        summary
+        return 1
+    fi
+}
 rollback() {
     printf 'Code rollback: %s. DB НЕ восстанавливается из backup.\n' "$OLD_HEAD"
     stop_stack || return 1
+    rollback_preflight || return 1
+    protected_target "$OLD_HEAD" || return 1
+    # Recheck after all preparations, immediately before switching away from PvP.
+    rollback_preflight || return 1
     checkout_head "$OLD_HEAD" || return 1
     checks "$OLD_HEAD" "$OLD_HEAD" || return 1
+    # Startup checks may have touched SQLite; frozen helper survives old checkout.
+    rollback_preflight || return 1
     if ! start_stack; then failed_start; return 1; fi
     finished_notice
     printf '✅ Предыдущая версия восстановлена и запущена.\n'
@@ -206,7 +226,7 @@ main() {
     # Freeze the small helper bundle: it also survives a rollback to older code.
     TOOLS="$(mktemp -d "$RUNTIME_DIR/shpakdnd-deploy.XXXXXXXX")"
     chmod 755 "$TOOLS"
-    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py; do
+    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py; do
         install -m 644 "$SOURCE_DIR/$helper" "$TOOLS/$helper"
     done
     as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1

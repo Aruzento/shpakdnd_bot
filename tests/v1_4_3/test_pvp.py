@@ -23,7 +23,11 @@ class PvpCase(MiniCase):
         self.sql("UPDATE mini_players SET coins=100,shards=0")
     def create(self,key="create"):
         return pvp.create(self.pid,self.wid,key,self.db,now=1000)
+    def published(self,sid):
+        # Economy-only fixtures acknowledge a synthetic successful publication.
+        self.sql("UPDATE mini_event_pvp SET publication='sent',message_id=77,published_revision=revision WHERE id=?",(sid,))
     def accept(self,sid,pid=None):
+        self.published(sid)
         return pvp.accept(pid or self.other,self.wid,sid,self.db,now=1001)
     def choose(self,sid,pid,choice,now=1002):
         return pvp.choose(pid,self.wid,sid,choice,self.db,now=now)
@@ -277,7 +281,7 @@ class PublicationTests(PvpCase):
     def test_restart_after_claim_refunds_without_republish(self):
         s=self.create_current()
         self.assertIsNotNone(publication.claim_send(s["id"],self.db))
-        publication.recover(self.db);publication.recover(self.db)
+        publication.recover(self.db,now=pvp.timestamp()+publication.LEASE_SECONDS+1);publication.recover(self.db,now=pvp.timestamp()+publication.LEASE_SECONDS+2)
         bot=self.bot();asyncio.run(publication.tick(bot,self.db))
         bot.send_message.assert_not_awaited()
         self.assertEqual(self.balance(self.pid)["coins"],100)
@@ -297,10 +301,16 @@ class PublicationTests(PvpCase):
         self.assertIn("Дуэль завершена",bot.edit_message_text.call_args.kwargs["text"])
         self.assertEqual(bot.edit_message_text.call_args.kwargs["reply_markup"].inline_keyboard,[])
     def test_edit_failure_retries_known_message_only(self):
-        s=self.create_current();bot=self.bot();bot.edit_message_text.side_effect=TimeoutError("edit")
+        s=self.create_current();bot=self.bot()
+        asyncio.run(publication.publish(bot,s["id"],self.db))
+        self.sql("UPDATE mini_event_pvp SET revision=revision+1 WHERE id=?",(s["id"],))
+        bot.edit_message_text.side_effect=TimeoutError("edit")
         asyncio.run(publication.publish(bot,s["id"],self.db))
         bot.edit_message_text.side_effect=None
         asyncio.run(publication.tick(bot,self.db))
+        self.assertEqual(bot.edit_message_text.await_count,1)
+        with patch.object(publication,"timestamp",return_value=pvp.timestamp()+11):
+            asyncio.run(publication.tick(bot,self.db))
         self.assertEqual(bot.send_message.await_count,1)
         self.assertEqual(bot.edit_message_text.await_count,2)
 
@@ -323,7 +333,7 @@ class PvpHandlerTests(PvpCase):
         stack.enter_context(patch.object(context,"get_mini_player",side_effect=partial(get_mini_player,db_path=self.db)))
         stack.enter_context(patch.object(context,"touch_mini_player",side_effect=partial(touch_mini_player,db_path=self.db)))
         stack.enter_context(patch.object(context,"is_mini_topic",return_value=True))
-        for name in ("create","accept","choose","cancel","get_session","lobby"):
+        for name in ("create","accept","choose","cancel","get_session","lobby","latest_session"):
             original=getattr(pvp,name)
             stack.enter_context(patch.object(pvp,name,side_effect=partial(original,db_path=self.db)))
         stack.enter_context(patch.object(ui,"publish",new_callable=AsyncMock))
@@ -336,6 +346,7 @@ class PvpHandlerTests(PvpCase):
     def test_handler_accept_opens_two_private_screens(self):
         from app.mini.events import pvp_handlers as ui
         s=pvp.create(self.pid,self.wid,"ui",self.db)
+        self.published(s["id"])
         cb=self.cb(user=900124,owner=0,payload=f"join.{s['id']}")
         with self.patches():asyncio.run(ui.action(cb))
         calls=cb.bot.send_message.call_args_list
@@ -357,6 +368,7 @@ class PvpHandlerTests(PvpCase):
     def test_personal_button_owner_wrong_chat_and_wrong_topic_rejected(self):
         from app.mini.events import pvp_handlers as ui
         s=pvp.create(self.pid,self.wid,"ui",self.db)
+        self.published(s["id"])
         variants=[self.cb(user=900124,owner=900123,payload=f"cancel.{s['id']}"),
                   self.cb(payload=f"cancel.{s['id']}",chat=-999),
                   self.cb(payload=f"cancel.{s['id']}",thread=999)]
@@ -367,6 +379,7 @@ class PvpHandlerTests(PvpCase):
     def test_open_choice_button_rejects_nonparticipant(self):
         from app.mini.events import pvp_handlers as ui
         s=pvp.create(self.pid,self.wid,"ui",self.db)
+        self.published(s["id"])
         pvp.accept(self.other,self.wid,s["id"],self.db)
         cb=self.cb(user=900125,owner=0,payload=f"view.{s['id']}")
         with self.patches():asyncio.run(ui.action(cb))
@@ -375,6 +388,7 @@ class PvpHandlerTests(PvpCase):
     def test_public_callback_cannot_submit_choice_for_anyone(self):
         from app.mini.events import pvp_handlers as ui
         s=pvp.create(self.pid,self.wid,"ui",self.db)
+        self.published(s["id"])
         pvp.accept(self.other,self.wid,s["id"],self.db)
         cb=self.cb(owner=0,payload=f"pick.{s['id']}.s")
         with self.patches():asyncio.run(ui.action(cb))
@@ -383,6 +397,7 @@ class PvpHandlerTests(PvpCase):
     def test_public_invitation_wrong_location_cannot_spend(self):
         from app.mini.events import pvp_handlers as ui
         s=pvp.create(self.pid,self.wid,"ui",self.db)
+        self.published(s["id"])
         for chat,thread in ((-999,self.world["thread_id"]),(self.world["chat_id"],999)):
             cb=self.cb(user=900124,owner=0,payload=f"join.{s['id']}",chat=chat,thread=thread)
             with self.patches():asyncio.run(ui.action(cb))

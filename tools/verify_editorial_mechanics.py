@@ -42,7 +42,7 @@ def normalize(tree):
     return ast.dump(tree,include_attributes=False)
 changed=subprocess.check_output(['git','diff',BASE,'--name-only'],stderr=subprocess.DEVNULL).decode().splitlines()
 checked=[]
-NEW_GAMEPLAY={"app/mini/events/pvp.py","app/mini/events/pvp_handlers.py","app/mini/events/pvp_publication.py","app/mini/migrations/v1_4_3.py"}
+NEW_GAMEPLAY={"app/mini/events/pvp.py","app/mini/events/pvp_handlers.py","app/mini/events/pvp_publication.py","app/mini/migrations/v1_4_3.py","app/mini/migrations/v1_4_3_safety.py"}
 def remove_authorized_pvp_guard(tree,rel):
     if rel!="app/mini/events/service.py":return tree
     hook=ast.parse("from app.mini.events.pvp import assert_no_active_pvp\nassert_no_active_pvp(conn, player_id)").body

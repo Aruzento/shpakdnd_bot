@@ -6,6 +6,7 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_event_pvp_shard_awards", "mini_event_pvp_control",
     "mini_event_pvp_members", "mini_event_pvp",
     "mini_registration_sessions", "mini_public_shares",
     "mini_gacha_batches", "mini_gacha_batch_pulls", "mini_registration_requests",

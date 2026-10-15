@@ -13,6 +13,7 @@ import zipfile
 ROOT=Path(__file__).resolve().parents[1]
 PRE_EDITORIAL="5ab332e28ebef415a3b0757787109a8d60acd2a8"
 EDITORIAL="de3ce625a779a8295b82a08f7a4844d290362e5d"
+PRE_SAFETY="677398665f302127db84dad3d9d010de4bbf1582"
 sys.path.insert(0,str(ROOT))
 
 def snapshot(path):
@@ -40,7 +41,7 @@ def main():
     result=[]
     with tempfile.TemporaryDirectory(prefix="mini-pvp-migration-") as folder:
         base=Path(folder)
-        for ref in (PRE_EDITORIAL,EDITORIAL):
+        for ref in (PRE_EDITORIAL,EDITORIAL,PRE_SAFETY):
             code=base/ref;code.mkdir();archive=base/(ref+".zip")
             subprocess.run(["git","archive","--format=zip","--output="+str(archive),ref,"app","check_bot.py"],cwd=ROOT,check=True)
             with zipfile.ZipFile(archive) as z:z.extractall(code)
@@ -66,14 +67,69 @@ with connect_mini_db() as conn:
     conn.execute('UPDATE mini_players SET active_hero_id=? WHERE id=?',(hid,players[1]['id']))
 challenge(players[1]['id'],players[2]['id'],hid,'legacy-duel')
 """
+            if ref==PRE_SAFETY:
+                seed+="""
+from app.mini.events import pvp
+players_pvp=[create_mini_player(world['id'],920001+i,'','Safety '+str(i)) for i in range(18)]
+for player in players_pvp:add_coins(player['id'],100,'Fixture')
+def game(i,kind):
+    first,second=players_pvp[i*2]['id'],players_pvp[i*2+1]['id']
+    row=pvp.create(first,world['id'],'legacy-pvp-'+kind,now=1000)
+    sid=row['id']
+    if kind in ('choosing','win','draw'):
+        pvp.accept(second,world['id'],sid,now=1001)
+    if kind in ('win','draw'):
+        pvp.choose(first,world['id'],sid,'saint',now=1002)
+        pvp.choose(second,world['id'],sid,'demon' if kind=='win' else 'saint',now=1003)
+    elif kind in ('refund','uncertain','edit_failed','inflight_edit','known'):
+        pvp.cancel(first,world['id'],sid,now=1004)
+    with connect_mini_db() as conn:
+        if kind=='uncertain':
+            conn.execute("UPDATE mini_event_pvp SET publication='uncertain',last_error='https://secret-token/private' WHERE id=?",(sid,))
+        elif kind in ('choosing','win','draw','edit_failed','inflight_edit','known'):
+            conn.execute("UPDATE mini_event_pvp SET publication='sent',message_id=?,published_revision=revision WHERE id=?",(100+sid,sid))
+            if kind in ('edit_failed','inflight_edit'):
+                conn.execute("UPDATE mini_event_pvp SET published_revision=0,last_error='private old error',editing_until=? WHERE id=?",(int(__import__('time').time())+100 if kind=='inflight_edit' else 0,sid))
+for i,kind in enumerate(('open','choosing','win','draw','refund','uncertain','edit_failed','inflight_edit','known')):
+    game(i,kind)
+"""
             run(code,source,seed)
             before=snapshot(source)
             copy=base/(ref+"-migrated.db");shutil.copy2(source,copy)
-            for _ in range(3):init_mini_db(copy)
+            init_mini_db(copy)
+            migrated_once=snapshot(copy)
+            for _ in range(2):init_mini_db(copy)
             after=snapshot(copy)
-            assert all(after[t]==rows for t,rows in before.items()),"Historical data changed"
+            assert after==migrated_once,"Repeated safety init reset persisted state"
+            for table,rows in before.items():
+                if table=="mini_event_pvp":
+                    with closing(sqlite3.connect(source)) as conn:
+                        columns=[r[1] for r in conn.execute("PRAGMA table_info(mini_event_pvp)")]
+                    allowed={columns.index("last_error"),columns.index("editing_until")}
+                    assert len(after[table])==len(rows)
+                    assert all(all(new[i]==old[i] for i in range(len(old)) if i not in allowed)
+                               for old,new in zip(rows,after[table])),"Historical PvP economics changed"
+                else:assert after[table]==rows,"Historical data changed: "+table
             assert "mini_event_pvp" in after and "mini_event_pvp_members" in after
-            assert not after["mini_event_pvp"]
+            if ref!=PRE_SAFETY:assert not after["mini_event_pvp"]
+            else:
+                with closing(sqlite3.connect(copy)) as conn:
+                    conn.row_factory=sqlite3.Row
+                    safety=[dict(r) for r in conn.execute("SELECT * FROM mini_event_pvp")]
+                    assert len(safety)==9
+                    assert {r["status"] for r in safety}>={"open","choosing","finished","cancelled"}
+                    assert {r["publication"] for r in safety}>={"pending","sent","uncertain"}
+                    retry=[r for r in safety if r["edit_status"]=="retrying"]
+                    assert len(retry)==2 and all(r["retry_count"]==1 and r["next_retry_at"]>0 and r["editing_until"]==0 for r in retry)
+                    old_lease={r[0]:r[columns.index("editing_until")] for r in before["mini_event_pvp"]}
+                    assert all(r["next_retry_at"]>=old_lease[r["id"]] for r in retry)
+                    assert conn.execute("SELECT paused FROM mini_event_pvp_control").fetchone()[0]==0
+                    assert not conn.execute("SELECT * FROM mini_event_pvp_shard_awards").fetchall()
+                    assert all("private" not in r["last_error"] and "secret" not in r["last_error"] for r in safety)
+                from deploy.pvp_ops import inspect
+                report=inspect(copy)
+                assert any("legacy_shards_unverified" in r["errors"] for r in report["sessions"])
+                assert not report["rollback_ready"]
             integrity(copy)
             with closing(sqlite3.connect(copy)) as conn:
                 players=conn.execute("SELECT id,world_id FROM mini_players ORDER BY id").fetchall()
@@ -86,12 +142,13 @@ challenge(players[1]['id'],players[2]['id'],hid,'legacy-duel')
             integrity(rollback)
             # Old code does not process new escrow deadlines. Data compatibility
             # alone is not a safe operational rollback: require a drain first.
-            assert snapshot(rollback)["mini_event_pvp"][0][0]==sid
+            assert any(r[0]==sid for r in snapshot(rollback)["mini_event_pvp"])
             pvp.expire(copy,now=pvp.timestamp()+pvp.ACCEPT_SECONDS+1)
             assert pvp.get_session(players[3][1],sid,copy)["status"]=="expired"
             integrity(copy)
             result.append(dict(source_ref=ref,old_tables_retained=len(before),repeat_init=3,
-                solo_preserved=True,duel_preserved=True,integrity="ok",foreign_keys=0,
+                solo_preserved=True,duel_preserved=True,populated_pvp_states=9 if ref==PRE_SAFETY else 0,
+                retry_migration_idempotent=True,normal_mode_default=True,integrity="ok",foreign_keys=0,
                 old_code_startup=0,old_code_preserved_new_tables=True,
                 automatic_rollback_allowed=False,reason="Old code cannot expire active PvP escrow; drain/refund before rollback"))
         fresh=base/"fresh.db"
