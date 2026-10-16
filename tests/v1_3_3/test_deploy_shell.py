@@ -47,7 +47,11 @@ git)
             elif [[ "$*" == *origin/main* ]]; then cat "$FAKE_STATE/target"
             else cat "$FAKE_STATE/head"; fi ;;
         ls-tree) printf 'bot.py\napp/config.py\n.env.example\n' ;;
-        switch) printf '%s\n' "${@: -1}" > "$FAKE_STATE/head" ;;
+        switch)
+            if [[ "${FAKE_REMOVE_SOURCE_GUARD:-0}" == 1 && "${@: -1}" == "$(cat "$FAKE_STATE/old")" ]]; then
+                mv "$SHPAKDND_PROJECT/deploy/pvp_ops.py" "$FAKE_STATE/removed-source-guard.py"
+            fi
+            printf '%s\n' "${@: -1}" > "$FAKE_STATE/head" ;;
         diff) [[ "${FAKE_DIFF_FAIL:-0}" != 1 ]] ;;
         *) echo "unknown git $*" >&2; exit 9 ;;
     esac ;;
@@ -81,6 +85,16 @@ journalctl)
     [[ "${FAKE_JOURNAL_FAIL:-0}" != 1 ]] || echo 'Traceback: fake startup failure'
     echo 'fake startup journal' ;;
 python)
+    if [[ "$*" == *pvp_ops.py* ]]; then
+        count=0; [[ ! -f "$FAKE_STATE/guards" ]] || count="$(cat "$FAKE_STATE/guards")"
+        count=$((count+1)); echo "$count" > "$FAKE_STATE/guards"
+        if [[ -n "${FAKE_GUARD_INJECT:-}" && "$count" == "${FAKE_GUARD_INJECT_AT:-2}" ]]; then
+            "$FAKE_REAL_PYTHON" "$FAKE_GUARD_INJECT" "$SHPAKDND_PROJECT/shpakdnd.db"
+        fi
+        if [[ "${FAKE_GUARD_REAL:-0}" == 1 ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
+        [[ "${FAKE_GUARD_FAIL:-0}" != 1 ]] || exit 2
+        exit 0
+    fi
     if [[ "$*" == *--redact-env* ]]; then
         if [[ -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
         exec cat
@@ -93,6 +107,11 @@ python)
         touch "$2"
         if [[ "${FAKE_SIGNAL:-0}" == 1 ]]; then kill -TERM "$PPID"; fi
     elif [[ "$*" == *check_bot.py* ]]; then
+        if [[ "${FAKE_REMOVE_FROZEN_GUARD:-0}" == 1 ]]; then
+            for helper in "$SHPAKDND_RUNTIME_DIR"/*/pvp_ops.py; do
+                [[ ! -f "$helper" ]] || mv "$helper" "$FAKE_STATE/removed-frozen-guard.py"
+            done
+        fi
         # Fail only for the newly installed target; rollback can still pass.
         if [[ "${FAKE_CHECK_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
     elif [[ "$*" == *'-m unittest'* ]]; then
@@ -154,7 +173,7 @@ class DeployShellTests(unittest.TestCase):
     def run_deploy(self,answers='',dry=False,**flags):
         env=dict(self.env,**{k:str(v) for k,v in flags.items()})
         # Set PATH within Bash to avoid MSYS Windows PATH conversion ambiguity.
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'+(' --dry-run' if dry else '')
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(getattr(self,'script',ROOT/'deploy/deploy-shpakdnd.sh'))+'"'+(' --dry-run' if dry else '')
         result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60)
         result.stdout=result.stdout.decode('utf-8');result.stderr=result.stderr.decode('utf-8')
         trace=(self.state/'trace').read_text(encoding='utf-8') if (self.state/'trace').exists() else ''

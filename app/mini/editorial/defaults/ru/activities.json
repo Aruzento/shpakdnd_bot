@@ -1,0 +1,17 @@
+{
+  "activities.daily_callback.line_01": "\n\n🪙 +{coins_earned} {currency_name}",
+  "activities.daily_callback.line_02": "🔥 Серия: {streak} {days}\n📅 День цикла: {value_3}/7\n🪙 Бонус: +{value_4}%\n",
+  "activities.daily_callback.line_03": "{prefix}\n\n{streak_line}\n{story_text}{rare_line}{reward_line}\n💰 Баланс: {balance}\n\nСледующий дейлик будет доступен завтра.",
+  "activities.daily_callback.line_04": "⚔️ Ежедневное приключение завершено!",
+  "activities.daily_callback.line_05": "⚔️ Сегодня ты уже ходил в приключение.\nВот чем оно закончилось:",
+  "activities.daily_callback.line_06": "\n\n✨ Редкое событие!",
+  "activities.daily_callback.line_07": "\n\n🪙 Награда уже получена: +{coins_earned}",
+  "activities.daily_callback.line_08": "день",
+  "activities.daily_callback.line_09": "📦 Недельный сундук получен: проверь инвентарь.\n",
+  "activities.daily_callback.line_10": "\n\n🌟 Очень редкое событие!",
+  "activities.daily_callback.line_11": "дня",
+  "activities.daily_callback.line_12": "дней",
+  "activities.daily_callback.line_13": "Сегодняшняя награда уже получена.",
+  "activities.rules_section_callback.line_01": "Этот раздел недоступен.",
+  "activities.daily_callback.line_14": "Не удалось выполнить дейлик: {error}"
+}

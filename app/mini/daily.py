@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.wallet import change_balance_in_transaction
 import secrets
 import sqlite3
@@ -129,7 +130,7 @@ def _normalize_claim_date(value: date | str | None) -> str:
         return _today_string()
 
     if isinstance(value, datetime):
-        if value.tzinfo is None: raise ValueError("Нужен datetime с часовым поясом.")
+        if value.tzinfo is None: raise ValueError(editorial_text('errors.daily.normalize_claim_date.01'))
         return value.astimezone(TIMEZONE).date().isoformat()
 
     if isinstance(value, date):
@@ -281,7 +282,7 @@ def claim_daily(
 
         if player_row is None:
             conn.rollback()
-            raise ValueError("Mini-игрок не найден.")
+            raise ValueError(editorial_text('errors.daily.claim_daily.01'))
 
         current_balance = int(player_row["coins"])
 
@@ -302,7 +303,7 @@ def claim_daily(
             }
 
         last=conn.execute('SELECT last_day,streak FROM mini_daily_streak WHERE player_id=?',(player_id,)).fetchone()
-        if last and day < last['last_day']: raise ValueError('Нельзя получить прошлый дейлик.')
+        if last and day < last['last_day']: raise ValueError(editorial_text('errors.daily.claim_daily.02'))
         from datetime import timedelta
         previous=(date.fromisoformat(day)-timedelta(days=1)).isoformat()
         streak=last['streak']+1 if last and last['last_day']==previous else 1

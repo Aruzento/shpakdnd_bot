@@ -1,6 +1,8 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
 import json
 from aiogram import F,Router
-from aiogram.types import InlineKeyboardButton,InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup
 from app.topic_guard import is_mini_topic
 from app.mini.ui.context import shop_context,personal_callback
 from app.mini.ui.transport import send_private_text_from_callback
@@ -12,16 +14,19 @@ from app.mini.ui.hero_selector import render_selector,hero_label
 from app.mini.tower.selection import render_selection
 from app.mini.ui.hero_cards import send_hero_card
 from app.mini.tower.catalog import load_catalog
+
 TOTAL_FLOORS=len(load_catalog()["floors"])
 
 router=Router(name="mini_tower")
 
 
+@editorial_screen
 def button(text,world,user,tail=''):
     data=personal_callback('tower',world,user)
     return InlineKeyboardButton(text=text,callback_data=data+(':'+tail if tail else ''))
 
 
+@editorial_screen
 def enemy_lines(enemy, *, selection=False):
     heading=f"{enemy['name']} {'·' if selection else '●'} {faction_name(enemy['faction'])}"
     lines=[heading,'']
@@ -29,77 +34,81 @@ def enemy_lines(enemy, *, selection=False):
         lines += [f"HP: {enemy['max_hp']}",'']
     lines += hero_trait_lines(enemy)
     labels=[tag_label(trait,TRAIT_LABELS) for trait in enemy['features']]
-    lines += ['', 'Особенности: '+(', '.join(labels) or 'нет')]
+    lines += ['', editorial_text('tower.enemy_lines.line_01')+(', '.join(labels) or editorial_text('tower.enemy_lines.line_02'))]
     return lines
 
 
+@editorial_screen
 def hero_button_text(hero, bonus):
     extra=f' +{bonus}' if bonus else ''
     return f"{hero['name']} · {faction_name(hero['faction'])} · ATK {hero['attack']}{extra}"
 
 
+@editorial_screen
 def render_hero_selection(state,heroes,world,user,page=0,favorites=None):
     # Compatibility formatter for integrations using the old shared selector.
     text,markup=render_selector(heroes,favorites or [],'t',world,user,state['floor']['floor'])
-    return '\n'.join(['🎴 Выбор героя','']+enemy_lines(state['floor'],selection=True))+'\n\n'+text,markup
+    return '\n'.join([editorial_text('tower.render_hero_selection.line_01'),'']+enemy_lines(state['floor'],selection=True))+'\n\n'+text,markup
 
 
 
+@editorial_screen
 def render_state(state,world,user,reward=None):
     rows=[];attempt=state['attempt'] or state.get('last_attempt')
     enemy=json.loads(attempt['enemy_json']) if attempt else state['floor']
     floor=enemy['floor'] if enemy else TOTAL_FLOORS
-    lines=[f'🏰 Испытания: {floor}/{TOTAL_FLOORS}','']
-    equipment=InlineKeyboardButton(text='🛡 Экипировка',callback_data=personal_callback('equipment',world,user)+':home.0~t')
+    lines=[editorial_text('tower.render_state.line_01', floor=f'{floor}', TOTAL_FLOORS=f'{TOTAL_FLOORS}'),'']
+    equipment=InlineKeyboardButton(text=editorial_text('navigation.equipment'),callback_data=personal_callback('equipment',world,user)+':home.0~t')
     if enemy:
         lines+=enemy_lines(enemy)
     if attempt:
         hero=json.loads(attempt['hero_json'])
-        lines += ['',f"HP сейчас: {attempt['current_hp']}/{enemy['max_hp']}",
-                  f"Герой: {hero_button_text(hero,attempt['equipment_bonus'])}",
-                  f"Урон по фракции: ×{faction_multiplier_percent(hero['faction'],enemy['faction'])/100:g}",
-                  f"🛡 Щиты: {attempt['shields']}/3"]
+        lines += ['',editorial_text('tower.render_state.line_03', current_hp=f"{attempt['current_hp']}", max_hp=f"{enemy['max_hp']}"),
+                  editorial_text('tower.render_state.line_04', value_1=f"{hero_button_text(hero, attempt['equipment_bonus'])}"),
+                  editorial_text('tower.render_state.line_05', value_1=f"{faction_multiplier_percent(hero['faction'], enemy['faction']) / 100:g}"),
+                  editorial_text('tower.render_state.line_06', shields=f"{attempt['shields']}")]
         lines += [e.get('message','') for e in json.loads(attempt['events_json'])]
         if attempt['status']=='active':
-            rows.append([button('⚔️ Атаковать',world,user,f"hit.{attempt['id']}.{attempt['turn']}")])
+            rows.append([button(editorial_text('tower.render_state.line_19'),world,user,f"hit.{attempt['id']}.{attempt['turn']}")])
         elif attempt['status']=='lost':
-            lines.append('💀 Щиты закончились. Можно повторить бой или сменить героя.')
-            rows.append([button('🔄 Сменить героя',world,user,f"heroes.{attempt['floor']}.0"),equipment])
-            rows.append([button('🔄 Повторить бой',world,user,f"retry.{attempt['id']}")])
+            lines.append(editorial_text('tower.render_state.line_13'))
+            rows.append([button(editorial_text('tower.render_state.line_21'),world,user,f"heroes.{attempt['floor']}.0"),equipment])
+            rows.append([button(editorial_text('tower.render_state.line_22'),world,user,f"retry.{attempt['id']}")])
         else:
-            lines.append('🏆 Этаж пройден!')
-            if state['completed']: lines.append('🏁 Все 200 этажей пройдены!')
-            else: rows.append([button('➡️ Следующий этаж',world,user)])
+            lines.append(editorial_text('tower.render_state.line_14'))
+            if state['completed']: lines.append(editorial_text('tower.render_state.line_20'))
+            else: rows.append([button(editorial_text('tower.render_state.line_26'),world,user)])
     elif state['completed']:
-        lines.append('🏁 Все 200 этажей пройдены!')
+        lines.append(editorial_text('tower.render_state.line_08'))
     else:
-        lines += ['',f"Бонус экипировки: +{state['equipment_bonus']} к атаке",'🛡 Новая попытка: 3/3',
-                  'Выбери героя под фракцию и особенности противника.']
+        lines += ['',editorial_text('tower.render_state.line_09', equipment_bonus=f"{state['equipment_bonus']}"),editorial_text('tower.render_state.line_10'),
+                  editorial_text('tower.render_state.line_11')]
         if enemy.get('response')=='prepare':
-            lines.append('Противник сначала готовит атаку, затем бьёт по щиту.')
+            lines.append(editorial_text('tower.render_state.line_15'))
         selected=state.get('selected_hero')
         if selected:
-            lines += ['', 'Текущий герой:', hero_label(selected)]
-            rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{enemy['floor']}.0"),equipment])
-            rows.append([button('⚔️ Начать бой',world,user,f"start.{enemy['floor']}.{selected['id']}")])
+            lines += ['', editorial_text('tower.render_state.line_16'), hero_label(selected)]
+            rows.append([button(editorial_text('tower.render_state.line_23'),world,user,f"heroes.{enemy['floor']}.0"),equipment])
+            rows.append([button(editorial_text('tower.render_state.line_24'),world,user,f"start.{enemy['floor']}.{selected['id']}")])
         else:
-            rows.append([button('🎴 Выбрать героя',world,user,f"heroes.{enemy['floor']}.0"),equipment])
+            rows.append([button(editorial_text('tower.render_state.line_25'),world,user,f"heroes.{enemy['floor']}.0"),equipment])
     if reward:
-        lines.append(f"💎 Награда: {reward['shards']} осколков")
+        lines.append(editorial_text('tower.render_state.line_07', shards=f"{reward['shards']}"))
         if reward['equipment']:
-            e=reward['equipment'];lines.append(f"🎁 Сундук: {e['name']} +{e['attack_bonus']}")
+            e=reward['equipment'];lines.append(editorial_text('tower.render_state.line_12', name=f"{e['name']}", attack_bonus=f"{e['attack_bonus']}"))
     if not any(equipment in row for row in rows):rows.append([equipment])
-    rows.append([InlineKeyboardButton(text='🏠 Главная',callback_data=personal_callback('home',world,user)),InlineKeyboardButton(text='⬅️ Назад',callback_data=personal_callback('adventures',world,user))])
+    rows.append([InlineKeyboardButton(text=editorial_text('navigation.home'),callback_data=personal_callback('home',world,user)),InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=personal_callback('adventures',world,user))])
     return '\n'.join(lines),InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 @router.callback_query(F.data.startswith('mini:tower:'))
+@editorial_screen
 async def tower_callback(callback):
     context=await shop_context(callback,'tower')
     if context is None: return
     world,player,tail=context
     if not is_mini_topic(world['chat_id'],world['thread_id']):
-        await callback.answer('Эта тема больше не работает в режиме Mini.',show_alert=True);return
+        await callback.answer(editorial_text('tower.tower_callback.line_01'),show_alert=True);return
     w,u=world['id'],callback.from_user.id
     try:
         state=get_state(player['id']);reward=None;card=None
@@ -108,7 +117,7 @@ async def tower_callback(callback):
         if parts[0] in {'heroes','pick','start','rarity','card','choose'}:
             floor=int(parts[1])
             if state['completed'] or floor!=state['floor']['floor'] or state['attempt']:
-                raise ValueError('Кнопка выбора героя устарела. Открой текущий бой.')
+                raise ValueError(editorial_text('errors.tower.handlers.tower_callback.01'))
         if parts[0] in ('heroes','rarity','card','choose'):
             heroes=list_heroes(player['id'])
             if parts[0]=='heroes' and len(parts)==3:
@@ -120,10 +129,10 @@ async def tower_callback(callback):
                     hid=int(parts[3]);rarity=int(parts[2])
                     from app.mini.tower.selection import RARITIES
                     if not 0<=rarity<len(RARITIES) or not any(h['id']==hid and h['rarity']==RARITIES[rarity] for h in heroes):
-                        raise ValueError('Этот герой больше недоступен.')
+                        raise ValueError(editorial_text('errors.tower.handlers.tower_callback.03'))
                     select_hero(player['id'],hid,expected_floor=floor);state=get_state(player['id'])
                 text,markup,card=render_selection(state,heroes,w,u,stage='card',rarity=int(parts[2]),page=int(parts[4]),hero_id=int(parts[3]))
-            else:raise ValueError('Некорректная кнопка.')
+            else:raise ValueError(editorial_text('errors.tower.handlers.tower_callback.02'))
         elif parts[0]=='pick' and len(parts)==3:
             # Safe legacy card selection. New UI exposes only the three stages.
             select_hero(player['id'],int(parts[2]),expected_floor=floor)
@@ -137,11 +146,11 @@ async def tower_callback(callback):
             elif parts[0]=='hit' and len(parts)==3:
                 result=attack(player['id'],int(parts[1]),int(parts[2]))
                 state=get_state(player['id']);state['attempt']=result['attempt'];reward=result['reward']
-            elif tail:raise ValueError('Некорректная кнопка.')
+            elif tail:raise ValueError(editorial_text('errors.tower.handlers.tower_callback.04'))
             # Home opens Tower state; hero selection is an explicit button.
             text,markup=render_state(state,w,u,reward)
     except (ValueError,IndexError) as error:
-        await callback.answer(str(error) or 'Некорректная кнопка.',show_alert=True);return
+        await callback.answer(str(error) or editorial_text('tower.tower_callback.line_02'),show_alert=True);return
     await callback.answer()
     if card:await send_hero_card(callback,world,card,text,markup)
     else:await send_private_text_from_callback(callback,world,text,markup)

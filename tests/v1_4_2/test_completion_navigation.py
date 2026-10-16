@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from tests.v1_3.support import MiniCase
+from app.mini.ui.hero_village import with_village
 from tests.v1_4.test_ui import state as village_state
 from app.mini import registration
 from app.mini.db import connect_mini_db
@@ -41,6 +42,7 @@ def callback(world, tail='', action='tower', uid=900123):
 class NavigationIntegrationTests(MiniCase):
     def patches(self):
         stack=ExitStack()
+        stack.enter_context(patch('app.mini.ui.heroes.with_village',side_effect=partial(with_village,db_path=self.db)))
         for module, name, fn in ((context,'get_mini_world_by_id',get_mini_world_by_id),
                 (context,'get_mini_player',get_mini_player),(context,'touch_mini_player',touch_mini_player),
                 (hero_ui,'get_player_heroes',get_player_heroes),(hero_ui,'get_player_hero',get_player_hero),

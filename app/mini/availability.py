@@ -1,13 +1,14 @@
 """Canonical ownership/residency check, shared by Boss, Tower and Duels."""
+from app.mini.editorial import text as editorial_text
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
 
 
 def assert_available(conn,player_id,hero_id):
     if not conn.execute('SELECT 1 FROM mini_player_heroes WHERE player_id=? AND hero_id=?',(player_id,hero_id)).fetchone():
-        raise ValueError('Этого героя нет в твоей коллекции.')
+        raise ValueError(editorial_text('errors.availability.assert_available.01'))
     if conn.execute('SELECT 1 FROM mini_village_residents WHERE player_id=? AND hero_id=?',(player_id,hero_id)).fetchone():
-        raise ValueError('Житель деревни недоступен для боя. Сначала высели его.')
+        raise ValueError(editorial_text('errors.availability.assert_available.02'))
 
 
 def available_ids(conn,player_id):
@@ -28,10 +29,10 @@ def assert_not_committed(conn,player_id,hero_id,*,now):
             JOIN mini_players p ON p.id=bp.player_id WHERE bp.player_id=?
             AND ((b.status='fighting' AND bp.hero_id=?) OR (b.status IN ('announced','ready') AND p.active_hero_id=?))''',
             (player_id,hero_id,hero_id)).fetchone()
-        if row: raise ValueError('Герой уже участвует в бою с боссом.')
+        if row: raise ValueError(editorial_text('errors.availability.assert_not_committed.03'))
     if conn.execute("SELECT 1 FROM mini_tower_attempts WHERE player_id=? AND hero_id=? AND status='active'",(player_id,hero_id)).fetchone():
-        raise ValueError('Герой уже участвует в Испытаниях.')
+        raise ValueError(editorial_text('errors.availability.assert_not_committed.01'))
     if conn.execute('''SELECT 1 FROM mini_duels WHERE status='pending' AND expires_at>?
         AND ((challenger_id=? AND challenger_hero_id=?) OR (defender_id=? AND defender_hero_id=?))''',
         (now,player_id,hero_id,player_id,hero_id)).fetchone():
-        raise ValueError('Герой выбран для дуэли.')
+        raise ValueError(editorial_text('errors.availability.assert_not_committed.02'))

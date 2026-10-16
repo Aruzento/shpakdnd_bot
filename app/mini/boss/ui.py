@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.ui.context import load_world as _load_world
 from app.mini.ui.transport import send_private_text_from_callback as _send_private
 import asyncio
@@ -24,8 +25,10 @@ from app.mini.boss.service import (
 from app.mini.ui.context import username_from_user
 from app.mini.boss.presentation import format_private_boss, boss_private_menu, no_boss_menu
 
+
 _BOSS_PUBLISH_LOCKS: dict[int, asyncio.Lock] = {}
 
+@editorial_screen
 def boss_publish_lock(boss_id: int) -> asyncio.Lock:
     boss_id = int(boss_id)
     lock = _BOSS_PUBLISH_LOCKS.get(boss_id)
@@ -35,16 +38,19 @@ def boss_publish_lock(boss_id: int) -> asyncio.Lock:
     return lock
 
 
+@editorial_screen
 def is_admin(callback: CallbackQuery, world: dict) -> bool:
     required = get_topic_admin(int(world["chat_id"]), int(world["thread_id"]))
     current = username_from_user(callback.from_user)
     return bool(required and current and current == required)
 
 
+@editorial_screen
 def is_joined(player_id: int, participants: list[dict]) -> bool:
     return any(int(row["player_id"]) == int(player_id) for row in participants)
 
 
+@editorial_screen
 async def show_boss_home(
     callback: CallbackQuery,
     world: dict,
@@ -73,9 +79,9 @@ async def show_boss_home(
             callback,
             world,
             (
-                "👹 Боссы\n\nСейчас активного босса нет."
+                editorial_text('boss.show_boss_home.line_01')
                 + (
-                    "\n\nТы администратор темы — можешь объявить нового босса."
+                    editorial_text('boss.show_boss_home.line_02')
                     if admin
                     else ""
                 )
@@ -102,10 +108,12 @@ async def show_boss_home(
     )
 
 
+@editorial_screen
 async def refresh_from_callback(callback: CallbackQuery, world: dict, boss: dict):
     await refresh_public_boss(callback.bot, world, boss)
 
 
+@editorial_screen
 async def publish_boss(
     callback: CallbackQuery,
     world: dict,
@@ -120,7 +128,7 @@ async def publish_boss(
     async with boss_publish_lock(boss_id):
         fresh = get_boss(boss_id)
         if fresh is None:
-            raise BossError("Босс больше не существует.")
+            raise BossError(editorial_text('errors.boss.ui.publish_boss.01'))
 
         current_message_id = fresh.get("signup_message_id")
         if not replace_existing and current_message_id:
@@ -176,6 +184,7 @@ async def publish_boss(
         set_signup_message(boss_id, sent.message_id, "text")
 
 
+@editorial_screen
 async def retire_old_public_boss(
     callback: CallbackQuery,
     world: dict,
@@ -199,25 +208,26 @@ async def retire_old_public_boss(
             )
 
 
+@editorial_screen
 async def admin_action_context(
     callback: CallbackQuery,
     action: str,
 ) -> tuple[dict, dict, int] | None:
     parts = (callback.data or "").split(":")
     if len(parts) != 5 or parts[1] != action:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
+        await callback.answer(editorial_text('boss.admin_action_context.line_01'), show_alert=True)
         return None
     try:
         world_id, owner_id, boss_id = int(parts[2]), int(parts[3]), int(parts[4])
     except ValueError:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
+        await callback.answer(editorial_text('boss.admin_action_context.line_05'), show_alert=True)
         return None
     if callback.from_user.id != owner_id:
-        await callback.answer("Это меню другого игрока.", show_alert=True)
+        await callback.answer(editorial_text('boss.admin_action_context.line_02'), show_alert=True)
         return None
     world = _load_world(world_id,callback)
     if world is None:
-        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        await callback.answer(editorial_text('boss.admin_action_context.line_03'),show_alert=True)
         return None
     boss = get_boss(boss_id)
     if (
@@ -226,7 +236,6 @@ async def admin_action_context(
         or int(boss["world_id"]) != world_id
         or not is_admin(callback, world)
     ):
-        await callback.answer("Нет прав администратора.", show_alert=True)
+        await callback.answer(editorial_text('boss.admin_action_context.line_04'), show_alert=True)
         return None
     return world, boss, owner_id
-

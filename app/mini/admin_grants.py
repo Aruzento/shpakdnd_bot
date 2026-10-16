@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import sqlite3
 from pathlib import Path
 
@@ -85,7 +86,7 @@ def grant_mini_coins(
     amount = int(amount)
 
     if amount <= 0:
-        raise ValueError("Количество монет должно быть больше 0.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_coins.01'))
 
     admin_username = _normalize_username(admin_username)
 
@@ -105,7 +106,7 @@ def grant_mini_item(
 ) -> dict:
     raw_item_ref = str(item_ref).strip()
     if not raw_item_ref:
-        raise ValueError("Не указан предмет.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_item.01'))
 
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -123,7 +124,7 @@ def grant_mini_item(
 
         if player is None:
             conn.rollback()
-            raise ValueError("Mini-игрок не найден.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_item.02'))
 
         if raw_item_ref.isdigit():
             item = conn.execute(
@@ -150,7 +151,7 @@ def grant_mini_item(
 
         if item is None:
             conn.rollback()
-            raise ValueError(f"Предмет «{raw_item_ref}» не найден.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_item.03', value_1=f'{raw_item_ref}'))
 
         item_id = int(item["id"])
 
@@ -220,7 +221,7 @@ def grant_mini_coins_all(
 ) -> dict:
     players = list_mini_players(world_id, db_path)
     if not players:
-        raise ValueError("В этом Mini-мире нет игроков.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_coins_all.01'))
 
     for player in players:
         grant_mini_coins(
@@ -244,7 +245,7 @@ def grant_mini_item_all(
 ) -> dict:
     players = list_mini_players(world_id, db_path)
     if not players:
-        raise ValueError("В этом Mini-мире нет игроков.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_item_all.01'))
 
     granted = 0
     skipped = 0
@@ -279,7 +280,7 @@ def grant_mini_item_all(
                     (raw_item_ref,),
                 ).fetchone()
             if row is None:
-                raise ValueError(f"Предмет «{raw_item_ref}» не найден.")
+                raise ValueError(editorial_text('errors.admin_grants.grant_mini_item_all.02', value_1=f'{raw_item_ref}'))
             item = dict(row)
 
     return {
@@ -298,7 +299,7 @@ def grant_mini_hero(
     """Выдаёт конкретного героя по стабильному code без создания дубликата."""
     hero_code = str(hero_code or "").strip()
     if not hero_code:
-        raise ValueError("Не указан code персонажа.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero.01'))
 
     sync_hero_catalog(db_path)
 
@@ -313,7 +314,7 @@ def grant_mini_hero(
         ).fetchone()
         if player is None:
             conn.rollback()
-            raise ValueError("Mini-игрок не найден.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero.02'))
 
         hero = conn.execute(
             "SELECT * FROM mini_heroes WHERE LOWER(code) = LOWER(?)",
@@ -321,7 +322,7 @@ def grant_mini_hero(
         ).fetchone()
         if hero is None:
             conn.rollback()
-            raise ValueError(f"Персонаж «{hero_code}» не найден.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero.03', value_1=f'{hero_code}'))
 
         existing = conn.execute(
             """
@@ -372,7 +373,7 @@ def grant_mini_hero_all(
     """Выдаёт героя всем Mini-игрокам мира. Повторная команда идемпотентна."""
     hero_code = str(hero_code or "").strip()
     if not hero_code:
-        raise ValueError("Не указан code персонажа.")
+        raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero_all.01'))
 
     sync_hero_catalog(db_path)
 
@@ -387,7 +388,7 @@ def grant_mini_hero_all(
         ).fetchone()
         if hero is None:
             conn.rollback()
-            raise ValueError(f"Персонаж «{hero_code}» не найден.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero_all.02', value_1=f'{hero_code}'))
 
         players = conn.execute(
             """
@@ -400,7 +401,7 @@ def grant_mini_hero_all(
         ).fetchall()
         if not players:
             conn.rollback()
-            raise ValueError("В этом Mini-мире нет игроков.")
+            raise ValueError(editorial_text('errors.admin_grants.grant_mini_hero_all.03'))
 
         granted = 0
         skipped = 0

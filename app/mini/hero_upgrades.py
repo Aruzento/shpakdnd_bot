@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.wallet import change_balance_in_transaction
 import sqlite3
 from pathlib import Path
@@ -102,7 +103,7 @@ def _upgrade_cost_from_settings(
 ) -> int:
     target_star = int(target_star)
     if target_star < 1:
-        raise ValueError("Номер звезды должен быть не меньше 1.")
+        raise ValueError(editorial_text('errors.hero_upgrades.upgrade_cost_from_settings.01'))
 
     multiplier = int(settings["cost_multiplier"].get(rarity, 1))
     return target_star * int(settings["star_cost_base"]) * multiplier
@@ -182,11 +183,11 @@ def upgrade_hero(
 
         if row is None:
             conn.rollback()
-            raise HeroUpgradeError("Этого героя нет в твоей коллекции.")
+            raise HeroUpgradeError(editorial_text('errors.hero_upgrades.upgrade_hero.01'))
 
         stars = int(row["stars"])
         if expected_stars is not None and stars != expected_stars:
-            raise HeroUpgradeError("Кнопка улучшения устарела. Открой карточку заново.")
+            raise HeroUpgradeError(editorial_text('errors.hero_upgrades.upgrade_hero.02'))
         shards = int(row["shards"])
         rarity = str(row["rarity"])
         settings = get_upgrade_settings()
@@ -194,7 +195,7 @@ def upgrade_hero(
 
         if maximum is not None and stars >= maximum:
             conn.rollback()
-            raise HeroUpgradeMaxStars("У героя уже максимальное количество звёзд.")
+            raise HeroUpgradeMaxStars(editorial_text('errors.hero_upgrades.upgrade_hero.03'))
 
         if conn.execute('SELECT 1 FROM mini_villages WHERE player_id=?',(player_id,)).fetchone():
             from app.mini.village.service import settle, timestamp
@@ -205,7 +206,7 @@ def upgrade_hero(
         if shards < cost:
             conn.rollback()
             raise HeroUpgradeInsufficientShards(
-                f"Не хватает {cost - shards} осколков. Нужно {cost}."
+                editorial_text('errors.hero_upgrades.upgrade_hero.04', value_1=f'{cost - shards}', value_2=f'{cost}')
             )
 
         new_shards = shards - cost
@@ -251,12 +252,12 @@ def sell_hero_shards(
     """Продаёт общие осколки игрока. hero_id нужен для совместимости UI."""
     quantity = int(quantity)
     if quantity <= 0:
-        raise HeroShardSellError("Количество осколков должно быть больше нуля.")
+        raise HeroShardSellError(editorial_text('errors.hero_upgrades.sell_hero_shards.01'))
 
     settings = get_upgrade_settings()
     sell_price = int(settings["shard_sell_price"])
     if sell_price < 0:
-        raise HeroShardSellError("Некорректный курс продажи осколков.")
+        raise HeroShardSellError(editorial_text('errors.hero_upgrades.sell_hero_shards.02'))
 
     operation_key = str(operation_key or "").strip()
     wallet_operation_key = f"shardsell:{operation_key}" if operation_key else ""
@@ -310,13 +311,13 @@ def sell_hero_shards(
 
         if row is None:
             conn.rollback()
-            raise HeroShardSellError("Этого героя нет в твоей коллекции.")
+            raise HeroShardSellError(editorial_text('errors.hero_upgrades.sell_hero_shards.03'))
 
         current_shards = int(row["shards"])
         if current_shards < quantity:
             conn.rollback()
             raise HeroShardSellError(
-                f"Недостаточно осколков. Сейчас: {current_shards}."
+                editorial_text('errors.hero_upgrades.sell_hero_shards.04', value_1=f'{current_shards}')
             )
 
         coins_earned = quantity * sell_price
@@ -342,4 +343,3 @@ def sell_hero_shards(
         "balance": new_balance,
         "shards": new_shards,
     }
-

@@ -4,6 +4,7 @@ from functools import partial
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from tests.v1_3.support import MiniCase
+from app.mini.ui.hero_village import with_village
 from app.mini.handlers import _player_menu, submenu, submenu_callback
 from app.mini.ui.hero_selector import render_selector, filtered, options, DIGITS, EMPTY, FIELDS, selector_callback
 from app.mini.ui.hero_cards import hero_caption, hero_card_menu
@@ -121,6 +122,7 @@ class CardAndFavoriteUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
 
     def services(self):
         stack=ExitStack()
+        stack.enter_context(patch('app.mini.ui.heroes.with_village',side_effect=partial(with_village,db_path=self.db)))
         stack.enter_context(patch('app.mini.ui.heroes._load_extended_context',side_effect=lambda c,p: self.context(c)))
         for name in ('get_favorites','add_favorite','remove_favorite','replace_favorite','is_favorite'):
             stack.enter_context(patch(f'app.mini.ui.heroes.{name}',side_effect=partial(getattr(favorites,name),db_path=self.db)))

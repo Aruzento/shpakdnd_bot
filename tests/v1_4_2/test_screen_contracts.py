@@ -224,7 +224,7 @@ class MapContractTests(unittest.TestCase):
                 for b in row:self.assertIn(b['next_msg_id'],ids|{'ui_back','nav_back','current','same','previous',''} ,standard['id'])
 
     def test_final_matrix_covers_each_renderer_handler_action_and_test(self):
-        records=json.loads((ROOT/'docs/ui/v1.4.2-matrix.json').read_text(encoding='utf-8'))['screens']
+        records=json.loads((ROOT/'docs/ui/v1.4.3-matrix.json').read_text(encoding='utf-8'))['screens']
         self.assertEqual([r['screen'] for r in records],[s['id'] for s in SOURCE])
         for record in records:
             self.assertTrue(record['action']);self.assertTrue(record['renderer'])

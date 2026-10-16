@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.effects.contracts import EffectDefinition
 from app.mini.effects.builtins import coin_pouch, shard_casket, charged_effect, village_boost, equipment_chest, rarity_coupon
 
@@ -60,10 +61,14 @@ for definition in (
 
 def effect_description(key: str) -> str:
     definition = get_effect(str(key or ""))
-    return definition.description if definition else "Эффект предмета не настроен."
+    target = "effect."+str(key or "")+".description"
+    from app.mini.editorial.registry import get_registry
+    return editorial_text(target) if target in get_registry().loader.schemas else definition.description if definition else editorial_text("effect.unconfigured")
 
 
 def active_effect_title(key: str) -> str:
     key = str(key or "")
     definition = get_effect(key)
-    return definition.active_title if definition and definition.active_title else key
+    target = "effect."+key+".title"
+    from app.mini.editorial.registry import get_registry
+    return editorial_text(target) if target in get_registry().loader.schemas else definition.active_title if definition and definition.active_title else key

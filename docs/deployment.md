@@ -117,8 +117,8 @@ Failed check немедленно прекращает pipeline и запрещ�
 - `[1]` оставить бот остановленным;
 - `[2]` вернуть Old Git HEAD и запустить предыдущую версию.
 
-Подтверждённый code rollback снова останавливает весь стек, безопасно
-переключает main на Old SHA, выполняет тот же pipeline и проверки startup,
+Подтверждённый code rollback снова останавливает весь стек, проходит PvP preflight
+(см. ниже), переключает main на Old SHA, выполняет тот же pipeline и проверки startup,
 затем возвращает watcher и завершает maintenance notice. Requested target
 deployment всё равно возвращает non-zero, даже если recovery успешен.
 Если старый код несовместим с текущей БД или проверки не проходят, автоматического
@@ -169,3 +169,33 @@ fetch обновляет remote refs.
 Локальные regression tests выполняют реальный Bash с fake Git/systemd/Telegram
 и временными paths. Linux permissions, реальный flock и systemd/Telegram
 подтверждаются dry run и первым контролируемым deployment на сервере.
+
+
+## V1.4.3: новые PvP-ставки и обязательный release gate
+
+Доработка остаётся «В разработке» до независимого ревью нового SHA, затем реального Telegram staging по docs/ui/v1.4.3-staging.md. Ни зелёный CI, ни эта инструкция не разрешают merge или production deployment.
+
+Аддитивная миграция добавляет mini_event_pvp и mini_event_pvp_members; автоматические проверки на временных заполненных копиях выполняет tools/validate_pvp_migration.py. Прежние таблицы сохраняются. Перед согласованным будущим deployment сохраняются штатные backup/check/startup/watcher и права внешнего editorial-каталога. Не направляйте check_bot, тесты или migration validator на production SQLite.
+
+Startup прежнего кода на копии не разрешает rollback: он не обслуживает новые сроки/возвраты. В исполняемую rollback() встроен независимый deploy/pvp_ops.py rollback-check. Три вызова: до подготовки checkout, непосредственно перед checkout старого SHA и после его pipeline перед запуском. Все ветви failure_choice(), включая failed startup, используют этот путь.
+
+Helper включён в установленный и временный frozen bundle вне checkout. Он работает после удаления новых модулей старым кодом. Только stdlib, explicit DB, mode=ro/query_only, единый snapshot с WAL, integrity/FK; без .env, Telegram API, миграций и SQL-ремонта. Отсутствующий helper, БД, права чтения, ошибка SQLite, неполная схема, активный escrow, неоднозначный ledger, неизвестная публикация или незавершённый edit блокируют rollback. Новая схема требует явного pause-new даже при пустой очереди. Старая валидная БД без PvP допустима.
+
+При отказе стек остаётся остановленным, выводятся blockers, current/target SHA и backup. При отказе последнего gate старый HEAD уже установлен, но запуск запрещён. Безопасные действия: новым кодом штатно завершить/истечь escrow, сверить Wallet и публикации либо оставить стек остановленным для ручного разбора. Обхода нет, backup не накатывается поверх данных.
+
+**Release gate: до будущего согласованного deployment повторить установку нового bundle**
+через deploy/install-deploy-shpakdnd.sh из проверенного checkout. Уже установленный
+/usr/local/lib/shpakdnd-deploy не обновляется при fetch/checkout приложения.
+Проверить pvp_ops.py и актуальную rollback(). Это отдельное серверное действие;
+в рамках разработки installer и production-команды не запускались.
+
+Команды и ограничения — [PvP operations](operations/PVP.md). Dry run не меняет
+режим PvP. Перед rollback оператор включает pause-new и дожидается
+rollback_ready=true. Диагностика ничего не завершает сама. Штатный стек остановлен
+deployment, сторонние SQLite writers исключаются на всё окно gate/checkout/startup:
+snapshot не блокирует внешние процессы на неограниченное время.
+
+Автотесты исполняют реальный Bash с fake systemd/Git и настоящей временной SQLite.
+Проверены блокировка, порядок gate, повторная проверка изменившейся БД, отсутствие
+helper/DB, повреждение SQLite, failed startup и frozen helper после checkout.
+Реальные Telegram/systemd staging остаются «НЕ ВЫПОЛНЕНО».

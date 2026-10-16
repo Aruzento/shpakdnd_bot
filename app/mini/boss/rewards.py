@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.wallet import change_balance_in_transaction
 import json
 import sqlite3
@@ -86,7 +87,7 @@ def grant_victory_rewards(
         ).fetchone()
         if row is None:
             raise BossCombatError(
-                f"Предмет награды {item['code']} не найден в mini_items."
+                editorial_text('errors.boss.rewards.grant_victory_rewards.01', value_1=f"{item['code']}")
             )
         item_ids[item["code"]] = int(row[0])
 
@@ -279,4 +280,3 @@ def finish_failure(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) 
         (db_time(when), int(boss["id"])),
     )
     return rewards
-

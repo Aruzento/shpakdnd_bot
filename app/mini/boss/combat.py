@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.presentation import format_player_mention
 from app.mini.boss.repository import (
     start_participants,
@@ -65,17 +66,17 @@ def start_battle(
         boss = refresh_boss(conn, int(boss_id))
         if boss is None:
             conn.rollback()
-            raise BossCombatError("Босс не найден.")
+            raise BossCombatError(editorial_text('errors.boss.combat.start_battle.01'))
         if boss["status"] != "ready":
             conn.rollback()
-            raise BossCombatError("Начать бой можно только после закрытия регистрации.")
+            raise BossCombatError(editorial_text('errors.boss.combat.start_battle.02'))
 
         boss = hydrate_reward_snapshot(conn, boss)
         participants = start_participants(conn, boss_id)
 
         if len(participants) < int(boss["min_players"]):
             conn.rollback()
-            raise BossCombatError("Недостаточно участников для старта боя.")
+            raise BossCombatError(editorial_text('errors.boss.combat.start_battle.03'))
 
         for row in participants:
             from app.mini.availability import assert_available
@@ -86,7 +87,7 @@ def start_battle(
             if row["selected_hero_id"] is None or row["base_attack"] is None or row["stars"] is None:
                 conn.rollback()
                 raise BossCombatError(
-                    "У одного из участников больше нет выбранного героя. Открой регистрацию и проверь состав."
+                    editorial_text('errors.boss.combat.start_battle.04')
                 )
             attack = calculate_attack(int(row["base_attack"]), int(row["stars"]))
             damage_potion = consume_effect_charge(
@@ -137,7 +138,7 @@ def get_combat_state(
 ) -> dict:
     boss = get_boss(boss_id, db_path)
     if boss is None:
-        raise BossCombatError("Босс не найден.")
+        raise BossCombatError(editorial_text('errors.boss.combat.get_combat_state.01'))
     participants = list_participants(boss_id, db_path)
     current = None
     if boss["status"] == "fighting":
@@ -179,10 +180,10 @@ def force_finish_battle(
         boss = refresh_boss(conn, int(boss_id))
         if boss is None:
             conn.rollback()
-            raise BossCombatError("Босс не найден.")
+            raise BossCombatError(editorial_text('errors.boss.combat.force_finish_battle.01'))
         if boss["status"] != "fighting":
             conn.rollback()
-            raise BossCombatError("Аварийно завершить можно только идущий бой.")
+            raise BossCombatError(editorial_text('errors.boss.combat.force_finish_battle.02'))
 
         old_turn_message_id = boss["turn_message_id"]
         boss = hydrate_reward_snapshot(conn, boss)
@@ -226,13 +227,13 @@ def advance_expired_turns(
             boss = refresh_boss(conn, int(boss_id))
             if boss is None:
                 conn.rollback()
-                raise BossCombatError("Босс не найден.")
+                raise BossCombatError(editorial_text('errors.boss.combat.advance_expired_turns.01'))
             if boss["status"] != "fighting":
                 break
 
             current = current_participant(conn, boss)
             if current is None:
-                raise BossCombatError("Не удалось определить текущего участника.")
+                raise BossCombatError(editorial_text('errors.boss.combat.advance_expired_turns.02'))
             if int(current["banished"]) or int(current["forced_skip_turns"]) > 0:
                 if not int(current["banished"]):
                     forced_skip_events.append(consume_forced_skip(conn, boss, current, now))
@@ -266,7 +267,7 @@ def advance_expired_turns(
             current = current_participant(conn, boss)
             if current is None:
                 conn.rollback()
-                raise BossCombatError("Не удалось определить текущего участника.")
+                raise BossCombatError(editorial_text('errors.boss.combat.advance_expired_turns.03'))
 
             record_timeout_skip(conn, boss, current, deadline)
             skipped.append(dict(current))
@@ -321,30 +322,30 @@ def hit_boss(
         boss = refresh_boss(conn, int(boss_id))
         if boss is None or boss["status"] != "fighting":
             conn.rollback()
-            raise BossCombatError("Бой уже завершён.")
+            raise BossCombatError(editorial_text('errors.boss.combat.hit_boss.01'))
 
         if (
             (expected_round is not None and int(boss["current_round"]) != expected_round)
             or (expected_position is not None and int(boss["current_turn_position"]) != expected_position)
         ):
-            raise BossNotYourTurn("Этот ход уже завершён. Используй актуальное сообщение.")
+            raise BossNotYourTurn(editorial_text('errors.boss.combat.hit_boss.02'))
 
         participant = participant_for_hit(conn, boss_id, player_id)
         if participant is None:
             conn.rollback()
-            raise BossNotParticipant("Ты не участвуешь в этом бою.")
+            raise BossNotParticipant(editorial_text('errors.boss.combat.hit_boss.03'))
 
         current = current_participant(conn, boss)
         if current is None:
             conn.rollback()
-            raise BossCombatError("Не удалось определить текущий ход.")
+            raise BossCombatError(editorial_text('errors.boss.combat.hit_boss.04'))
         if int(current["player_id"]) != int(player_id):
             who = format_player_mention(current,conn=conn)
             conn.rollback()
-            raise BossNotYourTurn(f"Сейчас ход {who}.")
+            raise BossNotYourTurn(editorial_text('errors.boss.combat.hit_boss.05', value_1=f'{who}'))
 
         if int(participant["banished"]) or int(participant["forced_skip_turns"]) > 0:
-            raise BossNotYourTurn("Этот участник сейчас не может ходить.")
+            raise BossNotYourTurn(editorial_text('errors.boss.combat.hit_boss.06'))
         hero = battle_loadout(participant["hero_snapshot_json"])
         calculation = calculate_hit(dict(boss), dict(participant), hero, active_loadouts(conn,int(boss_id)))
         passive_key = calculation["passive_key"]

@@ -3,7 +3,14 @@ import json
 from app.mini.catalog import load_shop_catalog
 from app.mini.items import grant_item_in_transaction
 
-STARTER_MESSAGE = "🎟 Стартовый подарок: 3 билета призыва.\n\nИспользуй их в Гаче, чтобы собрать первых героев."
+def starter_message():
+    from app.mini.editorial import text
+    return text("onboarding.starter_message")
+
+def __getattr__(name):
+    if name == "STARTER_MESSAGE":
+        return starter_message()
+    raise AttributeError(name)
 
 
 def grant_starter_in_transaction(conn, player_id, world_id, telegram_user_id, character_name, *, announce=True):

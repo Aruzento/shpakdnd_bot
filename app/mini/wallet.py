@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import sqlite3
 from pathlib import Path
 
@@ -24,7 +25,7 @@ def get_balance(
         ).fetchone()
 
     if row is None:
-        raise ValueError("Mini-игрок не найден.")
+        raise ValueError(editorial_text('errors.wallet.get_balance.01'))
 
     return int(row[0])
 
@@ -87,9 +88,9 @@ def change_balance_in_transaction(
     reference_type = reference_type.strip()
     operation_key = operation_key.strip()
     if amount == 0 and not allow_zero:
-        raise ValueError("Изменение баланса не может быть равно 0.")
+        raise ValueError(editorial_text('errors.wallet.change_balance_in_transaction.01'))
     if not reason:
-        raise ValueError("Не указана причина изменения баланса.")
+        raise ValueError(editorial_text('errors.wallet.change_balance_in_transaction.02'))
 
     if operation_key:
         existing = conn.execute(
@@ -108,10 +109,10 @@ def change_balance_in_transaction(
         "SELECT coins FROM mini_players WHERE id = ?", (player_id,)
     ).fetchone()
     if row is None:
-        raise ValueError("Mini-игрок не найден.")
+        raise ValueError(editorial_text('errors.wallet.change_balance_in_transaction.03'))
     new_balance = int(row[0]) + amount
     if new_balance < 0:
-        raise InsufficientFundsError("Недостаточно монет Mini.")
+        raise InsufficientFundsError(editorial_text('errors.wallet.change_balance_in_transaction.04'))
 
     conn.execute(
         "UPDATE mini_players SET coins = ? WHERE id = ?",
@@ -150,9 +151,9 @@ def change_balance(
     reference_type = reference_type.strip()
     operation_key = operation_key.strip()
     if amount == 0:
-        raise ValueError("Изменение баланса не может быть равно 0.")
+        raise ValueError(editorial_text('errors.wallet.change_balance.01'))
     if not reason:
-        raise ValueError("Не указана причина изменения баланса.")
+        raise ValueError(editorial_text('errors.wallet.change_balance.02'))
     with connect_mini_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("BEGIN IMMEDIATE")
@@ -175,7 +176,7 @@ def add_coins(
 
     if amount <= 0:
         raise ValueError(
-            "Для начисления количество монет должно быть больше 0."
+            editorial_text('errors.wallet.add_coins.01')
         )
 
     return change_balance(
@@ -202,7 +203,7 @@ def spend_coins(
 
     if amount <= 0:
         raise ValueError(
-            "Для списания количество монет должно быть больше 0."
+            editorial_text('errors.wallet.spend_coins.01')
         )
 
     return change_balance(

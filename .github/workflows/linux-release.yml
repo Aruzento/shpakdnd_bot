@@ -14,8 +14,12 @@ concurrency:
 
 jobs:
   linux-release:
-    name: Linux release checks
+    name: Linux release checks (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
     timeout-minutes: 30
     defaults:
       run:
@@ -36,10 +40,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install dependencies
@@ -129,6 +133,18 @@ jobs:
 
       - name: Validate V1.4.2 catalogs
         run: python -m app.mini.validate_v142
+
+      - name: Validate editorial defaults
+        run: python -m app.mini.editorial.validator
+
+      - name: Validate all JSON and repeated disposable SQLite startup
+        run: python tools/validate_editorial_release.py
+
+      - name: Verify PvP migrations and old-code startup on disposable copies
+        run: python tools/validate_pvp_migration.py
+
+      - name: Verify unchanged gameplay and the authorized PvP integration
+        run: python tools/verify_editorial_mechanics.py
 
       - name: Create synthetic legacy SQLite fixture
         run: |

@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import sqlite3
 from app.config import DB_PATH
 from app.mini.db import connect_mini_db
@@ -28,7 +29,7 @@ def grant_in_transaction(conn, player_id, code):
         raise ValueError("Equipment mutation requires a transaction.")
     item = conn.execute("SELECT * FROM mini_equipment WHERE code=?", (code,)).fetchone()
     if item is None:
-        raise ValueError("Экипировка не найдена.")
+        raise ValueError(editorial_text('errors.equipment.service.grant_in_transaction.01'))
     conn.execute("""INSERT INTO mini_equipment_owned(player_id,code,quantity) VALUES(?,?,1)
         ON CONFLICT(player_id,code) DO UPDATE SET quantity=quantity+1""", (player_id,code))
     return dict(item)
@@ -40,7 +41,7 @@ def remove_in_transaction(conn, player_id, code):
     row = conn.execute("SELECT quantity FROM mini_equipment_owned WHERE player_id=? AND code=?",
                        (player_id,code)).fetchone()
     if row is None:
-        raise ValueError("Этого предмета нет у игрока.")
+        raise ValueError(editorial_text('errors.equipment.service.remove_in_transaction.01'))
     if row[0] == 1:
         # Explicit removal also works on databases opened without foreign_keys by legacy callers.
         conn.execute("DELETE FROM mini_equipment_slots WHERE player_id=? AND code=?", (player_id,code))
@@ -68,7 +69,7 @@ def equip(player_id, code, db_path=DB_PATH):
         item = conn.execute("""SELECT e.* FROM mini_equipment_owned o JOIN mini_equipment e ON e.code=o.code
             WHERE o.player_id=? AND o.code=?""", (player_id,code)).fetchone()
         if item is None:
-            raise ValueError("Этого предмета нет у тебя.")
+            raise ValueError(editorial_text('errors.equipment.service.equip.01'))
         conn.execute("""INSERT INTO mini_equipment_slots(player_id,slot,code) VALUES(?,?,?)
             ON CONFLICT(player_id,slot) DO UPDATE SET code=excluded.code""", (player_id,item["slot"],code))
     return get_equipment(player_id,db_path)
@@ -76,7 +77,7 @@ def equip(player_id, code, db_path=DB_PATH):
 
 def unequip(player_id, slot, db_path=DB_PATH):
     if slot not in SLOTS:
-        raise ValueError("Неизвестный слот.")
+        raise ValueError(editorial_text('errors.equipment.service.unequip.01'))
     with connect_mini_db(db_path) as conn:
         conn.execute("BEGIN IMMEDIATE")
         conn.execute("DELETE FROM mini_equipment_slots WHERE player_id=? AND slot=?", (player_id,slot))

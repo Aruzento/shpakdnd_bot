@@ -1,0 +1,482 @@
+{
+  "faction.commoners": {
+    "full": "Простолюдины",
+    "short": "Прост.",
+    "emoji": "🧑",
+    "icon_key": "icon.faction.commoners"
+  },
+  "faction.beasts": {
+    "full": "Звери",
+    "short": "Звери",
+    "emoji": "🐾",
+    "icon_key": "icon.faction.beasts"
+  },
+  "faction.monsters": {
+    "full": "Монстры",
+    "short": "Монстры",
+    "emoji": "👾",
+    "icon_key": "icon.faction.monsters"
+  },
+  "faction.warriors": {
+    "full": "Воины",
+    "short": "Воины",
+    "emoji": "⚔️",
+    "icon_key": "icon.faction.warriors"
+  },
+  "faction.dark": {
+    "full": "Тьма",
+    "short": "Тьма",
+    "emoji": "🌑",
+    "icon_key": "icon.faction.dark"
+  },
+  "faction.neutral": {
+    "full": "Нейтральная",
+    "short": "Нейтральная",
+    "emoji": "⚖️",
+    "icon_key": "icon.faction.neutral"
+  },
+  "damage.slashing": {
+    "full": "Режущий",
+    "short": "Реж.",
+    "emoji": "⚔️",
+    "icon_key": "icon.damage.slashing"
+  },
+  "damage.piercing": {
+    "full": "Колющий",
+    "short": "Кол.",
+    "emoji": "🗡",
+    "icon_key": "icon.damage.piercing"
+  },
+  "damage.bludgeoning": {
+    "full": "Дробящий",
+    "short": "Дроб.",
+    "emoji": "🔨",
+    "icon_key": "icon.damage.bludgeoning"
+  },
+  "damage.magic": {
+    "full": "Магический",
+    "short": "Маг.",
+    "emoji": "✨",
+    "icon_key": "icon.damage.magic"
+  },
+  "class.none": {
+    "full": "Без класса",
+    "short": "Без класса",
+    "emoji": "▪️",
+    "icon_key": "icon.class.none"
+  },
+  "class.magical": {
+    "full": "Магический класс",
+    "short": "Магический класс",
+    "emoji": "",
+    "icon_key": "icon.class.magical"
+  },
+  "class.technical": {
+    "full": "Техник",
+    "short": "Техник",
+    "emoji": "🔧",
+    "icon_key": "icon.class.technical"
+  },
+  "class.martial": {
+    "full": "Боевой класс",
+    "short": "Боевой класс",
+    "emoji": "",
+    "icon_key": "icon.class.martial"
+  },
+  "class.warrior": {
+    "full": "Воин",
+    "short": "Воин",
+    "emoji": "🔪",
+    "icon_key": "icon.class.warrior"
+  },
+  "class.guardian": {
+    "full": "Страж",
+    "short": "Страж",
+    "emoji": "🛡",
+    "icon_key": "icon.class.guardian"
+  },
+  "class.mage": {
+    "full": "Маг",
+    "short": "Маг",
+    "emoji": "🧹",
+    "icon_key": "icon.class.mage"
+  },
+  "class.ranger": {
+    "full": "Следопыт",
+    "short": "Следопыт",
+    "emoji": "",
+    "icon_key": "icon.class.ranger"
+  },
+  "class.sneaky": {
+    "full": "Плут",
+    "short": "Плут",
+    "emoji": "🕯",
+    "icon_key": "icon.class.sneaky"
+  },
+  "class.healer": {
+    "full": "Целитель",
+    "short": "Целитель",
+    "emoji": "🧑‍🔬",
+    "icon_key": "icon.class.healer"
+  },
+  "class.beast": {
+    "full": "Зверь",
+    "short": "Зверь",
+    "emoji": "🐺",
+    "icon_key": "icon.class.beast"
+  },
+  "range.melee": {
+    "full": "Ближний бой",
+    "short": "Ближний бой",
+    "emoji": "⚔️",
+    "icon_key": "icon.range.melee"
+  },
+  "range.ranged": {
+    "full": "Дальний бой",
+    "short": "Дальний бой",
+    "emoji": "🏹",
+    "icon_key": "icon.range.ranged"
+  },
+  "trait.none": {
+    "full": "Нет особого свойства",
+    "short": "Нет особого свойства",
+    "emoji": "",
+    "icon_key": "icon.trait.none"
+  },
+  "trait.undead": {
+    "full": "Нежить",
+    "short": "Нежить",
+    "emoji": "",
+    "icon_key": "icon.trait.undead"
+  },
+  "trait.construct": {
+    "full": "Конструкт",
+    "short": "Конструкт",
+    "emoji": "",
+    "icon_key": "icon.trait.construct"
+  },
+  "trait.flying": {
+    "full": "Летающий",
+    "short": "Летающий",
+    "emoji": "",
+    "icon_key": "icon.trait.flying"
+  },
+  "trait.demon": {
+    "full": "Демон",
+    "short": "Демон",
+    "emoji": "",
+    "icon_key": "icon.trait.demon"
+  },
+  "trait.armored": {
+    "full": "Бронированный",
+    "short": "Бронированный",
+    "emoji": "",
+    "icon_key": "icon.trait.armored"
+  },
+  "trait.holy": {
+    "full": "Святой",
+    "short": "Святой",
+    "emoji": "",
+    "icon_key": "icon.trait.holy"
+  },
+  "trait.poisonous": {
+    "full": "Ядовитый",
+    "short": "Ядовитый",
+    "emoji": "",
+    "icon_key": "icon.trait.poisonous"
+  },
+  "trait.demonic": {
+    "full": "Демонический",
+    "short": "Демонический",
+    "emoji": "",
+    "icon_key": "icon.trait.demonic"
+  },
+  "rarity.common": {
+    "full": "Обычный",
+    "short": "Обычный",
+    "emoji": "⚪",
+    "icon_key": "icon.rarity.common"
+  },
+  "rarity.uncommon": {
+    "full": "Необычный",
+    "short": "Необычный",
+    "emoji": "🟢",
+    "icon_key": "icon.rarity.uncommon"
+  },
+  "rarity.rare": {
+    "full": "Редкий",
+    "short": "Редкий",
+    "emoji": "🟣",
+    "icon_key": "icon.rarity.rare"
+  },
+  "rarity.legendary": {
+    "full": "Легендарный",
+    "short": "Легендарный",
+    "emoji": "🟡",
+    "icon_key": "icon.rarity.legendary"
+  },
+  "rarity.mythic": {
+    "full": "Мифический",
+    "short": "Мифический",
+    "emoji": "✨",
+    "icon_key": "icon.rarity.mythic"
+  },
+  "rarity.shadow": {
+    "full": "Теневой",
+    "short": "Теневой",
+    "emoji": "🌑",
+    "icon_key": "icon.rarity.shadow"
+  },
+  "slot.helmet": {
+    "full": "Шлем",
+    "short": "Шлем",
+    "emoji": "🪖",
+    "icon_key": "icon.slot.helmet"
+  },
+  "slot.ring": {
+    "full": "Кольцо",
+    "short": "Кольцо",
+    "emoji": "💍",
+    "icon_key": "icon.slot.ring"
+  },
+  "slot.cloak": {
+    "full": "Плащ",
+    "short": "Плащ",
+    "emoji": "🧥",
+    "icon_key": "icon.slot.cloak"
+  },
+  "resource.coins": {
+    "full": "Монеты",
+    "short": "Монеты",
+    "emoji": "🪙",
+    "icon_key": "icon.resource.coins"
+  },
+  "resource.shards": {
+    "full": "Осколки",
+    "short": "Осколки",
+    "emoji": "🧩",
+    "icon_key": "icon.resource.shards"
+  },
+  "resource.food": {
+    "full": "Еда",
+    "short": "Еда",
+    "emoji": "🍗",
+    "icon_key": "icon.resource.food"
+  },
+  "resource.summon_ticket": {
+    "full": "Билет призыва",
+    "short": "Билет призыва",
+    "emoji": "🎟",
+    "icon_key": "icon.resource.summon_ticket"
+  },
+  "resource.reward_shields": {
+    "full": "Щиты награды",
+    "short": "Щиты награды",
+    "emoji": "🛡",
+    "icon_key": "icon.resource.reward_shields"
+  },
+  "resource.mythic_fragments": {
+    "full": "Мифические фрагменты",
+    "short": "Мифические фрагменты",
+    "emoji": "✨",
+    "icon_key": "icon.resource.mythic_fragments"
+  },
+  "resource.equipment_chest": {
+    "full": "Сундук экипировки",
+    "short": "Сундук экипировки",
+    "emoji": "🎁",
+    "icon_key": "icon.resource.equipment_chest"
+  },
+  "section.adventures": {
+    "full": "Приключения",
+    "short": "Приключения",
+    "emoji": "⚔️",
+    "icon_key": "icon.section.adventures"
+  },
+  "section.heroarea": {
+    "full": "Герой",
+    "short": "Герой",
+    "emoji": "🧙",
+    "icon_key": "icon.section.heroarea"
+  },
+  "section.gacha": {
+    "full": "Призвать героя",
+    "short": "Призвать героя",
+    "emoji": "✨",
+    "icon_key": "icon.section.gacha"
+  },
+  "section.fair": {
+    "full": "Ярмарка",
+    "short": "Ярмарка",
+    "emoji": "🎪",
+    "icon_key": "icon.section.fair"
+  },
+  "section.more": {
+    "full": "Ещё",
+    "short": "Ещё",
+    "emoji": "📖",
+    "icon_key": "icon.section.more"
+  },
+  "section.character": {
+    "full": "Профиль",
+    "short": "Профиль",
+    "emoji": "👤",
+    "icon_key": "icon.section.character"
+  },
+  "section.collection": {
+    "full": "Коллекция",
+    "short": "Коллекция",
+    "emoji": "📚",
+    "icon_key": "icon.section.collection"
+  },
+  "section.equipment": {
+    "full": "Экипировка",
+    "short": "Экипировка",
+    "emoji": "🛡",
+    "icon_key": "icon.section.equipment"
+  },
+  "section.inventory": {
+    "full": "Инвентарь",
+    "short": "Инвентарь",
+    "emoji": "🎒",
+    "icon_key": "icon.section.inventory"
+  },
+  "section.mythic": {
+    "full": "Мифические герои",
+    "short": "Мифические герои",
+    "emoji": "✨",
+    "icon_key": "icon.section.mythic"
+  },
+  "section.shop": {
+    "full": "Магазин",
+    "short": "Магазин",
+    "emoji": "🛒",
+    "icon_key": "icon.section.shop"
+  },
+  "section.events": {
+    "full": "События",
+    "short": "События",
+    "emoji": "🎪",
+    "icon_key": "icon.section.events"
+  },
+  "section.village": {
+    "full": "Моя деревня",
+    "short": "Моя деревня",
+    "emoji": "🏘",
+    "icon_key": "icon.section.village"
+  },
+  "section.boss": {
+    "full": "Босс",
+    "short": "Босс",
+    "emoji": "🔥",
+    "icon_key": "icon.section.boss"
+  },
+  "section.tower": {
+    "full": "Испытания",
+    "short": "Испытания",
+    "emoji": "🏰",
+    "icon_key": "icon.section.tower"
+  },
+  "section.daily": {
+    "full": "Ежедневный бой",
+    "short": "Ежедневный бой",
+    "emoji": "⚔️",
+    "icon_key": "icon.section.daily"
+  },
+  "section.duels": {
+    "full": "Дуэли",
+    "short": "Дуэли",
+    "emoji": "⚔️",
+    "icon_key": "icon.section.duels"
+  },
+  "section.rules": {
+    "full": "Правила",
+    "short": "Правила",
+    "emoji": "📖",
+    "icon_key": "icon.section.rules"
+  },
+  "section.home": {
+    "full": "Обновить",
+    "short": "Обновить",
+    "emoji": "🔄",
+    "icon_key": "icon.section.home"
+  },
+  "job.none": {
+    "full": "Без работы",
+    "short": "Без работы",
+    "emoji": "",
+    "icon_key": "icon.job.none"
+  },
+  "job.mine": {
+    "full": "Шахта",
+    "short": "Шахта",
+    "emoji": "⛏",
+    "icon_key": "icon.job.mine"
+  },
+  "job.market": {
+    "full": "Рынок",
+    "short": "Рынок",
+    "emoji": "🏪",
+    "icon_key": "icon.job.market"
+  },
+  "job.hunt": {
+    "full": "Охота",
+    "short": "Охота",
+    "emoji": "🏹",
+    "icon_key": "icon.job.hunt"
+  },
+  "status.announced": {
+    "full": "Регистрация открыта",
+    "short": "Регистрация открыта",
+    "emoji": "🟢",
+    "icon_key": "icon.status.announced"
+  },
+  "status.ready": {
+    "full": "Регистрация закрыта",
+    "short": "Регистрация закрыта",
+    "emoji": "🟡",
+    "icon_key": "icon.status.ready"
+  },
+  "status.fighting": {
+    "full": "Бой идёт",
+    "short": "Бой идёт",
+    "emoji": "🔴",
+    "icon_key": "icon.status.fighting"
+  },
+  "status.cancelled": {
+    "full": "Босс отменён",
+    "short": "Босс отменён",
+    "emoji": "⚫",
+    "icon_key": "icon.status.cancelled"
+  },
+  "status.defeated": {
+    "full": "Босс побеждён",
+    "short": "Босс побеждён",
+    "emoji": "🏆",
+    "icon_key": "icon.status.defeated"
+  },
+  "status.failed": {
+    "full": "Бой проигран",
+    "short": "Бой проигран",
+    "emoji": "💀",
+    "icon_key": "icon.status.failed"
+  },
+  "rps.saint": {
+    "full": "Святоша",
+    "short": "Святоша",
+    "emoji": "😇",
+    "icon_key": "icon.rps.saint"
+  },
+  "rps.demon": {
+    "full": "Демон",
+    "short": "Демон",
+    "emoji": "😈",
+    "icon_key": "icon.rps.demon"
+  },
+  "rps.villager": {
+    "full": "Житель",
+    "short": "Житель",
+    "emoji": "🧑",
+    "icon_key": "icon.rps.villager"
+  }
+}

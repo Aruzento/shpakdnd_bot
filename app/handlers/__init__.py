@@ -11,7 +11,10 @@ from app.mini.handlers import router as mini_router
 from app.mini.events.handlers import router as mini_events_router
 
 
+from app.mini.events.pvp_handlers import router as mini_pvp_router
+
 ROUTERS = [
+    mini_pvp_router,
     common_router,
     mini_titles_router,
     mini_boss_router,

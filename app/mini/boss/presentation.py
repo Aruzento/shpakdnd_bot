@@ -1,14 +1,18 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
 
 
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup
 from app.mini.boss.catalog import list_boss_templates
 from app.mini.boss.public import format_public_boss
 from app.mini.presentation import hero_heading, hero_trait_lines
 
 
+
 HERO_PAGE_SIZE = 8
 
+@editorial_screen
 def format_private_boss(
     boss: dict,
     participants: list[dict],
@@ -18,15 +22,16 @@ def format_private_boss(
     text = format_public_boss(boss, participants)
     if boss["status"] == "announced":
         text += (
-            "\n\n✅ Ты записан на этого босса."
+            editorial_text('boss.format_private_boss.line_01')
             if joined
-            else "\n\nТы пока не записан."
+            else editorial_text('boss.format_private_boss.line_02')
         )
     elif boss["status"] == "fighting" and joined:
-        text += "\n\n⚔️ Ты участвуешь в этом бою."
+        text += editorial_text('boss.format_private_boss.line_03')
     return text
 
 
+@editorial_screen
 def boss_private_menu(
     world_id: int,
     user_id: int,
@@ -41,14 +46,14 @@ def boss_private_menu(
         if joined:
             rows.append([
                 InlineKeyboardButton(
-                    text="🚪 Выйти из регистрации",
+                    text=editorial_text('boss.boss_private_menu.line_10'),
                     callback_data=f"miniboss:leave:{world_id}:{boss['id']}",
                 )
             ])
         else:
             rows.append([
                 InlineKeyboardButton(
-                    text="⚔️ Записаться на босса",
+                    text=editorial_text('boss.boss_private_menu.line_11'),
                     callback_data=f"miniboss:join:{world_id}:{boss['id']}",
                 )
             ])
@@ -56,14 +61,14 @@ def boss_private_menu(
     if joined and boss["status"] in {"announced", "ready"}:
         rows.append([
             InlineKeyboardButton(
-                text="🎴 Выбрать героя",
+                text=editorial_text('boss.boss_private_menu.line_03'),
                 callback_data=f"miniboss:heroes:{world_id}:{user_id}:{boss['id']}:0",
             )
         ])
 
     rows.append([
         InlineKeyboardButton(
-            text="👥 Участники",
+            text=editorial_text('boss.boss_private_menu.line_01'),
             callback_data=f"miniboss:list:{world_id}:{boss['id']}",
         )
     ])
@@ -71,7 +76,7 @@ def boss_private_menu(
     if is_admin and boss["status"] == "announced":
         rows.append([
             InlineKeyboardButton(
-                text="🔒 Закрыть регистрацию",
+                text=editorial_text('boss.boss_private_menu.line_04'),
                 callback_data=(
                     f"miniboss:close:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -81,7 +86,7 @@ def boss_private_menu(
     if is_admin and boss["status"] == "ready":
         rows.append([
             InlineKeyboardButton(
-                text="▶️ Начать бой",
+                text=editorial_text('boss.boss_private_menu.line_05'),
                 callback_data=(
                     f"miniboss:start:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -89,7 +94,7 @@ def boss_private_menu(
         ])
         rows.append([
             InlineKeyboardButton(
-                text="🔓 Открыть регистрацию снова",
+                text=editorial_text('boss.boss_private_menu.line_06'),
                 callback_data=(
                     f"miniboss:reopen:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -99,7 +104,7 @@ def boss_private_menu(
     if is_admin and boss["status"] == "fighting":
         rows.append([
             InlineKeyboardButton(
-                text="⚡ Завершить бой",
+                text=editorial_text('boss.boss_private_menu.line_07'),
                 callback_data=(
                     f"miniboss:forcefinish:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -109,7 +114,7 @@ def boss_private_menu(
     if is_admin and boss["status"] in {"announced", "ready"}:
         rows.append([
             InlineKeyboardButton(
-                text="📣 Повторить анонс",
+                text=editorial_text('boss.boss_private_menu.line_08'),
                 callback_data=(
                     f"miniboss:republish:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -117,7 +122,7 @@ def boss_private_menu(
         ])
         rows.append([
             InlineKeyboardButton(
-                text="❌ Отменить босса",
+                text=editorial_text('boss.boss_private_menu.line_09'),
                 callback_data=(
                     f"miniboss:cancel:{world_id}:{user_id}:{boss['id']}"
                 ),
@@ -126,13 +131,14 @@ def boss_private_menu(
 
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ На главную",
+            text=editorial_text('boss.boss_private_menu.line_02'),
             callback_data=f"mini:home:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def no_boss_menu(
     world_id: int,
     user_id: int,
@@ -143,25 +149,26 @@ def no_boss_menu(
     if is_admin:
         rows.append([
             InlineKeyboardButton(
-                text="➕ Объявить босса",
+                text=editorial_text('boss.no_boss_menu.line_02'),
                 callback_data=f"miniboss:create:{world_id}:{user_id}",
             )
         ])
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ На главную",
+            text=editorial_text('boss.no_boss_menu.line_01'),
             callback_data=f"mini:home:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def template_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
     rows = []
     for boss in list_boss_templates():
         rows.append([
             InlineKeyboardButton(
-                text=f"👹 {boss['name']} • {boss['max_hp']} HP",
+                text=editorial_text('boss.template_menu.line_02', name=f"{boss['name']}", max_hp=f"{boss['max_hp']}"),
                 callback_data=(
                     f"miniboss:preview:{world_id}:{user_id}:{boss['code']}"
                 ),
@@ -169,13 +176,14 @@ def template_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
         ])
     rows.append([
         InlineKeyboardButton(
-            text="⬅️ Назад",
+            text=editorial_text('boss.template_menu.line_01'),
             callback_data=f"mini:boss:{world_id}:{user_id}",
         )
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def preview_menu(
     world_id: int,
     user_id: int,
@@ -185,7 +193,7 @@ def preview_menu(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="📣 Объявить и открыть регистрацию",
+                    text=editorial_text('boss.preview_menu.line_01'),
                     callback_data=(
                         f"miniboss:announce:{world_id}:{user_id}:{code}"
                     ),
@@ -193,7 +201,7 @@ def preview_menu(
             ],
             [
                 InlineKeyboardButton(
-                    text="⬅️ К списку боссов",
+                    text=editorial_text('boss.preview_menu.line_02'),
                     callback_data=f"miniboss:create:{world_id}:{user_id}",
                 )
             ],
@@ -201,11 +209,13 @@ def preview_menu(
     )
 
 
+@editorial_screen
 def battle_hero_menu(world_id: int, user_id: int, boss_id: int, heroes: list[dict], page: int):
     # Compatibility export; live entry screens show favorites via the same renderer.
     from app.mini.ui.hero_selector import render_selector
     return render_selector(heroes,[],'b',world_id,user_id,boss_id,view='all',page=page)[1]
 
 
+@editorial_screen
 def selection_details(heroes: list[dict], page: int) -> str:
-    return 'Выбери активного героя кнопкой.'
+    return editorial_text('boss.selection_details.line_01')

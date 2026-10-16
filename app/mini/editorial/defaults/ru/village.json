@@ -1,0 +1,21 @@
+{
+  "village.screen.line_01": " • остановлена: не хватает еды",
+  "village.screen.line_02": "🏘 Моя деревня\n\n🏠 Дома {houses}/5\n👥 Жители {value_2}/{capacity}\n\n🍖 Еда +{hunt}/ч\n🍽 Расход {consumption}/ч\n\n⛏ Шахта +{mine} shards/ч{stopped}\n🏪 Рынок +{market} coins/ч{stopped_9}\n🏹 Охота +{hunt_10} food/ч\n\nНакоплено: {coins} монет • {shards} осколков\nДо остановки: {value_13} ч {value_14} мин",
+  "village.screen.line_03": "🏘 Моя деревня\n\n🏠 Дома {houses}/5\n👥 Жители {value_2}/{capacity}\n\n🍖 Еда +{hunt}/ч\n🍽 Расход {consumption}/ч\n⛏ Шахта +{mine} shards/ч{stopped}\n🏪 Рынок +{market} coins/ч{stopped_9}\n🏹 Охота +{hunt_10} food/ч\n\nНакоплено: {coins} монет • {shards} осколков\n⏸ Достигнут предел 8 часов. Собери ресурсы.",
+  "village.screen.line_04": "\n✨ {label}: +25% • осталось {value_2} ч",
+  "village.screen.line_05": "🏠 Дома {houses}/5\n👥 Жители {value_2}/{capacity}",
+  "village.screen.line_06": "Рынок",
+  "village.screen.line_07": "Шахта",
+  "village.screen.line_08": "👥 {name}\nМесто работы: {value_2}\n\nЖитель недоступен для Boss, Tower и дуэлей.",
+  "village.action.line_01": "Собрано: {coins} монет, {shards} осколков",
+  "village.screen.line_14": "\nСтраница {value_1}/{pages}",
+  "village.action.line_02": "Готово",
+  "village.screen.line_20": "\n\nУправление работниками.",
+  "village.screen.line_21": "👥 Поселить героя\n\nВыбери героя из коллекции.",
+  "village.screen.line_27": "🚪 Выселить героя",
+  "village.screen.line_28": "\n\nНет доступных кандидатов.",
+  "village.screen.line_29": "\n\nПока пусто.",
+  "village.screen.line_33": "🏘 Жильцы\n\nВыбери жителя.",
+  "village.screen.line_36": "\n\nВыбери жителя без работы для назначения.",
+  "village.screen.line_37": "\n\nВыбери работника, чтобы снять с производства."
+}

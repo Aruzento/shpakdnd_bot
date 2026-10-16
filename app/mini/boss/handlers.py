@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from app.mini.presentation import format_player_mention
 from app.mini.ui.context import username_from_user
 from app.mini.boss.ui import admin_action_context as _admin_action_context
@@ -28,6 +29,7 @@ router = Router(name="mini_boss")
 
 
 @router.callback_query(F.data.startswith("miniboss:start:"))
+@editorial_screen
 async def boss_start_callback(callback: CallbackQuery):
     context = await _admin_action_context(callback, "start")
     if context is None:
@@ -46,41 +48,42 @@ async def boss_start_callback(callback: CallbackQuery):
         world,
         boss,
         notice="\n".join([
-            "⚔️ Бой начался!",
+            editorial_text('boss.boss_start_callback.line_03'),
             *(boss_event_line(event, state["participants"]) for event in state.get("boss_events", [])),
         ]),
     )
     current = state.get("current")
-    who = format_player_mention(current) if current else "первого игрока"
-    await callback.answer(f"Бой начался. Ход {who}")
+    who = format_player_mention(current) if current else editorial_text('boss.boss_start_callback.line_01')
+    await callback.answer(editorial_text('boss.boss_start_callback.line_02', who=f'{who}'))
     await _delete_current_ephemeral(callback)
 
 
 @router.callback_query(F.data.startswith("miniboss:hit:"))
+@editorial_screen
 async def boss_hit_callback(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
     if len(parts) not in {4, 6}:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_03'), show_alert=True)
         return
     try:
         world_id, boss_id = int(parts[2]), int(parts[3])
         expected_round = int(parts[4]) if len(parts) == 6 else None
         expected_position = int(parts[5]) if len(parts) == 6 else None
     except ValueError:
-        await callback.answer("Некорректная кнопка.", show_alert=True)
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_10'), show_alert=True)
         return
 
     world = _load_world(world_id,callback)
     if world is None:
-        await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_04'),show_alert=True)
         return None
     player = _load_player(world_id, callback)
     boss = get_boss(boss_id)
     if world is None or boss is None or int(boss["world_id"]) != world_id:
-        await callback.answer("Босс больше не актуален.", show_alert=True)
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_05'), show_alert=True)
         return
     if player is None:
-        await callback.answer("Сначала создай Mini-персонажа.", show_alert=True)
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_06'), show_alert=True)
         return
 
     # Старые карточки (до turn-token) и дубли предыдущего хода не должны
@@ -89,7 +92,7 @@ async def boss_hit_callback(callback: CallbackQuery):
     if expected_round is None or expected_position is None:
         await ensure_public_turn(callback.bot, world, boss)
         await callback.answer(
-            "Эта кнопка хода устарела. Используй актуальное сообщение ниже.",
+            editorial_text('boss.boss_hit_callback.line_07'),
             show_alert=True,
         )
         return
@@ -101,7 +104,7 @@ async def boss_hit_callback(callback: CallbackQuery):
     ):
         await ensure_public_turn(callback.bot, world, boss)
         await callback.answer(
-            "Этот ход уже завершён. Используй актуальное сообщение ниже.",
+            editorial_text('boss.boss_hit_callback.line_08'),
             show_alert=True,
         )
         return
@@ -129,7 +132,7 @@ async def boss_hit_callback(callback: CallbackQuery):
     passive_text = " ".join(passive_messages)
 
     attacker = format_player_mention(dict(player, username=username_from_user(callback.from_user) or player.get("username")))
-    public_parts = [f"💥 {attacker} наносит {result.get('damage', 0)} урона."]
+    public_parts = [editorial_text('boss.boss_hit_callback.line_01', attacker=f'{attacker}', value_2=f"{result.get('damage', 0)}")]
     if passive_text:
         public_parts.append(passive_text)
 
@@ -141,8 +144,7 @@ async def boss_hit_callback(callback: CallbackQuery):
         if boss["status"] == "defeated":
             rewards = result.get("rewards") or {}
             message = (
-                f"🏆 Победа! Урон: {result.get('damage', 0)}. "
-                f"Награда за участие: {rewards.get('coins_each', 0)} монет."
+                editorial_text('boss.boss_hit_callback.line_02', value_1=f"{result.get('damage', 0)}", value_2=f"{rewards.get('coins_each', 0)}")
             )
             if passive_text:
                 message += f" {passive_text}"
@@ -151,8 +153,7 @@ async def boss_hit_callback(callback: CallbackQuery):
             rewards = result.get("rewards") or {}
             await callback.answer(
                 (
-                    f"💀 Бой проигран. Награда за участие: "
-                    f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)} осколков."
+                    editorial_text('boss.boss_hit_callback.line_13', value_1=f"{rewards.get('shards_each', int(boss.get('reward_coins', 0)) // 10)}")
                 )[:200],
                 show_alert=True,
             )
@@ -162,15 +163,15 @@ async def boss_hit_callback(callback: CallbackQuery):
             suffix += f" {passive_text}."
         if reward_event:
             if reward_event.get("type") == "shield":
-                suffix += f" Босс разбил щит: осталось {reward_event['shields']}."
+                suffix += editorial_text('boss.boss_hit_callback.line_09', shields=f"{reward_event['shields']}")
             elif reward_event.get("type") == "reward_damage":
-                suffix += f" Награда: {reward_event.get('display_reward_percent',reward_event['reward_percent'])}%."
+                suffix += editorial_text('boss.boss_hit_callback.line_11', value_1=f"{reward_event.get('display_reward_percent', reward_event['reward_percent'])}")
             elif reward_event.get("type") == "boss_skip":
-                suffix += " 🎵 Босс пропускает атаку по награде."
+                suffix += editorial_text('boss.boss_hit_callback.line_14')
             passive_lines = boss_attack_passive_lines(reward_event)
             if passive_lines:
                 suffix += " " + " ".join(passive_lines)
-        await callback.answer(f"⚔️ Урон: {result['damage']}.{suffix}"[:200])
+        await callback.answer(editorial_text('boss.boss_hit_callback.line_12', damage=f"{result['damage']}", suffix=f'{suffix}')[:200])
 
     # Если удар был сделан из старого личного ephemeral-меню, оно больше
     # не должно висеть после хода. Публичная карточка следующего хода
@@ -186,6 +187,7 @@ async def boss_hit_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("miniboss:forcefinish:"))
+@editorial_screen
 async def boss_force_finish_callback(callback: CallbackQuery):
     context = await _admin_action_context(callback, "forcefinish")
     if context is None:
@@ -194,7 +196,7 @@ async def boss_force_finish_callback(callback: CallbackQuery):
 
     if boss["status"] != "fighting":
         await callback.answer(
-            "Завершить можно только идущий бой.",
+            editorial_text('boss.boss_force_finish_callback.line_02'),
             show_alert=True,
         )
         return
@@ -213,7 +215,7 @@ async def boss_force_finish_callback(callback: CallbackQuery):
         finished,
         old_turn_message_id=result.get("old_turn_message_id"),
     )
-    await callback.answer("Бой завершён победой")
+    await callback.answer(editorial_text('boss.boss_force_finish_callback.line_01'))
     await _delete_current_ephemeral(callback)
 
 

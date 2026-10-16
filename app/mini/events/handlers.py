@@ -1,3 +1,6 @@
+from app.mini.editorial import text as editorial_text, screen as editorial_screen
+from app.mini.editorial.buttons import button as InlineKeyboardButton
+from app.mini.editorial.registry import LiveMapping
 """Ephemeral UI for Mini events; no economic state lives in the router."""
 from app.mini.ui.context import load_extended_context, load_personal_context, personal_callback, validate_callback_location
 from app.mini.ui.transport import send_private_text_from_callback
@@ -5,7 +8,7 @@ from app.topic_guard import is_mini_topic
 import secrets
 
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 
 from app.mini.players import get_mini_player
 from app.mini.wallet import InsufficientFundsError
@@ -14,60 +17,59 @@ from app.mini.events.service import (
     get_session, repeat_session, resolve_rps, start_session,
 )
 
+
 router = Router(name="mini_events")
-RPS_LABELS = {"saint": "😇 Святоша", "demon": "😈 Демон", "villager": "🧑 Житель"}
+RPS_LABELS = LiveMapping({'saint': 'rps.saint', 'demon': 'rps.demon', 'villager': 'rps.villager'}, terms=True, decorated=True)
 CHOICE_CODES = {"s": "saint", "d": "demon", "v": "villager"}
 
 
+@editorial_screen
 def _balance(player: dict) -> str:
-    return f"🪙 {player['coins']} монет • 🧩 {player['shards']} осколков"
+    return editorial_text('events.balance.line_01', coins=f"{player['coins']}", shards=f"{player['shards']}")
 
 
+@editorial_screen
 def _button(world_id: int, user_id: int, text: str, payload: str):
     return InlineKeyboardButton(
         text=text, callback_data=f"mini:ev:{world_id}:{user_id}:{payload}",
     )
 
 
+@editorial_screen
 def _screen(world_id: int, user_id: int, player: dict, screen: str,
             notice: str = "") -> tuple[str, InlineKeyboardMarkup]:
     def button(text, payload):
         return _button(world_id, user_id, text, payload)
 
     if screen == "events":
-        text = ("🎪 События\n\nЗдесь можно испытать удачу и интуицию — "
-                "и немного заработать. Выбери игру.")
-        rows = [[button("😇 Святоша, Демон, Житель", "rps")],
-                [button("🌀 Лабиринт интуиции", "lab")],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data=
+        text = (editorial_text('events.screen.line_01'))
+        rows = [[button(editorial_text('events.screen.line_04'), "rps")],
+                [button(editorial_text('events.screen.line_05'), "lab")],
+                [InlineKeyboardButton(text=editorial_text('navigation.back'), callback_data=
                     personal_callback("fair", world_id, user_id))]]
     elif screen == "rps":
-        text = ("😇 Святоша, Демон, Житель\n\nСвятоша побеждает Демона, "
-                "Демон — Жителя, а Житель — Святошу. Выбери ставку, затем "
-                "своего бойца — бот сделает выбор одновременно с тобой.")
-        rows = [[button("🎲 Играть", "bets")]]
+        text = (editorial_text('events.screen.line_02'))
+        rows = [[button(editorial_text('pvp.bot'), "bets")],
+                [InlineKeyboardButton(text=editorial_text("pvp.player"),callback_data=f"mini:pvp:{world_id}:{user_id}:home")]]
     elif screen == "bets":
-        text = "😇 Святоша, Демон, Житель\n\nВыбери ставку."
+        text = editorial_text('events.screen.line_03')
         token = secrets.token_hex(6)
-        rows = [[button(f"🪙 {stake}", f"start.{token}.{stake}") for stake in RPS_STAKES],
-                [button("⬅️ Выйти", "events")]]
+        rows = [[button(editorial_text('events.screen.line_10', stake=f'{stake}'), f"start.{token}.{stake}") for stake in RPS_STAKES],
+                [button(editorial_text('events.screen.line_11'), "events")]]
     elif screen == "lab":
-        text = ("🌀 Лабиринт интуиции\n\nПеред тобой появляется проход, стены "
-                "которого постоянно меняются. Трижды выбери правильное "
-                "направление — и лабиринт выпустит тебя с наградой.\n\n"
-                "Стоимость попытки: 🪙 5\nНаграда: 🪙 10\n"
-                "При поражении: 🧩 3 осколка")
-        rows = [[button("🚪 Войти в лабиринт — 5 монет", f"enter.{secrets.token_hex(6)}")],
-                [button("⬅️ Назад", "events")]]
+        text = (editorial_text('events.screen.line_06'))
+        rows = [[button(editorial_text('events.screen.line_12'), f"enter.{secrets.token_hex(6)}")],
+                [button(editorial_text('navigation.back'), "events")]]
     else:
-        raise EventError("Неизвестный экран.")
-    if screen=='rps':rows.append([button('⬅️ Назад','events')])
+        raise EventError(editorial_text('errors.events.handlers.screen.01'))
+    if screen=='rps':rows.append([button(editorial_text('navigation.back'),'events')])
     text += "\n\n" + _balance(player)
     if notice:
         text += "\n\n" + notice
     return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 def _session_screen(world_id: int, user_id: int, player: dict,
                     session: dict) -> tuple[str, InlineKeyboardMarkup]:
     def button(text, payload):
@@ -78,46 +80,39 @@ def _session_screen(world_id: int, user_id: int, player: dict,
     payload = session["payload"]
     if session["status"] == "active":
         if session["game_type"] == "rps":
-            text = ("😇 Святоша, Демон, Житель\n\n"
-                    f"Ставка принята: 🪙 {stake}\nВыбери своего бойца.")
+            text = (editorial_text('events.session_screen.line_01', stake=f'{stake}'))
             rows = [[button(RPS_LABELS[choice], f"pick.{sid}.{code}")]
                     for code, choice in CHOICE_CODES.items()]
         else:
             step = session["step"]
-            text = ("🌀 Лабиринт интуиции\n\n" + (
-                "Вы заходите в волшебный лабиринт. Перед вами два одинаковых "
-                "прохода. Куда повернуть?" if step == 0 else
-                "✨ Путь оказался верным. Вы заходите глубже в лабиринт..."
-            ) + f"\n\nПуть: {step}/3")
-            rows = [[button("⬅️ Влево", f"turn.{sid}.{step}.l"),
-                     button("➡️ Вправо", f"turn.{sid}.{step}.r")]]
+            text = (editorial_text('events.session_screen.line_06') + (
+                editorial_text('events.session_screen.line_10') if step == 0 else
+                editorial_text('events.session_screen.line_11')
+            ) + editorial_text('events.session_screen.line_03', step=f'{step}'))
+            rows = [[button(editorial_text('events.session_screen.line_12'), f"turn.{sid}.{step}.l"),
+                     button(editorial_text('events.session_screen.line_13'), f"turn.{sid}.{step}.r")]]
     elif session["game_type"] == "rps":
         result = {
-            "win": f"🏆 Победа! +{stake} монет",
-            "loss": f"💀 Поражение. −{stake} монет",
-            "draw": "🤝 Ничья. Ставка возвращена.\nИтог: 0 монет",
+            "win": editorial_text('events.session_screen.line_07', stake=f'{stake}'),
+            "loss": editorial_text('events.session_screen.line_08', stake=f'{stake}'),
+            "draw": editorial_text('events.session_screen.line_09'),
         }[payload["outcome"]]
-        text = (f"Ты: {RPS_LABELS[payload['choice']]}\n"
-                f"Бот: {RPS_LABELS[payload['bot_choice']]}\n\n{result}")
-        rows = [[button("🔁 Ещё раз!", f"again.{sid}")],
-                [button("💰 Поменять ставку", f"bets.{sid}")]]
+        text = (editorial_text('events.session_screen.line_02', value_1=f"{RPS_LABELS[payload['choice']]}", value_2=f"{RPS_LABELS[payload['bot_choice']]}", result=f'{result}'))
+        rows = [[button(editorial_text('events.session_screen.line_14'), f"again.{sid}")],
+                [button(editorial_text('events.session_screen.line_15'), f"bets.{sid}")]]
     else:
         if payload["outcome"] == "win":
-            text = ("🏆 Вы находите выход!\n\nВ центре последнего зала вас ждёт "
-                    "маленький сундук.\n\n🪙 Получено: 10 монет\n"
-                    "Итог попытки: +5 монет")
+            text = (editorial_text('events.session_screen.line_04'))
         else:
-            text = ("💀 Проход захлопывается за вашей спиной.\n\nЛабиринт "
-                    "выбрасывает вас обратно ко входу, но в кармане остаётся "
-                    "несколько мерцающих осколков.\n\n🪙 Потеряно: 5 монет\n"
-                    "🧩 Получено: 3 осколка")
-        rows = [[button("🔁 Ещё раз — 5 монет", f"again.{sid}")],
-                [button("🎪 К событиям", "events")]]
+            text = (editorial_text('events.session_screen.line_05'))
+        rows = [[button(editorial_text('events.session_screen.line_16'), f"again.{sid}")],
+                [button(editorial_text('events.session_screen.line_17'), "events")]]
     if session['status']=='active' or session['game_type']=='rps':
-        rows.append([InlineKeyboardButton(text='⬅️ Выйти к ярмарке',callback_data=personal_callback('fair',world_id,user_id))])
+        rows.append([InlineKeyboardButton(text=editorial_text('events.session_screen.line_18'),callback_data=personal_callback('fair',world_id,user_id))])
     return text + "\n\n" + _balance(player), InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@editorial_screen
 async def _show(callback, world, player, *, screen="events", session=None, notice=""):
     # A stale result/navigation button must not hide a newer unfinished round.
     active = get_active_session(player["id"], world["id"])
@@ -133,10 +128,12 @@ async def _show(callback, world, player, *, screen="events", session=None, notic
     await send_private_text_from_callback(callback, world, text, markup)
 
 
+@editorial_screen
 async def _valid_location(callback, world) -> bool:
     return await validate_callback_location(callback,world,callback.from_user.id)
 
 @router.callback_query(F.data.startswith("mini:events:"))
+@editorial_screen
 async def events_callback(callback: CallbackQuery):
     context = await load_personal_context(callback)
     if context is None:
@@ -149,6 +146,7 @@ async def events_callback(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("mini:ev:"))
+@editorial_screen
 async def event_game_callback(callback: CallbackQuery):
     context = await load_extended_context(callback, "ev")
     if context is None:
@@ -165,16 +163,16 @@ async def event_game_callback(callback: CallbackQuery):
             if len(parts) == 2 and action == "bets":
                 previous = get_session(player["id"], world["id"], int(parts[1]))
                 if previous["game_type"] != "rps":
-                    raise EventError("Это другая игра.")
+                    raise EventError(editorial_text('errors.events.handlers.event_game_callback.01'))
             elif len(parts) != 1:
-                raise EventError("Некорректная кнопка.")
+                raise EventError(editorial_text('errors.events.handlers.event_game_callback.02'))
             screen = action
         elif action in {"start", "enter"}:
             if len(parts) != (3 if action == "start" else 2):
-                raise EventError("Некорректная кнопка.")
+                raise EventError(editorial_text('errors.events.handlers.event_game_callback.03'))
             token = parts[1]
             if len(token) != 12 or any(c not in "0123456789abcdef" for c in token):
-                raise EventError("Некорректная кнопка.")
+                raise EventError(editorial_text('errors.events.handlers.event_game_callback.04'))
             screen = "bets" if action == "start" else "lab"
             session = start_session(
                 player["id"], world["id"], "rps" if action == "start" else "labyrinth",
@@ -192,13 +190,13 @@ async def event_game_callback(callback: CallbackQuery):
             session = choose_direction(player["id"], world["id"], int(parts[1]),
                                        int(parts[2]), direction)
         else:
-            raise EventError("Некорректная кнопка.")
+            raise EventError(editorial_text('errors.events.handlers.event_game_callback.05'))
     except InsufficientFundsError:
-        await callback.answer("Недостаточно монет Mini.", show_alert=True)
-        await _show(callback, world, player, screen=screen, notice="Недостаточно монет Mini.")
+        await callback.answer(editorial_text('events.event_game_callback.line_01'), show_alert=True)
+        await _show(callback, world, player, screen=screen, notice=editorial_text('events.event_game_callback.line_03'))
         return
     except (EventError, ValueError, KeyError):
-        await callback.answer("Игра или кнопка недоступна.", show_alert=True)
+        await callback.answer(editorial_text('events.event_game_callback.line_02'), show_alert=True)
         return
     await callback.answer()
     await _show(callback, world, player, screen=screen, session=session)

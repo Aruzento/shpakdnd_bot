@@ -21,6 +21,8 @@ from app.services.timers import restore_timers
 
 
 async def main():
+    from app.mini.editorial.registry import get_registry
+    get_registry()
     load_boss_catalog()
     init_db()
     init_mini_db()
@@ -48,6 +50,8 @@ async def main():
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
+    from app.mini.editorial.middleware import EditorialMiddleware
+    dp.update.outer_middleware(EditorialMiddleware())
 
     try:
         await configure_mini_commands(bot)
@@ -60,15 +64,23 @@ async def main():
 
     from app.mini.duels.service import expire
     expire()
+    from app.mini.events.pvp_publication import recover, watch_loop
+    recover()
     recover_interrupted_notifications()
     await restore_timers(bot)
 
+    pvp_watch_task = asyncio.create_task(watch_loop(bot))
     boss_watch_task = asyncio.create_task(boss_watch_loop(bot))
     mini_notice_task = asyncio.create_task(mini_notice_watch_loop(bot))
     print("Бот запущен.")
     try:
         await dp.start_polling(bot)
     finally:
+        pvp_watch_task.cancel()
+        try:
+            await pvp_watch_task
+        except asyncio.CancelledError:
+            pass
         mini_notice_task.cancel()
         boss_watch_task.cancel()
         try:

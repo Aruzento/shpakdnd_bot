@@ -100,18 +100,17 @@ class NavigationFlows(unittest.IsolatedAsyncioTestCase):
             await hero_cards.send_hero_card(cb,self.w,{},'x',markup)
         self.assertNotIn('ephemeral_message_parameters',cb.bot.send_message.call_args.kwargs)
         self.assertEqual(cb.bot.send_message.call_args.kwargs['chat_id'],900123)
-    def test_collection_card_and_shard_sale_keep_page_and_filter(self):
+    def test_collection_card_preserves_page_and_filter_without_sale(self):
         hero=dict(self.f.hero(),shards=20)
         token=ui_state.remember(self.p['id'],'collection',dict(view='results',page=2,filter='0000000'),self.db)
         menu=hero_cards.hero_card_menu(1,900123,hero,{},collection=True,nav_token=token)
         buttons=[b for r in menu.inline_keyboard for b in r]
-        self.assertTrue(next(b.callback_data for b in buttons if 'Продать' in b.text).endswith('~'+token))
+        self.assertFalse(any(':heroshards:' in b.callback_data or ':shardsell:' in b.callback_data for b in buttons))
         self.assertEqual(buttons[-1].callback_data,'mini:collectionback:1:900123:'+token)
         self.assertEqual(ui_state.restore(self.p['id'],token,self.db),dict(view='results',page=2,filter='0000000'))
         sale=heroes._shard_sell_menu(1,900123,hero,nav_token=token)
-        self.assertTrue(sale.inline_keyboard[-1][0].callback_data.endswith('.'+token))
-        self.assertIn(',all,',sale.inline_keyboard[-2][0].callback_data)
-        self.assertIn('20',sale.inline_keyboard[-2][0].text)
+        self.assertEqual(len(sale.inline_keyboard),1)
+        self.assertEqual(sale.inline_keyboard[0][0].callback_data,f'mini:hero:1:900123:{hero["id"]}')
     def test_collection_pagination_clamps_first_last_and_shrunken_list(self):
         hs=[dict(self.f.hero(),id=i) for i in range(1,10)]
         for page,target in ((-1,0),(2,2),(99,2)):

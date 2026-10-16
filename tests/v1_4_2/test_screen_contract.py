@@ -25,6 +25,7 @@ def handler(data):
         names={'join':'boss_join_callback','leave':'boss_leave_callback','list':'boss_list_callback','create':'boss_create_callback','preview':'boss_preview_callback','announce':'boss_announce_callback','close':'boss_close_callback','start':'boss_start_callback','reopen':'boss_reopen_callback','republish':'boss_republish_callback','cancel':'boss_cancel_callback','forcefinish':'boss_force_finish_callback','hit':'boss_hit_callback'}
         return module+':'+names[action]
     names={
+        'pvp':('events.pvp_handlers','action'),'guide':('ui.activities','combat_guide_callback'),'hevict':('ui.heroes','hero_evict_callback'),
         'launch':('handlers','launch_callback'),'create_help':('handlers','create_help_callback'),'home':('handlers','home_callback'),'character':('handlers','character_callback'),'charup':('ui.heroes','hero_upgrade_callback'),
         'collection':('ui.heroes','collection_callback'),'collectionopen':('ui.heroes','collection_open_callback'),'gacha':('ui.heroes','gacha_callback'),'gachapull':('ui.heroes','gacha_pull_callback'),'gacharepeat':('ui.heroes','gacha_repeat_callback'),
         'gachabatch':('ui.summons','batch_callback'),'batchview':('ui.summons','batch_result_callback'),'batchpage':('ui.summons','batch_result_callback'),'batchhero':('ui.summons','batch_result_callback'),'gachacoupon':('ui.summons','coupon_callback'),'couponpick':('ui.summons','coupon_callback'),'collectionback':('ui.heroes','collection_back_callback'),

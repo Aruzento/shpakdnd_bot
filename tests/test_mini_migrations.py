@@ -114,6 +114,27 @@ class MiniMigrationTests(unittest.TestCase):
                 VALUES(?,2,?,?,?,10,10,'lost')""",(player,hero,snapshot,json.dumps(get_floor(2)))).lastrowid
             active=conn.execute("SELECT id FROM mini_tower_attempts WHERE player_id=? AND status='active'",(player,)).fetchone()[0]
             conn.execute('INSERT INTO mini_tower_retries VALUES(?,?)',(lost,active))
+        # New persisted choices/publication join the same all-tables snapshot.
+        with connect_mini_db(self.db) as conn:
+            sid=conn.execute("""INSERT INTO mini_event_pvp
+                (world_id,creator_id,acceptor_id,operation_key,status,created_at,accept_until,
+                 choose_until,publication,message_id,revision)
+                VALUES(?,?,?,'fixture-pvp','choosing',1000,1120,1240,'sent',99,2)""",
+                (world,player,other)).lastrowid
+            conn.execute("INSERT INTO mini_event_pvp_members(session_id,player_id,choice) VALUES(?,?,'saint')",(sid,player))
+            conn.execute("INSERT INTO mini_event_pvp_members(session_id,player_id) VALUES(?,?)",(sid,other))
+        # A real new terminal award populates the receipt table without
+        # altering the legacy fixture player's fixed balances.
+        from app.mini.events import pvp
+        left=create_mini_player(world,557,"","Receipt left",self.db)["id"]
+        right=create_mini_player(world,558,"","Receipt right",self.db)["id"]
+        for pid in (left,right):add_coins(pid,10,"Receipt fixture",db_path=self.db)
+        match=pvp.create(left,world,"receipt",self.db,now=1100)
+        with connect_mini_db(self.db) as conn:
+            conn.execute("UPDATE mini_event_pvp SET publication='sent',message_id=100 WHERE id=?",(match["id"],))
+        pvp.accept(right,world,match["id"],self.db,now=1101)
+        pvp.choose(left,world,match["id"],"saint",self.db,now=1102)
+        pvp.choose(right,world,match["id"],"demon",self.db,now=1103)
         return player
 
     def test_fresh_schema_contains_all_tables_and_survives_repeated_init(self):

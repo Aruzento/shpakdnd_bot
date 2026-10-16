@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 from app.mini.wallet import change_balance_in_transaction
 import json
 import secrets
@@ -67,7 +68,7 @@ def _choose_hero_code(*, luck_active: bool = False) -> str:
         total_weight += weight
 
     if total_weight <= 0:
-        raise GachaNoHeroes("В гаче пока нет активных героев.")
+        raise GachaNoHeroes(editorial_text('errors.gacha.choose_hero_code.01'))
 
     roll = secrets.randbelow(total_weight)
     cursor = 0
@@ -117,7 +118,7 @@ def get_gacha_state(
             (int(player_id),),
         ).fetchone()
         if player is None:
-            raise GachaError("Mini-игрок не найден.")
+            raise GachaError(editorial_text('errors.gacha.get_gacha_state.01'))
 
         tickets = _ticket_quantity(conn, player_id, ticket_code)
         owned = int(conn.execute(
@@ -216,9 +217,9 @@ def perform_gacha_pull(player_id: int, payment: str = "coins", db_path: str | Pa
                        *, operation_key: str = "") -> dict:
     """One standard pull. Batch uses the same pipeline within its transaction."""
     if payment not in {"coins", "ticket"}:
-        raise GachaError("Неизвестный способ оплаты призыва.")
+        raise GachaError(editorial_text('errors.gacha.perform_gacha_pull.01'))
     if not isinstance(operation_key, str):
-        raise GachaError("Некорректный ключ призыва.")
+        raise GachaError(editorial_text('errors.gacha.perform_gacha_pull.02'))
     settings = _settings()
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -232,14 +233,14 @@ def get_gacha_batch(player_id, batch_id, db_path=DB_PATH):
         row = conn.execute("SELECT result_json FROM mini_gacha_batches WHERE player_id=? AND id=?",
                            (int(player_id), int(batch_id))).fetchone()
     if not row or not row[0]:
-        raise GachaError("Результат призыва не найден.")
+        raise GachaError(editorial_text('errors.gacha.get_gacha_batch.01'))
     return json.loads(row[0])
 
 
 def perform_gacha_batch(player_id, db_path=DB_PATH, *, operation_key):
     """Ten sequential coin pulls, one payment/commit, immutable result replay."""
     if not isinstance(operation_key, str) or not operation_key.strip() or len(operation_key)>160:
-        raise GachaError("Нужен ключ пакетного призыва.")
+        raise GachaError(editorial_text('errors.gacha.perform_gacha_batch.01'))
     settings = _settings()
     price = int(settings["pull_price"])
     with connect_mini_db(db_path) as conn:
@@ -252,13 +253,13 @@ def perform_gacha_batch(player_id, db_path=DB_PATH, *, operation_key):
             return {**json.loads(old[0]), "repeated": True}
         player = conn.execute("SELECT coins FROM mini_players WHERE id=?", (int(player_id),)).fetchone()
         if not player:
-            raise GachaError("Mini-игрок не найден.")
+            raise GachaError(editorial_text('errors.gacha.perform_gacha_batch.02'))
         if player['coins'] < 10*price:
-            raise GachaInsufficientFunds(f"Не хватает {10*price-player['coins']} монет для 10 призывов.")
+            raise GachaInsufficientFunds(editorial_text('errors.gacha.perform_gacha_batch.03', value_1=f"{10 * price - player['coins']}"))
         # Check the complete standard pool up front; required pity pools are checked
         # again by each sequential roll. Any unavailable due pool rolls back all ten.
         if not conn.execute("SELECT 1 FROM mini_heroes WHERE active=1 AND rarity IN ('common','uncommon','rare','legendary')").fetchone():
-            raise GachaNoHeroes("В гаче пока нет активных героев.")
+            raise GachaNoHeroes(editorial_text('errors.gacha.perform_gacha_batch.04'))
         bid = conn.execute("INSERT INTO mini_gacha_batches(player_id,operation_key,pull_price,cost_coins) VALUES(?,?,?,?)",
                            (int(player_id), operation_key, price, 10*price)).lastrowid
         balance = change_balance_in_transaction(conn, int(player_id), -10*price, "Призыв героев ×10",
@@ -295,7 +296,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
                          (player_id,operation_key)).fetchone()
         if old:
             result=json.loads(old['result_json'])
-            if result['payment']!=payment: raise GachaError('Ключ призыва уже использован.')
+            if result['payment']!=payment: raise GachaError(editorial_text('errors.gacha.perform_pull_in_transaction.07'))
             return {**result,'repeated':True}
 
     player = conn.execute(
@@ -308,7 +309,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
     ).fetchone()
     if player is None:
         conn.rollback()
-        raise GachaError("Mini-игрок не найден.")
+        raise GachaError(editorial_text('errors.gacha.perform_pull_in_transaction.01'))
 
     balance = int(player["coins"])
     used_ticket = 0
@@ -321,7 +322,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
         ).fetchone()
         if item is None:
             conn.rollback()
-            raise GachaNoTicket("Билеты призыва ещё не настроены в магазине.")
+            raise GachaNoTicket(editorial_text('errors.gacha.perform_pull_in_transaction.03'))
 
         item_id = int(item[0])
         ticket_qty = conn.execute(
@@ -334,7 +335,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
         ).fetchone()
         if ticket_qty is None or int(ticket_qty[0]) <= 0:
             conn.rollback()
-            raise GachaNoTicket("У тебя нет билета призыва.")
+            raise GachaNoTicket(editorial_text('errors.gacha.perform_pull_in_transaction.04'))
 
         conn.execute(
             """
@@ -350,7 +351,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
         if charge_coins and balance < pull_price:
             conn.rollback()
             raise GachaInsufficientFunds(
-                f"Не хватает {pull_price - balance} монет для призыва."
+                editorial_text('errors.gacha.perform_pull_in_transaction.05', value_1=f'{pull_price - balance}')
             )
         cost_coins = pull_price
         if charge_coins:
@@ -367,7 +368,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
     if required:
         legendary = conn.execute("SELECT code FROM mini_heroes WHERE rarity=? AND active=1 ORDER BY code", (required,)).fetchall()
         if not legendary:
-            raise GachaNoHeroes(f"В гаче пока нет активных героев редкости {required}.")
+            raise GachaNoHeroes(editorial_text('errors.gacha.perform_pull_in_transaction.06', value_1=f'{required}'))
         hero_code = secrets.choice(legendary)[0]
     else:
         hero_code = _choose_hero_code(luck_active=luck_used)
@@ -377,7 +378,7 @@ def _perform_pull_in_transaction(conn, player_id, payment, operation_key, settin
     ).fetchone()
     if hero is None:
         conn.rollback()
-        raise GachaNoHeroes("Выбранный герой больше не активен. Повтори крутку.")
+        raise GachaNoHeroes(editorial_text('errors.gacha.perform_pull_in_transaction.02'))
 
     grant = grant_summoned_hero_in_transaction(conn, player, hero, duplicate_shards)
     is_duplicate = grant['is_duplicate']

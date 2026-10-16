@@ -160,7 +160,7 @@ class CombatContentSafetyTests(unittest.TestCase):
 
     def test_raw_english_label_is_rejected(self):
         for label in ("Construct", "Конструкт construct"):
-            with self.subTest(label=label), patch.dict(TRAIT_LABELS, {"construct": label}):
+            with self.subTest(label=label), patch("app.mini.content_safety.TRAIT_LABELS", dict(TRAIT_LABELS, construct=label)):
                 with self.assertRaisesRegex(ValueError, "construct.*no readable Russian label"):
                     validate_combat_content(self.heroes, self.bosses)
 

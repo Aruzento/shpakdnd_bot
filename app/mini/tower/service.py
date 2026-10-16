@@ -1,3 +1,4 @@
+from app.mini.editorial import text as editorial_text
 import json
 import secrets
 import time
@@ -48,13 +49,13 @@ def select_hero(player_id,hero_id,db_path=DB_PATH,*,expected_floor=None):
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')
-        if repo.active_attempt(conn,player_id):raise ValueError('Нельзя менять героя во время боя.')
+        if repo.active_attempt(conn,player_id):raise ValueError(editorial_text('errors.tower.service.select_hero.01'))
         if expected_floor is not None:
             if expected_floor!=repo.progress(conn,player_id)+1 or repo.active_attempt(conn,player_id):
-                raise ValueError('Кнопка выбора героя устарела. Открой текущий бой.')
+                raise ValueError(editorial_text('errors.tower.service.select_hero.03'))
         row=conn.execute("""SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
             WHERE ph.player_id=? AND ph.hero_id=?""",(player_id,hero_id)).fetchone()
-        if not row:raise ValueError('Этот герой больше недоступен в коллекции.')
+        if not row:raise ValueError(editorial_text('errors.tower.service.select_hero.02'))
         from app.mini.availability import assert_available
         assert_available(conn,player_id,hero_id)
         from app.mini.availability import assert_not_committed
@@ -73,18 +74,18 @@ def start_attempt(player_id,hero_id,expected_floor,db_path=DB_PATH,*,require_sel
         conn.execute("PRAGMA foreign_keys=ON");conn.execute("BEGIN IMMEDIATE")
         best=repo.progress(conn,player_id)
         if best==200 or expected_floor != best+1:
-            raise ValueError("Эта кнопка этажа устарела. Открой Испытания заново.")
+            raise ValueError(editorial_text('errors.tower.service.start_attempt.01'))
         if repo.active_attempt(conn,player_id):
-            raise ValueError("Попытка уже началась. Продолжи текущий бой.")
+            raise ValueError(editorial_text('errors.tower.service.start_attempt.02'))
         if require_selection:
             selected=repo.selected_hero(conn,player_id)
             if not selected or selected['id']!=hero_id:
-                raise ValueError('Выбор героя изменился. Открой Испытания заново.')
+                raise ValueError(editorial_text('errors.tower.service.start_attempt.04'))
         row=conn.execute("""SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id
             WHERE ph.player_id=? AND ph.hero_id=?""",
             (player_id,hero_id)).fetchone()
         if row is None:
-            raise ValueError("Этого героя нет в твоей коллекции.")
+            raise ValueError(editorial_text('errors.tower.service.start_attempt.03'))
         from app.mini.availability import assert_available
         assert_available(conn,player_id,hero_id)
         from app.mini.availability import assert_not_committed
@@ -124,9 +125,9 @@ def attack(player_id,attempt_id,expected_turn,db_path=DB_PATH,*,roller=None,choo
         conn.execute("PRAGMA foreign_keys=ON");conn.execute("BEGIN IMMEDIATE")
         attempt=repo.attempt_by_id(conn,player_id,attempt_id)
         if not attempt or attempt["status"] != "active" or attempt["turn"] != expected_turn:
-            raise ValueError("Эта кнопка атаки устарела. Открой текущий бой.")
+            raise ValueError(editorial_text('errors.tower.service.attack.01'))
         if attempt["floor"] != repo.progress(conn,player_id)+1:
-            raise ValueError("Некорректный прогресс Испытаний.")
+            raise ValueError(editorial_text('errors.tower.service.attack.02'))
         result=resolve_turn(attempt,roller=roller)
         repo.save_turn(conn,attempt_id,result)
         attempt.update(result)
@@ -151,9 +152,9 @@ def retry_attempt(player_id,source_attempt_id,db_path=DB_PATH):
                          (source_attempt_id,player_id)).fetchone()
         if old:return repo.attempt_by_id(conn,player_id,old['new_attempt_id'])
         source=repo.attempt_by_id(conn,player_id,source_attempt_id)
-        if not source or source['status']!='lost':raise ValueError('Повтор доступен только после поражения.')
+        if not source or source['status']!='lost':raise ValueError(editorial_text('errors.tower.service.retry_attempt.01'))
         if source['floor']!=repo.progress(conn,player_id)+1 or repo.active_attempt(conn,player_id):
-            raise ValueError('Кнопка повтора устарела. Продолжи текущий бой.')
+            raise ValueError(editorial_text('errors.tower.service.retry_attempt.02'))
         selected=repo.selected_hero(conn,player_id)
         hero_id=selected['id'] if selected else source['hero_id']
         from app.mini.availability import assert_available,assert_not_committed
