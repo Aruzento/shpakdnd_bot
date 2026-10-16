@@ -65,7 +65,12 @@ systemctl)
                 WorkingDirectory) echo "$SHPAKDND_PROJECT" ;;
                 ExecStart) echo "$SHPAKDND_PYTHON bot.py" ;;
                 Triggers) echo shpakdnd-bot-update.service ;;
-                MainPID) echo 123 ;;
+                MainPID)
+                    if [[ "${FAKE_PID_CHANGE:-0}" == 1 ]]; then
+                        count=0; [[ ! -f "$FAKE_STATE/pid_reads" ]] || count="$(cat "$FAKE_STATE/pid_reads")"
+                        count=$((count+1));echo "$count" > "$FAKE_STATE/pid_reads"
+                        if ((count>1)); then echo 124; else echo 123; fi
+                    else echo 123; fi ;;
                 NRestarts) echo 0 ;;
                 *) exit 9 ;;
             esac ;;
@@ -123,7 +128,11 @@ python)
         if [[ "${FAKE_READ_STDIN:-0}" == 1 ]]; then
             printf 'FAKE_STDIN_READ_BEGIN\n'
             if IFS= read -r -t 2 ignored; then echo stdin_stolen >> "$FAKE_STATE/trace"
-            else echo stdin_eof_or_timeout >> "$FAKE_STATE/trace"; fi
+            else
+                read_code=$?
+                if ((read_code==1)); then echo stdin_eof >> "$FAKE_STATE/trace"
+                else echo stdin_timeout >> "$FAKE_STATE/trace"; fi
+            fi
             printf 'FAKE_STDIN_READ_END\n'
         fi
         if [[ "${FAKE_EMIT_SECRET:-0}" == 1 ]]; then
@@ -188,7 +197,7 @@ class DeployShellTests(unittest.TestCase):
         env=dict(self.env,**{k:str(v) for k,v in flags.items()})
         # Set PATH within Bash to avoid MSYS Windows PATH conversion ambiguity.
         command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(getattr(self,'script',ROOT/'deploy/deploy-shpakdnd.sh'))+'"'+(' --dry-run' if dry else '')
-        result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60)
+        result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60,start_new_session=(os.name=="posix"))
         result.stdout=result.stdout.decode('utf-8');result.stderr=result.stderr.decode('utf-8')
         trace=(self.state/'trace').read_text(encoding='utf-8') if (self.state/'trace').exists() else ''
         return result,trace
@@ -301,7 +310,7 @@ class DeployShellTests(unittest.TestCase):
                  **{k:str(v) for k,v in flags.items()})
         command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(ROOT/'deploy/deploy-shpakdnd.sh')+'"'
         process=subprocess.Popen([BASH,'--noprofile','--norc','-c',command],env=env,
-                                 stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+                                 stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,start_new_session=(os.name=="posix"))
         lines=queue.Queue()
         def receive():
             for line in iter(process.stdout.readline,b''):lines.put(line)

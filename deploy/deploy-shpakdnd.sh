@@ -17,6 +17,7 @@ START_WAIT="${SHPAKDND_START_WAIT:-5}"
 SOURCE_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
 TOOLS="" OLD_HEAD="unknown" TARGET_HEAD="unknown" BACKUP="не создан" LOG=""
 MAINTENANCE=0 DRY_RUN=0 FAILED_STEP="" TEST_COUNT="unknown"
+DEPLOY_INPUT_FD=""
 
 as_bot() { runuser -u "$BOT_USER" -- "$@"; }
 git_bot() { as_bot git -C "$PROJECT" "$@"; }
@@ -42,14 +43,36 @@ trap on_exit EXIT
 trap 'interrupted 130' INT
 trap 'interrupted 143' TERM
 
+select_input() {
+    # Reserve operator input before any child runs. A controlling terminal wins
+    # over redirected stdin; without one, preserve the caller's pipe/file.
+    if ! { exec {DEPLOY_INPUT_FD}</dev/tty; } 2>/dev/null; then
+        exec {DEPLOY_INPUT_FD}<&0 || return 1
+    fi
+    # Children must not consume later confirmations. The stdout redactor gets
+    # its own pipe from process substitution and is unaffected.
+    exec </dev/null
+}
+read_input() { IFS= read -r -u "$DEPLOY_INPUT_FD" "$1"; }
 confirm() {
     local answer default="${2:-N}"
     # Complete the line before read: the log redactor streams whole lines.
     printf '%s [%s]:\n' "$1" "$([[ "$default" == Y ]] && printf Y/n || printf y/N)"
-    # EOF is never confirmation, including at the default-yes launch prompt.
-    if ! IFS= read -r answer; then printf '\nВвод закрыт; подтверждение не получено.\n'; return 1; fi
+    # A partial line at EOF is not consent, even if it happens to contain "y".
+    if ! read_input answer; then
+        printf '\nВвод закрыт; подтверждение не получено.\nconfirm EOF\n'
+        return 1
+    fi
+    # Accept pasted CRLF and surrounding ASCII spaces/tabs, not arbitrary text.
+    answer="${answer#"${answer%%[!$' \t\r']*}"}"
+    answer="${answer%"${answer##*[!$' \t\r']}"}"
     [[ -z "$answer" ]] && answer="$default"
-    [[ "$answer" == y || "$answer" == Y || "$answer" == yes || "$answer" == д || "$answer" == Д ]]
+    if [[ "$answer" == y || "$answer" == Y || "$answer" == yes || "$answer" == д || "$answer" == Д ]]; then
+        printf 'confirm accepted\n'
+        return 0
+    fi
+    printf 'confirm declined\n'
+    return 1
 }
 require_clean() {
     local changes
@@ -203,7 +226,7 @@ failure_choice() {
     local choice
     summary
     printf '\n[1] Оставить бот остановленным\n[2] Вернуть предыдущий Git HEAD и запустить предыдущую версию\nВыбор [1]:\n'
-    IFS= read -r choice || choice=1
+    read_input choice || choice=1
     if [[ "$choice" == 2 ]]; then
         if ! rollback; then printf '❌ Rollback не завершён; нужен ручной разбор.\n'; return 1; fi
     else printf 'Бот оставлен остановленным. Watcher не запускается.\n'; fi
@@ -217,6 +240,7 @@ main() {
         *) printf 'Неизвестный аргумент. Используй --dry-run или --help.\n'; return 2 ;;
     esac
     [[ "$#" -le 1 ]] || return 2
+    select_input || return 1
     [[ "$(id -u)" == 0 ]] || { printf 'Запусти через sudo deploy-shpakdnd.\n'; return 1; }
     for command in git flock runuser systemctl journalctl install mktemp tee; do command -v "$command" >/dev/null || return 1; done
     exec 9>"$LOCK"
