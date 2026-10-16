@@ -80,25 +80,37 @@ def payment(price, denominations, holdings, *, payout=False):
         raise MoneyError('Некорректное количество монет в инвентаре.')
     if sum(c * n for c, n in zip(coins, counts)) < target:
         raise MoneyError('Недостаточно средств.')
-    reachable = {0: zero}
-    for index, count in enumerate(counts):
-        group = 1
-        while count:
-            take = min(group, count)
-            delta = coins[index] * take
-            for amount, previous in list(reachable.items()):
-                budget()
-                vector = list(previous)
-                vector[index] += take
-                vector = tuple(vector)
-                total = amount + delta
-                existing = reachable.get(total)
-                if existing is None or rank(vector) < rank(existing):
-                    reachable[total] = vector
-            if len(reachable) > MAX_STATES:
-                raise CalculationLimit('Превышен безопасный предел расчёта оплаты.')
-            count -= take
-            group *= 2
+    def bounded(cap=None):
+        reachable = {0: zero}
+        for index, available in enumerate(counts):
+            count = available if cap is None else min(available, cap // coins[index])
+            group = 1
+            while count:
+                take = min(group, count)
+                delta = coins[index] * take
+                for amount, previous in list(reachable.items()):
+                    budget()
+                    total = amount + delta
+                    if cap is not None and total > cap:
+                        continue
+                    vector = list(previous)
+                    vector[index] += take
+                    vector = tuple(vector)
+                    existing = reachable.get(total)
+                    if existing is None or rank(vector) < rank(existing):
+                        reachable[total] = vector
+                if len(reachable) > MAX_STATES:
+                    raise CalculationLimit('Превышен безопасный предел расчёта оплаты.')
+                count -= take
+                group *= 2
+        return reachable
+
+    # Exact payment has priority. Bound its search by the price so a wealthy
+    # wallet does not make a tiny exact purchase exhaust the resource budget.
+    exact = bounded(target).get(target)
+    if exact is not None:
+        return as_dict(exact), {}
+    reachable = bounded()
     for total in sorted(amount for amount in reachable if amount >= target):
         result = change(total - target)
         if result is not None:

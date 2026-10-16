@@ -26,6 +26,9 @@ class MoneyTests(unittest.TestCase):
         self.assertEqual(payment(Fraction(6), {1: Fraction(8), 2: Fraction(7), 3: Fraction(1)}, {1: 1, 2: 1}),
                          ({2: 1}, {3: 1}))
 
+    def test_small_exact_purchase_with_sqlite_maximum_wallet(self):
+        self.assertEqual(payment(Fraction(1), {1: Fraction(1)}, {1: 2**63 - 1}), ({1: 1}, {}))
+
     def test_decimal_change_example(self):
         denominations = {1: Fraction(1), 2: Fraction(1, 10), 3: Fraction(1, 100)}
         self.assertEqual(payment(Fraction('1.25'), denominations, {1: 2}), ({1: 2}, {2: 7, 3: 5}))
