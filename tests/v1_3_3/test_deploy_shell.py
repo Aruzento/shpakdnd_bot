@@ -115,6 +115,20 @@ python)
         # Fail only for the newly installed target; rollback can still pass.
         if [[ "${FAKE_CHECK_FAIL:-0}" == 1 && "$(cat "$FAKE_STATE/head")" == "$(cat "$FAKE_STATE/target")" ]]; then exit 1; fi
     elif [[ "$*" == *'-m unittest'* ]]; then
+        if [[ "${FAKE_TEST_DELAY:-0}" != 0 ]]; then
+            printf 'FAKE_LONG_TEST_BEGIN\n'
+            sleep "$FAKE_TEST_DELAY"
+            printf 'FAKE_LONG_TEST_END\n'
+        fi
+        if [[ "${FAKE_READ_STDIN:-0}" == 1 ]]; then
+            printf 'FAKE_STDIN_READ_BEGIN\n'
+            if IFS= read -r -t 2 ignored; then echo stdin_stolen >> "$FAKE_STATE/trace"
+            else echo stdin_eof_or_timeout >> "$FAKE_STATE/trace"; fi
+            printf 'FAKE_STDIN_READ_END\n'
+        fi
+        if [[ "${FAKE_EMIT_SECRET:-0}" == 1 ]]; then
+            printf 'FAKE_OUTPUT hotfix-fixture-private-secret 123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcde\n'
+        fi
         printf 'Ran 3 tests in 0.001s\n\nOK\n' >&2
     fi ;;
 *) echo "Unexpected fake command: $name" >&2;exit 9 ;;
