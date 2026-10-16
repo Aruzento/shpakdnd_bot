@@ -265,4 +265,7 @@ def init_db():
         from app.db.dnd_items import migrate as migrate_dnd_items
         migrate_dnd_items(conn)
 
+        from app.db.dnd_shop import migrate as migrate_dnd_shop
+        migrate_dnd_shop(conn)
+
         conn.commit()

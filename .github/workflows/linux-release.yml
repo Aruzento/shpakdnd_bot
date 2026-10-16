@@ -96,9 +96,12 @@ jobs:
           if Path.cwd().resolve() == Path(os.environ['GITHUB_WORKSPACE']).resolve():
               sys.meta_path.insert(0, ConfigFinder())
           ''', encoding='utf-8')
+          catalog = sandbox / 'shop.csv'
+          catalog.write_text((workspace / 'tests/v1_4_4/shop.example.csv').read_text(encoding='utf-8'), encoding='utf-8')
           with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as env:
               env.write(f'PYTHONPATH={startup}{os.pathsep}{workspace}\n')
               env.write(f'RELEASE_SANDBOX={sandbox}\n')
+              env.write(f'DND_SHOP_CSV_PATH={catalog}\n')
           PY
 
       - name: Verify SQLite isolation
@@ -118,6 +121,17 @@ jobs:
 
       - name: Startup on isolated SQLite
         run: python check_bot.py
+
+      - name: Validate and atomically publish isolated ordinary D&D CSV
+        run: |
+          python -m app.dnd_shop.cli validate "$DND_SHOP_CSV_PATH"
+          python -m app.dnd_shop.cli publish "$DND_SHOP_CSV_PATH"
+
+      - name: Verify ordinary D&D migration and old-code compatibility
+        run: python tools/validate_dnd_shop_release.py
+
+      - name: Verify D&D Mini remains unchanged by V1.4.4
+        run: git diff --exit-code 5e4d4495a189380542cc643c5c8d723b9351b36b HEAD -- app/mini
 
       - name: Compile Python modules
         run: python -m compileall -q bot.py app
