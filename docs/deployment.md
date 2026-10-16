@@ -207,6 +207,8 @@ Hotfix резервирует отдельный descriptor ввода до лю
 controlling /dev/tty при наличии, иначе исходный stdin (pipe/file). Обычный stdin
 дочерних команд заменён на /dev/null, чтобы проверки не съедали будущие ответы.
 Поток stdout через redactor/tee сохраняется; его собственный pipe не затрагивается.
+Log-процесс игнорирует INT/TERM до EOF pipe, чтобы foreground Ctrl+C не уничтожил
+redactor раньше interrupt summary. Основной shell сохраняет обработчики 130/143.
 failure_choice читает тот же защищённый descriptor, сохраняя выбор/EOF semantics
 и все три PvP rollback gate.
 

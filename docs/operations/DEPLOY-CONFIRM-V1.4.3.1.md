@@ -33,7 +33,11 @@ y/Y/yes/д/Д. Пустая успешно прочитанная строка �
 Prompts сохраняют newline и своевременный вывод через redactor. Произвольный
 ответ не печатается; допустимы только события confirm accepted/declined/EOF.
 Секреты .env и Telegram token pattern по-прежнему редактируются существующим
-deploy_helpers.py. Передача stdout redactor не меняется.
+deploy_helpers.py. Передача stdout redactor сохраняется; его process-substitution
+ветка игнорирует INT/TERM и завершается по EOF, когда основной shell закрывает
+pipe. Иначе реальный Ctrl+C мог прервать Python redactor до interrupt summary,
+потеряв ожидаемый exit 130. Основной shell продолжает обрабатывать INT/TERM
+с кодами 130/143; это отдельно проверено настоящими control bytes в PTY.
 
 failure_choice использует тот же descriptor, но прежние варианты и default 1
 сохранены. rollback(), три rollback_preflight(), frozen helpers, installer,

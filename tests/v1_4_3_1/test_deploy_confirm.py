@@ -344,6 +344,8 @@ class ControllingTerminalTests(Fixture):
         t=self.terminal();self.first_two(t)
         t.wait_text("Запустить новую версию? [Y/n]:");t.send(chr(3))
         self.assertEqual(t.finish(),130,t.text);self.h.assert_stopped()
+        self.assertIn("Deployment прерван",t.text)
+        self.assertNotIn("KeyboardInterrupt",t.text)
         self.assertNotIn("systemctl start",self.trace())
 
     def test_terminal_failure_choice_eof_keeps_target_stopped(self):

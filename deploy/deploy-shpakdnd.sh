@@ -258,7 +258,12 @@ main() {
         install -d -m 700 "$LOG_DIR"
         LOG="$LOG_DIR/deploy_$(date '+%Y%m%d_%H%M%S')_$$.log"
         touch "$LOG"; chmod 600 "$LOG"
-        exec > >(as_bot "$PYTHON" "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -a "$LOG") 2>&1
+        exec > >(
+            # Keep the logger alive while the main shell handles Ctrl+C/TERM.
+            # It finishes on pipe EOF; it must not break the interrupt summary.
+            trap '' INT TERM
+            as_bot "$PYTHON" "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -a "$LOG"
+        ) 2>&1
     fi
     printf 'D&D Mini Deploy — %s\n' "$(date -Is)"
     printf 'git fetch origin (bot пока не останавливается)...\n'
