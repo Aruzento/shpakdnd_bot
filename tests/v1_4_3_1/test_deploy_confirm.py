@@ -342,13 +342,13 @@ class ControllingTerminalTests(Fixture):
 
     def test_ctrl_c_while_waiting_is_not_consent(self):
         t=self.terminal();self.first_two(t)
-        t.wait_text("Запустить новую версию? [Y/n]:");t.send("\\x03")
+        t.wait_text("Запустить новую версию? [Y/n]:");t.send(chr(3))
         self.assertEqual(t.finish(),130,t.text);self.h.assert_stopped()
         self.assertNotIn("systemctl start",self.trace())
 
     def test_terminal_failure_choice_eof_keeps_target_stopped(self):
         t=self.terminal(FAKE_CHECK_FAIL=1);self.first_two(t)
-        t.wait_text("Выбор [1]:");t.send("\\x04")
+        t.wait_text("Выбор [1]:");t.send(chr(4))
         self.assertEqual(t.finish(),1,t.text);self.h.assert_stopped()
         self.assertEqual((self.h.state/"head").read_text().strip(),shell.TARGET)
         self.assertNotIn("systemctl start",self.trace())
