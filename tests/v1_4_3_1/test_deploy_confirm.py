@@ -375,3 +375,116 @@ class ControllingTerminalTests(Fixture):
         t.wait_text("Продолжить deployment? [y/N]:");t.send("n\n")
         self.assertEqual(t.finish(),0,t.text)
         self.assertNotIn("systemctl stop",self.trace())
+
+
+class FailureChoicePipeTests(Fixture):
+    def run_choice(self,reply):
+        return self.h.run_deploy("y\ny\n"+reply,FAKE_CHECK_FAIL=1)
+
+    def assert_database_unchanged(self,before):
+        database=self.h.project/"shpakdnd.db"
+        self.assertEqual(database.read_bytes(),before)
+        with closing(sqlite3.connect(database)) as conn:
+            self.assertEqual(conn.execute("PRAGMA integrity_check").fetchall(),[("ok",)])
+            self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(),[])
+
+    def assert_rollback(self,reply):
+        before=(self.h.project/"shpakdnd.db").read_bytes()
+        result,trace=self.run_choice(reply)
+        self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+        self.assertEqual((self.h.state/"head").read_text().strip(),shell.OLD)
+        self.assertEqual(trace.count("pvp_ops.py"),3,trace)
+        self.assertEqual(trace.count(" backup "),1,trace)
+        self.assert_started()
+        self.assert_database_unchanged(before)
+
+    def test_lf_two_selects_guarded_rollback(self):
+        self.assert_rollback("2\n")
+
+    def test_crlf_two_selects_guarded_rollback(self):
+        self.assert_rollback("2\r\n")
+
+    def test_ascii_space_tab_crlf_two_selects_guarded_rollback(self):
+        self.assert_rollback(" \t2 \t\r\n")
+
+    def test_invalid_empty_eof_and_partial_two_keep_target_stopped(self):
+        before=(self.h.project/"shpakdnd.db").read_bytes()
+        for reply in ("1\n","1\r\n","\n","","2","yes\n","y\n","3\n","22\n","\u00a02\r\n"):
+            with self.subTest(reply=reply):
+                # Reset only the disposable fake command state between deployments.
+                for unit in ("shpakdnd-bot.service","shpakdnd-bot-watch.path"):
+                    (self.h.state/unit).write_text("active\n")
+                (self.h.state/"head").write_text(shell.OLD+"\n")
+                (self.h.state/"notices").write_text("0\n")
+                (self.h.state/"trace").unlink(missing_ok=True)
+                result,trace=self.run_choice(reply)
+                self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+                self.assertEqual((self.h.state/"head").read_text().strip(),shell.TARGET)
+                self.assertIn("Бот оставлен остановленным",result.stdout)
+                self.assertNotIn("pvp_ops.py",trace)
+                self.assertNotIn("systemctl start",trace)
+                self.h.assert_stopped()
+                self.assert_database_unchanged(before)
+
+    def test_read_error_does_not_authorize_rollback(self):
+        deploy=self.h.root/"bad-choice-read";deploy.mkdir()
+        for name in ("deploy-shpakdnd.sh","deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py"):
+            content=(shell.ROOT/"deploy"/name).read_bytes()
+            if name=="deploy-shpakdnd.sh":
+                text=content.decode("utf-8")
+                marker="    read_input choice || choice=1"
+                self.assertEqual(text.count(marker),1)
+                content=text.replace(marker,"    DEPLOY_INPUT_FD=9999\n"+marker).encode("utf-8")
+            (deploy/name).write_bytes(content)
+        self.h.script=deploy/"deploy-shpakdnd.sh"
+        before=(self.h.project/"shpakdnd.db").read_bytes()
+        result,trace=self.run_choice("2\r\n")
+        self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+        self.assertIn("Бот оставлен остановленным",result.stdout)
+        self.assertEqual((self.h.state/"head").read_text().strip(),shell.TARGET)
+        self.assertNotIn("pvp_ops.py",trace)
+        self.assertNotIn("systemctl start",trace);self.h.assert_stopped()
+        self.assert_database_unchanged(before)
+
+    def test_crlf_two_cannot_bypass_real_pause_new_gate(self):
+        database=self.h.project/"shpakdnd.db"
+        with closing(sqlite3.connect(database)) as conn:
+            conn.execute("UPDATE mini_event_pvp_control SET paused=0");conn.commit()
+        before=database.read_bytes()
+        result,trace=self.run_choice("2\r\n")
+        self.assertEqual(result.returncode,1,result.stdout+result.stderr)
+        self.assertIn("pause_new_required",result.stdout)
+        self.assertIn("Rollback не завершён",result.stdout)
+        self.assertEqual(trace.count("pvp_ops.py"),1,trace)
+        self.assertEqual((self.h.state/"head").read_text().strip(),shell.TARGET)
+        self.assertNotIn("systemctl start",trace);self.h.assert_stopped()
+        self.assert_database_unchanged(before)
+
+
+@unittest.skipUnless(LINUX,"Linux controlling PTY required; exercised in both Linux CI jobs")
+class FailureChoiceTerminalTests(Fixture):
+    def test_crlf_two_runs_three_gates_and_stable_old_bot_before_watcher(self):
+        database=self.h.project/"shpakdnd.db"
+        before=database.read_bytes()
+        t=self.terminal(FAKE_CHECK_FAIL=1);self.first_two(t)
+        t.wait_text("Выбор [1]:");t.send("2\r\n")
+        self.assertEqual(t.finish(),1,t.text)
+        trace=self.trace()
+        self.assertEqual(trace.count("pvp_ops.py"),3,trace)
+        self.assertEqual((self.h.state/"head").read_text().strip(),shell.OLD)
+        self.assert_started()
+        # Gates bracket the old checkout/checks; all finish before starting bot.
+        gates=[i for i,line in enumerate(trace.splitlines()) if "pvp_ops.py" in line]
+        lines=trace.splitlines()
+        checkout=next(i for i,line in enumerate(lines) if " switch " in line and line.endswith(shell.OLD))
+        old_check=next(i for i,line in enumerate(lines) if i>checkout and "check_bot.py" in line)
+        bot=next(i for i,line in enumerate(lines) if line=="systemctl start shpakdnd-bot.service")
+        self.assertLess(gates[0],gates[1]);self.assertLess(gates[1],checkout)
+        self.assertLess(checkout,old_check);self.assertLess(old_check,gates[2])
+        self.assertLess(gates[2],bot)
+        self.assertEqual(trace.count(" backup "),1,trace)
+        self.assertEqual(database.read_bytes(),before)  # No automatic backup restoration.
+        with closing(sqlite3.connect(database)) as conn:
+            self.assertEqual(conn.execute("PRAGMA integrity_check").fetchall(),[("ok",)])
+            self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(),[])
+        print("FAILURE_CHOICE_PTY_CRLF_ROLLBACK_OK: gates=3, old HEAD, stable bot before watcher, SQLite unchanged",flush=True)

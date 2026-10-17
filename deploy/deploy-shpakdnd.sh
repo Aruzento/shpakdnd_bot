@@ -227,6 +227,8 @@ failure_choice() {
     summary
     printf '\n[1] Оставить бот остановленным\n[2] Вернуть предыдущий Git HEAD и запустить предыдущую версию\nВыбор [1]:\n'
     read_input choice || choice=1
+    choice="${choice#"${choice%%[!$' \t\r']*}"}"
+    choice="${choice%"${choice##*[!$' \t\r']}"}"
     if [[ "$choice" == 2 ]]; then
         if ! rollback; then printf '❌ Rollback не завершён; нужен ручной разбор.\n'; return 1; fi
     else printf 'Бот оставлен остановленным. Watcher не запускается.\n'; fi

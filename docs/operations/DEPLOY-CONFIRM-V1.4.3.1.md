@@ -39,10 +39,18 @@ pipe. Иначе реальный Ctrl+C мог прервать Python redactor
 потеряв ожидаемый exit 130. Основной shell продолжает обрабатывать INT/TERM
 с кодами 130/143; это отдельно проверено настоящими control bytes в PTY.
 
-failure_choice использует тот же descriptor, но прежние варианты и default 1
-сохранены. rollback(), три rollback_preflight(), frozen helpers, installer,
-pvp_ops.py, lock, backup и SQLite не менялись. Hotfix не разрешает обход
-pause-new / escrow / Wallet / shards / publication checks.
+failure_choice использует тот же descriptor и нормализует только внешние
+ASCII space/tab/CR, как confirm: CRLF поддерживается и в подтверждениях, и в меню
+аварийных действий. Только успешно прочитанная строка с точным вариантом 2 после
+нормализации разрешает попытку штатного guarded rollback (2+LF, 2+CRLF, пробелы).
+Вариант 1, пустая строка, EOF, ошибка чтения, частичный 2 без newline при EOF
+и неизвестные ответы оставляют бот остановленным; watcher не запускается.
+При ошибке чтения сначала устанавливается безопасный вариант 1, затем выполняется
+нормализация. Это исправляет воспроизводимый дефект меню, но не доказывает причину
+первоначального production-инцидента.
+
+rollback(), три rollback_preflight(), frozen helpers, installer, pvp_ops.py,
+lock, backup и SQLite не менялись. Hotfix не разрешает обход pause-new / escrow / Wallet / shards / publication checks.
 
 ## Проверки
 
@@ -58,6 +66,13 @@ unknown; SIGTERM; failed startup; notice failure; failure_choice и три ре�
 rollback gate на disposable SQLite. Shell/Git/systemd/Telegram замещены, Bash
 и redactor настоящие. Полный старый rollback suite проверяет active escrow,
 исчезновение frozen helper и изменение БД между gate.
+
+Regression меню: portable LF/CRLF/ASCII whitespace, 1/пустая строка/EOF/read error,
+частичный 2, неизвестные ответы (включая не-ASCII пробел) и реальный отказ pause-new
+gate. Отдельный controlling PTY сохраняет CR через termios и передаёт 2+CRLF
+только после «Выбор [1]:»: проверяются порядок всех трёх gates, возврат старого
+HEAD, bot → PID/NRestarts/journal → watcher, неизменные байты SQLite и integrity/FK.
+Автоматического восстановления SQLite из backup нет.
 
 Linux PTY tests требуют Linux; Windows выполняет portable Bash/pipe tests,
 а PTY сценарии обязательно исполняются в обеих Linux CI jobs (3.11/3.13).
