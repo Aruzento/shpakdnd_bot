@@ -311,8 +311,8 @@ class Controller:
                 trusted(path)
             settings = json.loads((CONFIG / 'settings.json').read_text())
             image = settings['preflight_image']
-            if not re.fullmatch(r'[a-zA-Z0-9./_-]+@sha256:[0-9a-f]{64}', image):
-                raise Refused('Preflight image must be an administrator-built digest-pinned image')
+            if not re.fullmatch(r'(?:sha256:|[a-zA-Z0-9.:/_-]+@sha256:)[0-9a-f]{64}', image):
+                raise Refused('Preflight image must use an administrator-verified immutable image ID or repository digest')
             topics_scope(CONFIG / 'topics.py')
             report['ci'] = self.evidence(pr, sha)
             current = (BASE / 'current').resolve(strict=True)
@@ -339,6 +339,13 @@ class Controller:
                     raise Refused('Legacy TEST watcher/update must be masked during one-time setup')
             database = STATE / 'data/shpakdnd.db'
             report['sqlite_before'] = db_check(database, scope=True, as_bot=True)
+            remote = run(['git', '--git-dir', BASE / 'repo.git', 'remote', 'get-url', 'origin']).stdout.strip()
+            if remote != 'https://github.com/Aruzento/shpakdnd_bot.git':
+                raise Refused('Bare repository remote must be the fixed repository URL without credentials')
+            sensitive = run(['git', '--git-dir', BASE / 'repo.git', 'config', '--local', '--get-regexp',
+                             r'^(credential\.|http\..*extraheader|include)'], check=False)
+            if sensitive.returncode != 1:
+                raise Refused('Bare repository local config must not contain credentials or includes')
             run(['git', '--git-dir', BASE / 'repo.git', 'fetch', 'origin',
                  f'+refs/pull/{pr}/head:refs/staging/{request_id}', '+refs/heads/main:refs/heads/main'])
             actual = run(['git', '--git-dir', BASE / 'repo.git', 'rev-parse', f'refs/staging/{request_id}']).stdout.strip()

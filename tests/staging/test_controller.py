@@ -286,7 +286,9 @@ class FlowTests(unittest.TestCase):
     def fake_run(self, args, **kwargs):
         self.trace.append(list(map(str,args)))
         if args[:2] == ['systemctl','start']: self.active=True
-        stdout = SHA if 'rev-parse' in args else 'masked' if 'is-enabled' in args else 'approved==1' if 'freeze' in args else ''
+        stdout = SHA if 'rev-parse' in args else 'masked' if 'is-enabled' in args else 'approved==1' if 'freeze' in args else 'https://github.com/Aruzento/shpakdnd_bot.git' if 'get-url' in args else ''
+        if '--get-regexp' in args:
+            return subprocess.CompletedProcess(args,1,stdout='',stderr='')
         return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr='')
 
     def stop(self):
@@ -308,6 +310,26 @@ class FlowTests(unittest.TestCase):
         self.assertTrue((new/'.env').samefile(self.config/'.env'))
         self.assertTrue((self.folder/'report.md').exists())
         self.assertNotIn('never-report-this-token', (self.folder/'report.json').read_text())
+
+    def test_local_immutable_image_id_requires_no_registry(self):
+        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'sha256:'+'c'*64}))
+        self.assertEqual(self.deploy()['acceptance_ready'],'PASS')
+
+    def test_mutable_image_tag_never_stops_test(self):
+        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'image:latest'}))
+        self.assertEqual(self.deploy()['acceptance_ready'],'FAIL')
+        self.assertNotIn('stop',self.trace)
+
+    def test_credential_bearing_git_remote_never_reaches_preflight(self):
+        original=self.fake_run
+        def wrong_remote(args,**kwargs):
+            if 'get-url' in args:
+                return subprocess.CompletedProcess(args,0,stdout='https://token@example.invalid/repo',stderr='')
+            return original(args,**kwargs)
+        with patch.object(c,'run',side_effect=wrong_remote):
+            self.assertEqual(self.deploy()['acceptance_ready'],'FAIL')
+        self.assertNotIn('preflight',self.trace)
+        self.assertNotIn('stop',self.trace)
 
     def test_dependency_drift_never_stops_test(self):
         (self.config/'requirements.txt').write_text('changed')

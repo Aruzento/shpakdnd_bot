@@ -98,9 +98,12 @@ Bash/util-linux в preflight image, SQLite в Python, ≥4 GiB RAM/tmpfs и св
      -t shpakdnd-preflight .
    ```
 
-   Публиковать image только в доверенный registry либо загрузить уже проверенный
-   image digest; controller использует --pull=never. Записать реальный RepoDigest
-   в `/etc/shpakdnd-staging/settings.json` по settings.example.json. Image обязан
+   Локального build достаточно: получить immutable image ID командой
+   `sudo docker image inspect shpakdnd-preflight --format '{{.Id}}'` и записать
+   `sha256:<64 hex>` в `/etc/shpakdnd-staging/settings.json` по settings.example.json.
+   Альтернатива — verified RepoDigest `registry/path@sha256:<64 hex>` из доверенного
+   registry, заранее загруженный на TEST. Mutable tag запрещён; controller использует
+   --pull=never. Публикация в registry для локального image ID не требуется. Image обязан
    содержать Git/Bash/flock, текущие dependencies и tzdata. Никаких feature builds
    с root/Docker socket. Проверить offline smoke и лимиты до включения dispatch.
 6. Создать root-owned bare repo `/opt/shpakdnd-staging/repo.git`, remote ровно
