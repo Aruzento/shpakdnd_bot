@@ -1,0 +1,99 @@
+name: STAGING deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Open same-repository PR number targeting main'
+        required: true
+        type: string
+      sha:
+        description: 'Exact lowercase 40-character PR HEAD SHA'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Aruzento/shpakdnd_bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: staging
+    steps:
+      - name: Checkout trusted dispatcher commit only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prepare report directory
+        run: mkdir -p staging-artifacts
+      - name: Admit exact PR HEAD and both Linux Python jobs
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          SHA: ${{ inputs.sha }}
+          TRUSTED_REF: ${{ github.sha }}
+        run: |
+          python3 deploy/staging/gate.py --pr "$PR" --sha "$SHA" \
+            --trusted-ref "$TRUSTED_REF" --output staging-artifacts/admission.json
+      - name: Install verified SSH material
+        id: ssh
+        env:
+          STAGING_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/staging-ssh"
+          test -n "$STAGING_KEY"
+          test -n "$STAGING_KNOWN_HOSTS"
+          printf '%s\n' "$STAGING_KEY" > "$RUNNER_TEMP/staging-ssh/key"
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > "$RUNNER_TEMP/staging-ssh/known_hosts"
+      - name: Deploy through frozen forced command
+        id: deploy
+        env:
+          PR: ${{ inputs.pr }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          ssh -F /dev/null -i "$RUNNER_TEMP/staging-ssh/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/staging-ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ServerAliveInterval=15 \
+            -T staging-deploy@88.214.54.194 \
+            "deploy $PR $SHA $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            > staging-artifacts/controller-response.json
+      - name: Retrieve safe reports even after deployment failure
+        if: always() && steps.ssh.outcome == 'success'
+        run: |
+          ssh -F /dev/null -i "$RUNNER_TEMP/staging-ssh/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$RUNNER_TEMP/staging-ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ServerAliveInterval=15 \
+            -T staging-deploy@88.214.54.194 "report $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            > staging-artifacts/server-reports.json
+          python3 deploy/staging/report.py staging-artifacts
+      - name: Ensure failure report exists
+        if: always()
+        env:
+          PR: ${{ inputs.pr }}
+          SHA: ${{ inputs.sha }}
+        run: python3 deploy/staging/report.py staging-artifacts --require-ready
+      - name: Remove SSH material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/staging-ssh/key" "$RUNNER_TEMP/staging-ssh/known_hosts"
+      - name: Upload staging evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: staging-artifacts/
+          if-no-files-found: error
+          retention-days: 14
