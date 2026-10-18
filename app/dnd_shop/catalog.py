@@ -110,7 +110,14 @@ def catalog_lock(path, *, exclusive=False, timeout=5):
 def bounded_bytes(path):
     try:
         with Path(path).open('rb') as source:
-            data = source.read(MAX_BYTES + 1)
+            before = os.fstat(source.fileno())
+            if before.st_size > MAX_BYTES:
+                raise CatalogError('CSV превышает безопасный предел 32 MiB.')
+            data = source.read(before.st_size + 1)
+            after = os.fstat(source.fileno())
+            if (after.st_size, after.st_mtime_ns, after.st_ctime_ns) != (
+                    before.st_size, before.st_mtime_ns, before.st_ctime_ns):
+                raise CatalogError('CSV изменён во время чтения; используйте атомарный publish.')
         if len(data) > MAX_BYTES:
             raise CatalogError('CSV превышает безопасный предел 32 MiB.')
         return data
@@ -206,9 +213,9 @@ def snapshot(path):
                     return _cache[1]
                 if stat.st_size > MAX_BYTES:
                     raise CatalogError('CSV превышает безопасный предел 32 MiB.')
-                data = stream.read(MAX_BYTES + 1)
+                data = stream.read(stat.st_size + 1)
                 after = os.fstat(stream.fileno())
-                if len(data) > MAX_BYTES or (after.st_mtime_ns, after.st_size) != (stat.st_mtime_ns, stat.st_size):
+                if len(data) > MAX_BYTES or (after.st_mtime_ns, after.st_ctime_ns, after.st_size) != (stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size):
                     raise CatalogError('CSV изменён во время чтения; используйте атомарный publish.')
                 products = tuple(parse_catalog(data))
                 result = Snapshot(products, hashlib.sha256(data).hexdigest(),

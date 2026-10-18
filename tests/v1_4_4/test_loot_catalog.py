@@ -405,3 +405,28 @@ class LootTests(unittest.TestCase):
         self.assertEqual(self.amount('Медь'), 3)
         self.assertEqual(self.balance(), 0)
         self.check_audit()
+
+    def test_small_csv_read_does_not_allocate_entire_catalog_limit(self):
+        from app.dnd_shop.catalog import bounded_bytes
+        original_open = Path.open
+        requests = []
+        class Tracking:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                self.stream.close()
+            def fileno(self):
+                return self.stream.fileno()
+            def read(self, amount):
+                requests.append(amount)
+                return self.stream.read(amount)
+        def tracked(path, *args, **kwargs):
+            return Tracking(original_open(path, *args, **kwargs))
+        size = self.csv.stat().st_size
+        with patch.object(Path, 'open', tracked):
+            bounded_bytes(self.csv)
+            snapshot(self.csv)
+        self.assertGreaterEqual(len(requests), 2)
+        self.assertTrue(all(n <= size + 1 for n in requests))
