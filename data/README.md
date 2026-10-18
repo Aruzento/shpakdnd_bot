@@ -3,7 +3,8 @@
 loot.csv is the exact user-provided UTF-8 semicolon master, published with the
 owner's explicit permission for this repository and CI. SHA-256:
 7bffd8a9b8314651318c961838c9b6b872f5d02b6cd896e968f9226c7bcdfe20.
-4450 records / 5188747 bytes. .gitattributes disables newline conversion.
+4450 records / 5188747 bytes. .gitattributes disables newline conversion and recognizes original CRLF endings
+for whitespace checks; other trailing whitespace checks remain enabled.
 
 loot_code_map.csv is the persistent reference index for a NEW empty shop.
 For an existing database use CLI index against historical mappings;

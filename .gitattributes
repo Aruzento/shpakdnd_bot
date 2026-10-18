@@ -7,4 +7,4 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 # Owner-provided catalog: retain the exact upstream SHA-256 on every platform.
-data/loot.csv -text
+data/loot.csv -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
