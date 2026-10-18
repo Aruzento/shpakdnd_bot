@@ -198,7 +198,7 @@ async def shop_admin_handler(message: Message):
             prefix = 'Магазин уже существует; каталоги проверены.' if result['already'] else f'Магазин создан в {mode}.'
             await message.answer(
                 f"{prefix}\nРежим: {mode}.\nБазовая валюта: {result['base_name']}.\n"
-                f"Предметов для выкупа: {result['registered']}; доступно к покупке: {result['buying']}.\n"
+                f"Зарегистрировано предметов: {result['registered']}; доступно к покупке: {result['buying']}.\n"
                 'Состояние: включён.', parse_mode=None)
         else:
             if len(parts) != 1:

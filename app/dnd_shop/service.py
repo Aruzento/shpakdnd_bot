@@ -84,7 +84,12 @@ class Shop:
             factors = {(r['chat_id'], r['thread_id']): Fraction(r['factor'])
                        for r in conn.execute('SELECT * FROM dnd_shop_settings')}
             verify_snapshot(products, read_master(self.loot_path), factors)
-            require_scopes(self.settings, {(p.chat_id, p.thread_id) for p in products})
+            published_scopes = {(p.chat_id, p.thread_id) for p in products}
+            require_scopes(self.settings, published_scopes)
+            previous_scopes = {tuple(row) for row in conn.execute(
+                'SELECT DISTINCT chat_id,thread_id FROM dnd_shop_catalog_entries WHERE source_path=? AND present=1', (path,))}
+            if not previous_scopes <= published_scopes:
+                raise CatalogError('Нельзя удалить другую тему из общего каталога. Соберите все существующие scope; удаление требует отдельной миграции.')
         items = {(r['chat_id'], r['thread_id'], r['name_key']): r
                  for r in conn.execute('SELECT * FROM dnd_items')}
         by_id = {r['id']: r for r in items.values()}

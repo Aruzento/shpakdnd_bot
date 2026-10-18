@@ -475,3 +475,19 @@ class ControlTests(unittest.TestCase):
         self.shop.create(self.owner, 'm')
         self.assertEqual(self.sql("SELECT id FROM dnd_items WHERE name='10 медных монет'"), [])
         self.assert_clean()
+
+    def test_cli_candidate_cannot_drop_another_topic_and_registry_count_keeps_inactive_items(self):
+        self.shop.create(self.owner, 'm')
+        self.thread_two()
+        self.shop.create(self.other, 'b')
+        old = self.csv.read_bytes()
+        products = snapshot(self.csv).products
+        stage = self.csv.with_suffix('.scope-omitted.csv')
+        stage.write_bytes(builder.encode_products([p for p in products if p.thread_id == 0]))
+        with self.assertRaisesRegex(CatalogError, 'другую тему'):
+            publish(stage, self.csv, self.shop.validate_staged)
+        self.assertEqual(self.csv.read_bytes(), old)
+        self.sql("UPDATE dnd_items SET active=0 WHERE name='Кинжал' AND thread_id=0")
+        result = self.shop.create(self.owner, 'm')
+        self.assertEqual(result['registered'], 4)  # Registered, even if disabled for trade.
+        self.assert_clean()

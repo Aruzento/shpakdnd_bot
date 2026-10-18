@@ -139,11 +139,11 @@ def create(shop, actor, mode):
             conn.execute('DELETE FROM dnd_shop_publications WHERE source_path=?', (str(shop.csv_path),))
             # Old offers may have been based on an implicit legacy pricing mode.
             conn.execute('UPDATE dnd_shop_sessions SET closed=1 WHERE chat_id=? AND thread_id=?', scope)
-            registered, buying = conn.execute('''SELECT count(*),sum(e.buy_enabled=1 AND e.active=1 AND e.stock>s.sold)
+            registered, buying = conn.execute('''SELECT count(*),sum(e.buy_enabled=1 AND e.active=1 AND i.active=1 AND e.stock>s.sold)
                 FROM dnd_shop_catalog_entries e JOIN dnd_shop_skus s
                 ON s.chat_id=e.chat_id AND s.thread_id=e.thread_id AND s.code=e.code
                 JOIN dnd_items i ON i.id=e.item_id
                 WHERE e.source_path=? AND e.chat_id=? AND e.thread_id=? AND e.present=1
-                AND e.is_currency=0 AND i.active=1''', (str(shop.csv_path), *scope)).fetchone()
+                AND e.is_currency=0''', (str(shop.csv_path), *scope)).fetchone()
             return dict(already=bool(old and old['enabled']), enabled=True, pricing_mode=mode,
                         base_name=plan['base_name'], registered=registered, buying=buying or 0)
