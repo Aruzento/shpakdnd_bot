@@ -15,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '5e4d4495a189380542cc643c5c8d723b9351b36b'
+MAIN_BASE = 'd9856b2038a36490f93a4f5613ba7887698ac7e8'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE)
 sys.path.insert(0, str(ROOT))
 TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies')
 
@@ -46,18 +48,15 @@ def run_old(code, path, script):
     subprocess.run([sys.executable, '-c', prelude + script, str(path)], cwd=code, env=env, check=True)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--source', type=Path, help='Read-only source, copied with SQLite backup')
-    parser.add_argument('--old-ref', default=BASE)
-    args = parser.parse_args()
+def verify_ref(old_ref, source_path=None):
+    print(f'CHECK: shop migration from old_ref={old_ref}', flush=True)
     with tempfile.TemporaryDirectory(prefix='dnd-shop-migration-') as folder:
         temp = Path(folder)
         archive = temp / 'old.zip'
         old_code = temp / 'old'
         old_code.mkdir()
         subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(archive),
-                        args.old_ref, 'app', 'check_bot.py'], cwd=ROOT, check=True)
+                        old_ref, 'app', 'check_bot.py'], cwd=ROOT, check=True)
         with zipfile.ZipFile(archive) as source:
             source.extractall(old_code)
         seed = temp / 'seed.db'
@@ -77,10 +76,10 @@ with sqlite3.connect(config.DB_PATH) as conn:
         conn.execute("INSERT INTO inventory(chat_id,thread_id,username,name,quantity,description) VALUES(694384548,0,'@migration_fixture',?,?,'Historical')",(name,qty))
 """)
         sources = [seed]
-        if args.source:
-            if not args.source.is_file():
+        if source_path:
+            if not source_path.is_file():
                 raise ValueError('--source does not exist')
-            sources.append(args.source.resolve())
+            sources.append(source_path.resolve())
         for index, source_path in enumerate(sources):
             copy = temp / f'copy-{index}.db'
             with closing(sqlite3.connect(source_path.as_uri() + '?mode=ro', uri=True)) as source, closing(sqlite3.connect(copy)) as target:
@@ -126,7 +125,17 @@ check_bot.main()
 """)
             assert_preserved(copy, before)
             print(f'OK: source {index}, historical values preserved, repeated migration, DDL rollback, old startup, integrity and foreign keys')
-    print('OK: ordinary D&D shop migration checks')
+    print(f'OK: ordinary D&D shop migration checks old_ref={old_ref}', flush=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source', type=Path, help='Read-only source, copied with SQLite backup')
+    parser.add_argument('--old-ref', action='append',
+                        help='Repeatable baseline override; default: both V1.4.3 and V1.4.3.1')
+    args = parser.parse_args()
+    for old_ref in dict.fromkeys(args.old_ref or DEFAULT_OLD_REFS):
+        verify_ref(old_ref, args.source)
 
 
 if __name__ == '__main__':

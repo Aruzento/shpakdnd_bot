@@ -119,6 +119,12 @@ jobs:
       - name: Full unittest suite
         run: python -m unittest discover -s tests -q
 
+      - name: V1.4.3.1 protected input and real Linux PTY deployment regressions
+        run: python -m unittest tests.v1_4_3_1.test_deploy_confirm -q
+
+      - name: Focused ordinary D&D shop regressions
+        run: python -m unittest discover -s tests/v1_4_4 -q
+
       - name: Startup on isolated SQLite
         run: python check_bot.py
 
@@ -131,7 +137,15 @@ jobs:
         run: python tools/validate_dnd_shop_release.py
 
       - name: Verify D&D Mini remains unchanged by V1.4.4
-        run: git diff --exit-code 5e4d4495a189380542cc643c5c8d723b9351b36b HEAD -- app/mini
+        run: git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- app/mini
+
+      - name: Verify protected V1.4.3.1 deployment files match synchronized main
+        run: |
+          git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- \
+            deploy/deploy-shpakdnd.sh deploy/deploy_helpers.py \
+            deploy/install-deploy-shpakdnd.sh deploy/sqlite-deploy.py \
+            deploy/telegram-deploy-notice.py deploy/pvp_ops.py \
+            tests/v1_3_3/test_deploy_shell.py tests/v1_4_3_1
 
       - name: Compile Python modules
         run: python -m compileall -q bot.py app
