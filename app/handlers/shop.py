@@ -9,7 +9,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from app.context import get_thread_id
+from app.context import get_thread_id, check_topic_admin_permission
 from app.dnd_shop.catalog import CatalogError
 from app.dnd_shop.money import MoneyError, exact_text
 from app.dnd_shop.service import PriceChanged, Shop, ShopError
@@ -175,3 +175,39 @@ async def shop_callback(query: CallbackQuery):
     except sqlite3.Error:
         logger.exception('Ordinary D&D shop database failure')
         await query.answer('Ошибка базы. Повторное нажатие безопасно.', show_alert=True)
+
+
+@router.message(Command('shopcreate', 'stopshop'))
+async def shop_admin_handler(message: Message):
+    if not message.from_user:
+        return
+    try:
+        shop = Shop()
+        who = actor(message.from_user, message)
+        shop.scope(*who[2:])
+        if not await check_topic_admin_permission(message):
+            return
+        parts = (message.text or '').split()
+        command = parts[0].split('@')[0] if parts else ''
+        if command == '/shopcreate':
+            if len(parts) != 2 or parts[1] not in ('-b', '-m'):
+                await message.answer('Использование: /shopcreate -b (универсальные цены) или /shopcreate -m (цены мастера). Ничего не изменено.')
+                return
+            result = await asyncio.to_thread(shop.create, who, parts[1][1:])
+            mode = 'базовом режиме' if result['pricing_mode'] == 'b' else 'режиме мастера'
+            prefix = 'Магазин уже существует; каталоги проверены.' if result['already'] else f'Магазин создан в {mode}.'
+            await message.answer(
+                f"{prefix}\nРежим: {mode}.\nБазовая валюта: {result['base_name']}.\n"
+                f"Предметов для выкупа: {result['registered']}; доступно к покупке: {result['buying']}.\n"
+                'Состояние: включён.', parse_mode=None)
+        else:
+            if len(parts) != 1:
+                await message.answer('Использование: /stopshop в текущей обычной теме.')
+                return
+            result = await asyncio.to_thread(shop.stop, who)
+            await message.answer('Магазин уже остановлен.' if result['already'] else 'Магазин остановлен.')
+    except (ShopError, CatalogError, MoneyError, OSError) as error:
+        await message.answer(str(error), parse_mode=None)
+    except sqlite3.Error:
+        logger.exception('Ordinary D&D shop lifecycle database failure')
+        await message.answer('Ошибка базы магазина. Создание не завершено; торговля не включена.')

@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = '5e4d4495a189380542cc643c5c8d723b9351b36b'
 MAIN_BASE = 'd9856b2038a36490f93a4f5613ba7887698ac7e8'
 SHOP_BASE = '96ff183c08101c9a3bed079c3eeefac95c22cc2b'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE)
+CONTROL_BASE = '6165e5137d34fb0efa7c39bb7fd61fcbad3524a4'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE)
 sys.path.insert(0, str(ROOT))
 TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
           'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
@@ -115,10 +116,10 @@ with sqlite3.connect(config.DB_PATH) as conn:
                 origin.backup(target)
             with closing(sqlite3.connect(fault)) as conn:
                 schema_before = conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall()
-                has_credit = conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_credit'").fetchone()
-                if not has_credit:
+                has_settings = conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_settings'").fetchone()
+                if not has_settings:
                     conn.set_authorizer(lambda action, name, *rest: sqlite3.SQLITE_DENY
-                        if action == sqlite3.SQLITE_CREATE_TABLE and name == 'dnd_shop_credit' else sqlite3.SQLITE_OK)
+                        if action == sqlite3.SQLITE_CREATE_TABLE and name == 'dnd_shop_settings' else sqlite3.SQLITE_OK)
                     try:
                         with conn:
                             migrate(conn)

@@ -40,6 +40,7 @@ async def start_handler(message: Message):
         "🧙 Обычный D&D:\n"
         '/create @username "Имя персонажа"\n'
         "/shop — магазин обычного D&D\n"
+        "/shopcreate -b|-m, /stopshop — администратору текущей темы\n"
         "/char @username\n"
         "/charset @username 5 | Монах | Человек\n"
         "/lvlup\n\n"

@@ -2,6 +2,7 @@
 import argparse
 import json
 import sqlite3
+from fractions import Fraction
 from contextlib import closing
 from pathlib import Path
 
@@ -32,6 +33,7 @@ def main():
     parser.add_argument('--offers', type=Path)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--scope', type=scope, action='append', default=[])
+    parser.add_argument('--target-ref', help='Exact reviewed Git target for the read-only rollback gate')
     parser.add_argument('--db', type=Path, default=DB_PATH)
     args = parser.parse_args()
     for path in (args.target, args.map, args.offers, args.output, args.loot):
@@ -46,9 +48,9 @@ def main():
             with closing(sqlite3.connect(args.db.resolve().as_uri() + '?mode=ro', uri=True)) as conn:
                 conn.execute('BEGIN')
                 report = audit(conn)
-                if args.command == 'rollback-check' and conn.execute(
-                        "SELECT 1 FROM dnd_shop_credit WHERE balance!='0' LIMIT 1").fetchone():
-                    raise ValueError('Outstanding exact credit: keep new application or disable old shop; do not restore an old DB.')
+                if args.command == 'rollback-check':
+                    from app.dnd_shop.rollback import rollback_check
+                    report['rollback'] = rollback_check(conn, args.target_ref, BASE_DIR)
             print(json.dumps(report, ensure_ascii=False))
             return
         with catalog_lock(args.target, exclusive=args.command == 'index'):
@@ -69,8 +71,12 @@ def main():
                     parser.error('build requires --map, --offers, --output')
                 if args.output.resolve() == args.target.resolve():
                     parser.error('Build only to a staging file; use publish for runtime.')
+                with closing(sqlite3.connect(args.db.resolve().as_uri() + '?mode=ro', uri=True)) as conn:
+                    factors = {(chat, thread): Fraction(value) for chat, thread, value in conn.execute(
+                        'SELECT chat_id,thread_id,factor FROM dnd_shop_settings')}
                 data, report = build(read_master(args.loot), read_map(args.map), args.offers,
-                    args.scope, TOPIC_SETTINGS, previous=read_catalog(args.target) if args.target.exists() else ())
+                    args.scope, TOPIC_SETTINGS, previous=read_catalog(args.target) if args.target.exists() else (),
+                    price_factors=factors)
                 atomic_bytes(args.output, data)
                 shop.validate_staged(args.output)
                 print(json.dumps(report, ensure_ascii=False))

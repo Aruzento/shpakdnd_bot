@@ -116,12 +116,71 @@ def benchmark(master_path):
             traced_peak_bytes=peak, reconciliation=reconciliation, errors=0)
 
 
+
+def lifecycle_benchmark(master_path):
+    """Real original catalog, explicit monetary mappings, distinct modes and stop/restart."""
+    from app.dnd_shop.catalog import snapshot
+    settings = {-991145: {0: {'admin': '@benchmark'}, 2: {'admin': '@benchmark'}}}
+    with tempfile.TemporaryDirectory(prefix='dnd-control-benchmark-') as folder:
+        temp = Path(folder)
+        db, runtime, mapping, offers = (temp / n for n in ('test.db', 'shop.csv', 'index.csv', 'offers.csv'))
+        with patch.object(schema, 'DB_PATH', db), patch.object(schema, 'LEGACY_DB_PATH', temp / 'unused.db'):
+            schema.init_db()
+        master = read_master(master_path)
+        codes = index(master)
+        mapping.write_bytes(csv_bytes(MAP_COLUMNS, [dict(code=k, name=v) for k, v in codes.items()]))
+        with patch('app.db.dnd_items.TOPIC_SETTINGS', settings):
+            for thread in (0, 2):
+                for name, value in (('Золотая монета', '1'), ('Серебряная монета', '0.1'), ('Медная монета', '0.01')):
+                    create_currency(-991145, thread, name, 1, value, is_base=value=='1', db_path=db)
+                with closing(sqlite3.connect(db)) as conn, conn:
+                    unit_codes = dict(conn.execute('SELECT name,code FROM dnd_items WHERE chat_id=-991145 AND thread_id=?', (thread,)))
+                    conn.execute('INSERT INTO characters VALUES(-991145,?,?,?)', (thread, '@benchmark', 'Benchmark'))
+                settings[-991145][thread]['shop_currency_units'] = dict(
+                    master=unit_codes, universal_copper=unit_codes['Медная монета'], universal_gold=unit_codes['Золотая монета'])
+        shop = Shop(db, runtime, settings, loot_path=master_path, map_path=mapping, offers_path=offers)
+        timings = {}
+        for thread, mode in ((0, 'm'), (2, 'b')):
+            start = time.perf_counter()
+            result = shop.create((991145, 'benchmark', -991145, thread), mode)
+            timings['create_' + mode + '_s'] = time.perf_counter() - start
+            assert result['registered'] == 4447 and result['buying'] == 0
+        second = (991145, 'benchmark', -991145, 2)
+        with closing(sqlite3.connect(db)) as conn, conn:
+            # Explicit inventory workload seed using original registered items.
+            conn.execute("""INSERT INTO inventory(chat_id,thread_id,username,name,quantity,description,item_id)
+                SELECT chat_id,thread_id,'@benchmark',name,1,description,id FROM dnd_items
+                WHERE chat_id=-991145 AND thread_id=2 AND category='item'""")
+            short_sword_inventory = conn.execute("SELECT id FROM inventory WHERE name='Короткий меч'").fetchone()[0]
+        start = time.perf_counter()
+        session = shop.open(*second)
+        for _ in range(5):
+            assert shop.view(session, second, 'buy')['buttons'] == []
+            assert len(shop.view(session, second, 'sell')['buttons']) == 4
+        timings['warm_10_screens_s'] = time.perf_counter() - start
+        card = shop.view(session, second, 'sell_card', str(short_sword_inventory))
+        sold = shop.execute(session, card['token'], second)
+        assert Fraction(sold['value']) == Fraction('0.29925')
+        assert Fraction(sold['credit_added']) == Fraction('0.29925')
+        shop.stop(second)
+        recreated = Shop(db, runtime, settings, loot_path=master_path, map_path=mapping, offers_path=offers)
+        recreated.create(second, 'b')
+        with closing(sqlite3.connect(db)) as conn:
+            assert conn.execute('SELECT count(*) FROM dnd_shop_skus').fetchone()[0] == 8900
+            assert conn.execute('SELECT count(*) FROM dnd_items WHERE category="item"').fetchone()[0] == 8894
+            reconciliation = audit(conn)
+        return dict(**timings, scopes=2, runtime_bytes=runtime.stat().st_size,
+                    price_short_sword_b=str(snapshot(runtime).by_key[(-991145, 2, next(k for k,v in codes.items() if v=='Короткий меч'))].price),
+                    exact_credit=sold['credit_added'], inventory_workload=4447, reconciliation=reconciliation, errors=0)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--loot', type=Path, default=ROOT / 'data/loot.csv')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     report = benchmark(args.loot)
+    report["lifecycle"] = lifecycle_benchmark(args.loot)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     print(text)
     if args.output:

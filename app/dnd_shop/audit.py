@@ -1,4 +1,6 @@
 """Read-only reconciliation of exact ordinary D&D shop obligations and receipts."""
+import hashlib
+import json
 from collections import defaultdict
 from fractions import Fraction
 
@@ -7,6 +9,19 @@ def audit(conn):
     conn.row_factory = __import__('sqlite3').Row
     if conn.execute('PRAGMA integrity_check').fetchall()[0][0] != 'ok' or conn.execute('PRAGMA foreign_key_check').fetchall():
         raise ValueError('SQLite integrity / foreign keys failed')
+    settings = conn.execute('SELECT * FROM dnd_shop_settings').fetchall()
+    for row in settings:
+        factor = Fraction(row['factor'])
+        if factor <= 0 or str(factor) != row['factor'] or row['settings_version'] != 1:
+            raise ValueError('Invalid shop pricing settings')
+        if row['pricing_mode'] == 'm' and factor != 1:
+            raise ValueError('Master price factor must be one')
+        if row['pricing_mode'] == 'b' and factor not in (Fraction('0.0285'), Fraction('0.000285')):
+            raise ValueError('Universal price formula differs')
+    pending = conn.execute('SELECT * FROM dnd_shop_publications').fetchall()
+    for row in pending:
+        if hashlib.sha256(row['candidate']).hexdigest() != row['digest'] or not isinstance(json.loads(row['plan']), dict):
+            raise ValueError('Publication journal corrupt')
     balances = defaultdict(Fraction)
     moves = conn.execute('SELECT * FROM dnd_shop_credit_moves ORDER BY id').fetchall()
     for move in moves:
@@ -49,4 +64,5 @@ def audit(conn):
         if not move or Fraction(move['amount']) != Fraction(row['expected']) or sum(
                 (r['quantity'] * Fraction(r['denomination']) for r in coins), Fraction(0)) != Fraction(row['expected']):
             raise ValueError('Redemption conservation failed')
-    return dict(trades=len(trades), credit_moves=len(moves), redemptions=len(redemptions), errors=0)
+    return dict(trades=len(trades), credit_moves=len(moves), redemptions=len(redemptions),
+                shops=len(settings), pending_publications=len(pending), errors=0)

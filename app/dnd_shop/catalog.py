@@ -141,6 +141,8 @@ def scope_values(chat, thread):
 
 
 def parse_catalog(data):
+    if len(data) > MAX_BYTES:
+        raise CatalogError('Снимок превышает 32 MiB.')
     try:
         reader = csv.DictReader(io.StringIO(data.decode('utf-8-sig'), newline=''), strict=True)
         headers = reader.fieldnames

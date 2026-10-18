@@ -72,7 +72,12 @@ def main():
         staged.write_text('chat_id,thread_id,code,name,description,price,stock,active\n', encoding='utf-8')
         cli('publish', str(staged), success=False)
         cli('audit')
-        cli('rollback-check')
+        cli('rollback-check', success=False)
+        cli('rollback-check', '--target-ref', '96ff183c08101c9a3bed079c3eeefac95c22cc2b', success=False)
+        # A reviewed no-shop target retains all additive tables and liabilities.
+        admin = TOPIC_SETTINGS[scope[0]][scope[1]]['admin']
+        shop.stop((999, admin, *scope))
+        cli('rollback-check', '--target-ref', 'd9856b2038a36490f93a4f5613ba7887698ac7e8')
         assert read_master(master).digest == read_master(ROOT / 'data/loot.csv').digest
         with closing(sqlite3.connect(db)) as conn:
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'

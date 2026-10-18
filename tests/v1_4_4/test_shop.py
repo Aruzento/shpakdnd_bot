@@ -153,11 +153,11 @@ class ShopTests(unittest.TestCase):
         self.add('Неизвестный', 1)
         session = self.open()
         listing = self.shop.view(session, self.actor, 'sell')
-        self.assertEqual([name for name, _ in listing['buttons']], ['Неизвестный'])
+        self.assertEqual(listing['buttons'], [])
         with self.assertRaisesRegex(ShopError, 'Не, это я не куплю'):
-            self.shop.view(session, self.actor, 'sell_card', listing['buttons'][0][1])
+            self.shop.view(session, self.actor, 'sell_card', str(self.sql("SELECT id FROM inventory WHERE name='Неизвестный'")[0][0]))
         self.add('Золото', 1)
-        self.assertEqual(len(self.shop.view(session, self.actor, 'sell')['buttons']), 1)
+        self.assertEqual(len(self.shop.view(session, self.actor, 'sell')['buttons']), 0)
         coin_id = self.sql("SELECT id FROM inventory WHERE name='Золото'")[0][0]
         with self.assertRaises(ShopError):
             self.shop.view(session, self.actor, 'sell_card', str(coin_id))

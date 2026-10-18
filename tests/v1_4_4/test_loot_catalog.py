@@ -277,14 +277,15 @@ class LootTests(unittest.TestCase):
         with self.assertRaises(ShopError):
             self.sale_offer()
 
-    def test_budget_exhaustion_is_not_silently_converted_to_credit(self):
+    def test_verified_payout_budget_exhaustion_credits_entire_exact_amount(self):
         self.add('Меч', 1)
         session, token = self.sale_offer()
         with patch('app.dnd_shop.service.payment', side_effect=CalculationLimit('budget')):
-            with self.assertRaises(CalculationLimit):
-                self.shop.execute(session, token, self.actor)
-        self.assertEqual(self.amount('Меч'), 1)
-        self.assertEqual(self.balance(), 0)
+            result = self.shop.execute(session, token, self.actor)
+        self.assertEqual(self.amount('Меч'), 0)
+        self.assertEqual(self.balance(), Fraction(3, 100))
+        self.assertEqual(result['credit_added'], '3/100')
+        self.assertEqual(self.shop.execute(session, token, self.actor), result)
 
     def test_changed_assortment_stock_or_price_invalidates_open_card(self):
         self.add('Золото', 100)

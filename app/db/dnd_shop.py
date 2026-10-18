@@ -96,3 +96,22 @@ def migrate(conn):
     ]
     for statement in extra:
         conn.execute(statement)
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_settings (
+        chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+        pricing_mode TEXT CHECK(pricing_mode IN ('b','m')),
+        factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER REFERENCES dnd_items(id),
+        currency_signature TEXT, currency_units TEXT NOT NULL DEFAULT '{}',
+        settings_version INTEGER NOT NULL DEFAULT 1 CHECK(settings_version=1),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(chat_id,thread_id))""")
+    # One durable intent per runtime file; all trading fails closed until it is
+    # finished by the same topic administrator. The original tables are untouched.
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_publications (
+        source_path TEXT PRIMARY KEY, chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+        plan TEXT NOT NULL CHECK(length(plan)<=65536),
+        candidate BLOB NOT NULL CHECK(typeof(candidate)='blob' AND length(candidate)<=33554432),
+        digest TEXT NOT NULL CHECK(length(digest)=64),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")

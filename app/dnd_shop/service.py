@@ -12,7 +12,8 @@ from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
 
-from app.config import BASE_DIR, DB_PATH, DND_SHOP_CSV_PATH, DND_LOOT_CSV_PATH
+from app.config import (BASE_DIR, DB_PATH, DND_SHOP_CSV_PATH, DND_LOOT_CSV_PATH,
+                        DND_SHOP_CODE_MAP_PATH, DND_SHOP_OFFERS_PATH)
 from app.context import normalize_username
 from app.db.dnd_items import register_in_transaction
 from app.dnd_shop.catalog import CatalogError, MAX_INTEGER, catalog_lock, snapshot
@@ -29,25 +30,32 @@ class PriceChanged(ShopError):
 
 
 class Shop:
-    def __init__(self, db_path=DB_PATH, csv_path=DND_SHOP_CSV_PATH, settings=None, *, loot_path=DND_LOOT_CSV_PATH):
+    def __init__(self, db_path=DB_PATH, csv_path=DND_SHOP_CSV_PATH, settings=None, *, loot_path=DND_LOOT_CSV_PATH,
+                 map_path=DND_SHOP_CODE_MAP_PATH, offers_path=DND_SHOP_OFFERS_PATH):
         self.db_path = Path(db_path)
         self.loot_path = Path(loot_path)
+        self.map_path = Path(map_path)
+        self.offers_path = Path(offers_path)
         self.csv_path = Path(csv_path).resolve()
         if self.csv_path.is_relative_to(BASE_DIR.resolve()):
             raise CatalogError('CSV должен находиться вне Git checkout и области watcher.')
         self.settings = TOPIC_SETTINGS if settings is None else settings
 
     @contextmanager
-    def transaction(self, *, catalog=True):
+    def transaction(self, *, catalog=True, scope=None):
         # Keep the read lock until COMMIT/ROLLBACK, including all money work.
         with catalog_lock(self.csv_path) if catalog else nullcontext():
-            products = snapshot(self.csv_path) if catalog else None
+            products = None
             conn = sqlite3.connect(self.db_path, timeout=5)
             conn.row_factory = sqlite3.Row
             try:
                 conn.execute('PRAGMA foreign_keys=ON')
                 conn.execute('BEGIN IMMEDIATE')
+                if scope is not None:
+                    from app.dnd_shop.control import enabled
+                    enabled(self, conn, scope)
                 if catalog:
+                    products = snapshot(self.csv_path)
                     self.sync(conn, products)
                 yield conn, products
                 conn.commit()
@@ -73,7 +81,9 @@ class Shop:
             raise CatalogError('Нельзя подменить полный master snapshot старым/пустым CSV.')
         if extended:
             from app.dnd_shop.builder import read_master, verify_snapshot, require_scopes
-            verify_snapshot(products, read_master(self.loot_path))
+            factors = {(r['chat_id'], r['thread_id']): Fraction(r['factor'])
+                       for r in conn.execute('SELECT * FROM dnd_shop_settings')}
+            verify_snapshot(products, read_master(self.loot_path), factors)
             require_scopes(self.settings, {(p.chat_id, p.thread_id) for p in products})
         items = {(r['chat_id'], r['thread_id'], r['name_key']): r
                  for r in conn.execute('SELECT * FROM dnd_items')}
@@ -84,18 +94,21 @@ class Shop:
         currencies = {r[0] for r in conn.execute('SELECT item_id FROM dnd_currencies')}
         prior_entries = {(r['chat_id'], r['thread_id'], r['code']): r
                          for r in conn.execute('SELECT * FROM dnd_shop_catalog_entries WHERE source_path=?', (path,))}
+        currency_aliases = {(r['chat_id'], r['thread_id']): json.loads(r['currency_units'])
+                            for r in conn.execute('SELECT * FROM dnd_shop_settings')}
         entries = []
         for product in products:
             scope = product.chat_id, product.thread_id
             self.scope(*scope)
-            named = items.get((*scope, product.name.casefold()))
+            currency_id = currency_aliases.get(scope, {}).get(product.name.casefold())
+            named = by_id.get(currency_id) if currency_id else items.get((*scope, product.name.casefold()))
             existing = mappings.get(product.key)
             if existing:
                 item_id = existing['item_id']
                 if named and named['id'] != item_id:
                     raise CatalogError('SKU нельзя переназначить другому предмету без явной миграции.')
                 item = by_id.get(item_id)
-                if not item or extended and item['name_key'] != product.name.casefold():
+                if not item or extended and item['name_key'] != product.name.casefold() and item_id != currency_id:
                     raise CatalogError('Каноническое имя SKU изменено; требуется явная миграция.')
             else:
                 item_id = named['id'] if named else register_in_transaction(
@@ -153,7 +166,7 @@ class Shop:
         if type(user_id) is not int or user_id <= 0 or not username or not username.strip('@ '):
             raise ShopError('Для магазина необходим Telegram username.')
         username = normalize_username(username)
-        with self.transaction() as (conn, _):
+        with self.transaction(scope=(chat, thread)) as (conn, _):
             character = self.character(conn, chat, thread, username)
             owners = conn.execute('SELECT * FROM dnd_shop_owners WHERE chat_id=? AND thread_id=? AND (user_id=? OR username=?)',
                                   (chat, thread, user_id, username)).fetchall()
@@ -207,6 +220,12 @@ class Shop:
         return [row for row in rows if (item := self.resolve(conn, row)) and item['id'] == item_id]
 
     def currencies(self, conn, session):
+        invalid = conn.execute("""SELECT 1 FROM dnd_currencies c LEFT JOIN dnd_items i ON i.id=c.item_id
+            WHERE c.chat_id=? AND c.thread_id=? AND
+            (i.id IS NULL OR i.chat_id!=c.chat_id OR i.thread_id!=c.thread_id OR i.category!='currency') LIMIT 1""",
+            (session['chat_id'], session['thread_id'])).fetchone()
+        if invalid:
+            raise ShopError('Нарушена целостность реестра валют.')
         rows = conn.execute('''SELECT i.*,c.base_value,c.currency_quantity,c.is_base
             FROM dnd_currencies c JOIN dnd_items i ON i.id=c.item_id
             WHERE c.chat_id=? AND c.thread_id=? AND i.active=1 AND i.category='currency'
@@ -258,7 +277,7 @@ class Shop:
 
     def view(self, session_token, actor, action='home', argument='0'):
         """Fresh source on every navigation; return data for a thin Telegram UI."""
-        with self.transaction(catalog=action not in ('home', 'exit')) as (conn, products):
+        with self.transaction(catalog=action not in ('home', 'exit'), scope=actor[2:]) as (conn, products):
             session = self.session(conn, session_token, *actor)
             if action == 'exit':
                 conn.execute('UPDATE dnd_shop_sessions SET closed=1 WHERE token=?', (session_token,))
@@ -279,11 +298,20 @@ class Shop:
                         AND s.sold<e.stock ORDER BY e.code''', (str(self.csv_path), *scope)).fetchall()
                     entries = [products.by_key[(*scope, row[0])] for row in codes]
                 else:
-                    for row in self.inventory(conn, session):
-                        item = self.resolve(conn, row)
-                        if item and (item['category'] == 'currency' or conn.execute('SELECT 1 FROM dnd_currencies WHERE item_id=?', (item['id'],)).fetchone()):
+                    inventory_rows = self.inventory(conn, session)
+                    resolved = [(row, self.resolve(conn, row)) for row in inventory_rows]
+                    from collections import Counter
+                    counts = Counter(item['id'] for _, item in resolved if item)
+                    currencies = {r[0] for r in conn.execute('SELECT item_id FROM dnd_currencies')}
+                    codes = {r['item_id']: r['code'] for r in conn.execute(
+                        'SELECT item_id,code FROM dnd_shop_skus WHERE chat_id=? AND thread_id=?',
+                        (session['chat_id'], session['thread_id']))}
+                    for row, item in resolved:
+                        if not item or not item['active'] or item['category'] == 'currency' or item['id'] in currencies:
                             continue
-                        entries.append(row)
+                        product = products.by_key.get((session['chat_id'], session['thread_id'], codes.get(item['id'])))
+                        if product and product.active and counts[item['id']] == 1:
+                            entries.append(row)
                 pages = max(1, (len(entries) + 3) // 4)
                 page = min(page, pages - 1)
                 buttons = []
@@ -404,7 +432,7 @@ class Shop:
         return after
 
     def execute(self, session_token, operation_token, actor):
-        with self.transaction() as (conn, products):
+        with self.transaction(scope=actor[2:]) as (conn, products):
             session = self.session(conn, session_token, *actor)
             operation = conn.execute('SELECT * FROM dnd_shop_operations WHERE token=? AND session_token=?',
                                      (operation_token, session_token)).fetchone()
@@ -452,8 +480,6 @@ class Shop:
                 value = product.price * Fraction(3, 100)
                 try:
                     _, coins_out = payment(value, denominations, {}, payout=True)
-                except CalculationLimit:
-                    raise
                 except MoneyError:
                     coins_out = {}
                     credit_added = value
@@ -498,7 +524,7 @@ class Shop:
             return result
 
     def redeem(self, session_token, token, actor):
-        with self.transaction() as (conn, _):
+        with self.transaction(scope=actor[2:]) as (conn, _):
             session = self.session(conn, session_token, *actor)
             operation = conn.execute('SELECT * FROM dnd_shop_credit_redemptions WHERE token=? AND session_token=?',
                                      (token, session_token)).fetchone()
@@ -531,7 +557,26 @@ class Shop:
         try:
             conn.execute('PRAGMA foreign_keys=ON')
             conn.execute('BEGIN IMMEDIATE')
+            if conn.execute('SELECT 1 FROM dnd_shop_publications WHERE source_path=?', (str(self.csv_path),)).fetchone():
+                raise CatalogError('Сначала завершите незавершённую публикацию через /shopcreate.')
             self.sync(conn, catalog, force=True)
         finally:
             conn.rollback()
             conn.close()
+
+    def stop(self, actor):
+        from app.dnd_shop.control import stop
+        return stop(self, actor)
+
+    def create(self, actor, mode):
+        from app.dnd_shop.control import create
+        return create(self, actor, mode)
+
+    @staticmethod
+    def catalog_from_bytes(data):
+        import hashlib
+        from types import MappingProxyType
+        from app.dnd_shop.catalog import Snapshot, parse_catalog
+        products = tuple(parse_catalog(data))
+        return Snapshot(products, hashlib.sha256(data).hexdigest(),
+                        MappingProxyType({p.key: p for p in products}), len(data))

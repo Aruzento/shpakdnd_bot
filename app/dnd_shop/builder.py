@@ -157,14 +157,19 @@ def read_offers(path, master, mapping, settings, scopes):
     return result
 
 
-def build(master, mapping, offers_path, scopes, settings, *, previous=()):
+def build(master, mapping, offers_path, scopes, settings, *, previous=(), price_factors=None):
     scopes = require_scopes(settings, scopes)
     names = {name.casefold(): code for code, name in mapping.items()}
     if len(names) != len(mapping) or not set(master.by_name) <= set(names):
         raise CatalogError('Для всех мастер-позиций необходим однозначный постоянный индекс.')
     if len(scopes) * len(master.rows) > MAX_ROWS:
         raise CatalogError('Слишком много тем/позиций для одного снимка.')
-    offers = read_offers(offers_path, master, mapping, settings, scopes)
+    offers = read_offers(offers_path, master, mapping, settings,
+                         [(chat, thread) for chat, topics in settings.items() for thread, topic in topics.items()
+                          if not topic.get('mini') and topic.get('admin')]) if offers_path and Path(offers_path).exists() else {}
+    from fractions import Fraction
+    from app.dnd_shop.money import exact_text
+    price_factors = price_factors or {}
     old = {p.key: p for p in previous}
     rows = []
     for chat, thread in scopes:
@@ -175,7 +180,7 @@ def build(master, mapping, offers_path, scopes, settings, *, previous=()):
             # A legacy explicit active=false is never silently reactivated.
             active = old[key].active if key in old else True
             rows.append(dict(chat_id=chat, thread_id=thread, code=code, name=item.name,
-                description=item.description, price=item.price, stock=stock,
+                description=item.description, price=exact_text(Fraction(item.price) * price_factors.get((chat, thread), 1)), stock=stock,
                 active=str(active).lower(), buy_enabled=str(enabled).lower(),
                 rarity=item.rarity, category=item.category, effect=item.effect,
                 master_sha256=master.digest))
@@ -188,8 +193,9 @@ def build(master, mapping, offers_path, scopes, settings, *, previous=()):
         offers=sum(r['buy_enabled'] == 'true' for r in rows), errors=0)
 
 
-def verify_snapshot(products, master):
+def verify_snapshot(products, master, price_factors=None):
     """Prove complete membership/100% price and metadata for every published scope."""
+    price_factors = price_factors or {}
     scopes = {}
     global_codes = {}
     for product in products:
@@ -199,7 +205,7 @@ def verify_snapshot(products, master):
         if product.master_sha256 != master.digest or item is None:
             raise CatalogError('Snapshot не соответствует текущему мастер-справочнику.')
         if (product.name, product.description, product.effect, product.price, product.rarity, product.category) != (
-                item.name, item.description, item.effect, item.price, item.rarity, item.category):
+                item.name, item.description, item.effect, item.price * price_factors.get((product.chat_id, product.thread_id), 1), item.rarity, item.category):
             raise CatalogError('Цена/справочные поля snapshot отличаются от мастера.')
         scope = product.chat_id, product.thread_id
         scopes.setdefault(scope, set()).add(product.name.casefold())
@@ -208,3 +214,14 @@ def verify_snapshot(products, master):
             raise CatalogError('Коды одного канонического предмета отличаются по темам.')
     if not scopes or any(names != set(master.by_name) for names in scopes.values()):
         raise CatalogError('В каждой теме нужен полный мастер-справочник, без пропущенных строк.')
+
+def encode_products(products):
+    from dataclasses import asdict
+    from app.dnd_shop.money import exact_text
+    rows = []
+    for product in products:
+        row = asdict(product)
+        row.update(price=exact_text(product.price), active=str(product.active).lower(),
+                   buy_enabled=str(product.buy_enabled).lower())
+        rows.append(row)
+    return csv_bytes(COLUMNS + EXTENDED, rows)
