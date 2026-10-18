@@ -69,6 +69,14 @@ class MasterTests(unittest.TestCase):
             with self.assertRaises(CalculationLimit):
                 payment(Fraction(7), {1: Fraction(3), 2: Fraction(5)}, {}, payout=True)
 
+    def test_combined_insufficient_funds_is_not_a_calculation_limit(self):
+        with patch('app.dnd_shop.money.MAX_WORK', 0):
+            with self.assertRaisesRegex(MoneyError, 'Недостаточно средств') as caught:
+                payment_with_credit(Fraction(100), {1: Fraction(1, 100)}, {}, Fraction(1, 2))
+            self.assertNotIsInstance(caught.exception, CalculationLimit)
+        with self.assertRaises(MoneyError):
+            payment_with_credit(Fraction(-1), {}, {}, Fraction(1))
+
 
 class LootTests(unittest.TestCase):
     sql = legacy.ShopTests.sql

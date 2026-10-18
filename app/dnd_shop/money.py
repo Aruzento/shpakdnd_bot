@@ -191,8 +191,8 @@ def large_change(target, coins, ids, *, _counter=None):
 def payment_with_credit(price, denominations, holdings, credit):
     """Use as much exact credit as feasible; conserve the complete obligation."""
     price, credit = Fraction(price), Fraction(credit)
-    if credit < 0:
-        raise MoneyError('Некорректный торговый остаток.')
+    if credit < 0 or price <= 0:
+        raise MoneyError('Некорректная цена или торговый остаток.')
     if credit >= price:
         return {}, {}, price
     if credit == 0:
@@ -200,6 +200,12 @@ def payment_with_credit(price, denominations, holdings, credit):
         return debit, change, Fraction(0)
     if not denominations:
         raise MoneyError('Нет разрешённых номиналов для расчёта.')
+    counts = [holdings.get(i, 0) for i in denominations]
+    if any(type(qty) is not int or qty < 0 for qty in counts):
+        raise MoneyError('Некорректное количество монет в инвентаре.')
+    coin_total = sum((Fraction(v) * holdings.get(i, 0) for i, v in denominations.items()), Fraction(0))
+    if coin_total + credit < price:
+        raise MoneyError('Недостаточно средств.')
     # Every net coin amount lies on the exact denomination lattice.
     from math import lcm, gcd
     scale = 1
@@ -210,7 +216,7 @@ def payment_with_credit(price, denominations, holdings, credit):
     quantum = Fraction(gcd(*(int(v * scale) for v in denominations.values())), scale)
     lower = (price - credit) / quantum
     first = -(-lower.numerator // lower.denominator)
-    last = price // quantum
+    last = min(price, coin_total) // quantum
     attempts = 0
     counter = [0]
     for units in range(first, last + 1):
