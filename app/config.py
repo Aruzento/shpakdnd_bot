@@ -17,6 +17,8 @@ load_dotenv(ENV_PATH)
 
 DND_SHOP_CSV_PATH = Path(os.getenv("DND_SHOP_CSV_PATH", "/var/lib/shpakdnd/shop.csv"))
 
+DND_LOOT_CSV_PATH = Path(os.getenv("DND_LOOT_CSV_PATH", "/var/lib/shpakdnd/loot.csv"))
+
 TOKEN = os.getenv("BOT_TOKEN")
 TIMEZONE_NAME = os.getenv("BOT_TIMEZONE", "Europe/Moscow")
 

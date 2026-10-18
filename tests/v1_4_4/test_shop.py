@@ -181,15 +181,17 @@ class ShopTests(unittest.TestCase):
         self.shop.execute(session, token, self.actor)
         self.assertEqual(self.sql("SELECT quantity,item_id FROM inventory WHERE name='Меч'"), [(1, None)])
 
-    def test_no_payout_no_sale(self):
+    def test_unrepresentable_payout_becomes_exact_credit(self):
         self.add('Меч', 1)
         self.sql('UPDATE dnd_items SET active=0 WHERE id IN (?,?)', (self.silver, self.copper))
         self.write(price='1')
         session, token = self.sale_offer()
-        before = self.sql('SELECT * FROM inventory')
-        with self.assertRaisesRegex(MoneyError, 'Не найду столько мелочи'):
-            self.shop.execute(session, token, self.actor)
-        self.assertEqual(self.sql('SELECT * FROM inventory'), before)
+        result = self.shop.execute(session, token, self.actor)
+        self.assertEqual(result['credit_added'], '3/100')
+        self.assertEqual(result['credit'], [])
+        self.assertEqual(self.amount('Меч'), 0)
+        self.assertEqual(self.shop.execute(session, token, self.actor), result)
+        self.assertEqual(self.sql('SELECT balance FROM dnd_shop_credit'), [('3/100',)])
 
     def test_changed_price_buy_and_sell_requires_new_offer(self):
         self.add('Золото', 100)
@@ -230,9 +232,7 @@ class ShopTests(unittest.TestCase):
         session, token = self.buy_offer()
         self.shop.execute(session, token, self.actor)
         self.write(stock=1)
-        with self.assertRaises(ShopError):
-            s, t = self.buy_offer(session)
-            self.shop.execute(s, t, self.actor)
+        self.assertEqual(self.shop.view(session, self.actor, 'buy')['buttons'], [])
         self.write_rows([])
         self.assertEqual(self.shop.view(session, self.actor, 'buy')['buttons'], [])
         self.write(stock=3, name='Новое имя меча')
@@ -445,7 +445,7 @@ class ShopTests(unittest.TestCase):
         self.write(price='1')
         session, token = self.buy_offer()
         result = self.shop.execute(session, token, self.actor)
-        self.assertEqual(result['debit'], [('Треть', 3)])
+        self.assertEqual(result['debit'], [['Треть', 3]])
         self.assertEqual(self.sql('SELECT denomination FROM dnd_shop_money'), [('1/3',)])
 
     def test_locked_database_is_explicit_and_retry_applies_once(self):

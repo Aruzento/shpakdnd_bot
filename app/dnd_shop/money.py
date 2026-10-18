@@ -25,7 +25,7 @@ def integer_units(values):
     return [value // common for value in units]
 
 
-def payment(price, denominations, holdings, *, payout=False):
+def payment(price, denominations, holdings, *, payout=False, _counter=None):
     """Return (debits, credits) indexed by sorted registry IDs, never floats.
 
     Enumerate bounded subset sums using binary decomposition. Each sum retains
@@ -38,12 +38,11 @@ def payment(price, denominations, holdings, *, payout=False):
     values = integer_units([Fraction(price)] + [Fraction(denominations[i]) for i in ids])
     target, coins = values[0], values[1:]
     zero = (0,) * len(ids)
-    work = 0
+    counter = [0] if _counter is None else _counter
 
     def budget(amount=1):
-        nonlocal work
-        work += amount
-        if work > MAX_WORK:
+        counter[0] += amount
+        if counter[0] > MAX_WORK:
             raise CalculationLimit('Превышен безопасный предел расчёта размена. Попробуйте другой состав монет.')
 
     def rank(vector):
@@ -52,7 +51,7 @@ def payment(price, denominations, holdings, *, payout=False):
     changes = [zero]
     def change(amount):
         if amount > MAX_STATES:
-            raise CalculationLimit('Превышен безопасный предел расчёта сдачи.')
+            return large_change(amount, coins, ids, _counter=counter)
         while len(changes) <= amount:
             value = len(changes)
             best = None
@@ -107,6 +106,13 @@ def payment(price, denominations, holdings, *, payout=False):
 
     # Exact payment has priority. Bound its search by the price so a wealthy
     # wallet does not make a tiny exact purchase exhaust the resource budget.
+    # A quotient in the largest denomination reaches the absolute coin-count
+    # lower bound, so it is safe to bypass DP even for very large catalogs.
+    maximum = max(coins)
+    for index in reversed(range(len(coins))) if target > MAX_STATES else ():
+        coin = coins[index]
+        if coin == maximum and target % coin == 0 and counts[index] >= target // coin:
+            return {ids[index]: target // coin}, {}
     exact = bounded(target).get(target)
     if exact is not None:
         return as_dict(exact), {}
@@ -136,3 +142,87 @@ def exact_text(value):
         return str(number)
     text = str(number).zfill(digits + 1)
     return (text[:-digits] + '.' + text[-digits:]).rstrip('0').rstrip('.')
+
+
+def large_change(target, coins, ids, *, _counter=None):
+    """Min-coin unbounded change via shortest deficits modulo largest coin.
+
+    For a fixed residue minimize M*count-value. If that witness fits target,
+    filling with M coins is globally optimal. If it does not fit, signal the
+    computational limit rather than claiming mathematical impossibility.
+    """
+    import heapq
+    maximum = max(coins)
+    if maximum > MAX_STATES:
+        raise CalculationLimit('Превышен безопасный предел расчёта крупной выплаты.')
+    largest = len(coins) - 1 - coins[::-1].index(maximum)
+    zero = (0,) * len(ids)
+    best = {0: (0, 0, zero)}
+    heap = [(0, 0, 0)]
+    counter = [0] if _counter is None else _counter
+    while heap:
+        loss, value, residue = heapq.heappop(heap)
+        if best[residue][:2] != (loss, value):
+            continue
+        if residue == target % maximum:
+            vector = list(best[residue][2])
+            if value > target:
+                raise CalculationLimit('Выплата требует расширенного расчёта.')
+            vector[largest] += (target - value) // maximum
+            return tuple(vector)
+        for index, coin in enumerate(coins):
+            if coin == maximum:
+                continue
+            counter[0] += 1
+            if counter[0] > MAX_WORK:
+                raise CalculationLimit('Превышен безопасный предел расчёта выплаты.')
+            next_value = value + coin
+            next_loss = loss + maximum - coin
+            next_residue = next_value % maximum
+            previous = best.get(next_residue)
+            if previous is None or (next_loss, next_value) < previous[:2]:
+                vector = list(best[residue][2])
+                vector[index] += 1
+                best[next_residue] = next_loss, next_value, tuple(vector)
+                heapq.heappush(heap, (next_loss, next_value, next_residue))
+    raise MoneyError('Торговец: «Не найду столько мелочи. Не могу рассчитаться!»')
+
+
+def payment_with_credit(price, denominations, holdings, credit):
+    """Use as much exact credit as feasible; conserve the complete obligation."""
+    price, credit = Fraction(price), Fraction(credit)
+    if credit < 0:
+        raise MoneyError('Некорректный торговый остаток.')
+    if credit >= price:
+        return {}, {}, price
+    if credit == 0:
+        debit, change = payment(price, denominations, holdings)
+        return debit, change, Fraction(0)
+    if not denominations:
+        raise MoneyError('Нет разрешённых номиналов для расчёта.')
+    # Every net coin amount lies on the exact denomination lattice.
+    from math import lcm, gcd
+    scale = 1
+    for value in denominations.values():
+        scale = lcm(scale, value.denominator)
+        if scale.bit_length() > 128:
+            raise CalculationLimit('Слишком сложные номиналы.')
+    quantum = Fraction(gcd(*(int(v * scale) for v in denominations.values())), scale)
+    lower = (price - credit) / quantum
+    first = -(-lower.numerator // lower.denominator)
+    last = price // quantum
+    attempts = 0
+    counter = [0]
+    for units in range(first, last + 1):
+        attempts += 1
+        if attempts > 128:
+            raise CalculationLimit('Превышен безопасный предел комбинированной оплаты.')
+        net = quantum * units
+        try:
+            debit, change = payment(net, denominations, holdings, _counter=counter)
+            return debit, change, price - net
+        except CalculationLimit:
+            raise
+        except MoneyError:
+            continue
+    raise MoneyError('Невозможно точно оплатить товар монетами и торговым остатком.')

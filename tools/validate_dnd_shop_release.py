@@ -16,15 +16,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '5e4d4495a189380542cc643c5c8d723b9351b36b'
 MAIN_BASE = 'd9856b2038a36490f93a4f5613ba7887698ac7e8'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE)
+SHOP_BASE = '96ff183c08101c9a3bed079c3eeefac95c22cc2b'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE)
 sys.path.insert(0, str(ROOT))
-TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies')
+TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
+          'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
+          'dnd_shop_trades', 'dnd_shop_money', 'dnd_shop_credit', 'dnd_shop_credit_moves',
+          'dnd_shop_credit_redemptions', 'dnd_shop_credit_coins')
 
 
 def snapshot(path):
     result = {}
     with closing(sqlite3.connect(path)) as conn:
-        for table in TABLES:
+        tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+        for table in tables:
             if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
                 columns = [row[1] for row in conn.execute(f'PRAGMA table_info({table})')]
                 result[table] = columns, conn.execute(f'SELECT * FROM {table} ORDER BY rowid').fetchall()
@@ -70,6 +75,23 @@ create_character(694384548,0,'@migration_fixture','Fixture')
 create_currency(694384548,0,'Fixture gold',1,'1',is_base=True,db_path=config.DB_PATH)
 create_currency(694384548,0,'Fixture third',3,'1',db_path=config.DB_PATH)
 add_inventory_item(694384548,0,'@migration_fixture','Fixture gold',50)
+# The V1.4.4 baseline already has receipts, sold counters and pending buttons.
+if Path('app/dnd_shop/service.py').is_file():
+    from app.dnd_shop.service import Shop
+    import csv
+    catalog = config.DB_PATH.with_suffix('.csv')
+    with catalog.open('w', encoding='utf-8', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow(['chat_id','thread_id','code','name','description','price','stock','active'])
+        writer.writerow([694384548,0,'legacy_sword','Legacy sword','Original',10,5,'true'])
+    shop = Shop(config.DB_PATH, catalog, {694384548:{0:{'admin':'@fixture'}}})
+    actor = 934568, 'migration_fixture', 694384548, 0
+    session = shop.open(*actor)
+    listing = shop.view(session, actor, 'buy')
+    card = shop.view(session, actor, 'buy_card', listing['buttons'][0][1])
+    result = shop.execute(session, card['token'], actor)
+    assert shop.execute(session, card['token'], actor)['trade_id'] == result['trade_id']
+    shop.view(session, actor, 'buy')
 import sqlite3
 with sqlite3.connect(config.DB_PATH) as conn:
     for name,qty in [('Legacy null','3'),('Legacy real','2.5'),('Legacy text','historical')]:
@@ -87,34 +109,33 @@ with sqlite3.connect(config.DB_PATH) as conn:
             before = snapshot(copy)
             from unittest.mock import patch
             from app.db import schema
+            from app.db.dnd_shop import migrate
+            fault = temp / f'fault-{index}.db'
+            with closing(sqlite3.connect(copy)) as origin, closing(sqlite3.connect(fault)) as target:
+                origin.backup(target)
+            with closing(sqlite3.connect(fault)) as conn:
+                schema_before = conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall()
+                has_credit = conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_credit'").fetchone()
+                if not has_credit:
+                    conn.set_authorizer(lambda action, name, *rest: sqlite3.SQLITE_DENY
+                        if action == sqlite3.SQLITE_CREATE_TABLE and name == 'dnd_shop_credit' else sqlite3.SQLITE_OK)
+                    try:
+                        with conn:
+                            migrate(conn)
+                    except sqlite3.DatabaseError:
+                        pass
+                    else:
+                        raise AssertionError('Migration fault was not injected')
+                    conn.set_authorizer(None)
+                    assert conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall() == schema_before
+            assert_preserved(fault, before)
             with patch.object(schema, 'DB_PATH', copy), patch.object(schema, 'LEGACY_DB_PATH', temp / 'unused.db'):
                 for _ in range(3):
                     schema.init_db()
             assert_preserved(copy, before)
-            from app.db.dnd_shop import migrate
-            with closing(sqlite3.connect(copy)) as conn, conn:
-                conn.execute('DROP TABLE dnd_shop_money')
-                conn.execute('DROP TABLE dnd_shop_trades')
-                conn.execute('DROP TABLE dnd_shop_operations')
-                conn.execute('DROP TABLE dnd_shop_sessions')
-                conn.execute('DROP TABLE dnd_shop_owners')
-                conn.execute('DROP TABLE dnd_shop_skus')
-            # Fault injection confirms additive DDL rolls back as one transaction.
+            from app.dnd_shop.audit import audit
             with closing(sqlite3.connect(copy)) as conn:
-                conn.set_authorizer(lambda action, *rest: sqlite3.SQLITE_DENY
-                                    if action == sqlite3.SQLITE_CREATE_INDEX else sqlite3.SQLITE_OK)
-                try:
-                    with conn:
-                        migrate(conn)
-                except sqlite3.DatabaseError:
-                    pass
-                else:
-                    raise AssertionError('Migration fault was not injected')
-                conn.set_authorizer(None)
-                assert not conn.execute("SELECT name FROM sqlite_master WHERE name LIKE 'dnd_shop_%'").fetchall()
-            with patch.object(schema, 'DB_PATH', copy):
-                schema.init_db()
-            assert_preserved(copy, before)
+                print('Journal reconciliation:', audit(conn))
             run_old(old_code, copy, """
 from app.db.schema import init_db
 init_db()
@@ -132,7 +153,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='Read-only source, copied with SQLite backup')
     parser.add_argument('--old-ref', action='append',
-                        help='Repeatable baseline override; default: both V1.4.3 and V1.4.3.1')
+                        help='Repeatable baseline override; default: V1.4.3, V1.4.3.1, and checked V1.4.4 shop baseline')
     args = parser.parse_args()
     for old_ref in dict.fromkeys(args.old_ref or DEFAULT_OLD_REFS):
         verify_ref(old_ref, args.source)

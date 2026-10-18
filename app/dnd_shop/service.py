@@ -12,11 +12,11 @@ from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
 
-from app.config import BASE_DIR, DB_PATH, DND_SHOP_CSV_PATH
+from app.config import BASE_DIR, DB_PATH, DND_SHOP_CSV_PATH, DND_LOOT_CSV_PATH
 from app.context import normalize_username
 from app.db.dnd_items import register_in_transaction
-from app.dnd_shop.catalog import CatalogError, MAX_INTEGER, catalog_lock, read_catalog
-from app.dnd_shop.money import MoneyError, payment
+from app.dnd_shop.catalog import CatalogError, MAX_INTEGER, catalog_lock, snapshot
+from app.dnd_shop.money import CalculationLimit, MoneyError, payment, payment_with_credit
 from app.topics import TOPIC_SETTINGS
 
 
@@ -29,8 +29,9 @@ class PriceChanged(ShopError):
 
 
 class Shop:
-    def __init__(self, db_path=DB_PATH, csv_path=DND_SHOP_CSV_PATH, settings=None):
+    def __init__(self, db_path=DB_PATH, csv_path=DND_SHOP_CSV_PATH, settings=None, *, loot_path=DND_LOOT_CSV_PATH):
         self.db_path = Path(db_path)
+        self.loot_path = Path(loot_path)
         self.csv_path = Path(csv_path).resolve()
         if self.csv_path.is_relative_to(BASE_DIR.resolve()):
             raise CatalogError('CSV должен находиться вне Git checkout и области watcher.')
@@ -40,7 +41,7 @@ class Shop:
     def transaction(self, *, catalog=True):
         # Keep the read lock until COMMIT/ROLLBACK, including all money work.
         with catalog_lock(self.csv_path) if catalog else nullcontext():
-            products = read_catalog(self.csv_path) if catalog else []
+            products = snapshot(self.csv_path) if catalog else None
             conn = sqlite3.connect(self.db_path, timeout=5)
             conn.row_factory = sqlite3.Row
             try:
@@ -61,30 +62,70 @@ class Shop:
             finally:
                 conn.close()
 
-    def sync(self, conn, products):
+    def sync(self, conn, catalog, *, force=False):
+        path = str(self.csv_path)
+        seen = conn.execute('SELECT digest,master_sha256 FROM dnd_shop_catalog_versions WHERE source_path=?', (path,)).fetchone()
+        if not force and seen and seen[0] == catalog.digest:
+            return
+        products = catalog.products
+        extended = any(p.master_sha256 for p in products)
+        if seen and seen['master_sha256'] and not extended:
+            raise CatalogError('Нельзя подменить полный master snapshot старым/пустым CSV.')
+        if extended:
+            from app.dnd_shop.builder import read_master, verify_snapshot, require_scopes
+            verify_snapshot(products, read_master(self.loot_path))
+            require_scopes(self.settings, {(p.chat_id, p.thread_id) for p in products})
+        items = {(r['chat_id'], r['thread_id'], r['name_key']): r
+                 for r in conn.execute('SELECT * FROM dnd_items')}
+        by_id = {r['id']: r for r in items.values()}
+        mappings = {(r['chat_id'], r['thread_id'], r['code']): r
+                    for r in conn.execute('SELECT * FROM dnd_shop_skus')}
+        mapped_items = {(r['chat_id'], r['thread_id'], r['item_id']): r['code'] for r in mappings.values()}
+        currencies = {r[0] for r in conn.execute('SELECT item_id FROM dnd_currencies')}
+        prior_entries = {(r['chat_id'], r['thread_id'], r['code']): r
+                         for r in conn.execute('SELECT * FROM dnd_shop_catalog_entries WHERE source_path=?', (path,))}
+        entries = []
         for product in products:
             scope = product.chat_id, product.thread_id
-            if self.settings.get(scope[0], {}).get(scope[1], {}).get('mini'):
-                raise CatalogError('CSV содержит товар в теме D&D Mini.')
-            existing = conn.execute('SELECT * FROM dnd_shop_skus WHERE chat_id=? AND thread_id=? AND code=?', product.key).fetchone()
-            named = conn.execute('SELECT * FROM dnd_items WHERE chat_id=? AND thread_id=? AND name_key=?',
-                                 (*scope, product.name.casefold())).fetchone()
-            if named and (named['category'] == 'currency' or conn.execute('SELECT 1 FROM dnd_currencies WHERE item_id=?', (named['id'],)).fetchone()):
-                raise CatalogError('Название товара конфликтует с зарегистрированной валютой.')
+            self.scope(*scope)
+            named = items.get((*scope, product.name.casefold()))
+            existing = mappings.get(product.key)
             if existing:
                 item_id = existing['item_id']
                 if named and named['id'] != item_id:
                     raise CatalogError('SKU нельзя переназначить другому предмету без явной миграции.')
+                item = by_id.get(item_id)
+                if not item or extended and item['name_key'] != product.name.casefold():
+                    raise CatalogError('Каноническое имя SKU изменено; требуется явная миграция.')
             else:
-                item_id = register_in_transaction(conn, *scope, product.name, product.description)
-                collision = conn.execute('SELECT code FROM dnd_shop_skus WHERE chat_id=? AND thread_id=? AND item_id=?', (*scope, item_id)).fetchone()
-                if collision:
+                item_id = named['id'] if named else register_in_transaction(
+                    conn, *scope, product.name, product.description)
+                if (*scope, item_id) in mapped_items:
                     raise CatalogError('Одному предмету не могут соответствовать несколько SKU.')
                 conn.execute('INSERT INTO dnd_shop_skus(chat_id,thread_id,code,item_id,original_name_key) VALUES(?,?,?,?,?)',
                              (*product.key, item_id, product.name.casefold()))
-            item = conn.execute('SELECT * FROM dnd_items WHERE id=?', (item_id,)).fetchone()
-            if not item or item['category'] == 'currency' or conn.execute('SELECT 1 FROM dnd_currencies WHERE item_id=?', (item_id,)).fetchone():
-                raise CatalogError('Недопустимое соответствие SKU и реестра предметов.')
+                mapped_items[(*scope, item_id)] = product.code
+                item = named or conn.execute('SELECT * FROM dnd_items WHERE id=?', (item_id,)).fetchone()
+                by_id[item_id] = item
+            is_currency = item['category'] == 'currency' or item_id in currencies
+            if is_currency and (not extended or product.buy_enabled):
+                raise CatalogError('Товар/предложение конфликтует с зарегистрированной валютой.')
+            prior = prior_entries.get(product.key)
+            if extended and prior and not prior['active'] and product.active:
+                raise CatalogError('Нельзя автоматически включить legacy active=false. Нужна согласованная миграция.')
+            entries.append((path, *product.key, item_id, str(product.price), product.stock,
+                            int(product.active), int(product.buy_enabled), int(is_currency)))
+        conn.execute('UPDATE dnd_shop_catalog_entries SET present=0 WHERE source_path=?', (path,))
+        conn.executemany('''INSERT INTO dnd_shop_catalog_entries
+            (source_path,chat_id,thread_id,code,item_id,price,stock,active,buy_enabled,is_currency)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(source_path,chat_id,thread_id,code) DO UPDATE SET
+                item_id=excluded.item_id,price=excluded.price,stock=excluded.stock,
+                active=excluded.active,buy_enabled=excluded.buy_enabled,is_currency=excluded.is_currency,present=1''', entries)
+        conn.execute('''INSERT INTO dnd_shop_catalog_versions(source_path,digest,imported,master_sha256) VALUES(?,?,?,?)
+            ON CONFLICT(source_path) DO UPDATE SET digest=excluded.digest,imported=excluded.imported,
+            updated_at=CURRENT_TIMESTAMP,master_sha256=excluded.master_sha256''',
+            (path, catalog.digest, len(products), products[0].master_sha256 if extended else ''))
 
     def scope(self, chat, thread):
         topic = self.settings.get(chat, {}).get(thread)
@@ -158,6 +199,8 @@ class Shop:
         else:
             item = conn.execute('SELECT * FROM dnd_items WHERE name_key=? AND chat_id=? AND thread_id=?',
                                 (row['name'].strip().casefold(), row['chat_id'], row['thread_id'])).fetchone()
+        if item and row['item_id'] is not None and row['name'].strip().casefold() != item['name_key']:
+            raise ShopError('Название инвентаря конфликтует с item_id.')
         return item
 
     def rows_for_item(self, conn, rows, item_id):
@@ -185,13 +228,17 @@ class Shop:
 
     def product(self, conn, products, session, code):
         key = session['chat_id'], session['thread_id'], code
-        product = next((p for p in products if p.key == key), None)
+        product = products.by_key.get(key)
         if product is None or not product.active:
             raise ShopError('Торговец: «Не, это я не куплю». Товар удалён или отключён.')
         mapping = conn.execute('SELECT * FROM dnd_shop_skus WHERE chat_id=? AND thread_id=? AND code=?', key).fetchone()
         item = conn.execute('SELECT * FROM dnd_items WHERE id=?', (mapping['item_id'],)).fetchone()
         if not item['active']:
             raise ShopError('Предмет отключён в реестре.')
+        if item['category'] == 'currency' or conn.execute('SELECT 1 FROM dnd_currencies WHERE item_id=?', (item['id'],)).fetchone():
+            raise ShopError('Зарегистрированную валюту нельзя продавать как вещь.')
+        if product.master_sha256 and item['name_key'] != product.name.casefold():
+            raise ShopError('Каноническое имя предмета изменено.')
         return product, mapping
 
     def offer(self, conn, session, kind, product, mapping, inventory_id=None):
@@ -199,6 +246,7 @@ class Shop:
         conn.execute('''INSERT INTO dnd_shop_operations(token,session_token,kind,sku,item_id,inventory_id,price)
                         VALUES(?,?,?,?,?,?,?)''',
                      (token, session['token'], kind, product.code, mapping['item_id'], inventory_id, str(product.price)))
+        conn.execute('UPDATE dnd_shop_operations SET quote_digest=? WHERE token=?', (product.quote, token))
         return token
 
     @staticmethod
@@ -216,19 +264,20 @@ class Shop:
                 conn.execute('UPDATE dnd_shop_sessions SET closed=1 WHERE token=?', (session_token,))
                 return {'screen': 'exit'}
             if action == 'home':
-                return {'screen': 'home'}
+                return {'screen': 'home', 'credit_balance': self.credit(conn, session)}
             if action in ('buy', 'sell'):
                 page = max(0, int(argument))
                 entries = []
                 if action == 'buy':
-                    for product in products:
-                        if product.key[:2] != (session['chat_id'], session['thread_id']) or not product.active:
-                            continue
-                        try:
-                            _, mapping = self.product(conn, products, session, product.code)
-                        except ShopError:
-                            continue
-                        entries.append((product, mapping))
+                    scope = session['chat_id'], session['thread_id']
+                    codes = conn.execute('''SELECT e.code FROM dnd_shop_catalog_entries e
+                        JOIN dnd_shop_skus s ON s.chat_id=e.chat_id AND s.thread_id=e.thread_id AND s.code=e.code
+                        JOIN dnd_items i ON i.id=e.item_id
+                        WHERE e.source_path=? AND e.chat_id=? AND e.thread_id=?
+                        AND e.present=1 AND e.buy_enabled=1 AND e.active=1 AND i.active=1 AND e.is_currency=0
+                        AND i.category!='currency' AND NOT EXISTS(SELECT 1 FROM dnd_currencies c WHERE c.item_id=i.id)
+                        AND s.sold<e.stock ORDER BY e.code''', (str(self.csv_path), *scope)).fetchall()
+                    entries = [products.by_key[(*scope, row[0])] for row in codes]
                 else:
                     for row in self.inventory(conn, session):
                         item = self.resolve(conn, row)
@@ -240,12 +289,21 @@ class Shop:
                 buttons = []
                 for entry in entries[page * 4:page * 4 + 4]:
                     if action == 'buy':
-                        product, mapping = entry
+                        product = entry
+                        _, mapping = self.product(conn, products, session, product.code)
                         token = self.offer(conn, session, 'buy', product, mapping)
                         buttons.append((product.name, token))
                     else:
                         buttons.append((entry['name'], str(entry['id'])))
-                return {'screen': action, 'page': page, 'pages': pages, 'buttons': buttons}
+                return {'screen': action, 'page': page, 'pages': pages, 'buttons': buttons, 'credit_balance': self.credit(conn, session)}
+            if action == 'credit':
+                balance = self.credit(conn, session)
+                if balance <= 0:
+                    raise ShopError('Торговый остаток пуст.')
+                token = secrets.token_urlsafe(12)
+                conn.execute('INSERT INTO dnd_shop_credit_redemptions(token,session_token,expected) VALUES(?,?,?)',
+                             (token, session_token, str(balance)))
+                return dict(screen='credit', credit_balance=balance, token=token)
             if action in ('buy_card', 'refresh'):
                 old = conn.execute('SELECT * FROM dnd_shop_operations WHERE token=? AND session_token=?',
                                    (argument, session_token)).fetchone()
@@ -254,6 +312,8 @@ class Shop:
                 product, mapping = self.product(conn, products, session, old['sku'])
                 if old['kind'] == 'sell':
                     return self.sale_card(conn, products, session, old['inventory_id'])
+                if not product.buy_enabled or product.stock <= mapping['sold']:
+                    raise ShopError('Позиция недоступна для покупки. Откройте ассортимент заново.')
                 token = self.offer(conn, session, 'buy', product, mapping)
                 return {'screen': 'buy_card', 'product': product, 'token': token,
                         'available': max(0, product.stock - mapping['sold']), 'base_name': self.base_name(conn, session)}
@@ -302,6 +362,47 @@ class Shop:
         else:
             raise ShopError('Недостаточно предметов в инвентаре.')
 
+    @staticmethod
+    def rational(text):
+        try:
+            value = Fraction(text)
+            if not isinstance(text, str) or len(text) > 1024 or value < 0 or str(value) != text:
+                raise ValueError()
+            return value
+        except (ValueError, ZeroDivisionError, TypeError) as error:
+            raise ShopError('Некорректный торговый остаток; требуется проверка журнала.') from error
+
+    def credit(self, conn, session):
+        owner = session['chat_id'], session['thread_id'], session['user_id']
+        row = conn.execute('SELECT * FROM dnd_shop_credit WHERE chat_id=? AND thread_id=? AND user_id=?', owner).fetchone()
+        if not row:
+            return Fraction(0)
+        if row['username'] != session['username']:
+            raise ShopError('Владелец торгового остатка изменился.')
+        balance = self.rational(row['balance'])
+        last = conn.execute('''SELECT balance_after FROM dnd_shop_credit_moves
+            WHERE chat_id=? AND thread_id=? AND user_id=? ORDER BY id DESC LIMIT 1''', owner).fetchone()
+        if (self.rational(last[0]) if last else Fraction(0)) != balance:
+            raise ShopError('Торговый остаток не совпадает с журналом.')
+        return balance
+
+    def move_credit(self, conn, session, amount, direction, *, trade=None, redemption=None):
+        amount = Fraction(amount)
+        if amount <= 0:
+            raise ShopError('Движение остатка должно быть положительным.')
+        before = self.credit(conn, session)
+        after = before + amount if direction == 'add' else before - amount
+        if after < 0 or len(str(after)) > 1024:
+            raise ShopError('Недостаточно торгового остатка или превышен предел учёта.')
+        owner = session['chat_id'], session['thread_id'], session['user_id']
+        conn.execute('''INSERT INTO dnd_shop_credit(chat_id,thread_id,user_id,username,balance) VALUES(?,?,?,?,?)
+            ON CONFLICT(chat_id,thread_id,user_id) DO UPDATE SET balance=excluded.balance''',
+            (*owner, session['username'], str(after)))
+        conn.execute('''INSERT INTO dnd_shop_credit_moves
+            (chat_id,thread_id,user_id,trade_id,redemption_token,direction,amount,balance_after)
+            VALUES(?,?,?,?,?,?,?,?)''', (*owner, trade, redemption, direction, str(amount), str(after)))
+        return after
+
     def execute(self, session_token, operation_token, actor):
         with self.transaction() as (conn, products):
             session = self.session(conn, session_token, *actor)
@@ -316,9 +417,17 @@ class Shop:
                 raise ShopError('Соответствие предмета изменилось.')
             if product.price != Fraction(operation['price']):
                 raise PriceChanged('Цена изменилась. Проверьте актуальное предложение и нажмите ещё раз.')
+            if operation['kind'] == 'buy':
+                if operation['quote_digest'] != product.quote and (operation['quote_digest'] or product.master_sha256):
+                    raise PriceChanged('Ассортимент или остаток изменился. Откройте новое предложение.')
+                if not product.buy_enabled:
+                    raise ShopError('Покупка этой позиции отключена владельцем.')
             inventory = self.inventory(conn, session)
             currency_rows, denominations = self.currencies(conn, session)
             kind = operation['kind']
+            debit, coins_out = {}, {}
+            credit_added = credit_spent = Fraction(0)
+            balance_before = self.credit(conn, session)
             if kind == 'buy':
                 if mapping['sold'] >= product.stock:
                     raise ShopError('Товара больше нет в наличии.')
@@ -328,56 +437,101 @@ class Shop:
                     if len(matches) > 1:
                         raise ShopError('Неоднозначные записи монет в инвентаре.')
                     holdings[item_id] = matches[0]['quantity'] if matches else 0
-                debit, credit = payment(product.price, denominations, holdings)
+            # Keep planning and mutation separate so all failures precede writes.
+            if kind == 'buy':
+                debit, coins_out, credit_spent = payment_with_credit(product.price, denominations, holdings, balance_before)
                 value = product.price
             else:
-                row = next((row for row in inventory if row['id'] == operation['inventory_id']), None)
+                row = next((r for r in inventory if r['id'] == operation['inventory_id']), None)
                 item = self.resolve(conn, row) if row else None
-                if not item or item['id'] != mapping['item_id'] or item['category'] == 'currency' or conn.execute('SELECT 1 FROM dnd_currencies WHERE item_id=?', (item['id'],)).fetchone():
+                if not item or item['id'] != mapping['item_id'] or item['category'] == 'currency' or conn.execute(
+                        'SELECT 1 FROM dnd_currencies WHERE item_id=?', (item['id'],)).fetchone():
                     raise ShopError('Предмета больше нет или его нельзя продать.')
                 if len(self.rows_for_item(conn, inventory, item['id'])) != 1:
                     raise ShopError('Неоднозначный предмет в инвентаре.')
                 value = product.price * Fraction(3, 100)
-                debit, credit = payment(value, denominations, {}, payout=True)
+                try:
+                    _, coins_out = payment(value, denominations, {}, payout=True)
+                except CalculationLimit:
+                    raise
+                except MoneyError:
+                    coins_out = {}
+                    credit_added = value
+            coin_net = sum(denominations[i] * n for i, n in debit.items()) - sum(
+                denominations[i] * n for i, n in coins_out.items())
             if kind == 'buy':
-                assert sum(denominations[i] * n for i, n in debit.items()) - sum(denominations[i] * n for i, n in credit.items()) == value
+                if coin_net + credit_spent != value:
+                    raise ShopError('Нарушен денежный инвариант покупки.')
             else:
-                assert sum(denominations[i] * n for i, n in credit.items()) == value
+                if -coin_net + credit_added != value:
+                    raise ShopError('Нарушен денежный инвариант продажи.')
             if kind == 'sell':
                 self.adjust(conn, session, mapping['item_id'], -1)
             for item_id, quantity in debit.items():
                 self.adjust(conn, session, item_id, -quantity)
-            for item_id, quantity in credit.items():
+            for item_id, quantity in coins_out.items():
                 self.adjust(conn, session, item_id, quantity)
             if kind == 'buy':
                 self.adjust(conn, session, mapping['item_id'], 1)
-            if kind == 'buy':
                 conn.execute('UPDATE dnd_shop_skus SET sold=sold+1 WHERE chat_id=? AND thread_id=? AND code=?', product.key)
             trade = conn.execute('''INSERT INTO dnd_shop_trades(operation_token,kind,chat_id,thread_id,user_id,username,
                 character_key,sku,item_id,price,value,quantity) VALUES(?,?,?,?,?,?,?,?,?,?,?,1)''',
                 (operation_token, kind, session['chat_id'], session['thread_id'], session['user_id'], session['username'],
                  session['character_key'], product.code, mapping['item_id'], str(product.price), str(value))).lastrowid
-            for direction, amounts in (('debit', debit), ('change' if kind == 'buy' else 'payout', credit)):
+            for direction, amounts in (('debit', debit), ('change' if kind == 'buy' else 'payout', coins_out)):
                 for item_id, quantity in amounts.items():
                     conn.execute('INSERT INTO dnd_shop_money VALUES(?,?,?,?,?)',
                                  (trade, item_id, direction, quantity, str(denominations[item_id])))
+            balance_after = balance_before
+            if credit_added:
+                balance_after = self.move_credit(conn, session, credit_added, 'add', trade=trade)
+            if credit_spent:
+                balance_after = self.move_credit(conn, session, credit_spent, 'spend', trade=trade)
             names = {row['id']: row['name'] for row in currency_rows}
             result = {'kind': kind, 'name': product.name, 'quantity': 1, 'value': str(value),
-                      'debit': [(names[i], n) for i, n in debit.items()],
-                      'credit': [(names[i], n) for i, n in credit.items()], 'trade_id': trade, 'base_name': self.base_name(conn, session)}
+                      'debit': [[names[i], n] for i, n in debit.items()],
+                      'credit': [[names[i], n] for i, n in coins_out.items()], 'trade_id': trade,
+                      'credit_added': str(credit_added), 'credit_spent': str(credit_spent),
+                      'credit_balance': str(balance_after), 'base_name': self.base_name(conn, session)}
             conn.execute('UPDATE dnd_shop_operations SET result=?,completed_at=CURRENT_TIMESTAMP WHERE token=?',
                          (json.dumps(result, ensure_ascii=False), operation_token))
             return result
 
+    def redeem(self, session_token, token, actor):
+        with self.transaction() as (conn, _):
+            session = self.session(conn, session_token, *actor)
+            operation = conn.execute('SELECT * FROM dnd_shop_credit_redemptions WHERE token=? AND session_token=?',
+                                     (token, session_token)).fetchone()
+            if not operation:
+                raise ShopError('Предложение обмена устарело.')
+            if operation['result'] is not None:
+                return json.loads(operation['result'])
+            balance = self.credit(conn, session)
+            if balance <= 0 or str(balance) != operation['expected']:
+                raise ShopError('Остаток изменился; откройте новое предложение обмена.')
+            currency_rows, denominations = self.currencies(conn, session)
+            _, payout = payment(balance, denominations, {}, payout=True)
+            for item_id, quantity in payout.items():
+                self.adjust(conn, session, item_id, quantity)
+                conn.execute('INSERT INTO dnd_shop_credit_coins VALUES(?,?,?,?)',
+                             (token, item_id, quantity, str(denominations[item_id])))
+            self.move_credit(conn, session, balance, 'redeem', redemption=token)
+            names = {row['id']: row['name'] for row in currency_rows}
+            result = dict(kind='redeem', value=str(balance), credit_balance='0',
+                          credit=[[names[i], n] for i, n in payout.items()])
+            conn.execute('UPDATE dnd_shop_credit_redemptions SET result=?,completed_at=CURRENT_TIMESTAMP WHERE token=?',
+                         (json.dumps(result, ensure_ascii=False), token))
+            return result
+
     def validate_staged(self, path):
-        """Check registry consistency without reserving SKUs or mutating DB."""
-        products = read_catalog(path)
+        """Full validation under the caller's catalog lock; no persisted mapping changes."""
+        catalog = snapshot(path)
         conn = sqlite3.connect(self.db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         try:
             conn.execute('PRAGMA foreign_keys=ON')
             conn.execute('BEGIN IMMEDIATE')
-            self.sync(conn, products)
+            self.sync(conn, catalog, force=True)
         finally:
             conn.rollback()
             conn.close()

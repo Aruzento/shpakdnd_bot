@@ -40,3 +40,59 @@ def migrate(conn):
     ]
     for statement in statements:
         conn.execute(statement)
+    # Additive evolution: old trade/operation CHECK constraints are retained.
+    columns = {r[1] for r in conn.execute('PRAGMA table_info(dnd_shop_operations)')}
+    if 'quote_digest' not in columns:
+        conn.execute('ALTER TABLE dnd_shop_operations ADD COLUMN quote_digest TEXT')
+    extra = [
+        """CREATE TABLE IF NOT EXISTS dnd_shop_catalog_versions (
+            source_path TEXT PRIMARY KEY, digest TEXT NOT NULL, master_sha256 TEXT NOT NULL DEFAULT '',
+            imported INTEGER NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_catalog_entries (
+            source_path TEXT NOT NULL, chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+            code TEXT NOT NULL, item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            price TEXT NOT NULL, stock INTEGER NOT NULL CHECK(typeof(stock)='integer' AND stock>=0),
+            active INTEGER NOT NULL CHECK(active IN (0,1)),
+            buy_enabled INTEGER NOT NULL CHECK(buy_enabled IN (0,1)),
+            is_currency INTEGER NOT NULL CHECK(is_currency IN (0,1)),
+            present INTEGER NOT NULL DEFAULT 1 CHECK(present IN (0,1)),
+            PRIMARY KEY(source_path,chat_id,thread_id,code))""",
+        """CREATE INDEX IF NOT EXISTS idx_dnd_shop_buy ON dnd_shop_catalog_entries
+            (source_path,chat_id,thread_id,buy_enabled,active)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit (
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL, username TEXT NOT NULL,
+            balance TEXT NOT NULL DEFAULT '0' CHECK(typeof(balance)='text'
+                AND length(balance) BETWEEN 1 AND 1024 AND balance NOT GLOB '*[^0-9/]*'),
+            PRIMARY KEY(chat_id,thread_id,user_id),
+            FOREIGN KEY(chat_id,thread_id,username) REFERENCES dnd_shop_owners(chat_id,thread_id,username))""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_redemptions (
+            token TEXT PRIMARY KEY, session_token TEXT NOT NULL REFERENCES dnd_shop_sessions(token),
+            expected TEXT NOT NULL CHECK(typeof(expected)='text' AND length(expected) BETWEEN 1 AND 1024
+                AND expected!='0' AND expected NOT GLOB '*[^0-9/]*'), result TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_moves (
+            id INTEGER PRIMARY KEY,
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+            trade_id INTEGER REFERENCES dnd_shop_trades(id),
+            redemption_token TEXT REFERENCES dnd_shop_credit_redemptions(token),
+            direction TEXT NOT NULL CHECK(direction IN ('add','spend','redeem')),
+            amount TEXT NOT NULL CHECK(typeof(amount)='text' AND length(amount) BETWEEN 1 AND 1024
+                AND amount!='0' AND amount NOT GLOB '*[^0-9/]*'),
+            balance_after TEXT NOT NULL CHECK(typeof(balance_after)='text' AND length(balance_after) BETWEEN 1 AND 1024
+                AND balance_after NOT GLOB '*[^0-9/]*'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(chat_id,thread_id,user_id) REFERENCES dnd_shop_credit(chat_id,thread_id,user_id),
+            CHECK((trade_id IS NOT NULL AND redemption_token IS NULL AND direction IN ('add','spend'))
+               OR (trade_id IS NULL AND redemption_token IS NOT NULL AND direction='redeem')),
+            UNIQUE(trade_id,direction), UNIQUE(redemption_token))""",
+        """CREATE INDEX IF NOT EXISTS idx_dnd_shop_credit_owner ON dnd_shop_credit_moves
+            (chat_id,thread_id,user_id,id)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_coins (
+            redemption_token TEXT NOT NULL REFERENCES dnd_shop_credit_redemptions(token),
+            item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            quantity INTEGER NOT NULL CHECK(typeof(quantity)='integer' AND quantity>0),
+            denomination TEXT NOT NULL, PRIMARY KEY(redemption_token,item_id))""",
+    ]
+    for statement in extra:
+        conn.execute(statement)

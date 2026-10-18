@@ -136,6 +136,21 @@ jobs:
       - name: Verify ordinary D&D migration and old-code compatibility
         run: python tools/validate_dnd_shop_release.py
 
+      - name: Real loot CLI index build validate publish on disposable SQLite
+        run: python tools/validate_dnd_loot_cli.py
+
+      - name: Full real loot catalog, two-scope load and exact reconciliation
+        run: |
+          python tools/benchmark_dnd_shop.py --output "$RUNNER_TEMP/loot-benchmark.json"
+
+      - name: Preserve real catalog benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loot-benchmark-python-${{ matrix.python-version }}
+          path: ${{ runner.temp }}/loot-benchmark.json
+          if-no-files-found: error
+
       - name: Verify D&D Mini remains unchanged by V1.4.4
         run: git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- app/mini
 
