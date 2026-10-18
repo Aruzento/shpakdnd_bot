@@ -32,7 +32,9 @@ def enabled(shop, conn, scope):
         raise CatalogError('Магазин временно закрыт.')
     if conn.execute('SELECT 1 FROM dnd_shop_publications WHERE source_path=?', (str(shop.csv_path),)).fetchone():
         raise CatalogError('Создание каталога не завершено. Администратору нужно повторить /shopcreate.')
-    if row and row['currency_signature']:
+    if row:
+        if row['pricing_mode'] not in ('b', 'm') or not row['base_item_id'] or not row['currency_signature']:
+            raise CatalogError('Повреждены настройки магазина; требуется проверка, торговля заблокирована.')
         plan = preflight(shop, conn, scope, row['pricing_mode'], read_master(shop.loot_path))
         if any(plan[k] != row[k] for k in PLAN_KEYS):
             raise CatalogError('Настройки валют изменились. Нужна проверка обязательств и отдельная миграция.')

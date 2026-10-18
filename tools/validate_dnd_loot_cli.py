@@ -78,6 +78,7 @@ def main():
         admin = TOPIC_SETTINGS[scope[0]][scope[1]]['admin']
         shop.stop((999, admin, *scope))
         cli('rollback-check', '--target-ref', 'd9856b2038a36490f93a4f5613ba7887698ac7e8')
+        cli('rollback-check', '--target-ref', 'HEAD')
         assert read_master(master).digest == read_master(ROOT / 'data/loot.csv').digest
         with closing(sqlite3.connect(db)) as conn:
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'

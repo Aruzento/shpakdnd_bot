@@ -491,3 +491,18 @@ class ControlTests(unittest.TestCase):
         result = self.shop.create(self.owner, 'm')
         self.assertEqual(result['registered'], 4)  # Registered, even if disabled for trade.
         self.assert_clean()
+
+    def test_missing_currency_signature_never_bypasses_preflight_or_creates_credit(self):
+        self.shop.create(self.owner, 'b')
+        self.add('Меч', 1)
+        session, token = self.sale_offer()
+        before = self.sql('SELECT * FROM inventory')
+        with closing(sqlite3.connect(self.db)) as conn, conn:
+            # Model damaged storage / a pre-constraint development schema on a disposable DB.
+            conn.execute('PRAGMA ignore_check_constraints=ON')
+            conn.execute('UPDATE dnd_shop_settings SET currency_signature=NULL')
+        with patch('app.dnd_shop.service.payment', side_effect=CalculationLimit('budget')):
+            with self.assertRaisesRegex(CatalogError, 'Повреждены настройки'):
+                self.shop.execute(session, token, self.actor)
+        self.assertEqual(self.sql('SELECT * FROM inventory'), before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_credit'), [])

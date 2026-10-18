@@ -101,12 +101,18 @@ def migrate(conn):
         chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
         pricing_mode TEXT CHECK(pricing_mode IN ('b','m')),
-        factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER REFERENCES dnd_items(id),
+        factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER,
         currency_signature TEXT, currency_units TEXT NOT NULL DEFAULT '{}',
         settings_version INTEGER NOT NULL DEFAULT 1 CHECK(settings_version=1),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY(chat_id,thread_id))""")
+        PRIMARY KEY(chat_id,thread_id),
+        FOREIGN KEY(base_item_id,chat_id,thread_id) REFERENCES dnd_items(id,chat_id,thread_id),
+        CHECK((pricing_mode IS NULL AND enabled=0)
+           OR (pricing_mode IS NOT NULL AND base_item_id IS NOT NULL AND currency_signature IS NOT NULL
+               AND length(currency_signature)=64
+               AND ((pricing_mode='m' AND factor='1')
+                 OR (pricing_mode='b' AND factor IN ('57/2000','57/200000'))))))""")
     # One durable intent per runtime file; all trading fails closed until it is
     # finished by the same topic administrator. The original tables are untouched.
     conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_publications (
