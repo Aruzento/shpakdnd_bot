@@ -122,6 +122,9 @@ jobs:
       - name: Full unittest suite
         run: python -m unittest discover -s tests -q
 
+      - name: Verify privileged SQLite boundary on isolated runner
+        run: sudo -n -- "$(command -v python)" tests/staging/privileged_sqlite_probe.py
+
       - name: Startup on isolated SQLite
         run: python check_bot.py
 

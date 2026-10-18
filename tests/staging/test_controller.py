@@ -40,6 +40,21 @@ def database(path, scope=(-1003883723333, 2)):
 
 
 class PrimitiveTests(unittest.TestCase):
+    def test_privileged_sqlite_reads_drop_all_supplementary_groups_and_restore(self):
+        import types
+        fake_pwd=types.SimpleNamespace(getpwnam=lambda name: SimpleNamespace(pw_uid=1001,pw_gid=1001))
+        trace=[]
+        with patch.object(c.os,'name','posix'), patch.object(c.os,'geteuid',return_value=0,create=True), \
+             patch.object(c.os,'getegid',return_value=0,create=True), patch.object(c.os,'getgroups',return_value=[0],create=True), \
+             patch.object(c.os,'setgroups',side_effect=lambda x: trace.append(('groups',x)),create=True), \
+             patch.object(c.os,'setegid',side_effect=lambda x: trace.append(('gid',x)),create=True), \
+             patch.object(c.os,'seteuid',side_effect=lambda x: trace.append(('uid',x)),create=True), \
+             patch.dict(sys.modules,{'pwd':fake_pwd}):
+            with self.assertRaises(RuntimeError):
+                with c.as_test_user():
+                    trace.append('read');raise RuntimeError('SQLite read refused')
+        self.assertEqual(trace,[('groups',[]),('gid',1001),('uid',1001),'read',('uid',0),('gid',0),('groups',[0])])
+
     def test_control_paths_reject_symlinks_nonroot_and_writable_modes(self):
         for mode,uid in ((0o40775,0),(0o40755,1000),(0o120777,0)):
             with self.subTest(mode=mode,uid=uid), patch.object(Path,'lstat',return_value=SimpleNamespace(st_mode=mode,st_uid=uid)):

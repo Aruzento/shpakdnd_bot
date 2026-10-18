@@ -215,7 +215,10 @@ Artifacts `staging-RUN-ATTEMPT` (14 дней): admission.json, controller-respon
 server-reports.json, **report.json**, **report.md**, preflight.log, startup.log,
 journal.log. Если admission/SSH недоступны — отдельный FAIL report. Report содержит
 SHA/PR/version, timestamps/CI run, inventory/tests count, validators, backup hashes,
-SQLite, systemd и ручные сценарии. PASS = **готовность к ручной приёмке**;
+SQLite, systemd и ручные сценарии. Live SQLite читается с effective uid/gid
+shpakbot без supplementary groups, чтобы symlink из app-writable data не давал
+доступ к root-only SQLite. Новые backup targets резервируются root эксклюзивно;
+на копиях проверяются integrity/FK/scope до объявления backup успешным. PASS = **готовность к ручной приёмке**;
 manual_acceptance всегда NOT_RUN до реального Telegram протокола пользователя.
 Сырые TEST DB, .env/token, saved configs никогда не возвращаются по SSH/artifacts.
 Feature preflight log не является доверенной командой или разрешением на recovery.

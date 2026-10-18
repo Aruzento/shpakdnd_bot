@@ -52,7 +52,30 @@ def trusted(path, directory=False):
     return path
 
 
-def db_check(path, scope=False):
+@contextmanager
+def as_test_user():
+    """Do not let application-controlled SQLite paths read root-only files."""
+    if os.name != 'posix' or os.geteuid() != 0:
+        yield
+        return
+    import pwd
+    account = pwd.getpwnam('shpakbot')
+    groups, gid = os.getgroups(), os.getegid()
+    try:
+        os.setgroups([])
+        os.setegid(account.pw_gid)
+        os.seteuid(account.pw_uid)
+        yield
+    finally:
+        os.seteuid(0)
+        os.setegid(gid)
+        os.setgroups(groups)
+
+
+def db_check(path, scope=False, as_bot=False):
+    if as_bot:
+        with as_test_user():
+            return db_check(path, scope=scope)
     with closing(sqlite3.connect(Path(path).resolve(strict=True).as_uri() + '?mode=ro', uri=True, timeout=30)) as conn:
         deadline = time.monotonic() + 120
         conn.set_progress_handler(lambda: int(time.monotonic() > deadline), 10000)
@@ -72,13 +95,17 @@ def backup(source, destination):
     destination = Path(destination)
     fd = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     os.close(fd)
-    with closing(sqlite3.connect(Path(source).resolve(strict=True).as_uri() + '?mode=ro', uri=True, timeout=30)) as src:
-        with closing(sqlite3.connect(destination)) as target:
-            deadline = time.monotonic() + 120
-            def progress(status, remaining, total):
-                if time.monotonic() > deadline:
-                    raise Refused('SQLite backup exceeded time budget')
-            src.backup(target, pages=1024, progress=progress)
+    with closing(sqlite3.connect(destination)) as target:
+        # A fresh exclusively reserved target needs no rollback journal. Open its
+        # descriptor before dropping privileges; only this destination FD is granted.
+        target.execute('PRAGMA journal_mode=OFF')
+        with as_test_user():
+            with closing(sqlite3.connect(Path(source).resolve(strict=True).as_uri() + '?mode=ro', uri=True, timeout=30)) as src:
+                deadline = time.monotonic() + 120
+                def progress(status, remaining, total):
+                    if time.monotonic() > deadline:
+                        raise Refused('SQLite backup exceeded time budget')
+                src.backup(target, pages=1024, progress=progress)
     checks = db_check(destination, scope=True)
     with destination.open('rb') as verified:
         digest = hashlib.file_digest(verified, 'sha256').hexdigest()
@@ -290,7 +317,7 @@ class Controller:
                 if run(['systemctl', 'is-enabled', u], check=False).stdout.strip() != 'masked':
                     raise Refused('Legacy TEST watcher/update must be masked during one-time setup')
             database = STATE / 'data/shpakdnd.db'
-            report['sqlite_before'] = db_check(database, scope=True)
+            report['sqlite_before'] = db_check(database, scope=True, as_bot=True)
             run(['git', '--git-dir', BASE / 'repo.git', 'fetch', 'origin',
                  f'+refs/pull/{pr}/head:refs/staging/{request_id}', '+refs/heads/main:refs/heads/main'])
             actual = run(['git', '--git-dir', BASE / 'repo.git', 'rev-parse', f'refs/staging/{request_id}']).stdout.strip()
@@ -373,7 +400,7 @@ class Controller:
             if startup.returncode:
                 raise Refused('TEST startup/migration failed')
             report['startup_checks'] = 'PASS'
-            report['sqlite_after_migration'] = db_check(database, scope=True)
+            report['sqlite_after_migration'] = db_check(database, scope=True, as_bot=True)
             since = str(int(time.time()))
             run(['systemctl', 'start', BOT])
             first = None
@@ -390,7 +417,7 @@ class Controller:
             if re.search(r'traceback|failed to start|start request repeated|main process exited', journal, re.I):
                 raise Refused('TEST journal reports startup failure')
             report['systemd_after'] = {u: unit_state(u) for u in UNITS}
-            report['sqlite_final'] = db_check(database, scope=True)
+            report['sqlite_final'] = db_check(database, scope=True, as_bot=True)
             report['phase'] = 'ready_for_manual_acceptance'
             report['acceptance_ready'] = 'PASS'
         except BaseException as error:
