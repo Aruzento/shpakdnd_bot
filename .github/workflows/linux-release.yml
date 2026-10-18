@@ -52,8 +52,11 @@ jobs:
       - name: Isolate application SQLite paths
         run: |
           python - <<'PY'
+          import csv
+          import io
           import os
           from pathlib import Path
+          from app.topics import TOPIC_SETTINGS
 
           workspace = Path(os.environ['GITHUB_WORKSPACE']).resolve()
           sandbox = Path(os.environ['RUNNER_TEMP']) / 'linux-release'
@@ -97,7 +100,17 @@ jobs:
               sys.meta_path.insert(0, ConfigFinder())
           ''', encoding='utf-8')
           catalog = sandbox / 'shop.csv'
-          catalog.write_text((workspace / 'tests/v1_4_4/shop.example.csv').read_text(encoding='utf-8'), encoding='utf-8')
+          # The small fixture uses synthetic -111 in unit-owned SETTINGS.
+          # CLI validates against repository scopes; retain isolation while
+          # selecting an actually configured ordinary scope for this CLI test.
+          scope = next((chat, thread) for chat, topics in TOPIC_SETTINGS.items()
+                       for thread, settings in topics.items() if settings.get('admin') and not settings.get('mini'))
+          reader = csv.DictReader(io.StringIO((workspace / 'tests/v1_4_4/shop.example.csv').read_text(encoding='utf-8')))
+          with catalog.open('w', encoding='utf-8', newline='') as stream:
+              writer = csv.DictWriter(stream, fieldnames=reader.fieldnames)
+              writer.writeheader()
+              for row in reader:
+                  writer.writerow(dict(row, chat_id=scope[0], thread_id=scope[1]))
           with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as env:
               env.write(f'PYTHONPATH={startup}{os.pathsep}{workspace}\n')
               env.write(f'RELEASE_SANDBOX={sandbox}\n')
@@ -140,12 +153,13 @@ jobs:
         run: python tools/validate_dnd_loot_cli.py
 
       - name: Full real loot catalog, two-scope load and exact reconciliation
+        id: loot_benchmark
         run: |
           python tools/benchmark_dnd_shop.py --output "$RUNNER_TEMP/loot-benchmark.json"
 
       - name: Preserve real catalog benchmark evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: always() && steps.loot_benchmark.outcome != 'skipped'
+        uses: actions/upload-artifact@v6
         with:
           name: loot-benchmark-python-${{ matrix.python-version }}
           path: ${{ runner.temp }}/loot-benchmark.json
