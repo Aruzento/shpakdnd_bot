@@ -120,6 +120,8 @@ def benchmark(master_path):
 def lifecycle_benchmark(master_path):
     """Real original catalog, explicit monetary mappings, distinct modes and stop/restart."""
     from app.dnd_shop.catalog import snapshot
+    from app.dnd_shop.pricing import MASTER_MONEY
+    from app.dnd_shop.money import exact_text
     settings = {-991145: {0: {'admin': '@benchmark'}, 2: {'admin': '@benchmark'}}}
     with tempfile.TemporaryDirectory(prefix='dnd-control-benchmark-') as folder:
         temp = Path(folder)
@@ -131,8 +133,12 @@ def lifecycle_benchmark(master_path):
         mapping.write_bytes(csv_bytes(MAP_COLUMNS, [dict(code=k, name=v) for k, v in codes.items()]))
         with patch('app.db.dnd_items.TOPIC_SETTINGS', settings):
             for thread in (0, 2):
-                for name, value in (('Золотая монета', '1'), ('Серебряная монета', '0.1'), ('Медная монета', '0.01')):
-                    create_currency(-991145, thread, name, 1, value, is_base=value=='1', db_path=db)
+                base_id = create_currency(-991145, thread, 'Золотая монета', 1, '1', is_base=True, db_path=db)
+                for name, (unit, quantity) in MASTER_MONEY.items():
+                    if name == 'Золотая монета':
+                        continue
+                    value = Fraction({'Медная монета': '0.01', 'Серебряная монета': '0.1', 'Золотая монета': '1'}[unit]) * quantity
+                    create_currency(-991145, thread, name, 1, exact_text(value), db_path=db)
                 with closing(sqlite3.connect(db)) as conn, conn:
                     unit_codes = dict(conn.execute('SELECT name,code FROM dnd_items WHERE chat_id=-991145 AND thread_id=?', (thread,)))
                     conn.execute('INSERT INTO characters VALUES(-991145,?,?,?)', (thread, '@benchmark', 'Benchmark'))
@@ -144,7 +150,7 @@ def lifecycle_benchmark(master_path):
             start = time.perf_counter()
             result = shop.create((991145, 'benchmark', -991145, thread), mode)
             timings['create_' + mode + '_s'] = time.perf_counter() - start
-            assert result['registered'] == 4447 and result['buying'] == 0
+            assert result['registered'] == 4435 and result['buying'] == 0
         second = (991145, 'benchmark', -991145, 2)
         with closing(sqlite3.connect(db)) as conn, conn:
             # Explicit inventory workload seed using original registered items.
@@ -167,11 +173,11 @@ def lifecycle_benchmark(master_path):
         recreated.create(second, 'b')
         with closing(sqlite3.connect(db)) as conn:
             assert conn.execute('SELECT count(*) FROM dnd_shop_skus').fetchone()[0] == 8900
-            assert conn.execute('SELECT count(*) FROM dnd_items WHERE category="item"').fetchone()[0] == 8894
+            assert conn.execute('SELECT count(*) FROM dnd_items WHERE category="item"').fetchone()[0] == 8870
             reconciliation = audit(conn)
         return dict(**timings, scopes=2, runtime_bytes=runtime.stat().st_size,
                     price_short_sword_b=str(snapshot(runtime).by_key[(-991145, 2, next(k for k,v in codes.items() if v=='Короткий меч'))].price),
-                    exact_credit=sold['credit_added'], inventory_workload=4447, reconciliation=reconciliation, errors=0)
+                    exact_credit=sold['credit_added'], inventory_workload=4435, reconciliation=reconciliation, errors=0)
 
 
 def main():

@@ -455,3 +455,23 @@ class ControlTests(unittest.TestCase):
             self.assertEqual(conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall(), before)
         schema.init_db()
         self.assert_clean()
+
+    def test_explicit_loose_coin_bundles_require_registered_quantity_consistency(self):
+        with self.master.open('a', encoding='utf-8', newline='') as stream:
+            csv.writer(stream, delimiter=';', lineterminator='\n').writerow(
+                ['10 медных монет','нет','Денежная позиция',10,'обычный','Деньги и ценности'])
+        self.codes = builder.index(builder.read_master(self.master), previous=self.codes)
+        self.mapping.write_bytes(builder.csv_bytes(builder.MAP_COLUMNS, [dict(code=k,name=v) for k,v in self.codes.items()]))
+        before = self.sql('SELECT * FROM dnd_items')
+        with self.assertRaisesRegex(CatalogError, 'все денежные единицы'):
+            self.shop.create(self.owner, 'm')
+        self.assertEqual(self.sql('SELECT * FROM dnd_items'), before)
+        bundle = self.currency('Медная связка', '0.2')
+        code = self.sql('SELECT code FROM dnd_items WHERE id=?', (bundle,))[0][0]
+        self.settings[-111][0]['shop_currency_units']['master']['10 медных монет'] = code
+        with self.assertRaisesRegex(CatalogError, 'количеству'):
+            self.shop.create(self.owner, 'b')
+        self.sql("UPDATE dnd_currencies SET base_value='0.1' WHERE item_id=?", (bundle,))
+        self.shop.create(self.owner, 'm')
+        self.assertEqual(self.sql("SELECT id FROM dnd_items WHERE name='10 медных монет'"), [])
+        self.assert_clean()

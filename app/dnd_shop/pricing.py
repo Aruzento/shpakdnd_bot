@@ -6,7 +6,23 @@ from fractions import Fraction
 from app.dnd_shop.catalog import CatalogError
 
 # Explicit original monetary units, not a substring classifier. Coin purses remain items.
-MASTER_MONEY = ('Медная монета', 'Серебряная монета', 'Золотая монета')
+MASTER_MONEY = {
+    'Медная монета': ('Медная монета', 1),
+    '10 медных монет': ('Медная монета', 10),
+    '50 медных монет': ('Медная монета', 50),
+    'Серебряная монета': ('Серебряная монета', 1),
+    '5 серебряных монет': ('Серебряная монета', 5),
+    '10 серебряных монет': ('Серебряная монета', 10),
+    '50 серебряных монет': ('Серебряная монета', 50),
+    'Золотая монета': ('Золотая монета', 1),
+    '2 золотые монеты': ('Золотая монета', 2),
+    '5 золотых монет': ('Золотая монета', 5),
+    '10 золотых монет': ('Золотая монета', 10),
+    '50 золотых монет': ('Золотая монета', 50),
+    '100 золотых монет': ('Золотая монета', 100),
+    '500 золотых монет': ('Золотая монета', 500),
+    '1000 золотых монет': ('Золотая монета', 1000),
+}
 COPPER_FACTOR = Fraction(285, 10000)
 GOLD_FACTOR = Fraction(285, 1000000)
 
@@ -44,6 +60,12 @@ def preflight(shop, conn, scope, mode, master):
         declared[key] = row['id']
     if not required <= declared.keys() or len(set(declared.values())) != len(declared):
         raise CatalogError('Зарегистрируйте все денежные единицы loot.csv и их однозначные соответствия в shop_currency_units.master.')
+    for name, (unit, quantity) in MASTER_MONEY.items():
+        if name.casefold() not in required:
+            continue
+        reference = declared.get(unit.casefold())
+        if not reference or denominations[declared[name.casefold()]] != quantity * denominations[reference]:
+            raise CatalogError('Номинал денежной позиции не соответствует явному количеству: ' + name)
     for item in conn.execute("SELECT * FROM dnd_items WHERE chat_id=? AND thread_id=? AND category='currency'", scope):
         if item['name_key'] in master.by_name and item['id'] not in denominations:
             raise CatalogError('Валюта из каталога не имеет активного номинала: ' + item['name'])
