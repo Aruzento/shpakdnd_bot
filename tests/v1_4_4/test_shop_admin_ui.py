@@ -1,5 +1,6 @@
 """Exercise real topic-admin guard, command filters and worker dispatch."""
 import threading
+import sqlite3
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -81,3 +82,14 @@ class AdminHandlerTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue((await registered.check(self.command(text), bot=bot))[0])
         for text in ('/mini', '/shop', '/inv', '/admcoin', '/stopshopx'):
             self.assertFalse((await registered.check(self.command(text), bot=bot))[0])
+
+    async def test_failed_stop_never_claims_that_the_shop_is_disabled(self):
+        with patch.object(self.shop, 'stop', side_effect=sqlite3.DatabaseError('injected')) as stop:
+            with patch.object(Message, 'answer', new_callable=AsyncMock) as answer, self.assertLogs(ui.logger, 'ERROR'):
+                await ui.shop_admin_handler(self.command('/stopshop'))
+            stop.assert_called_once_with(self.actor)
+            text = answer.call_args.args[0]
+            self.assertIn('Изменение не подтверждено', text)
+            self.assertNotIn('остановлен', text)
+            self.assertNotIn('не включена', text)
+        self.shop.open(*self.actor)  # The failed stop did not change the prior enabled shop.

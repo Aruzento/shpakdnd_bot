@@ -210,4 +210,4 @@ async def shop_admin_handler(message: Message):
         await message.answer(str(error), parse_mode=None)
     except sqlite3.Error:
         logger.exception('Ordinary D&D shop lifecycle database failure')
-        await message.answer('Ошибка базы магазина. Создание не завершено; торговля не включена.')
+        await message.answer('Ошибка базы магазина. Изменение не подтверждено. Проверьте состояние и повторите команду.')
