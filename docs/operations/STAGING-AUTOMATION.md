@@ -208,7 +208,9 @@ Concurrency GitHub и root nonblocking OS lock независимы. RUN-ATTEMPT
 смена target с прежним ключом запрещена. После crash без final report — отказ,
 ручная проверка перед новым run. Новый Actions attempt — новая операция.
 При отказе до stop текущий bot продолжает работать. После stop любой failure
-останавливает TEST stack; code/DB автоматически не возвращаются. SIGKILL/падение
+останавливает TEST stack, включая transient startup unit; code/DB автоматически не возвращаются.
+Startup имеет RuntimeMaxSec/TasksMax/MemoryMax и ограниченный log; при timeout
+не оставляется отдельный migration writer. Runtime bot ограничен CPU/RAM/tasks. SIGKILL/падение
 VM/SSH с неизвестным результатом требуют оператора; отсутствие final report — FAIL.
 
 Artifacts `staging-RUN-ATTEMPT` (14 дней): admission.json, controller-response.json,

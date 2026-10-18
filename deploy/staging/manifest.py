@@ -24,6 +24,7 @@ def manifest(sha):
     return {
         'schema_version': 1, 'sha': sha, 'tree': git('rev-parse', sha + '^{tree}'),
         'test_files': [p for p in files if p.startswith('tests/') and p.endswith('.py')],
+        'ci_only_checks': [['sudo', 'python', 'tests/staging/privileged_sqlite_probe.py']],
         'checks': CHECKS + [
             ['deploy/verify-v142-migration.py', '--source', '<disposable TEST copy>'],
             ['deploy/verify-v142-rollback.py', '--source', '<disposable TEST copy>', '--old-ref', '<previous SHA>'],

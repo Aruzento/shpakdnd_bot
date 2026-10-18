@@ -173,6 +173,15 @@ class PrimitiveTests(unittest.TestCase):
             self.assertNotIn('/var/run/docker.sock', ' '.join(map(str, args)))
             self.assertTrue(all(str(args[i+1]).endswith(',readonly') for i,x in enumerate(args) if x == '--mount'))
 
+    def test_startup_timeout_kills_client_and_transient_unit_is_in_stop_allowlist(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(c.subprocess,'Popen') as started, \
+             patch.object(c.time,'monotonic',side_effect=[0,201]):
+            started.return_value.poll.return_value=None
+            with self.assertRaises(c.Refused):
+                c.run(['systemd-run','fixed-startup'],timeout=200,log_path=Path(tmp)/'raw.log')
+            started.return_value.kill.assert_called_once()
+            self.assertIn(c.STARTUP,c.UNITS)
+
     def test_container_timeout_is_cleaned_up(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(c.subprocess, 'Popen', side_effect=TimeoutError()), patch.object(c, 'run') as runner:
             with self.assertRaises(TimeoutError): c.Controller(None).preflight(Path(tmp), SHA, OLD, 'image')
@@ -364,6 +373,8 @@ class FlowTests(unittest.TestCase):
         self.assertEqual((self.base/'current').resolve(), self.base/'releases/123-1')
         self.assertTrue((self.state/'data/shpakdnd.db').exists())
         self.assertIn('No code rollback', result['recovery'])
+        self.assertIn('systemd_failure',result)
+        self.assertTrue((self.folder/'journal.log').exists())
 
     def test_repeat_request_does_not_redeploy_and_target_change_rejected(self):
         result = self.deploy()

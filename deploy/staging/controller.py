@@ -29,12 +29,33 @@ BUNDLE = Path('/usr/local/lib/shpakdnd-staging')
 BOT = 'shpakdnd-bot.service'
 WATCH = 'shpakdnd-bot-watch.path'
 UPDATE = 'shpakdnd-bot-update.service'
-UNITS = (WATCH, UPDATE, BOT)
+STARTUP = 'shpakdnd-staging-startup.service'
+UNITS = (WATCH, UPDATE, STARTUP, BOT)
 TEST_SCOPE = {(-1003883723333, 2), (-5320347021, 0)}
 MINI_SCOPE = {(-1003883723333, 2)}
 
 
-def run(args, *, check=True, timeout=120):
+def run(args, *, check=True, timeout=120, log_path=None):
+    if log_path is not None:
+        started = time.monotonic()
+        with Path(log_path).open('xb') as log:
+            process = subprocess.Popen([str(a) for a in args], stdin=subprocess.DEVNULL,
+                                       stdout=log, stderr=subprocess.STDOUT,
+                                       env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'})
+            try:
+                while process.poll() is None:
+                    if time.monotonic() - started > timeout or Path(log_path).stat().st_size > 4_000_000:
+                        raise Refused('Startup exceeded time/log budget')
+                    time.sleep(0.1)
+                code = process.wait(timeout=10)
+                if Path(log_path).stat().st_size > 4_000_000:
+                    raise Refused('Startup exceeded log budget')
+            except BaseException:
+                process.kill(); process.wait(timeout=10)
+                raise
+        if check and code:
+            raise Refused('Startup command failed')
+        return subprocess.CompletedProcess(args, code, stdout=Path(log_path).read_text(encoding='utf-8', errors='replace'), stderr='')
     return subprocess.run([str(a) for a in args], check=check, timeout=timeout,
                           stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'},
@@ -256,8 +277,8 @@ class Controller:
                     process.kill()
                     process.wait(timeout=10)
                     raise
-            if code:
-                raise Refused('Isolated full preflight failed; see preflight.log')
+            if code or log_path.stat().st_size > 20_000_000:
+                raise Refused('Isolated full preflight failed or exceeded log budget; see preflight.log')
             output = log_path.read_text(encoding='utf-8', errors='replace')
             result = json.loads(output.splitlines()[-1])
             if result.get('preflight') != 'PASS' or any(r['exit_code'] for r in result['checks']):
@@ -271,7 +292,7 @@ class Controller:
             raise
 
     def deploy(self, pr, sha, request_id, folder):
-        report = {'schema_version': 1, 'version': 'staging-automation-v1', 'pr': int(pr), 'sha': sha,
+        report = {'schema_version': 1, 'version': 'git:' + sha, 'controller_version': 'staging-automation-v1', 'pr': int(pr), 'sha': sha,
                   'request_id': request_id, 'started_at': datetime.now(timezone.utc).isoformat(), 'acceptance_ready': 'FAIL', 'errors': [],
                   'risks': ['Feature code is untrusted; shared-kernel container isolation is required',
                             'Old-code startup compatibility does not authorize economic rollback',
@@ -390,12 +411,15 @@ class Controller:
                            '--property=ProtectSystem=strict', '--property=ProtectHome=yes',
                            '--property=PrivateTmp=yes', '--property=PrivateDevices=yes',
                            '--property=NoNewPrivileges=yes', '--property=RestrictSUIDSGID=yes',
+                           '--property=RuntimeMaxSec=180', '--property=TimeoutStopSec=20',
+                           '--property=KillMode=control-group', '--property=TasksMax=256',
+                           '--property=MemoryMax=3G', '--property=CPUQuota=200%',
                            '--property=CapabilityBoundingSet=', '--property=ProtectKernelTunables=yes',
                            '--property=ProtectControlGroups=yes', '--property=RestrictAddressFamilies=AF_UNIX',
                            '--property=ReadWritePaths=' + str(STATE / 'data'),
                            '--property=EnvironmentFile=' + str(CONFIG / 'runtime.env'),
                            '--setenv=BOT_TOKEN=123456:offline-staging-check',
-                           BASE / 'venv/bin/python', '-I', '-B', BUNDLE / 'startup.py'], check=False, timeout=180)
+                           BASE / 'venv/bin/python', '-I', '-B', BUNDLE / 'startup.py'], check=False, timeout=200, log_path=folder / 'startup.raw.log')
             (folder / 'startup.log').write_text(redact(startup.stdout + startup.stderr), encoding='utf-8')
             if startup.returncode:
                 raise Refused('TEST startup/migration failed')
@@ -422,7 +446,15 @@ class Controller:
             report['acceptance_ready'] = 'PASS'
         except BaseException as error:
             report['errors'].append(str(error) if isinstance(error, Refused) else type(error).__name__)
+            if report['phase'] == 'preflight':
+                report['preflight'] = {'status': 'FAIL', 'log': 'preflight.log'}
             if stopping:
+                try:
+                    report['systemd_failure'] = {u: unit_state(u) for u in UNITS}
+                    diagnostic = run(['journalctl', '-u', BOT, '-n', '100', '--no-pager', '-o', 'cat'], check=False).stdout
+                    (folder / 'journal.log').write_text(redact(diagnostic), encoding='utf-8')
+                except Exception:
+                    report['errors'].append('Failure diagnostics unavailable')
                 try:
                     stop_stack()
                 except Exception:
