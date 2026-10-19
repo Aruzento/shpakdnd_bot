@@ -23,6 +23,23 @@ def audit(conn):
     for row in pending:
         if hashlib.sha256(row['candidate']).hexdigest() != row['digest'] or not isinstance(json.loads(row['plan']), dict):
             raise ValueError('Publication journal corrupt')
+    migrations = []
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone():
+        migrations = conn.execute('SELECT * FROM dnd_shop_test_migrations').fetchall()
+    for row in migrations:
+        plan = json.loads(row['plan'])
+        serialized = json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
+        if hashlib.sha256(serialized).hexdigest()!=row['plan_sha256'] or plan['id']!=row['id']:
+            raise ValueError('TEST migration plan hash differs')
+        if row['phase']=='prepared':
+            state = conn.execute('SELECT enabled FROM dnd_shop_settings WHERE chat_id=? AND thread_id=?',
+                                 (row['chat_id'],row['thread_id'])).fetchone()
+            if not state or state[0] or not any(json.loads(p['plan']).get('test_migration_id')==row['id'] for p in pending):
+                raise ValueError('Prepared TEST migration must have a stopped store and durable publication')
+        else:
+            result=json.loads(row['result'])
+            if result['id']!=row['id'] or result['plan_sha256']!=row['plan_sha256']:
+                raise ValueError('TEST migration receipt differs')
     balances = defaultdict(Fraction)
     moves = conn.execute('SELECT * FROM dnd_shop_credit_moves ORDER BY id').fetchall()
     for move in moves:
@@ -68,4 +85,5 @@ def audit(conn):
     return dict(trades=len(trades), credit_moves=len(moves), redemptions=len(redemptions),
                 shops=len(settings), pending_publications=len(pending),
                 blocked_master_migrations=sum(r['pricing_mode']=='m' and r['settings_version']==1 for r in settings),
-                errors=0)
+                test_migrations=len(migrations),
+                pending_test_migrations=sum(r['phase']=='prepared' for r in migrations), errors=0)

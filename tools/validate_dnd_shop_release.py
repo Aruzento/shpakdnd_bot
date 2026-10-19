@@ -22,7 +22,8 @@ MAIN_BASE = 'd9856b2038a36490f93a4f5613ba7887698ac7e8'
 SHOP_BASE = '96ff183c08101c9a3bed079c3eeefac95c22cc2b'
 CONTROL_BASE = '6165e5137d34fb0efa7c39bb7fd61fcbad3524a4'
 PRICING_BASE = '07170497d1bd375b5bd9f265112eddc7e024d08c'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE)
+FORMULA_BASE = '6ef5d8bbac29f2b938b9c21448e1466abe676dc1'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE)
 sys.path.insert(0, str(ROOT))
 TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
           'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
@@ -126,7 +127,9 @@ with sqlite3.connect(config.DB_PATH) as conn:
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if 'dnd_shop_settings' in tables:
         item_id = conn.execute("SELECT id FROM dnd_items WHERE name='Fixture gold'").fetchone()[0]
-        conn.execute("INSERT INTO dnd_shop_settings(chat_id,thread_id,enabled,pricing_mode,base_item_id,currency_signature) VALUES(694384548,0,1,'m',?,?)", (item_id,'0'*64))
+        settings_sql = conn.execute("SELECT sql FROM sqlite_master WHERE name='dnd_shop_settings'").fetchone()[0]
+        enabled = int('CHECK(settings_version=1)' in settings_sql)
+        conn.execute("INSERT INTO dnd_shop_settings(chat_id,thread_id,enabled,pricing_mode,base_item_id,currency_signature) VALUES(694384548,0,?,'m',?,?)", (enabled,item_id,'0'*64))
     for name,qty in [('Legacy null','3'),('Legacy real','2.5'),('Legacy text','historical')]:
         conn.execute("INSERT INTO inventory(chat_id,thread_id,username,name,quantity,description) VALUES(694384548,0,'@migration_fixture',?,?,'Historical')",(name,qty))
 """)

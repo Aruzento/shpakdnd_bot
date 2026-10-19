@@ -34,7 +34,7 @@ def main():
         if args.metadata:
             metadata=json.loads(args.metadata.read_text(encoding='utf-8'))
             if (metadata['sha256']!=before or metadata['hostname']!='VM-338333'
-                    or metadata['git_sha']!='07170497d1bd375b5bd9f265112eddc7e024d08c'
+                    or metadata['git_sha'] not in ('07170497d1bd375b5bd9f265112eddc7e024d08c','6ef5d8bbac29f2b938b9c21448e1466abe676dc1')
                     or metadata['master_sha256']!=master.digest or tuple(metadata['scope'])!=scope
                     or hashlib.sha256(metadata['topics_source'].encode('utf-8')).hexdigest()!=metadata['topics_sha256']):
                 raise ValueError('TEST provenance mismatch')

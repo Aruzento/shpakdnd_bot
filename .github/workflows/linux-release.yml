@@ -149,6 +149,9 @@ jobs:
       - name: Verify ordinary D&D migration and old-code compatibility
         run: python tools/validate_dnd_shop_release.py
 
+      - name: TEST option B migration on disposable original-catalog fixture
+        run: python tools/validate_dnd_shop_test_b.py
+
       - name: Real loot CLI index build validate publish on disposable SQLite
         run: python tools/validate_dnd_loot_cli.py
 

@@ -142,3 +142,14 @@ def migrate(conn):
         candidate BLOB NOT NULL CHECK(typeof(candidate)='blob' AND length(candidate)<=33554432),
         digest TEXT NOT NULL CHECK(length(digest)=64),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_test_migrations (
+        id TEXT PRIMARY KEY, chat_id INTEGER NOT NULL CHECK(chat_id=-5320347021),
+        thread_id INTEGER NOT NULL CHECK(thread_id=0),
+        plan_sha256 TEXT NOT NULL CHECK(length(plan_sha256)=64),
+        plan TEXT NOT NULL CHECK(length(plan)<=65536),
+        prepared_fingerprint TEXT NOT NULL CHECK(length(prepared_fingerprint)=64),
+        phase TEXT NOT NULL CHECK(phase IN ('prepared','complete')),
+        result TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT,
+        CHECK((phase='prepared' AND result IS NULL AND completed_at IS NULL)
+           OR (phase='complete' AND result IS NOT NULL AND completed_at IS NOT NULL)))""")

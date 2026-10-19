@@ -27,6 +27,7 @@ def state(conn, scope):
 def enabled(shop, conn, scope):
     shop.scope(*scope)
     row = state(conn, scope)
+    ensure_no_test_migration(conn, scope)
     if row and row['pricing_mode'] == 'm' and row['settings_version'] != 2:
         raise CatalogError('Магазин временно закрыт: прежний -m требует отдельной миграции исходных цен и обязательств.')
     # Pre-control eight-column catalogs already contain base-unit prices.
@@ -40,6 +41,20 @@ def enabled(shop, conn, scope):
         plan = preflight(shop, conn, scope, row['pricing_mode'], read_master(shop.loot_path))
         if any(plan[k] != row[k] for k in PLAN_KEYS):
             raise CatalogError('Настройки валют изменились. Нужна проверка обязательств и отдельная миграция.')
+
+
+def ensure_no_test_migration(conn, scope):
+    if conn.execute("SELECT 1 FROM dnd_shop_test_migrations WHERE chat_id=? AND thread_id=? AND phase='prepared'", scope).fetchone():
+        raise CatalogError('Миграция TEST не завершена. Используйте тот же утверждённый migrator; магазин закрыт.')
+
+
+def publish_locked(shop, data):
+    """Caller owns the exclusive catalog lock and a durable SQLite intent."""
+    if shop.csv_path.exists():
+        previous_data = bounded_bytes(shop.csv_path)
+        if previous_data != data:
+            atomic_bytes(Path(str(shop.csv_path) + '.previous'), previous_data)
+    atomic_bytes(shop.csv_path, data)
 
 
 def stop(shop, actor):
@@ -77,6 +92,7 @@ def create(shop, actor, mode):
     with catalog_lock(shop.csv_path, exclusive=True):
         master = read_master(shop.loot_path)
         with shop.transaction(catalog=False) as (conn, _):
+            ensure_no_test_migration(conn, scope)
             old = state(conn, scope)
             if old and old['pricing_mode'] and old['pricing_mode'] != mode:
                 raise CatalogError('Режим цен отличается от ранее созданного. Требуется отдельная рассмотренная миграция.')
@@ -97,6 +113,8 @@ def create(shop, actor, mode):
                 if (pending['chat_id'], pending['thread_id']) != scope:
                     raise CatalogError('Нужно завершить /shopcreate в теме незавершённой публикации.')
                 previous_plan = json.loads(pending['plan'])
+                if previous_plan.get('test_migration_id'):
+                    raise CatalogError('Публикация относится к миграции TEST; завершите её утверждённым migrator.')
                 if (mode == 'm' and previous_plan.get('pricing_revision') != 2) or any(previous_plan[k] != plan[k] for k in PLAN_KEYS):
                     raise CatalogError('Незавершённая публикация имеет другие настройки; требуется рассмотренное восстановление.')
                 data = bytes(pending['candidate'])
@@ -129,11 +147,7 @@ def create(shop, actor, mode):
                  data, hashlib.sha256(data).hexdigest()))
         # Intent is durable before replacement. A crash here blocks trading and a
         # same-topic /shopcreate revalidates and finishes it; no gifts or counters reset.
-        if shop.csv_path.exists():
-            previous_data = bounded_bytes(shop.csv_path)
-            if previous_data != data:
-                atomic_bytes(Path(str(shop.csv_path) + '.previous'), previous_data)
-        atomic_bytes(shop.csv_path, data)
+        publish_locked(shop, data)
         with shop.transaction(catalog=False) as (conn, _):
             current = conn.execute('SELECT plan FROM dnd_shop_publications WHERE source_path=?', (str(shop.csv_path),)).fetchone()
             if not current or json.loads(current[0]) != plan:
