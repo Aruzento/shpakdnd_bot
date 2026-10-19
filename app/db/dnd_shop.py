@@ -103,13 +103,15 @@ def migrate(conn):
         # No table references settings. Rebuild this CHECK in the caller's single
         # transaction; all economic tables and historical values remain untouched.
         conn.execute('ALTER TABLE dnd_shop_settings RENAME TO dnd_shop_settings_v1')
+    # Unversioned INSERTs from older applications must never claim formula 2.
+    # New control.persist_state explicitly writes 2 only after its preflight.
     conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_settings (
         chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
         pricing_mode TEXT CHECK(pricing_mode IN ('b','m')),
         factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER,
         currency_signature TEXT, currency_units TEXT NOT NULL DEFAULT '{}',
-        settings_version INTEGER NOT NULL DEFAULT 2 CHECK(settings_version IN (1,2)),
+        settings_version INTEGER NOT NULL DEFAULT 1 CHECK(settings_version IN (1,2)),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY(chat_id,thread_id),

@@ -249,6 +249,20 @@ class SourceMoneyTests(unittest.TestCase):
             self.sql('UPDATE dnd_shop_settings SET enabled=1 WHERE thread_id=0')
         self.assert_clean()
 
+    def test_unversioned_old_writer_cannot_claim_new_master_formula(self):
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.row_factory=sqlite3.Row
+            plan=preflight(self.shop,conn,(-111,0),'m',builder.read_master(self.master))
+        with self.assertRaises(sqlite3.IntegrityError):
+            # The old INSERT omits settings_version and claims raw base prices.
+            self.sql('''INSERT INTO dnd_shop_settings(chat_id,thread_id,enabled,pricing_mode,factor,
+                base_item_id,currency_signature,currency_units) VALUES(-111,0,1,'m','1',?,?,?)''',
+                (plan['base_item_id'],plan['currency_signature'],plan['currency_units']))
+        self.shop.create(self.owner,'m')
+        self.assertEqual(self.sql('SELECT enabled,factor,settings_version FROM dnd_shop_settings'),
+                         [(1,'1/10000',2)])
+        self.assert_clean()
+
     def test_previous_b_publication_recovers_with_identical_formula(self):
         self.sql("UPDATE dnd_currencies SET base_value='0.01' WHERE item_id=?",(self.copper,))
         self.sql("UPDATE dnd_currencies SET base_value='0.1' WHERE item_id=?",(self.silver,))
