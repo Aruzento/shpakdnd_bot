@@ -4,6 +4,9 @@ With --source the supplied database is opened read-only and backed up first.
 The original is never opened for writing. No Telegram network / polling.
 """
 import argparse
+import ast
+import hashlib
+import json
 import os
 import sqlite3
 import subprocess
@@ -18,7 +21,8 @@ BASE = '5e4d4495a189380542cc643c5c8d723b9351b36b'
 MAIN_BASE = 'd9856b2038a36490f93a4f5613ba7887698ac7e8'
 SHOP_BASE = '96ff183c08101c9a3bed079c3eeefac95c22cc2b'
 CONTROL_BASE = '6165e5137d34fb0efa7c39bb7fd61fcbad3524a4'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE)
+PRICING_BASE = '07170497d1bd375b5bd9f265112eddc7e024d08c'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE)
 sys.path.insert(0, str(ROOT))
 TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
           'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
@@ -41,7 +45,28 @@ def assert_preserved(path, before):
     with closing(sqlite3.connect(path)) as conn:
         for table, (columns, rows) in before.items():
             projection = ','.join('"' + col + '"' for col in columns)
-            assert conn.execute(f'SELECT {projection} FROM {table} ORDER BY rowid').fetchall() == rows, table
+            actual = conn.execute(f'SELECT {projection} FROM {table} ORDER BY rowid').fetchall()
+            if table == 'dnd_shop_settings':
+                mode_index, enabled_index = columns.index('pricing_mode'), columns.index('enabled')
+                expected = []
+                for row in rows:
+                    row = list(row)
+                    if row[mode_index] == 'm':
+                        row[enabled_index] = 0
+                    expected.append(tuple(row))
+                assert actual == expected, table
+            elif table == 'dnd_shop_sessions':
+                closed = columns.index('closed')
+                master_scopes = set(conn.execute("SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m' AND settings_version=1"))
+                expected = []
+                for row in rows:
+                    row = list(row)
+                    if (row[columns.index('chat_id')], row[columns.index('thread_id')]) in master_scopes:
+                        row[closed] = 1
+                    expected.append(tuple(row))
+                assert actual == expected, table
+            else:
+                assert actual == rows, table
         assert conn.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
 
@@ -54,7 +79,7 @@ def run_old(code, path, script):
     subprocess.run([sys.executable, '-c', prelude + script, str(path)], cwd=code, env=env, check=True)
 
 
-def verify_ref(old_ref, source_path=None):
+def verify_ref(old_ref, source_path=None, topics_source=None):
     print(f'CHECK: shop migration from old_ref={old_ref}', flush=True)
     with tempfile.TemporaryDirectory(prefix='dnd-shop-migration-') as folder:
         temp = Path(folder)
@@ -95,6 +120,11 @@ if Path('app/dnd_shop/service.py').is_file():
     shop.view(session, actor, 'buy')
 import sqlite3
 with sqlite3.connect(config.DB_PATH) as conn:
+    # 071 has factor=1 constrained settings. Freeze economic rows, not new prices.
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'dnd_shop_settings' in tables:
+        item_id = conn.execute("SELECT id FROM dnd_items WHERE name='Fixture gold'").fetchone()[0]
+        conn.execute("INSERT INTO dnd_shop_settings(chat_id,thread_id,enabled,pricing_mode,base_item_id,currency_signature) VALUES(694384548,0,1,'m',?,?)", (item_id,'0'*64))
     for name,qty in [('Legacy null','3'),('Legacy real','2.5'),('Legacy text','historical')]:
         conn.execute("INSERT INTO inventory(chat_id,thread_id,username,name,quantity,description) VALUES(694384548,0,'@migration_fixture',?,?,'Historical')",(name,qty))
 """)
@@ -117,7 +147,9 @@ with sqlite3.connect(config.DB_PATH) as conn:
             with closing(sqlite3.connect(fault)) as conn:
                 schema_before = conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall()
                 has_settings = conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_settings'").fetchone()
-                if not has_settings:
+                settings_sql = conn.execute("SELECT sql FROM sqlite_master WHERE name='dnd_shop_settings'").fetchone()
+                upgrading = settings_sql and 'CHECK(settings_version=1)' in settings_sql[0]
+                if not has_settings or upgrading:
                     conn.set_authorizer(lambda action, name, *rest: sqlite3.SQLITE_DENY
                         if action == sqlite3.SQLITE_CREATE_TABLE and name == 'dnd_shop_settings' else sqlite3.SQLITE_OK)
                     try:
@@ -129,7 +161,10 @@ with sqlite3.connect(config.DB_PATH) as conn:
                         raise AssertionError('Migration fault was not injected')
                     conn.set_authorizer(None)
                     assert conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall() == schema_before
-            assert_preserved(fault, before)
+            assert snapshot(fault) == before
+            with closing(sqlite3.connect(fault)) as conn:
+                assert conn.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
+                assert not conn.execute('PRAGMA foreign_key_check').fetchall()
             with patch.object(schema, 'DB_PATH', copy), patch.object(schema, 'LEGACY_DB_PATH', temp / 'unused.db'):
                 for _ in range(3):
                     schema.init_db()
@@ -137,6 +172,11 @@ with sqlite3.connect(config.DB_PATH) as conn:
             from app.dnd_shop.audit import audit
             with closing(sqlite3.connect(copy)) as conn:
                 print('Journal reconciliation:', audit(conn))
+            if index and topics_source:
+                # Private environment configuration on the archived disposable
+                # checkout only. Using repository worlds on a TEST copy would
+                # itself change mini_worlds during check_bot startup.
+                (old_code / 'app/topics.py').write_text(topics_source, encoding='utf-8')
             run_old(old_code, copy, """
 from app.db.schema import init_db
 init_db()
@@ -153,11 +193,33 @@ check_bot.main()
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='Read-only source, copied with SQLite backup')
+    parser.add_argument('--source-metadata', type=Path, help='Private backup metadata with captured literal TOPIC_SETTINGS')
     parser.add_argument('--old-ref', action='append',
                         help='Repeatable baseline override; default: V1.4.3, V1.4.3.1, and checked V1.4.4 shop baseline')
     args = parser.parse_args()
+    topics_source = None
+    if args.source_metadata:
+        if not args.source:
+            parser.error('--source-metadata requires --source')
+        metadata = json.loads(args.source_metadata.read_text(encoding='utf-8'))
+        topics_source = metadata['topics_source']
+        if (hashlib.sha256(args.source.read_bytes()).hexdigest()!=metadata['sha256']
+                or hashlib.sha256(topics_source.encode('utf-8')).hexdigest()!=metadata['topics_sha256']):
+            parser.error('Snapshot / configuration SHA mismatch')
+        # Permit only literal configuration assignments; never execute arbitrary
+        # remote Python. The archived process receives this validated config.
+        for node in ast.parse(topics_source).body:
+            if not isinstance(node, ast.Assign):
+                parser.error('Captured config needs separate review: non-literal statement')
+            ast.literal_eval(node.value)
+            for target in node.targets:
+                while isinstance(target, ast.Subscript):
+                    ast.literal_eval(target.slice)
+                    target = target.value
+                if not isinstance(target, ast.Name) or target.id!='TOPIC_SETTINGS':
+                    parser.error('Unexpected configuration assignment target')
     for old_ref in dict.fromkeys(args.old_ref or DEFAULT_OLD_REFS):
-        verify_ref(old_ref, args.source)
+        verify_ref(old_ref, args.source, topics_source)
 
 
 if __name__ == '__main__':

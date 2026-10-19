@@ -12,10 +12,11 @@ def audit(conn):
     settings = conn.execute('SELECT * FROM dnd_shop_settings').fetchall()
     for row in settings:
         factor = Fraction(row['factor'])
-        if factor <= 0 or str(factor) != row['factor'] or row['settings_version'] != 1:
+        if factor <= 0 or str(factor) != row['factor'] or row['settings_version'] not in (1, 2):
             raise ValueError('Invalid shop pricing settings')
-        if row['pricing_mode'] == 'm' and factor != 1:
-            raise ValueError('Master price factor must be one')
+        if row['pricing_mode'] == 'm' and row['settings_version'] == 1:
+            if factor != 1 or row['enabled']:
+                raise ValueError('Historical master pricing must remain quarantined')
         if row['pricing_mode'] == 'b' and factor not in (Fraction('0.0285'), Fraction('0.000285')):
             raise ValueError('Universal price formula differs')
     pending = conn.execute('SELECT * FROM dnd_shop_publications').fetchall()
@@ -65,4 +66,6 @@ def audit(conn):
                 (r['quantity'] * Fraction(r['denomination']) for r in coins), Fraction(0)) != Fraction(row['expected']):
             raise ValueError('Redemption conservation failed')
     return dict(trades=len(trades), credit_moves=len(moves), redemptions=len(redemptions),
-                shops=len(settings), pending_publications=len(pending), errors=0)
+                shops=len(settings), pending_publications=len(pending),
+                blocked_master_migrations=sum(r['pricing_mode']=='m' and r['settings_version']==1 for r in settings),
+                errors=0)

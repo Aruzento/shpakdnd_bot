@@ -54,10 +54,17 @@ class ControlTests(unittest.TestCase):
         self.codes = builder.index(builder.read_master(self.master), previous={'sword': 'Меч'})
         self.mapping.write_bytes(builder.csv_bytes(builder.MAP_COLUMNS,
                                                   [dict(code=k, name=v) for k, v in self.codes.items()]))
+        self.sql("UPDATE dnd_currencies SET base_value='0.0001' WHERE item_id=?", (self.copper,))
+        self.sql("UPDATE dnd_currencies SET base_value='0.01' WHERE item_id=?", (self.silver,))
         self.configure(0, self.copper, self.silver, self.gold)
         self.shop = self.new_shop()
         self.owner = (901, 'owner', -111, 0)
         self.other = (902, 'other', -111, 2)
+
+    def universal_scale(self):
+        # Synthetic, empty fixture only: b and m intentionally use different units.
+        self.sql("UPDATE dnd_currencies SET base_value='0.01' WHERE item_id=?", (self.copper,))
+        self.sql("UPDATE dnd_currencies SET base_value='0.1' WHERE item_id=?", (self.silver,))
 
     def new_shop(self):
         return Shop(self.db, self.csv, self.settings, loot_path=self.master,
@@ -92,6 +99,7 @@ class ControlTests(unittest.TestCase):
             audit(conn)
 
     def test_exact_formula_examples_max_and_two_registered_base_units(self):
+        self.universal_scale()
         for raw in (1, 100, 3500, 35000, 350000000):
             self.assertEqual(raw * COPPER_FACTOR, raw * Fraction('0.0285'))
             self.assertEqual(raw * GOLD_FACTOR, raw * Fraction('0.000285'))
@@ -121,6 +129,7 @@ class ControlTests(unittest.TestCase):
         self.assert_clean()
 
     def test_currency_preflight_fails_before_any_import(self):
+        self.universal_scale()
         original = self.settings[-111][0]['shop_currency_units']
         for fault in ('no_base', 'no_config', 'scale', 'missing_coin', 'ordinary_coin'):
             with self.subTest(fault=fault):
@@ -153,7 +162,7 @@ class ControlTests(unittest.TestCase):
         sale_session, sale_token = self.sale_offer()
         with patch('app.dnd_shop.service.payment', side_effect=CalculationLimit('test budget')):
             receipt = self.shop.execute(sale_session, sale_token, self.actor)
-        self.assertEqual(self.balance(), 3)
+        self.assertEqual(self.balance(), Fraction('0.0003'))
         sold = self.sql('SELECT * FROM dnd_shop_skus')
         trades = self.sql('SELECT * FROM dnd_shop_trades')
         self.assertFalse(self.shop.stop(self.owner)['already'])
@@ -167,10 +176,10 @@ class ControlTests(unittest.TestCase):
         self.new_shop().create(self.owner, 'm')
         self.assertEqual(self.sql('SELECT * FROM dnd_shop_skus'), sold)
         self.assertEqual(self.sql('SELECT * FROM dnd_shop_trades'), trades)
-        self.assertEqual(self.balance(), 3)
+        self.assertEqual(self.balance(), Fraction('0.0003'))
         with self.assertRaises(ValueError):
             self.shop.execute(sale_session, sale_token, self.actor)
-        self.assertEqual(receipt['credit_added'], '3')
+        self.assertEqual(Fraction(receipt['credit_added']), Fraction('0.0003'))
         self.assert_clean()
 
     def test_other_topic_mode_offers_stock_preserved_and_stop_is_local(self):
@@ -200,9 +209,9 @@ class ControlTests(unittest.TestCase):
     def test_legacy_history_cannot_be_implicitly_repriced(self):
         self.add('Меч', 1)
         self.shop.execute(*self.sale_offer(), self.actor)
-        with self.assertRaisesRegex(CatalogError, 'Исторический'):
-            self.shop.create(self.owner, 'b')
-        self.shop.create(self.owner, 'm')
+        for mode in ('b', 'm'):
+            with self.assertRaises(CatalogError):
+                self.shop.create(self.owner, mode)
         self.assert_clean()
 
     def test_only_current_topic_admin_and_valid_mode(self):
@@ -286,6 +295,7 @@ class ControlTests(unittest.TestCase):
         self.assert_clean()
 
     def test_verified_limit_exact_credit_but_corrupt_inventory_does_not_create_debt(self):
+        self.universal_scale()
         self.shop.create(self.owner, 'b')
         self.add('Меч', 2)
         session, token = self.sale_offer()
@@ -304,6 +314,7 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(self.balance(), Fraction('0.029925'))
 
     def test_currency_change_blocks_operation_without_credit(self):
+        self.universal_scale()
         self.shop.create(self.owner, 'b')
         self.add('Меч', 1)
         session, token = self.sale_offer()
@@ -315,6 +326,7 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(self.sql('SELECT * FROM dnd_shop_credit'), [])
 
     def test_full_sell_filter_and_impossible_redemption_limit_leave_balance_unchanged(self):
+        self.universal_scale()
         self.shop.create(self.owner, 'b')
         self.add('Меч', 1)
         self.add('Неизвестный', 1)
@@ -342,11 +354,12 @@ class ControlTests(unittest.TestCase):
             self.shop.execute(*self.sale_offer(), self.actor)
         self.add('Золото', 3500)
         result = self.shop.execute(*self.buy_offer(), self.actor)
-        self.assertEqual(Fraction(result['credit_spent']), 3)
+        self.assertEqual(Fraction(result['credit_spent']), Fraction('0.0003'))
         self.assertTrue(result['debit'])
         self.assert_clean()
 
     def test_coin_credit_buy_base_and_exact_audit(self):
+        self.universal_scale()
         self.currency('Микро', '0.000001')
         self.allow()
         self.shop.create(self.owner, 'b')
@@ -370,6 +383,7 @@ class ControlTests(unittest.TestCase):
             self.assertTrue(rollback_check(conn, 'd9856b2038a36490f93a4f5613ba7887698ac7e8', ROOT)['preserve_database'])
 
     def test_rollback_no_shop_preserves_nonzero_credit(self):
+        self.universal_scale()
         self.shop.create(self.owner, 'b')
         self.add('Меч', 1)
         self.shop.execute(*self.sale_offer(), self.actor)
@@ -398,6 +412,7 @@ class ControlTests(unittest.TestCase):
             self.open()
 
     def test_credit_redemption_restart_and_double_confirmation_in_base_mode(self):
+        self.universal_scale()
         self.currency('Микро', '0.000001')
         self.shop.create(self.owner, 'b')
         self.add('Меч', 1)
@@ -457,6 +472,7 @@ class ControlTests(unittest.TestCase):
         self.assert_clean()
 
     def test_explicit_loose_coin_bundles_require_registered_quantity_consistency(self):
+        self.universal_scale()
         with self.master.open('a', encoding='utf-8', newline='') as stream:
             csv.writer(stream, delimiter=';', lineterminator='\n').writerow(
                 ['10 медных монет','нет','Денежная позиция',10,'обычный','Деньги и ценности'])
@@ -471,7 +487,9 @@ class ControlTests(unittest.TestCase):
         self.settings[-111][0]['shop_currency_units']['master']['10 медных монет'] = code
         with self.assertRaisesRegex(CatalogError, 'количеству'):
             self.shop.create(self.owner, 'b')
-        self.sql("UPDATE dnd_currencies SET base_value='0.1' WHERE item_id=?", (bundle,))
+        self.sql("UPDATE dnd_currencies SET base_value='0.0001' WHERE item_id=?", (self.copper,))
+        self.sql("UPDATE dnd_currencies SET base_value='0.01' WHERE item_id=?", (self.silver,))
+        self.sql("UPDATE dnd_currencies SET base_value='0.001' WHERE item_id=?", (bundle,))
         self.shop.create(self.owner, 'm')
         self.assertEqual(self.sql("SELECT id FROM dnd_items WHERE name='10 медных монет'"), [])
         self.assert_clean()
@@ -493,6 +511,7 @@ class ControlTests(unittest.TestCase):
         self.assert_clean()
 
     def test_missing_currency_signature_never_bypasses_preflight_or_creates_credit(self):
+        self.universal_scale()
         self.shop.create(self.owner, 'b')
         self.add('Меч', 1)
         session, token = self.sale_offer()

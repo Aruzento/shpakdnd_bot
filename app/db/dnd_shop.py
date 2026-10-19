@@ -97,13 +97,19 @@ def migrate(conn):
     for statement in extra:
         conn.execute(statement)
 
+    old_settings = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='dnd_shop_settings'").fetchone()
+    needs_upgrade = bool(old_settings and 'CHECK(settings_version=1)' in old_settings[0])
+    if needs_upgrade:
+        # No table references settings. Rebuild this CHECK in the caller's single
+        # transaction; all economic tables and historical values remain untouched.
+        conn.execute('ALTER TABLE dnd_shop_settings RENAME TO dnd_shop_settings_v1')
     conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_settings (
         chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
         pricing_mode TEXT CHECK(pricing_mode IN ('b','m')),
         factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER,
         currency_signature TEXT, currency_units TEXT NOT NULL DEFAULT '{}',
-        settings_version INTEGER NOT NULL DEFAULT 1 CHECK(settings_version=1),
+        settings_version INTEGER NOT NULL DEFAULT 2 CHECK(settings_version IN (1,2)),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY(chat_id,thread_id),
@@ -111,8 +117,21 @@ def migrate(conn):
         CHECK((pricing_mode IS NULL AND enabled=0)
            OR (pricing_mode IS NOT NULL AND base_item_id IS NOT NULL AND currency_signature IS NOT NULL
                AND length(currency_signature)=64
-               AND ((pricing_mode='m' AND factor='1')
+               AND ((pricing_mode='m' AND
+                      ((settings_version=1 AND factor='1' AND enabled=0)
+                       OR (settings_version=2 AND typeof(factor)='text'
+                           AND length(factor) BETWEEN 1 AND 1024
+                           AND factor!='0' AND factor NOT GLOB '*[^0-9/]*')))
                  OR (pricing_mode='b' AND factor IN ('57/2000','57/200000'))))))""")
+    if needs_upgrade:
+        conn.execute("""INSERT INTO dnd_shop_settings
+            SELECT chat_id,thread_id,CASE WHEN pricing_mode='m' THEN 0 ELSE enabled END,
+                pricing_mode,factor,base_item_id,currency_signature,currency_units,
+                settings_version,created_at,updated_at FROM dnd_shop_settings_v1""")
+        conn.execute("""UPDATE dnd_shop_sessions SET closed=1
+            WHERE (chat_id,thread_id) IN
+              (SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m')""")
+        conn.execute('DROP TABLE dnd_shop_settings_v1')
     # One durable intent per runtime file; all trading fails closed until it is
     # finished by the same topic administrator. The original tables are untouched.
     conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_publications (

@@ -137,7 +137,10 @@ def lifecycle_benchmark(master_path):
                 for name, (unit, quantity) in MASTER_MONEY.items():
                     if name == 'Золотая монета':
                         continue
-                    value = Fraction({'Медная монета': '0.01', 'Серебряная монета': '0.1', 'Золотая монета': '1'}[unit]) * quantity
+                    scale = ({'Медная монета': '0.0001', 'Серебряная монета': '0.01', 'Золотая монета': '1'}
+                             if thread == 0 else
+                             {'Медная монета': '0.01', 'Серебряная монета': '0.1', 'Золотая монета': '1'})
+                    value = Fraction(scale[unit]) * quantity
                     create_currency(-991145, thread, name, 1, exact_text(value), db_path=db)
                 with closing(sqlite3.connect(db)) as conn, conn:
                     unit_codes = dict(conn.execute('SELECT name,code FROM dnd_items WHERE chat_id=-991145 AND thread_id=?', (thread,)))
@@ -151,6 +154,9 @@ def lifecycle_benchmark(master_path):
             result = shop.create((991145, 'benchmark', -991145, thread), mode)
             timings['create_' + mode + '_s'] = time.perf_counter() - start
             assert result['registered'] == 4435 and result['buying'] == 0
+        sword_code = next(k for k,v in codes.items() if v=='Короткий меч')
+        assert snapshot(runtime).by_key[(-991145,0,sword_code)].price == Fraction('3.5')
+        assert snapshot(runtime).by_key[(-991145,2,sword_code)].price == Fraction('9.975')
         second = (991145, 'benchmark', -991145, 2)
         with closing(sqlite3.connect(db)) as conn, conn:
             # Explicit inventory workload seed using original registered items.
@@ -176,6 +182,7 @@ def lifecycle_benchmark(master_path):
             assert conn.execute('SELECT count(*) FROM dnd_items WHERE category="item"').fetchone()[0] == 8870
             reconciliation = audit(conn)
         return dict(**timings, scopes=2, runtime_bytes=runtime.stat().st_size,
+                    price_short_sword_m=str(snapshot(runtime).by_key[(-991145, 0, next(k for k,v in codes.items() if v=='Короткий меч'))].price),
                     price_short_sword_b=str(snapshot(runtime).by_key[(-991145, 2, next(k for k,v in codes.items() if v=='Короткий меч'))].price),
                     exact_credit=sold['credit_added'], inventory_workload=4435, reconciliation=reconciliation, errors=0)
 

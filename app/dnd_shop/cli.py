@@ -72,6 +72,10 @@ def main():
                 if args.output.resolve() == args.target.resolve():
                     parser.error('Build only to a staging file; use publish for runtime.')
                 with closing(sqlite3.connect(args.db.resolve().as_uri() + '?mode=ro', uri=True)) as conn:
+                    blocked = {(chat,thread) for chat,thread in conn.execute(
+                        "SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m' AND settings_version=1")}
+                    if blocked.intersection(args.scope):
+                        raise ValueError('Legacy -m requires a reviewed pricing migration before build.')
                     factors = {(chat, thread): Fraction(value) for chat, thread, value in conn.execute(
                         'SELECT chat_id,thread_id,factor FROM dnd_shop_settings')}
                 data, report = build(read_master(args.loot), read_map(args.map), args.offers,

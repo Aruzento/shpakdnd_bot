@@ -27,7 +27,9 @@ def state(conn, scope):
 def enabled(shop, conn, scope):
     shop.scope(*scope)
     row = state(conn, scope)
-    # Existing pre-control shops keep their behaviour; no migration rewrites data.
+    if row and row['pricing_mode'] == 'm' and row['settings_version'] != 2:
+        raise CatalogError('Магазин временно закрыт: прежний -m требует отдельной миграции исходных цен и обязательств.')
+    # Pre-control eight-column catalogs already contain base-unit prices.
     if row and not row['enabled']:
         raise CatalogError('Магазин временно закрыт.')
     if conn.execute('SELECT 1 FROM dnd_shop_publications WHERE source_path=?', (str(shop.csv_path),)).fetchone():
@@ -61,12 +63,12 @@ def stop(shop, actor):
 
 def persist_state(conn, scope, plan, enabled_value):
     conn.execute('''INSERT INTO dnd_shop_settings
-        (chat_id,thread_id,enabled,pricing_mode,factor,base_item_id,currency_signature,currency_units)
-        VALUES(?,?,?,?,?,?,?,?)
+        (chat_id,thread_id,enabled,pricing_mode,factor,base_item_id,currency_signature,currency_units,settings_version)
+        VALUES(?,?,?,?,?,?,?,?,2)
         ON CONFLICT(chat_id,thread_id) DO UPDATE SET enabled=excluded.enabled,
         pricing_mode=excluded.pricing_mode,factor=excluded.factor,base_item_id=excluded.base_item_id,
         currency_signature=excluded.currency_signature,currency_units=excluded.currency_units,
-        updated_at=CURRENT_TIMESTAMP''', (*scope, int(enabled_value), *(plan[k] for k in PLAN_KEYS)))
+        settings_version=2,updated_at=CURRENT_TIMESTAMP''', (*scope, int(enabled_value), *(plan[k] for k in PLAN_KEYS)))
 
 
 def create(shop, actor, mode):
@@ -75,24 +77,27 @@ def create(shop, actor, mode):
     with catalog_lock(shop.csv_path, exclusive=True):
         master = read_master(shop.loot_path)
         with shop.transaction(catalog=False) as (conn, _):
-            plan = preflight(shop, conn, scope, mode, master)  # before any registry import
             old = state(conn, scope)
             if old and old['pricing_mode'] and old['pricing_mode'] != mode:
                 raise CatalogError('Режим цен отличается от ранее созданного. Требуется отдельная рассмотренная миграция.')
-            if old and old['currency_signature'] and any(old[k] != plan[k] for k in PLAN_KEYS):
-                raise CatalogError('Валютная конфигурация отличается от сохранённой. Требуется отдельная миграция.')
-            if not (old and old['pricing_mode']) and mode != 'm' and (
+            plan = preflight(shop, conn, scope, mode, master)  # before any registry import
+            legacy_master = bool(old and old['pricing_mode'] == 'm' and old['settings_version'] == 1)
+            historical = (
                 conn.execute('SELECT 1 FROM dnd_shop_trades WHERE chat_id=? AND thread_id=? LIMIT 1', scope).fetchone()
                 or conn.execute("SELECT 1 FROM dnd_shop_credit WHERE chat_id=? AND thread_id=? AND balance!='0' LIMIT 1", scope).fetchone()
                 or conn.execute('SELECT 1 FROM dnd_shop_skus WHERE chat_id=? AND thread_id=? AND sold>0 LIMIT 1', scope).fetchone()
-            ):
-                raise CatalogError('Исторический магазин имеет цены мастера и обязательства. Для смены режима нужна миграция.')
+                or conn.execute('SELECT 1 FROM dnd_shop_credit_moves WHERE chat_id=? AND thread_id=? LIMIT 1', scope).fetchone()
+            )
+            if (legacy_master or not (old and old['pricing_mode'])) and historical:
+                raise CatalogError('Исторический магазин требует отдельной рассмотренной миграции цен и обязательств. История и credit сохранены.')
+            if old and not legacy_master and old['currency_signature'] and any(old[k] != plan[k] for k in PLAN_KEYS):
+                raise CatalogError('Валютная конфигурация отличается от сохранённой. Требуется отдельная миграция.')
             pending = conn.execute('SELECT * FROM dnd_shop_publications WHERE source_path=?', (str(shop.csv_path),)).fetchone()
             if pending:
                 if (pending['chat_id'], pending['thread_id']) != scope:
                     raise CatalogError('Нужно завершить /shopcreate в теме незавершённой публикации.')
                 previous_plan = json.loads(pending['plan'])
-                if any(previous_plan[k] != plan[k] for k in PLAN_KEYS):
+                if (mode == 'm' and previous_plan.get('pricing_revision') != 2) or any(previous_plan[k] != plan[k] for k in PLAN_KEYS):
                     raise CatalogError('Незавершённая публикация имеет другие настройки; требуется рассмотренное восстановление.')
                 data = bytes(pending['candidate'])
                 if hashlib.sha256(data).hexdigest() != pending['digest']:

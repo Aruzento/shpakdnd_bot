@@ -70,6 +70,17 @@ def preflight(shop, conn, scope, mode, master):
         if item['name_key'] in master.by_name and item['id'] not in denominations:
             raise CatalogError('Валюта из каталога не имеет активного номинала: ' + item['name'])
     factor = Fraction(1)
+    if mode == 'm':
+        # Original copper, silver and gold are distinct from universal units.
+        # IDs are explicitly declared and their registered nominals prove scale.
+        units = [declared.get(name.casefold()) for name in
+                 ('Медная монета', 'Серебряная монета', 'Золотая монета')]
+        if any(item_id is None for item_id in units):
+            raise CatalogError('Для -m зарегистрируйте и явно сопоставьте исходные медную, серебряную и золотую валюты.')
+        copper_value, silver_value, gold_value = (denominations[item_id] for item_id in units)
+        if silver_value != 100 * copper_value or gold_value != 10000 * copper_value:
+            raise CatalogError('Несовместимые номиналы -m: 1 серебряная = 100 медных, 1 золотая = 10000 медных. Номиналы не изменены; нужна проверка остатков и отдельная миграция.')
+        factor = copper_value
     if mode == 'b':
         if any(not isinstance(declaration.get(key), str) for key in ('universal_copper', 'universal_gold')):
             raise CatalogError('Задайте коды universal_copper и universal_gold.')
@@ -88,7 +99,7 @@ def preflight(shop, conn, scope, mode, master):
     signature = json.dumps(dict(declaration=declaration, currencies=[
         [r['id'], r['code'], r['name_key'], str(denominations[r['id']]), r['is_base']] for r in rows
     ]), ensure_ascii=False, sort_keys=True, separators=(',', ':'))
-    return dict(pricing_mode=mode, factor=str(factor), base_item_id=base['id'],
+    return dict(pricing_revision=2, pricing_mode=mode, factor=str(factor), base_item_id=base['id'],
                 currency_signature=hashlib.sha256(signature.encode()).hexdigest(),
                 currency_units=json.dumps(declared, ensure_ascii=False, sort_keys=True),
                 base_name=base['name'])
