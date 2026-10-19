@@ -120,10 +120,10 @@ jobs:
           PY
 
       - name: Verify privileged SQLite boundary on isolated runner
-        run: sudo -n -- "$(command -v python)" tests/staging/privileged_sqlite_probe.py
+        run: sudo -n -- "$(command -v python)" -B tests/staging/privileged_sqlite_probe.py
 
       - name: Verify effective systemd runtime policy on isolated runner
-        run: sudo -n -- "$(command -v python)" tests/staging/runtime_policy_probe.py
+        run: sudo -n -- "$(command -v python)" -B tests/staging/runtime_policy_probe.py
 
       - name: Full unittest suite
         # Full discover -s tests -q, with explicit failure on unexplained skips.
