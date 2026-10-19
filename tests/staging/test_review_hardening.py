@@ -58,6 +58,19 @@ class RuntimePolicyTests(unittest.TestCase):
         altered=dict(self.actual,ExecStartEx=self.actual['ExecStartEx'].replace('flags= ;','flags=fully-privileged ;'))
         with self.assertRaises(c.Refused):validate_unit(altered,self.base,self.config,self.state)
 
+    def test_structured_arrays_need_typed_empty_proof_not_unprintable_or_absence(self):
+        from deploy.staging.runtime_policy import STRUCTURED_EMPTY,structured_empty_values,unit_object_path
+        output='\n'.join(signature+' 0' for signature in STRUCTURED_EMPTY.values())
+        self.assertTrue(all(value=='' for value in structured_empty_values(output).values()))
+        malicious=output.replace('a(sasbttttuii) 0','a(sasbttttuii) 1 '+SECRET,1)
+        values=structured_empty_values(malicious)
+        self.assertEqual(values['ExecCondition'],'NONEMPTY_OR_UNSUPPORTED')
+        self.assertNotIn(SECRET,json.dumps(values))
+        with self.assertRaises(c.Refused):structured_empty_values('[unprintable]')
+        self.assertEqual(unit_object_path('shpakdnd-bot.service'),'/org/freedesktop/systemd1/unit/shpakdnd_2dbot_2eservice')
+        altered=dict(self.actual);altered.update(values)
+        with self.assertRaises(c.Refused):validate_unit(altered,self.base,self.config,self.state)
+
     def test_additional_optional_or_production_environment_file_refused(self):
         for value in ('/production/.env (ignore_errors=no)',self.actual['EnvironmentFiles']+' /production/.env (ignore_errors=no)',
                       self.actual['EnvironmentFiles'].replace('ignore_errors=no','ignore_errors=yes')):

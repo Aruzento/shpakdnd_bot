@@ -22,7 +22,7 @@ from gate import GitHub, Refused, verify, sha_value
 from inventory import CHECKS, MANUAL
 from ssh_entry import parse
 from public_report import project
-from runtime_policy import PROPERTIES, validate_unit, validate_config, validate_identity
+from runtime_policy import PROPERTIES, validate_unit, validate_config, validate_identity, STRUCTURED_EMPTY, unit_object_path, structured_empty_values
 from storage_policy import check_space
 
 BASE = Path('/opt/shpakdnd-staging')
@@ -200,7 +200,12 @@ def topics_scope(path):
 
 def unit_state(unit):
     output = run(['systemctl', 'show', '--all', unit, '--property=' + ','.join(sorted(PROPERTIES))]).stdout
-    return dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
+    result = dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
+    if unit.endswith('.service') and result.get('LoadState') == 'loaded':
+        typed = run(['busctl', '--system', 'get-property', 'org.freedesktop.systemd1', unit_object_path(unit),
+                     'org.freedesktop.systemd1.Service', *STRUCTURED_EMPTY]).stdout
+        result.update(structured_empty_values(typed))
+    return result
 
 
 def stop_stack():

@@ -105,3 +105,23 @@ def validate_config(config, settings, manager_environment):
 def validate_identity(uid, gid, groups):
     if not re.fullmatch(r'[1-9][0-9]{0,9}', uid.strip()) or not re.fullmatch(r'[1-9][0-9]{0,9}', gid.strip()) or groups.split() != [gid.strip()]:
         raise Refused('TEST identity must be non-root without supplementary groups')
+
+
+# systemctl omits empty Exec* arrays and renders credential arrays as [unprintable].
+# Require typed D-Bus proof of an empty array, never treat a missing/redacted value as empty.
+STRUCTURED_EMPTY = {name:'a(sasbttttuii)' for name in
+                    ('ExecCondition','ExecStartPre','ExecStartPost','ExecReload','ExecStop','ExecStopPost')}
+STRUCTURED_EMPTY.update(LoadCredential='a(ss)',LoadCredentialEncrypted='a(ss)',
+                        SetCredential='a(say)',SetCredentialEncrypted='a(say)')
+
+
+def unit_object_path(unit):
+    return '/org/freedesktop/systemd1/unit/' + ''.join(chr(b) if chr(b).isascii() and chr(b).isalnum() else '_'+format(b,'02x') for b in unit.encode('utf-8'))
+
+
+def structured_empty_values(output):
+    lines=output.strip().splitlines()
+    if len(lines)!=len(STRUCTURED_EMPTY):
+        raise Refused('Typed systemd property evidence unavailable')
+    return {name: '' if line==signature+' 0' else 'NONEMPTY_OR_UNSUPPORTED'
+            for (name,signature),line in zip(STRUCTURED_EMPTY.items(),lines)}

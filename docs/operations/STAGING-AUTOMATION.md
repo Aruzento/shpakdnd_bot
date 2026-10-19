@@ -265,6 +265,10 @@ RestrictSUIDSGID/AddressFamilies, cgroup/resource/kill policy. Другие Root
 bind mounts, временные mount overrides и автоматические writable directories
 запрещены. Неизвестные/отсутствующие свойства — отказ, а не ослабление policy.
 После настройки нужен daemon-reload; NeedDaemonReload=yes блокирует deploy.
+Пустые Exec*/credential arrays дополнительно сверяются typed D-Bus через
+busctl: только точная сигнатура с нулевой длиной. Отсутствие свойства или
+[unprintable] не считается доказательством пустоты. Нужен systemd/busctl с
+перечисленными свойствами; native CI probe проверяет фактическую сериализацию.
 Файлы .env/runtime.env/topics.py закрепляются hashes: drift до stop или после
 startup прекращает deployment. Frozen startup также проверяет ENV_PATH, BASE_DIR,
 DB paths, offline token, timezone/editorial и TEST topics; после старта — scope БД.
