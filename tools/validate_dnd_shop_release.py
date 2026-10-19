@@ -42,7 +42,7 @@ def snapshot(path):
     return result
 
 
-def assert_preserved(path, before):
+def assert_preserved(path, before, *, upgrading_settings=False):
     with closing(sqlite3.connect(path)) as conn:
         for table, (columns, rows) in before.items():
             projection = ','.join('"' + col + '"' for col in columns)
@@ -58,7 +58,9 @@ def assert_preserved(path, before):
                 assert actual == expected, table
             elif table == 'dnd_shop_sessions':
                 closed = columns.index('closed')
-                master_scopes = set(conn.execute("SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m' AND settings_version=1"))
+                # Only the legacy CHECK rebuild closes sessions. A database
+                # already using formula-aware settings must preserve every row.
+                master_scopes = set(conn.execute("SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m' AND settings_version=1")) if upgrading_settings else set()
                 expected = []
                 for row in rows:
                     row = list(row)
@@ -143,6 +145,9 @@ with sqlite3.connect(config.DB_PATH) as conn:
             with closing(sqlite3.connect(source_path.as_uri() + '?mode=ro', uri=True)) as source, closing(sqlite3.connect(copy)) as target:
                 source.backup(target)
             before = snapshot(copy)
+            with closing(sqlite3.connect(copy)) as conn:
+                original_settings=conn.execute("SELECT sql FROM sqlite_master WHERE name='dnd_shop_settings'").fetchone()
+                upgrading_settings=bool(original_settings and 'CHECK(settings_version=1)' in original_settings[0])
             from unittest.mock import patch
             from app.db import schema
             from app.db.dnd_shop import migrate
@@ -173,7 +178,7 @@ with sqlite3.connect(config.DB_PATH) as conn:
             with patch.object(schema, 'DB_PATH', copy), patch.object(schema, 'LEGACY_DB_PATH', temp / 'unused.db'):
                 for _ in range(3):
                     schema.init_db()
-            assert_preserved(copy, before)
+            assert_preserved(copy, before, upgrading_settings=upgrading_settings)
             from app.dnd_shop.audit import audit
             with closing(sqlite3.connect(copy)) as conn:
                 print('Journal reconciliation:', audit(conn))
@@ -181,7 +186,7 @@ with sqlite3.connect(config.DB_PATH) as conn:
                 # Same private configuration, current source and migrated COPY.
                 # Never write this configuration into the working checkout.
                 run_old(ROOT, copy, "import check_bot;check_bot.main()", topics_source=topics_source)
-                assert_preserved(copy, before)
+                assert_preserved(copy, before, upgrading_settings=upgrading_settings)
             run_old(old_code, copy, """
 from app.db.schema import init_db
 init_db()
@@ -190,7 +195,7 @@ get_inventory(694384548,0,'@migration_fixture')
 import check_bot
 check_bot.main()
 """, topics_source=topics_source if index else None)
-            assert_preserved(copy, before)
+            assert_preserved(copy, before, upgrading_settings=upgrading_settings)
             print(f'OK: source {index}, historical values preserved, repeated migration, DDL rollback, old startup, integrity and foreign keys')
     print(f'OK: ordinary D&D shop migration checks old_ref={old_ref}', flush=True)
 
