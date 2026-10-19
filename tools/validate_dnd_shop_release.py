@@ -71,11 +71,13 @@ def assert_preserved(path, before):
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
 
 
-def run_old(code, path, script):
+def run_old(code, path, script, topics_source=None):
     env = dict(os.environ, BOT_TOKEN='123456:offline-shop-migration', PYTHONIOENCODING='utf-8')
     env.pop('PYTHONPATH', None)
     prelude = ("import sys;from pathlib import Path;import app.config as config;"
                "config.DB_PATH=Path(sys.argv[1]);config.LEGACY_DB_PATH=config.DB_PATH.with_name('unused.db');")
+    if topics_source:
+        prelude += "import app.topics as scoped_topics;exec(" + repr(topics_source) + ",scoped_topics.__dict__);"
     subprocess.run([sys.executable, '-c', prelude + script, str(path)], cwd=code, env=env, check=True)
 
 
@@ -173,10 +175,10 @@ with sqlite3.connect(config.DB_PATH) as conn:
             with closing(sqlite3.connect(copy)) as conn:
                 print('Journal reconciliation:', audit(conn))
             if index and topics_source:
-                # Private environment configuration on the archived disposable
-                # checkout only. Using repository worlds on a TEST copy would
-                # itself change mini_worlds during check_bot startup.
-                (old_code / 'app/topics.py').write_text(topics_source, encoding='utf-8')
+                # Same private configuration, current source and migrated COPY.
+                # Never write this configuration into the working checkout.
+                run_old(ROOT, copy, "import check_bot;check_bot.main()", topics_source=topics_source)
+                assert_preserved(copy, before)
             run_old(old_code, copy, """
 from app.db.schema import init_db
 init_db()
@@ -184,7 +186,7 @@ from app.db.inventory import get_inventory
 get_inventory(694384548,0,'@migration_fixture')
 import check_bot
 check_bot.main()
-""")
+""", topics_source=topics_source if index else None)
             assert_preserved(copy, before)
             print(f'OK: source {index}, historical values preserved, repeated migration, DDL rollback, old startup, integrity and foreign keys')
     print(f'OK: ordinary D&D shop migration checks old_ref={old_ref}', flush=True)
