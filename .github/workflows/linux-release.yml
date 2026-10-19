@@ -122,14 +122,18 @@ jobs:
       - name: Verify privileged SQLite boundary on isolated runner
         run: sudo -n -- "$(command -v python)" tests/staging/privileged_sqlite_probe.py
 
+      - name: Verify effective systemd runtime policy on isolated runner
+        run: sudo -n -- "$(command -v python)" tests/staging/runtime_policy_probe.py
+
       - name: Full unittest suite
-        run: python -m unittest discover -s tests -q
+        # Full discover -s tests -q, with explicit failure on unexplained skips.
+        run: python deploy/staging/unittest_policy.py
 
       - name: Startup on isolated SQLite
         run: python check_bot.py
 
       - name: Compile Python modules
-        run: python -m compileall -q bot.py app
+        run: python -m compileall -q bot.py app deploy/staging tests/staging
 
       - name: Validate hero abilities
         run: python -m app.mini.combat.hero_abilities.validate

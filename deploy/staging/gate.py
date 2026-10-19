@@ -9,6 +9,7 @@ REPO = 'Aruzento/shpakdnd_bot'
 WORKFLOW = 'linux-release.yml'
 JOBS = {f'Linux release checks (Python {v})' for v in ('3.11', '3.13')}
 STEPS = {
+    'Verify effective systemd runtime policy on isolated runner',
     'Verify privileged SQLite boundary on isolated runner', 'Record exact tested PR HEAD', 'Audit all 109 offline screens', 'Create review release manifest', 'Full unittest suite', 'Startup on isolated SQLite',
     'Compile Python modules', 'Validate hero abilities', 'Validate boss abilities',
     'Validate Tower', 'Validate V1.4.2 catalogs', 'Validate editorial defaults',

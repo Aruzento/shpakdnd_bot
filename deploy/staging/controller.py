@@ -21,6 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gate import GitHub, Refused, verify, sha_value
 from inventory import CHECKS, MANUAL
 from ssh_entry import parse
+from public_report import project
+from runtime_policy import PROPERTIES, validate_unit, validate_config, validate_identity
+from storage_policy import check_space
 
 BASE = Path('/opt/shpakdnd-staging')
 CONFIG = Path('/etc/shpakdnd-staging')
@@ -196,7 +199,7 @@ def topics_scope(path):
 
 
 def unit_state(unit):
-    output = run(['systemctl', 'show', unit, '--property=LoadState,ActiveState,MainPID,NRestarts,User,WorkingDirectory,ExecStart,FragmentPath,DropInPaths,ProtectSystem,ProtectHome,NoNewPrivileges,PrivateTmp,PrivateDevices,ReadWritePaths,SupplementaryGroups,CapabilityBoundingSet,ExecStartPre,ExecStartPost,ExecStop,ExecStopPost,EnvironmentFiles']).stdout
+    output = run(['systemctl', 'show', unit, '--property=' + ','.join(sorted(PROPERTIES))]).stdout
     return dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
 
 
@@ -206,17 +209,6 @@ def stop_stack():
             run(['systemctl', 'stop', unit])
             if unit_state(unit).get('ActiveState') not in ('inactive', 'failed'):
                 raise Refused('TEST unit did not stop')
-
-
-def redact(text):
-    # No runtime stdout/journal enters reports before complete env-value redaction.
-    env = (CONFIG / '.env').read_text(encoding='utf-8')
-    for line in env.splitlines():
-        if '=' in line:
-            value = line.split('=', 1)[1].strip().strip('\'"')
-            if len(value) >= 4:
-                text = text.replace(value, '[REDACTED]')
-    return re.sub(r'\b\d{5,20}:[A-Za-z0-9_-]+', '[REDACTED]', text)
 
 
 def save_report(folder, report):
@@ -279,20 +271,16 @@ class Controller:
                     raise
             if code or log_path.stat().st_size > 20_000_000:
                 raise Refused('Isolated full preflight failed or exceeded log budget; see preflight.log')
-            output = log_path.read_text(encoding='utf-8', errors='replace')
-            result = json.loads(output.splitlines()[-1])
-            if result.get('preflight') != 'PASS' or any(r['exit_code'] for r in result['checks']):
-                raise Refused('Preflight did not supply complete successful evidence')
-            return {'status': 'PASS', 'checks': result['checks'], 'log': 'preflight.log',
-                    'migration_copy': 'PASS', 'old_code_startup_copy': 'PASS', 'network': 'none',
-                    'unittest_results': re.findall(r'Ran [0-9]+ tests? in [^\n]+', output),
-                    'validators': [c for c in CHECKS if 'validate' in ' '.join(c)]}
+            # Feature stdout is private diagnostic data, never a protocol or report source.
+            return {'status': 'PASS', 'checks': CHECKS, 'skip_policy': 'PASS',
+                    'migration_copy': 'PASS', 'old_code_startup_copy': 'PASS', 'network': 'none'}
+
         except BaseException:
             run(['docker', 'rm', '-f', 'shpakdnd-preflight'], check=False)
             raise
 
     def deploy(self, pr, sha, request_id, folder):
-        report = {'schema_version': 1, 'version': 'git:' + sha, 'controller_version': 'staging-automation-v1', 'pr': int(pr), 'sha': sha,
+        report = {'schema_version': 2, 'version': 'git:' + sha, 'controller_version': 'staging-automation-v2', 'pr': int(pr), 'sha': sha,
                   'request_id': request_id, 'started_at': datetime.now(timezone.utc).isoformat(), 'acceptance_ready': 'FAIL', 'errors': [],
                   'risks': ['Feature code is untrusted; shared-kernel container isolation is required',
                             'Old-code startup compatibility does not authorize economic rollback',
@@ -322,22 +310,28 @@ class Controller:
             old = sha_value((current / '.revision').read_text().strip())
             report['previous_sha'] = old
             before = {u: unit_state(u) for u in UNITS}
-            required = {'ProtectSystem': 'strict', 'ProtectHome': 'yes', 'NoNewPrivileges': 'yes',
-                        'PrivateTmp': 'yes', 'PrivateDevices': 'yes',
-                        'ReadWritePaths': str(STATE / 'data'), 'SupplementaryGroups': '', 'CapabilityBoundingSet': '',
-                        'ExecStartPre': '', 'ExecStartPost': '', 'ExecStop': '', 'ExecStopPost': ''}
-            if any(before[BOT].get(key) != value for key, value in required.items()):
-                raise Refused('TEST service hardening differs from required isolation')
             report['systemd_before'] = before
-            if (before[BOT].get('User') != 'shpakbot'
-                    or before[BOT].get('WorkingDirectory') != str(BASE / 'current')
-                    or str(BASE / 'venv/bin/python') + ' bot.py' not in before[BOT].get('ExecStart', '')):
-                raise Refused('Unexpected TEST service identity, path or executable')
+            validate_unit(before[BOT], BASE, CONFIG, STATE)
+            for path in (before[BOT]['FragmentPath'], before[BOT]['DropInPaths']):
+                trusted(Path(path))
+            validate_identity(run(['id', '-u', 'shpakbot']).stdout, run(['id', '-g', 'shpakbot']).stdout,
+                              run(['id', '-G', 'shpakbot']).stdout)
+            manager_env = run(['systemctl', 'show-environment']).stdout
+            configuration = validate_config(CONFIG, settings, manager_env)
+            report['runtime_verified'] = True
+            report['configuration_verified'] = True
+            report['systemd_before'] = before
             # Watcher remains disabled: its legacy updater switches to main and is not a feature deployer.
             for u in (WATCH, UPDATE):
                 if run(['systemctl', 'is-enabled', u], check=False).stdout.strip() != 'masked':
                     raise Refused('Legacy TEST watcher/update must be masked during one-time setup')
             database = STATE / 'data/shpakdnd.db'
+            report['phase'] = 'capacity'
+            docker_root = Path(run(['docker', 'info', '--format', '{{.DockerRootDir}}']).stdout.strip())
+            if not docker_root.is_absolute():
+                raise Refused('Docker storage root unavailable')
+            trusted(docker_root, directory=True)
+            report['capacity'] = check_space(BASE, STATE, docker_root, database)
             report['sqlite_before'] = db_check(database, scope=True, as_bot=True)
             remote = run(['git', '--git-dir', BASE / 'repo.git', 'remote', 'get-url', 'origin']).stdout.strip()
             if remote != 'https://github.com/Aruzento/shpakdnd_bot.git':
@@ -389,6 +383,10 @@ class Controller:
             report['preflight'] = self.preflight(folder, sha, old, image)
             # A final evidence collection closes force-push/rerun races before stopping TEST.
             report['ci'] = self.evidence(pr, sha)
+            validate_unit(unit_state(BOT), BASE, CONFIG, STATE)
+            if validate_config(CONFIG, settings, run(['systemctl', 'show-environment']).stdout) != configuration:
+                raise Refused('TEST configuration changed during preflight')
+            report['capacity'] = check_space(BASE, STATE, docker_root, database)
             report['backup'] = backup(database, folder / 'before.db')
             private = folder / 'config'
             private.mkdir(mode=0o700)
@@ -427,7 +425,7 @@ class Controller:
                            '--property=EnvironmentFile=' + str(CONFIG / 'runtime.env'),
                            '--setenv=BOT_TOKEN=123456:offline-staging-check',
                            BASE / 'venv/bin/python', '-I', '-B', BUNDLE / 'startup.py'], check=False, timeout=200, log_path=folder / 'startup.raw.log')
-            (folder / 'startup.log').write_text(redact(startup.stdout + startup.stderr), encoding='utf-8')
+            (folder / 'startup.log').write_text(startup.stdout + startup.stderr, encoding='utf-8')
             if startup.returncode:
                 raise Refused('TEST startup/migration failed')
             report['startup_checks'] = 'PASS'
@@ -438,15 +436,18 @@ class Controller:
             for _ in range(2):
                 time.sleep(10)
                 state = unit_state(BOT)
+                validate_unit(state, BASE, CONFIG, STATE)
                 if (state.get('ActiveState') != 'active' or int(state.get('MainPID', '0')) <= 0
                         or state.get('NRestarts') != '0'
                         or first and any(state[k] != first[k] for k in ('MainPID', 'NRestarts'))):
                     raise Refused('TEST bot failed PID/restart stability check')
                 first = state
             journal = run(['journalctl', '-u', BOT, '--since=@' + since, '--no-pager', '-o', 'cat']).stdout
-            (folder / 'journal.log').write_text(redact(journal), encoding='utf-8')
+            (folder / 'journal.log').write_text(journal, encoding='utf-8')
             if re.search(r'traceback|failed to start|start request repeated|main process exited', journal, re.I):
                 raise Refused('TEST journal reports startup failure')
+            if validate_config(CONFIG, settings, run(['systemctl', 'show-environment']).stdout) != configuration:
+                raise Refused('TEST configuration changed during startup')
             report['systemd_after'] = {u: unit_state(u) for u in UNITS}
             report['sqlite_final'] = db_check(database, scope=True, as_bot=True)
             report['phase'] = 'ready_for_manual_acceptance'
@@ -459,7 +460,7 @@ class Controller:
                 try:
                     report['systemd_failure'] = {u: unit_state(u) for u in UNITS}
                     diagnostic = run(['journalctl', '-u', BOT, '-n', '100', '--no-pager', '-o', 'cat'], check=False).stdout
-                    (folder / 'journal.log').write_text(redact(diagnostic), encoding='utf-8')
+                    (folder / 'journal.log').write_text(diagnostic, encoding='utf-8')
                 except Exception:
                     report['errors'].append('Failure diagnostics unavailable')
                 try:
@@ -484,16 +485,15 @@ def main(argv=None):
     for item in (BASE, BASE / 'releases', CONFIG, BUNDLE):
         trusted(item, directory=True)
     reports = trusted(STATE / 'reports', directory=True)
+    if os.name == 'posix' and reports.stat().st_mode & 0o077:
+        raise Refused('Private report directory must be root-only')
     folder = reports / args[-1]
-    if args[0] == 'report':
+    if args[0] == 'report-v2':
         trusted(folder, directory=True)
-        # Allowlist files; never expose backup, database snapshot or saved .env.
-        result = {}
-        for name in ('report.json', 'report.md', 'preflight.log', 'startup.log', 'journal.log'):
-            path = folder / name
-            if path.is_file():
-                result[name] = path.read_text(encoding='utf-8')[-4_000_000:]
-        print(json.dumps(result, ensure_ascii=True))
+        if os.name == 'posix' and folder.stat().st_mode & 0o077:
+            raise Refused('Private request directory must be root-only')
+        report = json.loads((folder / 'report.json').read_text(encoding='utf-8'))
+        print(json.dumps(project(report), ensure_ascii=True))
         return 0
     with lock(STATE / 'deploy.lock'):
         if folder.exists():
@@ -513,8 +513,8 @@ def main(argv=None):
                 report = {'pr': int(args[1]), 'sha': args[2], 'acceptance_ready': 'FAIL',
                           'errors': [str(error) if isinstance(error, Refused) else type(error).__name__]}
                 save_report(folder, report)
-        print(json.dumps(report, ensure_ascii=True))
-        return 0 if report['acceptance_ready'] == 'PASS' else 1
+        print(json.dumps(project(report), ensure_ascii=True))
+        return 0 if project(report)['acceptance_ready'] == 'PASS' else 1
 
 
 if __name__ == '__main__':

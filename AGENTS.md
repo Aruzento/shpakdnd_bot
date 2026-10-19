@@ -40,3 +40,15 @@ production bundle требуют отдельного разрешения по�
 compileall, все validators, миграции и rollback на копиях, git diff --check.
 Сохранять пользовательские незакоммиченные изменения; инфраструктуру готовить
 в отдельной ветке от актуального origin/main.
+
+
+## Конфиденциальность и обязательные staging gates
+
+В Actions передавать только public schema v2. Raw preflight/startup/journal,
+transport responses, Environment/ExecStart и строки SQLite оставлять root-only
+на TEST; regex-redaction не разрешает публикацию. Не разбирать stdout feature
+как протокол и не скачивать приватные логи через report command.
+Требовать точную runtime/config policy, pinned TEST bot ID, ноль Linux skips,
+явный Windows baseline и capacity checks до подготовки и перед stop. При
+нехватке места — операторский retention review без автоматического удаления
+backups. Не ослаблять эти gates ради прохождения CI/deployment.

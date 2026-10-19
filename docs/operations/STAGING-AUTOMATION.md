@@ -21,7 +21,7 @@
    по политике владельца и запрет обхода администраторами, если тариф позволяет.
    Сам `if` в YAML не заменяет environment branch protection: feature workflow
    может менять свой YAML. Не выдавать secrets любым веткам/tags.
-4. Отдельный ключ SSH позволяет только `deploy PR SHA RUN-ATTEMPT` и `report RUN-ATTEMPT`.
+4. Отдельный ключ SSH позволяет только `deploy-v2 PR SHA RUN-ATTEMPT` и `report-v2 RUN-ATTEMPT`.
    Нет shell/SFTP/SCP/PTY/forwarding, произвольного sudo, пользовательского rc,
    env forwarding. Root-owned bundle вне checkout обновляется только оператором.
 5. Controller повторно проверяет GitHub независимо от runner собственным read-only
@@ -78,9 +78,12 @@ Bash/util-linux в preflight image, SQLite в Python, ≥4 GiB RAM/tmpfs и св
    ```
 
    Если TEST использует custom emoji, сохранить его проверенное значение.
-   Иные необходимые внешние настройки сначала инвентаризировать, перенести в
-   root-owned config и явно разрешить; нет универсального wildcard copying
-   production paths. Отсутствующая конфигурация блокирует активацию.
+   Разрешены ровно три переменные выше. `.env` допускает только BOT_TOKEN и
+   необязательный BOT_TIMEZONE=Europe/Moscow. Другие переменные, дубликаты,
+   interpolation и дополнительные EnvironmentFile запрещены; расширение policy
+   требует отдельного review. В settings.json задать test_bot_id — заранее
+   проверенный числовой ID именно TEST-бота (пример 0 намеренно не проходит gate).
+   Токен должен соответствовать этому ID; его значение не выводить. Отсутствующая конфигурация блокирует активацию.
 4. Подготовить root-owned virtualenv `/opt/shpakdnd-staging/venv` с текущими
    проверенными requirements и теми же Python/dependency versions, что preflight
    image. Не symlink-ить app-writable старый .venv. Установку dependencies делает
@@ -138,7 +141,9 @@ Bash/util-linux в preflight image, SQLite в Python, ≥4 GiB RAM/tmpfs и св
 
    `current` и родитель root-owned; shpakbot не может их менять. Старый checkout
    `/opt/shpakdnd-bot` и старые backups сохранить для ручного recovery.
-9. Установить `test-service.conf` как drop-in существующего TEST bot service,
+9. Установить `test-service.conf` строго как
+   `/etc/systemd/system/shpakdnd-bot.service.d/90-staging.conf` для root-owned
+   `/etc/systemd/system/shpakdnd-bot.service`,
    проверить systemd-analyze verify. Очистить конфликтующие drop-ins/Environment/
    ExecStartPre/Post, supplementary groups, writable paths/privileged hooks после
    ручного review: никаких feature shell hooks с root. Unit/drop-ins root-owned.
@@ -216,23 +221,96 @@ Startup имеет RuntimeMaxSec/TasksMax/MemoryMax и ограниченный 
 не оставляется отдельный migration writer. Runtime bot ограничен CPU/RAM/tasks. SIGKILL/падение
 VM/SSH с неизвестным результатом требуют оператора; отсутствие final report — FAIL.
 
-Artifacts `staging-RUN-ATTEMPT` (14 дней): admission.json, controller-response.json,
-server-reports.json, **report.json**, **report.md**, preflight.log, startup.log,
-journal.log. Если admission/SSH недоступны — отдельный FAIL report. Report содержит
-SHA/PR/version, timestamps/CI run, inventory/tests count, validators, backup hashes,
-SQLite, systemd и ручные сценарии. Live SQLite читается с effective uid/gid
-shpakbot без supplementary groups, чтобы symlink из app-writable data не давал
-доступ к root-only SQLite. Новые backup targets резервируются root эксклюзивно;
-на копиях проверяются integrity/FK/scope до объявления backup успешным. PASS = **готовность к ручной приёмке**;
-manual_acceptance всегда NOT_RUN до реального Telegram протокола пользователя.
-Сырые TEST DB, .env/token, saved configs никогда не возвращаются по SSH/artifacts.
-Feature preflight log не является доверенной командой или разрешением на recovery.
+Artifacts `staging-RUN-ATTEMPT` (14 дней): только **admission.json**, **report.json**
+и **report.md**. Ни сырые transport responses, ни preflight/startup/journal logs
+не включаются в upload. SSH deploy-v2/report-v2 возвращают только public schema v2:
+проверенные SHA/PR/request ID, enum phase/status, CI run ID, фиксированный inventory,
+backup fingerprints, SQLite flags, ограниченные PID/restart counters и capacity
+metadata. Произвольные строки ошибок, аргументы, Environment, EnvironmentFiles,
+journal и feature stdout никогда не копируются в публичный отчёт. Markdown создаётся
+на runner заново из отфильтрованного JSON, полученный Markdown не используется.
+Версионированные SSH verbs не принимаются старым bundle: соединение с ним
+не запрашивает raw report даже временно. Старые deploy/report verbs новым
+bundle отвергаются. Старая schema v1 и неполные ответы дают FAIL; повтор старого request не запускает
+deployment заново и не становится разрешением обойти новые проверки.
 
-Root evidence/backups: `/var/lib/shpakdnd-staging/reports/RUN-ATTEMPT`, 0700;
-preflight input с TEST данными монтируется только в одноразовый offline container.
-Серверный retention/диск контролирует оператор; удаление только проверенных старых
-report/release директорий после сохранения нужных backups и проверки current,
-под тем же lock. Автоматического удаления/DB восстановления нет.
+Полные **preflight.log**, **startup.raw.log**, **startup.log**, **journal.log** и
+внутренний report.json/report.md остаются только в root-owned 0700 каталоге
+`/var/lib/shpakdnd-staging/reports/RUN-ATTEMPT` с 0600 файлами. Это приватные данные:
+они могут содержать строки TEST SQLite, аргументы и конфигурацию. Не прикладывать
+их к PR/Actions/чату, не скачивать через forced SSH command. Regex-redaction не
+является границей конфиденциальности и для экспорта не применяется. Контроллер
+вообще не разбирает feature stdout как протокол; результат preflight определяется
+exit status frozen driver, который последовательно исполняет фиксированный набор.
+
+Если admission/SSH недоступны — отдельный ограниченный FAIL report. PASS означает
+**готовность к ручной приёмке**; manual_acceptance остаётся NOT_RUN до Telegram
+протокола пользователя. Подробности отказа разбирает оператор локально на TEST.
+Live SQLite читается с effective uid/gid shpakbot без supplementary groups;
+backup targets резервируются root эксклюзивно и проходят integrity/FK/scope.
+
+## Эффективный runtime и пропуски тестов
+
+Проверяется не подстрока ExecStart, а единственный точный executable/argv и пустые
+privilege flags ExecStartEx. Shell wrappers, дополнительные аргументы, второй
+command и +/!/ignore-failure flags запрещены. User/Group ровно shpakbot, uid/gid
+ненулевые и без supplementary groups, WorkingDirectory и ReadWritePaths точные.
+Environment/PassEnvironment/UnsetEnvironment/PAM/credentials/hooks пустые; только
+один обязательный runtime.env. Manager environment допускает лишь проверенные
+locale/PATH/TERM; BOT_TOKEN/PYTHONPATH/LD_PRELOAD и другие overrides блокируются.
+
+Контроллер сверяет root-owned FragmentPath/единственный DropInPaths,
+ProtectSystem/Home/Kernel*, PrivateTmp/Devices, NoNewPrivileges, capability sets,
+RestrictSUIDSGID/AddressFamilies, cgroup/resource/kill policy. Другие RootImage,
+bind mounts, временные mount overrides и автоматические writable directories
+запрещены. Неизвестные/отсутствующие свойства — отказ, а не ослабление policy.
+После настройки нужен daemon-reload; NeedDaemonReload=yes блокирует deploy.
+Файлы .env/runtime.env/topics.py закрепляются hashes: drift до stop или после
+startup прекращает deployment. Frozen startup также проверяет ENV_PATH, BASE_DIR,
+DB paths, offline token, timezone/editorial и TEST topics; после старта — scope БД.
+
+`unittest_policy.py` исполняет весь discover -s tests -q и запрещает пустой suite,
+новые expected failures и новые/необъяснённые skips. На Linux allowlist пуст:
+**ноль skips**. Для разработки на Windows сохранены ровно 19 прежних PTY/POSIX
+пропусков с точными test ID и reason; новая причина/ID не разрешены. Изменение
+allowlist требует review, её нельзя автоматически учить на выводе feature tests.
+На TEST применяется frozen runner из /trusted, а не версия PR. В Linux CI это тот
+же full suite с явным skip gate; остальные validators/migration checks сохранены.
+Native systemd probe создаёт только временный уникальный unit на одноразовом
+GitHub-hosted runner и удаляет его после проверки. TEST/production он не вызывает.
+
+## Свободное место и сохранение старых данных
+
+До fetch/нового release/snapshot/Docker preflight и повторно перед backup/stop
+проверяется свободное место **каждой** задействованной файловой системы. Объёмы
+одного device суммируются, его free space не считается несколько раз:
+
+- BASE: 1 GiB на временный release и Git preparation;
+- STATE: три размера SQLite с учётом WAL/SHM (не менее 1 MiB каждый) + 128 MiB на logs/config/reports;
+- DockerRootDir из docker info: 4 GiB рабочего headroom;
+- дополнительно неприкосновенный floor 1 GiB на каждом device.
+
+Docker /tmp остаётся ограниченным 4 GiB tmpfs: его RAM нужно подготовить отдельно,
+как и memory limits. Disk check не является физическим резервированием и не
+защищает от постороннего writer между проверками: оператор исключает внешние
+bulk copies/GC и наблюдает за диском. Нехватка места до stop сохраняет работающий
+TEST; ошибка записи после stop сохраняет существующие backups/DB и оставляет
+стек остановленным для оператора. Автоматической очистки или восстановления нет.
+
+Локальный read-only inventory под тем же nonblocking deploy.lock:
+
+```bash
+sudo /usr/bin/python3 -I /usr/local/lib/shpakdnd-staging/storage_policy.py
+```
+
+Он выводит пути/размер/возраст только оператору, помечает current/KEEP и сохраняет
+все entries до явного review. `KEEP` — root-owned marker в нужном report/release,
+например для неразобранного FAIL или кандидата rollback. Инвентарь не передаётся
+в Actions и не является SSH operation. При capacity refusal: оператор сверяет
+inventory/df, current и pending recovery, выбирает внешнее защищённое хранилище,
+копирует/проверяет checksum и фиксирует ссылку на архив. Только затем отдельно
+решает, что можно удалить локально. Ни возраст, ни успешный следующий run не дают
+автоматического разрешения удалять potentially needed backup, current или KEEP.
 
 ## Recovery и production readiness
 

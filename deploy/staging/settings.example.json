@@ -1,3 +1,4 @@
 {
-  "preflight_image": "sha256:REPLACE_WITH_ADMIN_VERIFIED_64_HEX_IMAGE_ID"
+  "preflight_image": "sha256:REPLACE_WITH_ADMIN_VERIFIED_64_HEX_IMAGE_ID",
+  "test_bot_id": 0
 }

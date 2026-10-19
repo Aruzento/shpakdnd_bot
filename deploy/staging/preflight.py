@@ -30,6 +30,8 @@ def main():
         ['python', 'deploy/verify-v142-rollback.py', '--source', '/input/source.db', '--old-ref', old],
         ['git', 'diff', '--check'], ['git', 'diff', '--check', old, sha],
     ]
+    # The skip gate comes from the frozen bundle, never the feature checkout.
+    commands[0] = ['python', '-I', '/trusted/unittest_policy.py']
     for command in commands:
         print('\nCHECK ' + json.dumps(command), flush=True)
         completed = subprocess.run(command, env=env)

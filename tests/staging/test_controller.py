@@ -16,6 +16,8 @@ from types import SimpleNamespace
 from deploy.staging import controller as c
 from deploy.staging.ssh_entry import parse
 from deploy.staging.report import collect
+from deploy.staging.runtime_policy import expected
+from deploy.staging.public_report import project
 
 SHA = 'a' * 40
 OLD = 'b' * 40
@@ -64,7 +66,7 @@ class PrimitiveTests(unittest.TestCase):
 
     def test_forced_ssh_entry_never_passes_client_environment_or_shell(self):
         from deploy.staging import ssh_entry
-        with patch.dict(os.environ,{'SSH_ORIGINAL_COMMAND':f'deploy 12 {SHA} 123-1','PYTHONPATH':'evil','LD_PRELOAD':'evil'}):
+        with patch.dict(os.environ,{'SSH_ORIGINAL_COMMAND':f'deploy-v2 12 {SHA} 123-1','PYTHONPATH':'evil','LD_PRELOAD':'evil'}):
             with patch.object(ssh_entry.subprocess,'call',return_value=0) as called:
                 self.assertEqual(ssh_entry.main(),0)
                 args=called.call_args.args[0]
@@ -74,12 +76,12 @@ class PrimitiveTests(unittest.TestCase):
                 self.assertFalse(called.call_args.kwargs.get('shell',False))
 
     def test_allowlisted_commands_only(self):
-        self.assertEqual(parse(f'deploy 12 {SHA} 123-1'), ('deploy', '12', SHA, '123-1'))
-        self.assertEqual(parse('report 123-2'), ('report', '123-2'))
-        for command in ('bash', 'sudo id', 'report ../etc/passwd', 'report 123-1;id',
-                        'report 123-1\n', f'deploy 12 {SHA} 123-1 extra',
-                        f'deploy 0 {SHA} 123-1', f'deploy 12 {SHA[:7]} 123-1',
-                        f'deploy 12 {SHA} $(id)', 'scp -t /tmp/x', 'sftp', ''):
+        self.assertEqual(parse(f'deploy-v2 12 {SHA} 123-1'), ('deploy-v2', '12', SHA, '123-1'))
+        self.assertEqual(parse('report-v2 123-2'), ('report-v2', '123-2'))
+        for command in ('bash', 'sudo id', 'report-v2 ../etc/passwd', 'report-v2 123-1;id',
+                        'report-v2 123-1\n', f'deploy-v2 12 {SHA} 123-1 extra',
+                        f'deploy-v2 0 {SHA} 123-1', f'deploy-v2 12 {SHA[:7]} 123-1',
+                        f'deploy-v2 12 {SHA} $(id)', 'scp -t /tmp/x', 'sftp', ''):
             with self.subTest(command=command), self.assertRaises(ValueError): parse(command)
 
     def test_safe_archive_rejects_traversal_server_state_links(self):
@@ -142,7 +144,7 @@ class PrimitiveTests(unittest.TestCase):
             result = collect(root)
             self.assertEqual(result['acceptance_ready'], 'FAIL')
             self.assertFalse((root.parent / 'escape').exists())
-            self.assertEqual((root / 'preflight.log').read_text(), 'evidence')
+            self.assertFalse((root / 'preflight.log').exists())
 
     def test_report_for_another_sha_cannot_be_accepted(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ,{'PR':'12','SHA':SHA}):
@@ -215,7 +217,7 @@ except Refused:
             with c.lock(path): pass
 
 
-class FlowTests(unittest.TestCase):
+class ControllerFixture:
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -223,6 +225,7 @@ class FlowTests(unittest.TestCase):
         self.base, self.config, self.state = root/'base', root/'config', root/'state'
         for p in (self.base/'releases', self.config/'editorial', self.state/'data', self.state/'reports'):
             p.mkdir(parents=True)
+        (self.state/'reports').chmod(0o700)
         self.old = self.base/'releases'/'old'; self.old.mkdir(); (self.old/'.revision').write_text(OLD)
         if os.name == 'nt':
             # Windows cannot create symlinks without OS privileges. Exercise real directory
@@ -248,13 +251,13 @@ class FlowTests(unittest.TestCase):
                 patcher = patch.object(Path, method, replacement)
                 patcher.start(); self.addCleanup(patcher.stop)
         (self.base/'current').symlink_to(self.old, target_is_directory=True)
-        self.folder = self.state/'reports'/'123-1'; self.folder.mkdir()
+        self.folder = self.state/'reports'/'123-1'; self.folder.mkdir(mode=0o700)
         database(self.state/'data/shpakdnd.db')
         (self.state/'data/timers.db').touch()
         (self.config/'topics.py').write_text('TOPIC_SETTINGS={-1003883723333:{2:{"mini":True}},-5320347021:{0:{}}}')
         for name, text in (('.env', 'BOT_TOKEN=987654:never-report-this-token'),
-                           ('settings.json', json.dumps({'preflight_image':'image@sha256:'+'c'*64})),
-                           ('requirements.txt', 'approved'), ('pip-freeze.txt', 'approved==1'), ('runtime.env', 'MINI_EDITORIAL_DIR=/test')):
+                           ('settings.json', json.dumps({'preflight_image':'image@sha256:'+'c'*64, 'test_bot_id':987654})),
+                           ('requirements.txt', 'approved'), ('pip-freeze.txt', 'approved==1'), ('runtime.env', 'MINI_EDITORIAL_DIR='+(self.config/'editorial').as_posix()+'\nMINI_CUSTOM_EMOJI_ENABLED=false\nPYTHONDONTWRITEBYTECODE=1')):
             (self.config/name).write_text(text)
         self.trace = []; self.active = False
         self.health_bad = False
@@ -263,30 +266,31 @@ class FlowTests(unittest.TestCase):
         for target, kwargs in [('trusted', {'side_effect': lambda p, **kw: Path(p)}),
                                ('run', {'side_effect': self.fake_run}),
                                ('unit_state', {'side_effect': self.unit}),
-                               ('stop_stack', {'side_effect': self.stop})]:
+                               ('stop_stack', {'side_effect': self.stop}),
+                               ('check_space', {'return_value': {'status':'PASS','required_mib':100,'free_mib':1000}})]:
             patcher = patch.object(c, target, **kwargs); patcher.start(); self.addCleanup(patcher.stop)
         for target, value in [('socket.gethostname', 'VM-338333'), ('time.sleep', None)]:
             patcher = patch('deploy.staging.controller.' + target, return_value=value); patcher.start(); self.addCleanup(patcher.stop)
         patcher = patch.object(c.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=archive({'requirements.txt':b'approved', 'app/topics.py':b'production'}), stderr=b''))
         patcher.start(); self.addCleanup(patcher.stop)
         self.controller = c.Controller(None)
-        self.controller.evidence = lambda *args: {'ci_run': 42}
-        self.controller.preflight = lambda *args: self.trace.append('preflight') or {'status':'PASS'}
+        self.controller.evidence = lambda *args: {'ci_run': 42,'ci_attempt':1}
+        self.controller.preflight = lambda *args: self.trace.append('preflight') or {'status':'PASS','skip_policy':'PASS'}
 
     def unit(self, unit):
-        return {'LoadState':'loaded', 'ActiveState':'active' if self.active and unit == c.BOT else 'inactive',
-                'User':'shpakbot', 'WorkingDirectory':str(self.base/'current'),
-                'ExecStart':str(self.base/'venv/bin/python')+' bot.py', 'MainPID':'123',
-                'NRestarts':'1' if self.health_bad else '0',
-                'ProtectSystem':'strict', 'ProtectHome':'yes', 'NoNewPrivileges':'yes',
-                'PrivateTmp':'yes', 'PrivateDevices':'yes', 'ReadWritePaths':str(self.state/'data'),
-                'SupplementaryGroups':'', 'CapabilityBoundingSet':'',
-                'ExecStartPre':'', 'ExecStartPost':'', 'ExecStop':'', 'ExecStopPost':''}
+        result=expected(self.base,self.config,self.state)
+        exe=str(self.base/'venv/bin/python')
+        tail=' ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }'
+        result.update(ActiveState='active' if self.active and unit==c.BOT else 'inactive',
+                      ExecStart='{ path='+exe+' ; argv[]='+exe+' bot.py ; ignore_errors=no'+tail,
+                      ExecStartEx='{ path='+exe+' ; argv[]='+exe+' bot.py ; flags='+tail,
+                      MainPID='123', NRestarts='1' if self.health_bad else '0')
+        return result
 
     def fake_run(self, args, **kwargs):
         self.trace.append(list(map(str,args)))
         if args[:2] == ['systemctl','start']: self.active=True
-        stdout = SHA if 'rev-parse' in args else 'masked' if 'is-enabled' in args else 'approved==1' if 'freeze' in args else 'https://github.com/Aruzento/shpakdnd_bot.git' if 'get-url' in args else ''
+        stdout = SHA if 'rev-parse' in args else 'masked' if 'is-enabled' in args else 'approved==1' if 'freeze' in args else 'https://github.com/Aruzento/shpakdnd_bot.git' if 'get-url' in args else str(self.base/'docker') if '--format' in args else '1001' if args[0]=='id' else ''
         if '--get-regexp' in args:
             return subprocess.CompletedProcess(args,1,stdout='',stderr='')
         return subprocess.CompletedProcess(args, 0, stdout=stdout, stderr='')
@@ -297,6 +301,8 @@ class FlowTests(unittest.TestCase):
     def deploy(self):
         return self.controller.deploy('12', SHA, '123-1', self.folder)
 
+
+class FlowTests(ControllerFixture, unittest.TestCase):
     def test_success_preflight_backup_before_stop_safe_test_configuration_restored(self):
         result = self.deploy()
         self.assertEqual(result['acceptance_ready'], 'PASS', result)
@@ -312,11 +318,11 @@ class FlowTests(unittest.TestCase):
         self.assertNotIn('never-report-this-token', (self.folder/'report.json').read_text())
 
     def test_local_immutable_image_id_requires_no_registry(self):
-        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'sha256:'+'c'*64}))
+        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'sha256:'+'c'*64, 'test_bot_id':987654}))
         self.assertEqual(self.deploy()['acceptance_ready'],'PASS')
 
     def test_mutable_image_tag_never_stops_test(self):
-        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'image:latest'}))
+        (self.config/'settings.json').write_text(json.dumps({'preflight_image':'image:latest', 'test_bot_id':987654}))
         self.assertEqual(self.deploy()['acceptance_ready'],'FAIL')
         self.assertNotIn('stop',self.trace)
 
@@ -402,13 +408,15 @@ class FlowTests(unittest.TestCase):
         result = self.deploy()
         self.assertEqual(result['acceptance_ready'], 'PASS')
         with patch.object(c.os, 'geteuid', return_value=0, create=True), patch.object(c, 'lock'), patch('builtins.print'):
-            self.assertEqual(c.main(['deploy','12',SHA,'123-1']), 0)
-            with self.assertRaises(c.Refused): c.main(['deploy','12','e'*40,'123-1'])
+            self.assertEqual(c.main(['deploy-v2','12',SHA,'123-1']), 0)
+            with self.assertRaises(c.Refused): c.main(['deploy-v2','12','e'*40,'123-1'])
 
     def test_report_operation_never_exposes_backups_or_saved_env(self):
         self.deploy()
         with patch.object(c.os, 'geteuid', return_value=0, create=True), patch('builtins.print') as output:
-            c.main(['report','123-1'])
+            c.main(['report-v2','123-1'])
         data = json.loads(output.call_args.args[0])
-        self.assertEqual(set(data), {'report.json','report.md','startup.log','journal.log'})
+        self.assertEqual(data['schema_version'],2)
+        self.assertNotIn('startup.log',data)
+        self.assertNotIn('journal.log',data)
         self.assertNotIn('never-report-this-token', json.dumps(data))

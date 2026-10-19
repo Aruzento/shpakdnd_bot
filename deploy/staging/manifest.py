@@ -24,7 +24,7 @@ def manifest(sha):
     return {
         'schema_version': 1, 'sha': sha, 'tree': git('rev-parse', sha + '^{tree}'),
         'test_files': [p for p in files if p.startswith('tests/') and p.endswith('.py')],
-        'ci_only_checks': [['sudo', 'python', 'tests/staging/privileged_sqlite_probe.py']],
+        'ci_only_checks': [['sudo', 'python', 'tests/staging/privileged_sqlite_probe.py'], ['sudo', 'python', 'tests/staging/runtime_policy_probe.py']],
         'checks': CHECKS + [
             ['deploy/verify-v142-migration.py', '--source', '<disposable TEST copy>'],
             ['deploy/verify-v142-rollback.py', '--source', '<disposable TEST copy>', '--old-ref', '<previous SHA>'],
@@ -36,6 +36,10 @@ def manifest(sha):
                          'automatic_install': False, 'require_admin_prepared_venv_and_image': True},
         'manual_telegram_scenarios': MANUAL, 'telegram_status': 'NOT_RUN',
         'production_authorized': False,
+        'skip_policy': {'linux': 'ZERO_SKIPS', 'windows': 'FROZEN_ID_AND_REASON_ALLOWLIST',
+                        'empty_suite': 'REFUSED', 'expected_failures': 'REFUSED'},
+        'staging_privacy': 'PUBLIC_SCHEMA_V2_ONLY_PRIVATE_LOGS_STAY_ON_TEST',
+        'storage_policy': 'PREPARATION_AND_PRE_STOP_CAPACITY_CHECK_NO_AUTOMATIC_BACKUP_DELETION',
         'rollback': {'automatic_database_restore': False, 'automatic_code_rollback': False,
                      'procedure': 'Preserve current DB; pause-new/drain and reconcile PvP; frozen pvp_ops rollback-check before preparation, checkout and start. Run full checks against retained current DB on a copy; operator approves code recovery. DB restore is a separate approved recovery after writers stop.'},
         'production_preflight': [

@@ -7,12 +7,12 @@ import sys
 
 
 def parse(command):
-    match = re.fullmatch(r'deploy ([1-9][0-9]{0,9}) ([0-9a-f]{40}) ([1-9][0-9]{0,19}-[1-9][0-9]{0,4})', command)
+    match = re.fullmatch(r'deploy-v2 ([1-9][0-9]{0,9}) ([0-9a-f]{40}) ([1-9][0-9]{0,19}-[1-9][0-9]{0,4})', command)
     if match:
-        return ('deploy', *match.groups())
-    match = re.fullmatch(r'report ([1-9][0-9]{0,19}-[1-9][0-9]{0,4})', command)
+        return ('deploy-v2', *match.groups())
+    match = re.fullmatch(r'report-v2 ([1-9][0-9]{0,19}-[1-9][0-9]{0,4})', command)
     if match:
-        return ('report', match[1])
+        return ('report-v2', match[1])
     raise ValueError('SSH operation refused')
 
 

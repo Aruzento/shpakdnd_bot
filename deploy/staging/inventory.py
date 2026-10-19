@@ -1,6 +1,6 @@
 """Frozen check inventory. All commands run ONLY in an offline container copy."""
 CHECKS = [
-    ['-m', 'unittest', 'discover', '-s', 'tests', '-q'],
+    ['deploy/staging/unittest_policy.py'],
     ['check_bot.py'], ['-m', 'compileall', '-q', 'bot.py', 'app', 'deploy/staging'],
     ['-m', 'app.mini.combat.hero_abilities.validate'],
     ['-m', 'app.mini.boss.boss_abilities.validate'], ['-m', 'app.mini.tower.validate'],

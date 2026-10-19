@@ -68,8 +68,8 @@ jobs:
             -o UserKnownHostsFile="$RUNNER_TEMP/staging-ssh/known_hosts" \
             -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ServerAliveInterval=15 \
             -T staging-deploy@88.214.54.194 \
-            "deploy $PR $SHA $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            > staging-artifacts/controller-response.json
+            "deploy-v2 $PR $SHA $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            > "$RUNNER_TEMP/staging-deploy-response.json" 2> "$RUNNER_TEMP/staging-deploy-transport.log"
       - name: Retrieve safe reports even after deployment failure
         if: always() && steps.ssh.outcome == 'success'
         run: |
@@ -77,15 +77,18 @@ jobs:
             -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$RUNNER_TEMP/staging-ssh/known_hosts" \
             -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ServerAliveInterval=15 \
-            -T staging-deploy@88.214.54.194 "report $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            > staging-artifacts/server-reports.json
-          python3 deploy/staging/report.py staging-artifacts
+            -T staging-deploy@88.214.54.194 "report-v2 $GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            > "$RUNNER_TEMP/staging-public-response.json" 2> "$RUNNER_TEMP/staging-report-transport.log"
+          STAGING_RESPONSE="$RUNNER_TEMP/staging-public-response.json" python3 deploy/staging/report.py staging-artifacts
       - name: Ensure failure report exists
         if: always()
         env:
           PR: ${{ inputs.pr }}
           SHA: ${{ inputs.sha }}
-        run: python3 deploy/staging/report.py staging-artifacts --require-ready
+        run: |
+          STAGING_RESPONSE="$RUNNER_TEMP/staging-public-response.json" \
+            STAGING_REQUEST="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            python3 deploy/staging/report.py staging-artifacts --require-ready
       - name: Remove SSH material
         if: always()
         run: rm -f "$RUNNER_TEMP/staging-ssh/key" "$RUNNER_TEMP/staging-ssh/known_hosts"
@@ -94,6 +97,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: staging-${{ github.run_id }}-${{ github.run_attempt }}
-          path: staging-artifacts/
+          path: |
+            staging-artifacts/report.json
+            staging-artifacts/report.md
+            staging-artifacts/admission.json
           if-no-files-found: error
           retention-days: 14
