@@ -51,7 +51,7 @@ def main():
             actual=loaded()
             try:validate_unit(actual,base,config,state)
             except c.Refused:
-                print(json.dumps({'mismatched_property_names':[k for k,v in expected(base,config,state).items() if actual.get(k)!=v]}))
+                print(json.dumps({'mismatched_properties':{k:{'actual':actual.get(k),'expected':v} for k,v in expected(base,config,state).items() if actual.get(k)!=v}}))
                 raise
             # Change effective metadata only, never restart into a modified command.
             for directive in ('Environment=BOT_TOKEN=synthetic-foreign-token',

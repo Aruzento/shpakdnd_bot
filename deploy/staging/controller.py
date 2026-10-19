@@ -199,7 +199,7 @@ def topics_scope(path):
 
 
 def unit_state(unit):
-    output = run(['systemctl', 'show', unit, '--property=' + ','.join(sorted(PROPERTIES))]).stdout
+    output = run(['systemctl', 'show', '--all', unit, '--property=' + ','.join(sorted(PROPERTIES))]).stdout
     return dict(line.split('=', 1) for line in output.splitlines() if '=' in line)
 
 
