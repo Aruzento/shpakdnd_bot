@@ -259,6 +259,21 @@ cm.apply(shop,d['plan'])
         self.assertEqual(self.amount('Серебро'),100)
         self.assert_clean()
 
+    def test_admin_merges_whitespace_legacy_unit_before_and_after_normalization(self):
+        self.setup_shop()
+        row=self.raw('Серебро',15,null=True)
+        self.sql("UPDATE inventory SET name='  Серебро  ' WHERE id=?",(row,))
+        self.add('50 серебряных монет',1)
+        self.assertEqual(self.sql('SELECT quantity,item_id FROM inventory WHERE id=?',(row,)),[(65,self.silver)])
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.row_factory=sqlite3.Row
+            plan=migration.prepare(self.shop,conn,(-111,0))
+        migration.apply(self.shop,plan)
+        self.add('50 серебряных монет',1)
+        self.assertEqual(self.sql('SELECT quantity,item_id FROM inventory WHERE id=?',(row,)),[(115,self.silver)])
+        self.assertEqual(self.sql('SELECT count(*) FROM inventory'),[(1,)])
+        self.assert_clean()
+
     def test_admin_overflow_and_ambiguous_existing_rows_rollback(self):
         self.setup_shop()
         self.raw('Золото',MAX_INTEGER)

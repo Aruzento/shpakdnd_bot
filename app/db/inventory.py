@@ -69,7 +69,7 @@ def add_inventory_item(
             stored_description,
             stored_definition,
         ) in stored_rows:
-            if stored_name.casefold() == name.casefold():
+            if (stored_name.strip() if normalized_coin else stored_name).casefold() == name.casefold():
                 if stored_definition is not None and stored_definition!=definition_id:
                     raise ValueError('Название инвентаря конфликтует с item_id.')
                 if type(stored_quantity) is not int or stored_quantity<=0:
