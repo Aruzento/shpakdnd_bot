@@ -25,7 +25,7 @@ def integer_units(values):
     return [value // common for value in units]
 
 
-def payment(price, denominations, holdings, *, payout=False, _counter=None):
+def payment(price, denominations, holdings, *, payout=False, _counter=None, change_denominations=None):
     """Return (debits, credits) indexed by sorted registry IDs, never floats.
 
     Enumerate bounded subset sums using binary decomposition. Each sum retains
@@ -37,6 +37,11 @@ def payment(price, denominations, holdings, *, payout=False, _counter=None):
         raise MoneyError('Нет разрешённых номиналов для расчёта.')
     values = integer_units([Fraction(price)] + [Fraction(denominations[i]) for i in ids])
     target, coins = values[0], values[1:]
+    output = denominations if change_denominations is None else change_denominations
+    if not output or any(i not in denominations or denominations[i]!=v for i,v in output.items()):
+        raise MoneyError('Несогласованные номиналы выдачи.')
+    out_ids = sorted(output)
+    out_coins = [coins[ids.index(i)] for i in out_ids]
     zero = (0,) * len(ids)
     counter = [0] if _counter is None else _counter
 
@@ -48,14 +53,60 @@ def payment(price, denominations, holdings, *, payout=False, _counter=None):
     def rank(vector):
         return sum(vector), vector
 
-    changes = [zero]
+    # For exactly three distinct divisibility-chain coins, the bounded ceil
+    # problem has two branches per level. This is not used for arbitrary coins.
+    if len(ids)==3 and len(set(coins))==3 and ids==out_ids:
+        order=sorted(range(3),key=lambda i:coins[i],reverse=True)
+        if all(coins[order[i]] % coins[order[i+1]]==0 for i in (0,1)):
+            budget(3)
+            def unbounded(amount):
+                vector=[0]*3
+                for i in order:
+                    vector[i],amount=divmod(amount,coins[i])
+                return tuple(vector) if amount==0 else None
+            if payout:
+                vector=unbounded(target)
+                if vector is None:
+                    raise MoneyError('Торговец: «Не найду столько мелочи. Не могу рассчитаться!»')
+                return {},{i:n for i,n in zip(ids,vector) if n}
+            counts=[holdings.get(i,0) for i in ids]
+            if any(type(n) is not int or n<0 for n in counts):
+                raise MoneyError('Некорректное количество монет в инвентаре.')
+            if sum(c*n for c,n in zip(coins,counts))<target:
+                raise MoneyError('Недостаточно средств.')
+            def bounded_ceil(needed,depth):
+                if needed<=0:
+                    return [(0,(0,)*3)]
+                if depth==3:
+                    return []
+                i=order[depth]
+                floor=min(counts[i],needed//coins[i])
+                ceil=min(counts[i],-(-needed//coins[i]))
+                options=[]
+                for count in sorted({floor,ceil}):
+                    for total,tail in bounded_ceil(needed-count*coins[i],depth+1):
+                        vector=list(tail)
+                        vector[i]=count
+                        options.append((total+count*coins[i],tuple(vector)))
+                return options
+            candidates=[]
+            for total,vector in bounded_ceil(target,0):
+                change_vector=unbounded(total-target)
+                if change_vector is not None:
+                    candidates.append((total-target,sum(vector)+sum(change_vector),vector,change_vector))
+            if not candidates:
+                raise MoneyError('Невозможно точно оплатить товар и выдать сдачу существующими монетами.')
+            _,_,debit_vector,credit_vector=min(candidates)
+            return ({i:n for i,n in zip(ids,debit_vector) if n},
+                    {i:n for i,n in zip(ids,credit_vector) if n})
+    changes = [(0,)*len(out_ids)]
     def change(amount):
         if amount > MAX_STATES:
-            return large_change(amount, coins, ids, _counter=counter)
+            return large_change(amount, out_coins, out_ids, _counter=counter)
         while len(changes) <= amount:
             value = len(changes)
             best = None
-            for index, coin in enumerate(coins):
+            for index, coin in enumerate(out_coins):
                 budget()
                 if coin <= value and changes[value - coin] is not None:
                     vector = list(changes[value - coin])
@@ -73,7 +124,7 @@ def payment(price, denominations, holdings, *, payout=False, _counter=None):
         result = change(target)
         if result is None:
             raise MoneyError('Торговец: «Не найду столько мелочи. Не могу рассчитаться!»')
-        return {}, as_dict(result)
+        return {}, {i:n for i,n in zip(out_ids,result) if n}
     counts = [holdings.get(item_id, 0) for item_id in ids]
     if any(type(qty) is not int or qty < 0 for qty in counts):
         raise MoneyError('Некорректное количество монет в инвентаре.')
@@ -120,7 +171,7 @@ def payment(price, denominations, holdings, *, payout=False, _counter=None):
     for total in sorted(amount for amount in reachable if amount >= target):
         result = change(total - target)
         if result is not None:
-            return as_dict(reachable[total]), as_dict(result)
+            return as_dict(reachable[total]), {i:n for i,n in zip(out_ids,result) if n}
     raise MoneyError('Невозможно точно оплатить товар и выдать сдачу существующими монетами.')
 
 
@@ -188,7 +239,7 @@ def large_change(target, coins, ids, *, _counter=None):
     raise MoneyError('Торговец: «Не найду столько мелочи. Не могу рассчитаться!»')
 
 
-def payment_with_credit(price, denominations, holdings, credit):
+def payment_with_credit(price, denominations, holdings, credit, *, change_denominations=None):
     """Use as much exact credit as feasible; conserve the complete obligation."""
     price, credit = Fraction(price), Fraction(credit)
     if credit < 0 or price <= 0:
@@ -196,7 +247,7 @@ def payment_with_credit(price, denominations, holdings, credit):
     if credit >= price:
         return {}, {}, price
     if credit == 0:
-        debit, change = payment(price, denominations, holdings)
+        debit, change = payment(price, denominations, holdings, change_denominations=change_denominations)
         return debit, change, Fraction(0)
     if not denominations:
         raise MoneyError('Нет разрешённых номиналов для расчёта.')
@@ -225,7 +276,7 @@ def payment_with_credit(price, denominations, holdings, credit):
             raise CalculationLimit('Превышен безопасный предел комбинированной оплаты.')
         net = quantum * units
         try:
-            debit, change = payment(net, denominations, holdings, _counter=counter)
+            debit, change = payment(net, denominations, holdings, _counter=counter, change_denominations=change_denominations)
             return debit, change, price - net
         except CalculationLimit:
             raise

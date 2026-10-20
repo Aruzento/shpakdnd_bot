@@ -193,6 +193,16 @@ def main():
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     report = benchmark(args.loot)
+    from app.dnd_shop.money import payment
+    denominations={1:Fraction(1,10000),2:Fraction(1,100),3:Fraction(1)}
+    start=time.perf_counter()
+    work=[0]
+    for index in range(1000):
+        price=Fraction(1000000000000)+Fraction(index+1,10000)
+        debit,change=payment(price,denominations,{1:2**63-1,2:2**63-1,3:2**63-1},_counter=work)
+        assert sum(denominations[i]*n for i,n in debit.items())-sum(denominations[i]*n for i,n in change.items())==price
+    assert work[0]==3000
+    report['three_coin_large_wallet']=dict(operations=1000,seconds=time.perf_counter()-start,work=work[0],errors=0)
     report["lifecycle"] = lifecycle_benchmark(args.loot)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     print(text)

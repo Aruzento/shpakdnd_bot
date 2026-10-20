@@ -14,6 +14,8 @@ CONTROL_FILES = (
     'app/dnd_shop/control.py', 'app/dnd_shop/service.py', 'app/dnd_shop/pricing.py',
     'app/db/dnd_shop.py', 'app/handlers/shop.py', 'app/dnd_shop/catalog.py',
     'app/dnd_shop/money.py', 'app/dnd_shop/builder.py',
+    'app/dnd_shop/coins.py', 'app/dnd_shop/formatting.py',
+    'app/dnd_shop/coin_migration.py', 'app/db/inventory.py',
 )
 
 

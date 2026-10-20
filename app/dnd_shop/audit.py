@@ -40,6 +40,15 @@ def audit(conn):
             result=json.loads(row['result'])
             if result['id']!=row['id'] or result['plan_sha256']!=row['plan_sha256']:
                 raise ValueError('TEST migration receipt differs')
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_coin_migrations'").fetchone():
+        for row in conn.execute('SELECT * FROM dnd_coin_migrations'):
+            plan=json.loads(row['plan'])
+            serialized=json.dumps(plan,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+            result=json.loads(row['result'])
+            if (hashlib.sha256(serialized).hexdigest()!=row['plan_sha256']
+                    or result['plan_sha256']!=row['plan_sha256'] or result['id']!=row['id']
+                    or any(Fraction(w['before_value'])!=Fraction(w['after_value']) for w in plan['wallets'])):
+                raise ValueError('Coin normalization journal differs')
     balances = defaultdict(Fraction)
     moves = conn.execute('SELECT * FROM dnd_shop_credit_moves ORDER BY id').fetchall()
     for move in moves:

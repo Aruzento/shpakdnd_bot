@@ -152,6 +152,9 @@ jobs:
       - name: TEST option B migration on disposable original-catalog fixture
         run: python tools/validate_dnd_shop_test_b.py
 
+      - name: Physical coin normalization and preserved historical money on disposable SQLite
+        run: python tools/validate_dnd_coins_release.py
+
       - name: Real loot CLI index build validate publish on disposable SQLite
         run: python tools/validate_dnd_loot_cli.py
 

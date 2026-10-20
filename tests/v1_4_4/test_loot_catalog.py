@@ -358,7 +358,7 @@ class LootTests(unittest.TestCase):
         self.assertGreater(len(product.description), 10000)
         text, keyboard = ui.render('s', dict(screen='home', credit_balance=Fraction(3, 100)))
         self.assertEqual(len(keyboard.inline_keyboard), 3)
-        self.assertIn('0.03', text)
+        self.assertIn('0,03', text)  # localized UI; stored Fraction remains unchanged
         text, keyboard = ui.render('s', dict(screen='credit', credit_balance=Fraction(3, 100), token='t'))
         self.assertIn(':r:', keyboard.inline_keyboard[0][0].callback_data)
 

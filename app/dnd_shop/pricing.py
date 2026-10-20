@@ -96,6 +96,8 @@ def preflight(shop, conn, scope, mode, master):
             factor = GOLD_FACTOR
         else:
             raise CatalogError('База темы не соответствует явно заданной универсальной медной или золотой.')
+    from app.dnd_shop.coins import profile as coin_profile
+    coin_profile(rows,denominations,topic,mode)  # reject unusable output units before import/activation
     signature = json.dumps(dict(declaration=declaration, currencies=[
         [r['id'], r['code'], r['name_key'], str(denominations[r['id']]), r['is_base']] for r in rows
     ]), ensure_ascii=False, sort_keys=True, separators=(',', ':'))

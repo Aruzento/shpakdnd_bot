@@ -11,7 +11,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from app.context import get_thread_id, check_topic_admin_permission
 from app.dnd_shop.catalog import CatalogError
-from app.dnd_shop.money import MoneyError, exact_text
+from app.dnd_shop.money import MoneyError
+from app.dnd_shop.formatting import amount
 from app.dnd_shop.service import PriceChanged, Shop, ShopError
 
 router = Router(name='dnd_shop')
@@ -33,12 +34,15 @@ def compact(text, units=900):
     return encoded[:(units - 1) * 2].decode('utf-16-le', errors='ignore') + '…'
 
 
-def render(session, view, page=0):
+def render(session, view, page=0, presentation=None):
     def button(text, action, argument='0', back_page=page):
         return InlineKeyboardButton(text=text, callback_data=callback(session, action, argument, back_page))
 
+    display=presentation or {}
+    def money(value, credit=False):
+        return amount(value,display.get('profile'),base_name=display.get('base_name',view.get('base_name','базовой валюты')),credit=credit)
     balance = Fraction(view.get('credit_balance', 0))
-    credit_text = f'\nТорговый остаток: {exact_text(balance)}.' if balance else ''
+    credit_text = f'\nТорговый остаток: {money(balance,True)}.' if balance else ''
     screen = view['screen']
     if screen == 'exit':
         return 'Магазин закрыт.', None
@@ -56,50 +60,56 @@ def render(session, view, page=0):
             rows.append([button('💱 Обменять остаток', 'q')])
         rows.append([button('Назад', 'h')])
         title = '🛒 Товары' if screen == 'buy' else '💰 Ваши предметы'
+        for name,price_value in view.get('prices',[]):
+            title+='\n'+compact(name,100)+' — '+money(price_value)
         empty = '\nЗдесь пока пусто.' if not buttons else ''
         return f"{title}\nСтраница {page + 1}/{view['pages']}{empty}{credit_text}", InlineKeyboardMarkup(inline_keyboard=rows)
     if screen == 'credit':
-        return (f'Обменять весь торговый остаток: {exact_text(balance)}?\n'
+        return (f'Обменять весь торговый остаток: {money(balance,True)}?\n'
                 'Обмен выполняется только при точном размене; иначе остаток сохраняется.',
                 InlineKeyboardMarkup(inline_keyboard=[
                     [button('✅ Обменять на монеты', 'r', view['token'])],
                     [button('◀️ Назад', 's', '0')]]))
     product = view['product']
-    price = exact_text(product.price)
-    base_name = compact(view.get('base_name', 'базовой валюты'), 80)
+    price = money(product.price)
     if screen == 'buy_card':
         text = (f'{compact(product.name, 256)}\n\nОписание: {compact(product.description)}\n\n'
-                f"Стоимость: {price} {base_name}.\n\nВ наличии: {view['available']} шт.")
+                f"Стоимость: {price}.\n\nВ наличии: {view['available']} шт.")
         if product.master_sha256:
             text += (f'\nКатегория: {compact(product.category, 100)}; редкость: {compact(product.rarity, 100)}'
                      f'\nЭффект: {compact(product.effect)}')
         rows = [[button('🛒 Купить', 'x', view['token'])], [button('◀️ Назад', 'b', str(page))]]
     else:
         text = (f"Торговец: «Могу предложить вот столько».\n\n{compact(view['name'], 256)}\n\n"
-                f"В инвентаре: {view['quantity']} шт.\n\nЦена в магазине: {price} {base_name}.\n\n"
-                f"Предложение торговца: {exact_text(view['payout'])} {base_name} за 1 шт.")
+                f"В инвентаре: {view['quantity']} шт.\n\nЦена в магазине: {price}.\n\n"
+                f"Предложение торговца: {money(view['payout'])} за 1 шт.")
         rows = [[button('✅ Подтвердить продажу', 'x', view['token'])], [button('◀️ Назад', 's', str(page))]]
     return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def result_text(result):
-    def coins(rows):
-        return ', '.join(f'{compact(name, 48)}: {quantity}' for name, quantity in rows) or 'нет'
-    balance = Fraction(result.get('credit_balance', 0))
-    suffix = f'\nТорговый остаток: {exact_text(balance)}.'
-    if Fraction(result.get('credit_spent', 0)):
-        suffix += f"\nСписано с остатка: {exact_text(result['credit_spent'])}."
-    if Fraction(result.get('credit_added', 0)):
-        suffix += f"\nВся выплата {exact_text(result['credit_added'])} зачислена в торговый остаток."
-    if result['kind'] == 'redeem':
-        return f"Получены монеты: {coins(result['credit'])}" + suffix
-    if result['kind'] == 'buy':
-        return (f"Торговец: «Хороший выбор!»\n\n{compact(result['name'], 256)} × 1\n"
-                f"Списано: {coins(result['debit'])}\nСдача: {coins(result['credit'])}\n"
-                f"Итоговая стоимость: {exact_text(Fraction(result['value']))} {compact(result.get('base_name', 'базовой валюты'), 80)}.\n"
-                f"Операция №{result['trade_id']}") + suffix
-    return (f"Торговец: «По рукам!»\n\n{compact(result['name'], 256)} × 1\n"
-            f"Получено: {coins(result['credit'])}\nОперация №{result['trade_id']}") + suffix
+def result_text(result, presentation=None):
+    display=presentation or {}
+    def money(value, credit=False):
+        return amount(value,display.get('profile'),base_name=display.get('base_name',result.get('base_name','базовой валюты')),credit=credit)
+    def coins(rows, total):
+        if display.get('profile') is not None:
+            return money(total) if Fraction(total) else 'нет'
+        return ', '.join(f'{compact(name,48)}: {quantity}' for name,quantity in rows) or 'нет'
+    suffix='\nТорговый остаток: '+money(result.get('credit_balance','0'),True)+'.'
+    if Fraction(result.get('credit_spent',0)):
+        suffix+='\nСписано с остатка: '+money(result['credit_spent'],True)+'.'
+    if Fraction(result.get('credit_added',0)):
+        suffix+='\nВся выплата '+money(result['credit_added'],True)+' зачислена в торговый остаток.'
+    received=display.get('credit_total',result.get('value','0'))
+    if result['kind']=='redeem':
+        return 'Получены монеты: '+coins(result['credit'],result['value'])+suffix
+    if result['kind']=='buy':
+        return (f"Торговец: «Хороший выбор!»\n\n{compact(result['name'],256)} × 1\n"
+                f"Списано: {coins(result['debit'],display.get('debit_total','0'))}\n"
+                f"Сдача: {coins(result['credit'],received)}\n"
+                f"Итоговая стоимость: {money(result['value'])}.\nОперация №{result['trade_id']}")+suffix
+    return (f"Торговец: «По рукам!»\n\n{compact(result['name'],256)} × 1\n"
+            f"Получено: {coins(result['credit'],received)}\nОперация №{result['trade_id']}")+suffix
 
 
 def actor(user, message):
@@ -122,7 +132,7 @@ async def shop_handler(message: Message):
         shop = Shop()
         session = await asyncio.to_thread(shop.open, *actor(message.from_user, message))
         view = await asyncio.to_thread(shop.view, session, actor(message.from_user, message))
-        text, keyboard = render(session, view)
+        text, keyboard = render(session, view, presentation=await asyncio.to_thread(shop.presentation, session, actor(message.from_user,message)))
         await message.answer(text, reply_markup=keyboard, parse_mode=None)
     except (ShopError, CatalogError, MoneyError) as error:
         await message.answer(str(error), parse_mode=None)
@@ -152,7 +162,7 @@ async def shop_callback(query: CallbackQuery):
                 result = await asyncio.to_thread(shop.execute if action == 'x' else shop.redeem, session, argument, who)
             except PriceChanged as error:
                 view = await asyncio.to_thread(shop.view, session, who, 'refresh', argument)
-                text, keyboard = render(session, view, page)
+                text, keyboard = render(session, view, page, await asyncio.to_thread(shop.presentation,session,who))
                 text = str(error) + '\n\n' + text
             else:
                 back = 'b' if result['kind'] == 'buy' else 's'
@@ -161,12 +171,12 @@ async def shop_callback(query: CallbackQuery):
                 if Fraction(result.get('credit_balance', 0)):
                     keyboard.inline_keyboard.insert(0, [InlineKeyboardButton(
                         text='💱 Обменять остаток', callback_data=callback(session, 'q'))])
-                text = result_text(result)
+                text = result_text(result, await asyncio.to_thread(shop.presentation,session,who,result))
         else:
             if action not in actions:
                 raise ShopError('Неизвестная кнопка.')
             view = await asyncio.to_thread(shop.view, session, who, actions[action], argument)
-            text, keyboard = render(session, view, page)
+            text, keyboard = render(session, view, page, await asyncio.to_thread(shop.presentation,session,who) if view['screen']!='exit' else None)
         await edit(query.message, text, keyboard)
         await query.answer()
     except (ShopError, CatalogError, MoneyError, ValueError) as error:

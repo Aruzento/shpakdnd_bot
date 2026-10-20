@@ -153,3 +153,7 @@ def migrate(conn):
         result TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT,
         CHECK((phase='prepared' AND result IS NULL AND completed_at IS NULL)
            OR (phase='complete' AND result IS NOT NULL AND completed_at IS NOT NULL)))""")
+
+    # No exchange rates or inventory data are modified during startup.
+    from app.dnd_shop.coin_migration import migrate as migrate_coins
+    migrate_coins(conn)

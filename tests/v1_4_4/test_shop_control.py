@@ -363,12 +363,12 @@ class ControlTests(unittest.TestCase):
         self.currency('Микро', '0.000001')
         self.allow()
         self.shop.create(self.owner, 'b')
-        self.add('Кинжал', 1)
+        self.add('Меч', 1)
         with patch('app.dnd_shop.service.payment', side_effect=CalculationLimit('budget')):
             self.shop.execute(*self.sale_offer(), self.actor)
         self.add('Золото', 1)
         result = self.shop.execute(*self.buy_offer(), self.actor)
-        self.assertEqual(Fraction(result['credit_spent']), Fraction('0.000855'))
+        self.assertEqual(Fraction(result['credit_spent']), Fraction('0.0275'))
         self.assertTrue(result['debit'])
         self.assert_clean()
 
@@ -420,11 +420,15 @@ class ControlTests(unittest.TestCase):
             self.shop.execute(*self.sale_offer(), self.actor)
         session = self.open()
         token = self.shop.view(session, self.actor, 'credit')['token']
-        result = self.new_shop().redeem(session, token, self.actor)
-        self.assertEqual(self.new_shop().redeem(session, token, self.actor), result)
-        self.assertEqual(self.balance(), 0)
-        self.assertEqual(self.amount('Микро'), 9925)
-        self.assertEqual(self.amount('Медь'), 2)
+        before=self.sql('SELECT * FROM inventory')
+        balance=self.balance()
+        # The newly approved three-coin policy forbids minting Micro as change.
+        for shop in (self.shop,self.new_shop()):
+            with self.assertRaises(MoneyError):
+                shop.redeem(session,token,self.actor)
+        self.assertEqual(self.balance(),balance)
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+        self.assertEqual(self.amount('Микро'),0)
         self.assert_clean()
 
     def test_pending_publication_other_admin_and_publisher_cannot_bypass_recovery(self):

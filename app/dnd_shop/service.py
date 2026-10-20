@@ -250,6 +250,29 @@ class Shop:
             denominations[row['id']] = value
         return rows, denominations
 
+    def coin_profile(self, conn, session, rows=None, denominations=None):
+        from app.dnd_shop.coins import profile
+        if rows is None:
+            rows,denominations=self.currencies(conn,session)
+        state=conn.execute('SELECT pricing_mode FROM dnd_shop_settings WHERE chat_id=? AND thread_id=?',
+                           (session['chat_id'],session['thread_id'])).fetchone()
+        return profile(rows,denominations,self.scope(session['chat_id'],session['thread_id']),state[0] if state else None)
+
+    def presentation(self, session_token, actor, result=None):
+        # Read-only UI layer. Historical JSON and denomination rows are never rewritten.
+        with self.transaction(catalog=False,scope=actor[2:]) as (conn,_):
+            session=self.session(conn,session_token,*actor)
+            display=dict(profile=self.coin_profile(conn,session),base_name=self.base_name(conn,session))
+            if result and result['kind']!='redeem':
+                trade=conn.execute('SELECT id FROM dnd_shop_trades WHERE id=? AND chat_id=? AND thread_id=? AND user_id=?',
+                                   (result['trade_id'],*actor[2:],actor[0])).fetchone()
+                if not trade:
+                    raise ShopError('Квитанция не принадлежит владельцу.')
+                rows=conn.execute('SELECT * FROM dnd_shop_money WHERE trade_id=?',(trade[0],)).fetchall()
+                display['debit_total']=str(sum((r['quantity']*Fraction(r['denomination']) for r in rows if r['direction']=='debit'),Fraction(0)))
+                display['credit_total']=str(sum((r['quantity']*Fraction(r['denomination']) for r in rows if r['direction']!='debit'),Fraction(0)))
+            return display
+
     def product(self, conn, products, session, code):
         key = session['chat_id'], session['thread_id'], code
         product = products.by_key.get(key)
@@ -328,7 +351,9 @@ class Shop:
                         buttons.append((product.name, token))
                     else:
                         buttons.append((entry['name'], str(entry['id'])))
-                return {'screen': action, 'page': page, 'pages': pages, 'buttons': buttons, 'credit_balance': self.credit(conn, session)}
+                return {'screen': action, 'page': page, 'pages': pages, 'buttons': buttons,
+                        'prices': [(p.name,p.price) for p in entries[page*4:page*4+4]] if action=='buy' else [],
+                        'credit_balance': self.credit(conn, session)}
             if action == 'credit':
                 balance = self.credit(conn, session)
                 if balance <= 0:
@@ -457,6 +482,8 @@ class Shop:
                     raise ShopError('Покупка этой позиции отключена владельцем.')
             inventory = self.inventory(conn, session)
             currency_rows, denominations = self.currencies(conn, session)
+            from app.dnd_shop.coins import output_denominations
+            payouts=output_denominations(self.coin_profile(conn,session,currency_rows,denominations),denominations)
             kind = operation['kind']
             debit, coins_out = {}, {}
             credit_added = credit_spent = Fraction(0)
@@ -472,7 +499,9 @@ class Shop:
                     holdings[item_id] = matches[0]['quantity'] if matches else 0
             # Keep planning and mutation separate so all failures precede writes.
             if kind == 'buy':
-                debit, coins_out, credit_spent = payment_with_credit(product.price, denominations, holdings, balance_before)
+                debit, coins_out, credit_spent = payment_with_credit(product.price,
+                    {i:v for i,v in denominations.items() if holdings.get(i,0) or i in payouts}, holdings,
+                    balance_before, change_denominations=payouts)
                 value = product.price
             else:
                 row = next((r for r in inventory if r['id'] == operation['inventory_id']), None)
@@ -484,7 +513,7 @@ class Shop:
                     raise ShopError('Неоднозначный предмет в инвентаре.')
                 value = product.price * Fraction(3, 100)
                 try:
-                    _, coins_out = payment(value, denominations, {}, payout=True)
+                    _, coins_out = payment(value, payouts, {}, payout=True)
                 except MoneyError:
                     coins_out = {}
                     credit_added = value
@@ -541,7 +570,9 @@ class Shop:
             if balance <= 0 or str(balance) != operation['expected']:
                 raise ShopError('Остаток изменился; откройте новое предложение обмена.')
             currency_rows, denominations = self.currencies(conn, session)
-            _, payout = payment(balance, denominations, {}, payout=True)
+            from app.dnd_shop.coins import output_denominations
+            outputs=output_denominations(self.coin_profile(conn,session,currency_rows,denominations),denominations)
+            _, payout = payment(balance, outputs, {}, payout=True)
             for item_id, quantity in payout.items():
                 self.adjust(conn, session, item_id, quantity)
                 conn.execute('INSERT INTO dnd_shop_credit_coins VALUES(?,?,?,?)',

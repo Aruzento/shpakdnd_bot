@@ -23,7 +23,8 @@ SHOP_BASE = '96ff183c08101c9a3bed079c3eeefac95c22cc2b'
 CONTROL_BASE = '6165e5137d34fb0efa7c39bb7fd61fcbad3524a4'
 PRICING_BASE = '07170497d1bd375b5bd9f265112eddc7e024d08c'
 FORMULA_BASE = '6ef5d8bbac29f2b938b9c21448e1466abe676dc1'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE)
+COINS_BASE = 'db0d5f5aa13554e15bf5cf1ffa89b13df8a6e0f8'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE, COINS_BASE)
 sys.path.insert(0, str(ROOT))
 TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
           'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
@@ -52,7 +53,7 @@ def assert_preserved(path, before, *, upgrading_settings=False):
                 expected = []
                 for row in rows:
                     row = list(row)
-                    if row[mode_index] == 'm':
+                    if upgrading_settings and row[mode_index] == 'm':
                         row[enabled_index] = 0
                     expected.append(tuple(row))
                 assert actual == expected, table
@@ -171,6 +172,21 @@ with sqlite3.connect(config.DB_PATH) as conn:
                         raise AssertionError('Migration fault was not injected')
                     conn.set_authorizer(None)
                     assert conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall() == schema_before
+            with closing(sqlite3.connect(fault)) as conn:
+                has_coin_journal=conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_coin_migrations'").fetchone()
+                if not has_coin_journal:
+                    original_schema=conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall()
+                    conn.set_authorizer(lambda action,name,*rest: sqlite3.SQLITE_DENY
+                        if action==sqlite3.SQLITE_CREATE_TABLE and name=='dnd_coin_migrations' else sqlite3.SQLITE_OK)
+                    try:
+                        with conn:
+                            migrate(conn)
+                    except sqlite3.DatabaseError:
+                        pass
+                    else:
+                        raise AssertionError('Coin journal DDL fault was not injected')
+                    conn.set_authorizer(None)
+                    assert conn.execute('SELECT type,name,sql FROM sqlite_master ORDER BY type,name').fetchall()==original_schema
             assert snapshot(fault) == before
             with closing(sqlite3.connect(fault)) as conn:
                 assert conn.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
