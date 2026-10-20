@@ -272,6 +272,13 @@ cm.apply(shop,d['plan'])
         self.add('50 серебряных монет',1)
         self.assertEqual(self.sql('SELECT quantity,item_id FROM inventory WHERE id=?',(row,)),[(115,self.silver)])
         self.assertEqual(self.sql('SELECT count(*) FROM inventory'),[(1,)])
+        # A target ID under a conflicting name must not be bypassed by inserting
+        # another canonical row. Both order and quantity remain unchanged.
+        self.sql("UPDATE inventory SET name='Не та монета' WHERE id=?",(row,))
+        before=self.sql('SELECT * FROM inventory')
+        with self.assertRaises(ValueError):
+            self.add('50 серебряных монет',1)
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
         self.assert_clean()
 
     def test_admin_overflow_and_ambiguous_existing_rows_rollback(self):

@@ -60,8 +60,12 @@ def add_inventory_item(
         )
 
         stored_rows=cursor.fetchall()
-        if normalized_coin and sum(r[1].strip().casefold()==name.casefold() for r in stored_rows)>1:
-            raise ValueError('Неоднозначные записи основных монет; нужна миграция.')
+        if normalized_coin:
+            coin_rows=[r for r in stored_rows if r[4]==definition_id or r[1].strip().casefold()==name.casefold()]
+            if len(coin_rows)>1:
+                raise ValueError('Неоднозначные записи основных монет; нужна миграция.')
+            if coin_rows and coin_rows[0][1].strip().casefold()!=name.casefold():
+                raise ValueError('Название основной монеты конфликтует с item_id.')
         for (
             item_id,
             stored_name,
