@@ -10,7 +10,7 @@ import sys
 import os
 from concurrent.futures import ThreadPoolExecutor
 import unittest
-from contextlib import closing, nullcontext
+from contextlib import closing, nullcontext, contextmanager
 from datetime import datetime, timezone
 from fractions import Fraction
 from pathlib import Path
@@ -238,6 +238,84 @@ class TestOptionBMigrator(unittest.TestCase):
         self.assertEqual(results[0],results[1])
         self.assertEqual(self.sql('SELECT count(*) FROM dnd_shop_test_migrations'),[(1,)])
         self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+
+    def test_candidate_parsing_is_outside_lock_and_live_sync_is_not_skipped(self):
+        locked = False
+        real_lock, parse = tm.catalog_lock, self.shop.catalog_from_bytes
+        @contextmanager
+        def tracked_lock(*args, **kwargs):
+            nonlocal locked
+            with real_lock(*args, **kwargs):
+                locked = True
+                try:
+                    yield
+                finally:
+                    locked = False
+        def parse_once(data):
+            self.assertFalse(locked, 'Full candidate parsing must precede EX lock')
+            return parse(data)
+        with patch.object(tm,'catalog_lock',tracked_lock), \
+                patch.object(self.shop,'catalog_from_bytes',side_effect=parse_once) as parsed, \
+                patch.object(self.shop,'sync',wraps=self.shop.sync) as synced:
+            self.apply_copy()
+        self.assertEqual(parsed.call_count,1)
+        self.assertEqual(synced.call_count,2)  # validate before publish AND finalize
+        self.assertIs(synced.call_args_list[0].args[1],synced.call_args_list[1].args[1])
+        self.assertTrue(all(call.kwargs == {'force':True} for call in synced.call_args_list))
+
+    def test_parsed_candidate_cannot_be_reused_for_other_bytes(self):
+        old = self.shop.catalog_from_bytes(self.original.read_bytes())
+        with self.assertRaisesRegex(CatalogError,'Parsed candidate differs'):
+            tm.sync_existing(self.shop,None,self.candidate,catalog=old)
+
+    def test_master_change_before_lock_rejects_without_economic_changes(self):
+        master = self.folder/'private-loot.csv'
+        master.write_bytes(self.loot.read_bytes())
+        self.shop.loot_path = master
+        before = self.sql('SELECT * FROM dnd_currencies')
+        inventory_before = self.sql('SELECT * FROM inventory')
+        real_lock = tm.catalog_lock
+        @contextmanager
+        def changed_master(*args, **kwargs):
+            with real_lock(*args, **kwargs):
+                master.write_bytes(master.read_bytes()+b'\n')
+                yield
+        with patch.object(tm,'catalog_lock',changed_master), \
+                self.assertRaisesRegex(CatalogError,'Master changed'):
+            self.apply_copy()
+        self.assertEqual(self.sql('SELECT * FROM dnd_currencies'),before)
+        self.assertEqual(self.sql('SELECT * FROM inventory'),inventory_before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_test_migrations'),[])
+        self.assertEqual(self.runtime.read_bytes(),self.original.read_bytes())
+
+    def test_master_change_after_publication_stays_closed_and_recovers(self):
+        master = self.folder/'private-loot.csv'
+        original_master = self.loot.read_bytes()
+        master.write_bytes(original_master)
+        self.shop.loot_path = master
+        before = self.sql('SELECT * FROM inventory')
+        trades = self.sql('SELECT * FROM dnd_shop_trades')
+        money = self.sql('SELECT * FROM dnd_shop_money')
+        original_publish = tm.publish_locked
+        def changed_master(shop,data):
+            original_publish(shop,data)
+            master.write_bytes(original_master+b'\n')
+        with patch.object(tm,'publish_locked',side_effect=changed_master), \
+                self.assertRaisesRegex(CatalogError,'Master changed'):
+            self.apply_copy()
+        self.assertEqual(self.sql('SELECT phase FROM dnd_shop_test_migrations'),[('prepared',)])
+        self.assertEqual(self.sql('SELECT enabled FROM dnd_shop_settings'),[(0,)])
+        master.write_bytes(original_master)
+        result = self.apply_copy()
+        self.assertEqual(self.apply_copy(),result)
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_trades'),trades)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_money'),money)
+        self.assertEqual(self.sql('SELECT count(*) FROM dnd_shop_test_migrations'),[(1,)])
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(audit(conn)['errors'],0)
+            self.assertEqual([tuple(r) for r in conn.execute('PRAGMA integrity_check')],[('ok',)])
+            self.assertFalse(conn.execute('PRAGMA foreign_key_check').fetchall())
 
     def test_expired_snapshot_is_not_an_apply_authorization(self):
         meta=json.loads(self.meta.read_text(encoding='utf-8'))

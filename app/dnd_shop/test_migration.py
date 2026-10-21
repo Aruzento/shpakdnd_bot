@@ -138,14 +138,26 @@ def change_nominals(conn, changes):
             raise CatalogError('Currency changed since backup; no automatic repair.')
 
 
-def sync_existing(shop, conn, candidate):
+def confirmed_master(shop, master):
+    # Parsing may happen before the lock; every live use still verifies the
+    # current bytes, including read failures. Never fall back to a stale master.
+    if digest(bounded_bytes(shop.loot_path)) != master.digest:
+        raise CatalogError('Master changed during migration; keep closed and review.')
+    return master
+
+
+def sync_existing(shop, conn, candidate, *, catalog=None):
     # A migration must not register a missing item or touch another user's data.
+    if catalog is None:
+        catalog = shop.catalog_from_bytes(candidate)
+    if catalog.digest != digest(candidate):
+        raise CatalogError('Parsed candidate differs from approved publication.')
     allowed = {'dnd_shop_catalog_entries', 'dnd_shop_catalog_versions'}
     writes = {sqlite3.SQLITE_INSERT, sqlite3.SQLITE_UPDATE, sqlite3.SQLITE_DELETE}
     conn.set_authorizer(lambda action, table, *args: sqlite3.SQLITE_DENY
                         if action in writes and table not in allowed else sqlite3.SQLITE_OK)
     try:
-        shop.sync(conn, shop.catalog_from_bytes(candidate), force=True)
+        shop.sync(conn, catalog, force=True)
     finally:
         conn.set_authorizer(None)
 
@@ -279,6 +291,12 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
         raise CatalogError('Plan differs from recomputed backup/settings transformation.')
     meta=json.loads(Path(metadata).read_text(encoding='utf-8'))
     require_target(shop,meta,plan)  # no CLI / environment escape hatch
+    # Immutable, operation-local parsing is CPU-heavy for the full catalog.
+    # Do it once before taking EX; SQL/master validation stays inside the lock.
+    catalog = shop.catalog_from_bytes(candidate)
+    master = read_master(shop.loot_path)
+    if catalog.digest != plan['candidate_sha256'] or master.digest != plan['master_sha256']:
+        raise CatalogError('Approved candidate / master differs.')
     with catalog_lock(shop.csv_path,exclusive=True):
         with shop.transaction(catalog=False) as (conn,_):
             exists=conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone()
@@ -308,7 +326,7 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
                 if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                     raise CatalogError('Historical economy differs.')
                 change_nominals(conn,plan['currencies'])
-                profile=preflight(shop,conn,SCOPE,'m',read_master(shop.loot_path))
+                profile=preflight(shop,conn,SCOPE,'m',confirmed_master(shop,master))
                 if any(profile[k]!=plan['profile'][k] for k in PLAN_KEYS):
                     raise CatalogError('Live currency / topic configuration differs.')
                 persist_state(conn,SCOPE,profile,False)
@@ -316,7 +334,7 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
                 # Validate using exactly the normal sync; no persistent changes to
                 # registries/counters/history are permitted.
                 conn.execute('SAVEPOINT candidate')
-                sync_existing(shop,conn,candidate)
+                sync_existing(shop,conn,candidate,catalog=catalog)
                 if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                     raise CatalogError('Publication would modify historical economy.')
                 conn.execute('ROLLBACK TO candidate')
@@ -342,12 +360,12 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
             if (not record or record['phase']!='prepared' or fingerprint(conn)!=record['prepared_fingerprint']
                     or not publication_matches(pending,candidate,plan)):
                 raise CatalogError('State changed before finalization; migration stays closed.')
-            profile=preflight(shop,conn,SCOPE,'m',read_master(shop.loot_path))
+            profile=preflight(shop,conn,SCOPE,'m',confirmed_master(shop,master))
             if any(profile[k]!=plan['profile'][k] for k in PLAN_KEYS):
                 raise CatalogError('Currency profile changed during publication.')
             if digest(bounded_bytes(shop.csv_path))!=plan['candidate_sha256']:
                 raise CatalogError('Published runtime differs.')
-            sync_existing(shop,conn,candidate)
+            sync_existing(shop,conn,candidate,catalog=catalog)
             if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                 raise CatalogError('Immutable economic values changed.')
             conn.execute('DELETE FROM dnd_shop_publications WHERE source_path=?',(str(shop.csv_path),))
