@@ -5,7 +5,8 @@ import json
 import socket
 import sqlite3
 import subprocess
-from contextlib import closing
+import time
+from contextlib import closing, contextmanager, ExitStack
 from dataclasses import replace
 from datetime import datetime, timezone
 from fractions import Fraction
@@ -14,7 +15,7 @@ from pathlib import Path
 from app.db.dnd_shop import migrate
 from app.dnd_shop.audit import audit
 from app.dnd_shop.builder import REFERENCE_SHA256, encode_products, read_master, verify_snapshot
-from app.dnd_shop.catalog import CatalogError, bounded_bytes, catalog_lock, parse_catalog
+from app.dnd_shop.catalog import CatalogError, CatalogBusy, bounded_bytes, catalog_lock, parse_catalog
 from app.dnd_shop.control import PLAN_KEYS, persist_state, publish_locked
 from app.dnd_shop.diagnostics import analyze
 from app.dnd_shop.money import exact_text
@@ -29,6 +30,10 @@ LOOT = Path('/var/lib/shpakdnd-v144-stage/loot.csv')
 ID = 'test-b-source-copper-v2--5320347021-0'
 ROOT = Path(__file__).resolve().parents[2]
 MAX_AGE = 7200
+# A duplicate may join a PROVEN durable same-plan operation, never extend the
+# generic catalog lock timeout or retry monetary writes. A crashed owner still
+# has a finite wait and leaves the existing prepared journal for explicit resume.
+RECEIPT_WAIT = 5
 
 
 def digest(data):
@@ -282,6 +287,62 @@ def publication_matches(row, candidate, plan):
                 and json.loads(row['plan'])==dict(plan['profile'],test_migration_id=ID))
 
 
+def wait_for_receipt(shop, candidate, plan, approved_sha):
+    """Read-only join after lock timeout, only for the identical durable intent."""
+    with closing(sqlite3.connect(shop.db_path.resolve().as_uri()+'?mode=ro',
+                                 uri=True,timeout=0.1,isolation_level=None)) as conn:
+        conn.row_factory=sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone():
+            return None
+        row=conn.execute("""SELECT m.*,p.candidate AS pending_candidate,
+            p.plan AS pending_plan,p.digest AS pending_digest
+            FROM dnd_shop_test_migrations m LEFT JOIN dnd_shop_publications p
+            ON p.source_path=? WHERE m.id=?""",(str(shop.csv_path),ID)).fetchone()
+        if (not row or row['plan_sha256']!=approved_sha or json.loads(row['plan'])!=plan
+                or (row['chat_id'],row['thread_id'])!=SCOPE):
+            return None
+        if row['phase']=='complete':
+            return json.loads(row['result'])
+        pending = dict(candidate=row['pending_candidate'],plan=row['pending_plan'],
+                       digest=row['pending_digest']) if row['pending_candidate'] is not None else None
+        if row['phase']!='prepared' or not publication_matches(pending,candidate,plan):
+            return None  # no evidence that this lock holder is our operation
+        stored_plan=row['plan']
+        deadline=time.monotonic()+RECEIPT_WAIT
+        while True:
+            remaining=deadline-time.monotonic()
+            if remaining<=0:
+                return None
+            time.sleep(min(0.05,remaining))
+            row=conn.execute('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,)).fetchone()
+            if (not row or row['plan_sha256']!=approved_sha or row['plan']!=stored_plan
+                    or (row['chat_id'],row['thread_id'])!=SCOPE):
+                return None
+            if row['phase']=='complete':
+                return json.loads(row['result'])
+            if row['phase']!='prepared':
+                return None
+
+
+@contextmanager
+def migration_lock(shop, candidate, plan, approved_sha):
+    # Catch ONLY failure to acquire EX. Errors from an acquired transaction must
+    # propagate unchanged and must never be masked by a saved receipt.
+    stack=ExitStack()
+    try:
+        stack.enter_context(catalog_lock(shop.csv_path,exclusive=True))
+    except CatalogBusy:
+        stack.close()
+        receipt=wait_for_receipt(shop,candidate,plan,approved_sha)
+        if receipt is None:
+            raise
+        yield receipt
+    else:
+        with stack:
+            yield None
+
+
 def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
     if digest(canonical(plan).encode())!=approved_sha:
         raise CatalogError('Explicit approved plan SHA-256 is required.')
@@ -297,7 +358,10 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
     master = read_master(shop.loot_path)
     if catalog.digest != plan['candidate_sha256'] or master.digest != plan['master_sha256']:
         raise CatalogError('Approved candidate / master differs.')
-    with catalog_lock(shop.csv_path,exclusive=True):
+    with migration_lock(shop,candidate,plan,approved_sha) as receipt:
+        if receipt is not None:
+            require_target(shop,meta,plan)
+            return receipt
         with shop.transaction(catalog=False) as (conn,_):
             exists=conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone()
             record=conn.execute('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,)).fetchone() if exists else None

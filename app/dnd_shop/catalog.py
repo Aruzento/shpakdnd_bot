@@ -34,6 +34,10 @@ class CatalogError(ValueError):
     pass
 
 
+class CatalogBusy(CatalogError):
+    """The bounded wait to acquire the catalog lock expired."""
+
+
 @dataclass(frozen=True)
 class Product:
     chat_id: int
@@ -100,7 +104,7 @@ def catalog_lock(path, *, exclusive=False, timeout=5):
                 acquired = True
             except OSError as error:
                 if time.monotonic() >= deadline:
-                    raise CatalogError('Каталог занят. Повторите действие позже.') from error
+                    raise CatalogBusy('Каталог занят. Повторите действие позже.') from error
                 time.sleep(0.025)
         yield
     finally:

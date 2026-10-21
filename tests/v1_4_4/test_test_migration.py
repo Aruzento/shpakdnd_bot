@@ -8,6 +8,7 @@ import tempfile
 import subprocess
 import sys
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 import unittest
 from contextlib import closing, nullcontext, contextmanager
@@ -20,7 +21,7 @@ from app.db import schema, inventory
 from app.db.dnd_items import create_currency
 from app.dnd_shop import builder
 from app.dnd_shop.audit import audit
-from app.dnd_shop.catalog import CatalogError, snapshot
+from app.dnd_shop.catalog import CatalogError, CatalogBusy, snapshot
 from app.dnd_shop.money import CalculationLimit, exact_text
 from app.dnd_shop.pricing import MASTER_MONEY, GOLD_FACTOR, preflight
 from app.dnd_shop.service import Shop
@@ -198,8 +199,11 @@ class TestOptionBMigrator(unittest.TestCase):
         with closing(sqlite3.connect(db)) as conn:
             before=tm.scoped_rows(conn)
             self.assertTrue(conn.execute('SELECT 1 FROM dnd_shop_credit').fetchone())
+        approved=tm.digest(tm.canonical(plan).encode())
         with patch.object(tm,'require_target'):
-            tm.apply(shop,backup,metadata,runtime,plan,tm.digest(tm.canonical(plan).encode()))
+            result=tm.apply(shop,backup,metadata,runtime,plan,approved)
+            with patch.object(tm,'catalog_lock',side_effect=CatalogBusy('synthetic busy')):
+                self.assertEqual(tm.apply(shop,backup,metadata,runtime,plan,approved),result)
         with closing(sqlite3.connect(db)) as conn:
             after=tm.scoped_rows(conn)
             for table in ('dnd_shop_credit','dnd_shop_credit_moves','dnd_shop_trades','dnd_shop_money','inventory'):
@@ -281,6 +285,7 @@ class TestOptionBMigrator(unittest.TestCase):
                 master.write_bytes(master.read_bytes()+b'\n')
                 yield
         with patch.object(tm,'catalog_lock',changed_master), \
+                patch.object(tm,'wait_for_receipt',side_effect=AssertionError('do not mask acquired errors')), \
                 self.assertRaisesRegex(CatalogError,'Master changed'):
             self.apply_copy()
         self.assertEqual(self.sql('SELECT * FROM dnd_currencies'),before)
@@ -316,6 +321,80 @@ class TestOptionBMigrator(unittest.TestCase):
             self.assertEqual(audit(conn)['errors'],0)
             self.assertEqual([tuple(r) for r in conn.execute('PRAGMA integrity_check')],[('ok',)])
             self.assertFalse(conn.execute('PRAGMA foreign_key_check').fetchall())
+
+    def test_lock_timeout_joins_only_identical_durable_operation(self):
+        entered,waiting,release = threading.Event(),threading.Event(),threading.Event()
+        real_lock,real_publish,real_sleep = tm.catalog_lock,tm.publish_locked,tm.time.sleep
+        before = self.sql('SELECT * FROM inventory')
+        trades = self.sql('SELECT * FROM dnd_shop_trades')
+        money = self.sql('SELECT * FROM dnd_shop_money')
+        def paused_publish(shop,data):
+            entered.set()
+            if not release.wait(30):
+                raise RuntimeError('synthetic publication barrier expired')
+            real_publish(shop,data)
+        def joined_sleep(seconds):
+            waiting.set()  # a matching prepared intent was already proved
+            real_sleep(seconds)
+        def immediate_lock(*args,**kwargs):
+            return real_lock(*args,**kwargs,timeout=0)  # force the waiter path, not a longer deadline
+        with patch.object(tm,'require_target'),patch.object(tm,'catalog_lock',immediate_lock), \
+                patch.object(tm,'publish_locked',side_effect=paused_publish), \
+                patch.object(tm.time,'sleep',side_effect=joined_sleep),ThreadPoolExecutor(max_workers=2) as pool:
+            first=pool.submit(tm.apply,self.shop,self.backup,self.meta,self.original,self.plan,self.sha)
+            try:
+                self.assertTrue(entered.wait(30))  # intent committed; owner holds EX
+                second=pool.submit(tm.apply,self.shop,self.backup,self.meta,self.original,self.plan,self.sha)
+                self.assertTrue(waiting.wait(30))
+            finally:
+                release.set()
+            self.assertEqual(first.result(30),second.result(30))
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_trades'),trades)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_money'),money)
+        self.assertEqual(self.sql('SELECT count(*) FROM dnd_shop_test_migrations'),[(1,)])
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(audit(conn)['errors'],0)
+
+    def test_unknown_catalog_holder_does_not_get_extra_wait_or_writes(self):
+        before=self.sql('SELECT * FROM dnd_currencies')
+        with patch.object(tm,'catalog_lock',side_effect=CatalogBusy('synthetic busy')), \
+                patch.object(tm.time,'sleep',side_effect=AssertionError('unknown holder must not be joined')), \
+                self.assertRaisesRegex(CatalogError,'synthetic busy'):
+            self.apply_copy()
+        self.assertEqual(self.sql('SELECT * FROM dnd_currencies'),before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_test_migrations'),[])
+
+    def test_unreadable_lock_is_not_a_receipt_wait_even_when_complete(self):
+        self.apply_copy()
+        with patch.object(tm,'catalog_lock',side_effect=CatalogError('unreadable lock')), \
+                patch.object(tm,'wait_for_receipt',side_effect=AssertionError('do not mask I/O errors')), \
+                self.assertRaisesRegex(CatalogError,'unreadable lock'):
+            self.apply_copy()
+        self.assertEqual(self.sql('SELECT count(*) FROM dnd_shop_test_migrations'),[(1,)])
+
+    def test_join_of_interrupted_intent_is_bounded_and_never_resumes_writes(self):
+        with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
+            self.apply_copy()
+        before=self.sql('SELECT * FROM inventory')
+        journal=self.sql('SELECT * FROM dnd_shop_test_migrations')
+        with patch.object(tm.time,'monotonic',side_effect=[0,tm.RECEIPT_WAIT+1]), \
+                patch.object(tm.time,'sleep',side_effect=AssertionError('expired budget')):
+            self.assertIsNone(tm.wait_for_receipt(self.shop,self.candidate,self.plan,self.sha))
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+        self.assertEqual(self.sql('SELECT * FROM dnd_shop_test_migrations'),journal)
+        self.assertEqual(self.sql('SELECT enabled FROM dnd_shop_settings'),[(0,)])
+        self.assertEqual(self.apply_copy(),self.apply_copy())  # explicit resume, one receipt
+
+    def test_join_rejects_other_plan_and_damaged_publication(self):
+        with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
+            self.apply_copy()
+        with patch.object(tm.time,'sleep',side_effect=AssertionError('unproven intent')):
+            self.assertIsNone(tm.wait_for_receipt(self.shop,self.candidate,self.plan,'0'*64))
+            self.sql("UPDATE dnd_shop_publications SET digest=?",('0'*64,))
+            self.assertIsNone(tm.wait_for_receipt(self.shop,self.candidate,self.plan,self.sha))
+        self.assertEqual(self.sql('SELECT phase FROM dnd_shop_test_migrations'),[('prepared',)])
+        self.assertEqual(self.sql('SELECT enabled FROM dnd_shop_settings'),[(0,)])
 
     def test_expired_snapshot_is_not_an_apply_authorization(self):
         meta=json.loads(self.meta.read_text(encoding='utf-8'))
