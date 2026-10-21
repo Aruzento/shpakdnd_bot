@@ -1,0 +1,159 @@
+"""Additive ordinary D&D shop schema. Caller owns the transaction."""
+def migrate(conn):
+    if not conn.in_transaction:
+        conn.execute('BEGIN IMMEDIATE')
+    statements = [
+        """CREATE TABLE IF NOT EXISTS dnd_shop_skus (
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL, code TEXT NOT NULL,
+            item_id INTEGER NOT NULL, original_name_key TEXT NOT NULL,
+            sold INTEGER NOT NULL DEFAULT 0 CHECK(typeof(sold)='integer' AND sold>=0),
+            PRIMARY KEY(chat_id,thread_id,code), UNIQUE(chat_id,thread_id,item_id),
+            FOREIGN KEY(item_id,chat_id,thread_id) REFERENCES dnd_items(id,chat_id,thread_id))""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_owners (
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL, username TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            PRIMARY KEY(chat_id,thread_id,username), UNIQUE(chat_id,thread_id,user_id))""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_sessions (
+            token TEXT PRIMARY KEY, chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL, username TEXT NOT NULL, character_key TEXT NOT NULL,
+            expires INTEGER NOT NULL, closed INTEGER NOT NULL DEFAULT 0 CHECK(closed IN (0,1)))""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_operations (
+            token TEXT PRIMARY KEY, session_token TEXT NOT NULL REFERENCES dnd_shop_sessions(token),
+            kind TEXT NOT NULL CHECK(kind IN ('buy','sell')), sku TEXT NOT NULL,
+            item_id INTEGER NOT NULL REFERENCES dnd_items(id), inventory_id INTEGER,
+            price TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            result TEXT, completed_at TEXT)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_trades (
+            id INTEGER PRIMARY KEY, operation_token TEXT NOT NULL UNIQUE REFERENCES dnd_shop_operations(token),
+            kind TEXT NOT NULL CHECK(kind IN ('buy','sell')), chat_id INTEGER NOT NULL,
+            thread_id INTEGER NOT NULL, user_id INTEGER NOT NULL, username TEXT NOT NULL,
+            character_key TEXT NOT NULL, sku TEXT NOT NULL, item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            price TEXT NOT NULL, value TEXT NOT NULL, quantity INTEGER NOT NULL CHECK(quantity=1),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_money (
+            trade_id INTEGER NOT NULL REFERENCES dnd_shop_trades(id),
+            item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            direction TEXT NOT NULL CHECK(direction IN ('debit','change','payout')),
+            quantity INTEGER NOT NULL CHECK(typeof(quantity)='integer' AND quantity>0),
+            denomination TEXT NOT NULL, PRIMARY KEY(trade_id,item_id,direction))""",
+        'CREATE INDEX IF NOT EXISTS idx_dnd_shop_operations_session ON dnd_shop_operations(session_token)',
+    ]
+    for statement in statements:
+        conn.execute(statement)
+    # Additive evolution: old trade/operation CHECK constraints are retained.
+    columns = {r[1] for r in conn.execute('PRAGMA table_info(dnd_shop_operations)')}
+    if 'quote_digest' not in columns:
+        conn.execute('ALTER TABLE dnd_shop_operations ADD COLUMN quote_digest TEXT')
+    extra = [
+        """CREATE TABLE IF NOT EXISTS dnd_shop_catalog_versions (
+            source_path TEXT PRIMARY KEY, digest TEXT NOT NULL, master_sha256 TEXT NOT NULL DEFAULT '',
+            imported INTEGER NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_catalog_entries (
+            source_path TEXT NOT NULL, chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+            code TEXT NOT NULL, item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            price TEXT NOT NULL, stock INTEGER NOT NULL CHECK(typeof(stock)='integer' AND stock>=0),
+            active INTEGER NOT NULL CHECK(active IN (0,1)),
+            buy_enabled INTEGER NOT NULL CHECK(buy_enabled IN (0,1)),
+            is_currency INTEGER NOT NULL CHECK(is_currency IN (0,1)),
+            present INTEGER NOT NULL DEFAULT 1 CHECK(present IN (0,1)),
+            PRIMARY KEY(source_path,chat_id,thread_id,code))""",
+        """CREATE INDEX IF NOT EXISTS idx_dnd_shop_buy ON dnd_shop_catalog_entries
+            (source_path,chat_id,thread_id,buy_enabled,active)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit (
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL, username TEXT NOT NULL,
+            balance TEXT NOT NULL DEFAULT '0' CHECK(typeof(balance)='text'
+                AND length(balance) BETWEEN 1 AND 1024 AND balance NOT GLOB '*[^0-9/]*'),
+            PRIMARY KEY(chat_id,thread_id,user_id),
+            FOREIGN KEY(chat_id,thread_id,username) REFERENCES dnd_shop_owners(chat_id,thread_id,username))""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_redemptions (
+            token TEXT PRIMARY KEY, session_token TEXT NOT NULL REFERENCES dnd_shop_sessions(token),
+            expected TEXT NOT NULL CHECK(typeof(expected)='text' AND length(expected) BETWEEN 1 AND 1024
+                AND expected!='0' AND expected NOT GLOB '*[^0-9/]*'), result TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_moves (
+            id INTEGER PRIMARY KEY,
+            chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+            trade_id INTEGER REFERENCES dnd_shop_trades(id),
+            redemption_token TEXT REFERENCES dnd_shop_credit_redemptions(token),
+            direction TEXT NOT NULL CHECK(direction IN ('add','spend','redeem')),
+            amount TEXT NOT NULL CHECK(typeof(amount)='text' AND length(amount) BETWEEN 1 AND 1024
+                AND amount!='0' AND amount NOT GLOB '*[^0-9/]*'),
+            balance_after TEXT NOT NULL CHECK(typeof(balance_after)='text' AND length(balance_after) BETWEEN 1 AND 1024
+                AND balance_after NOT GLOB '*[^0-9/]*'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(chat_id,thread_id,user_id) REFERENCES dnd_shop_credit(chat_id,thread_id,user_id),
+            CHECK((trade_id IS NOT NULL AND redemption_token IS NULL AND direction IN ('add','spend'))
+               OR (trade_id IS NULL AND redemption_token IS NOT NULL AND direction='redeem')),
+            UNIQUE(trade_id,direction), UNIQUE(redemption_token))""",
+        """CREATE INDEX IF NOT EXISTS idx_dnd_shop_credit_owner ON dnd_shop_credit_moves
+            (chat_id,thread_id,user_id,id)""",
+        """CREATE TABLE IF NOT EXISTS dnd_shop_credit_coins (
+            redemption_token TEXT NOT NULL REFERENCES dnd_shop_credit_redemptions(token),
+            item_id INTEGER NOT NULL REFERENCES dnd_items(id),
+            quantity INTEGER NOT NULL CHECK(typeof(quantity)='integer' AND quantity>0),
+            denomination TEXT NOT NULL, PRIMARY KEY(redemption_token,item_id))""",
+    ]
+    for statement in extra:
+        conn.execute(statement)
+
+    old_settings = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='dnd_shop_settings'").fetchone()
+    needs_upgrade = bool(old_settings and 'CHECK(settings_version=1)' in old_settings[0])
+    if needs_upgrade:
+        # No table references settings. Rebuild this CHECK in the caller's single
+        # transaction; all economic tables and historical values remain untouched.
+        conn.execute('ALTER TABLE dnd_shop_settings RENAME TO dnd_shop_settings_v1')
+    # Unversioned INSERTs from older applications must never claim formula 2.
+    # New control.persist_state explicitly writes 2 only after its preflight.
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_settings (
+        chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),
+        pricing_mode TEXT CHECK(pricing_mode IN ('b','m')),
+        factor TEXT NOT NULL DEFAULT '1', base_item_id INTEGER,
+        currency_signature TEXT, currency_units TEXT NOT NULL DEFAULT '{}',
+        settings_version INTEGER NOT NULL DEFAULT 1 CHECK(settings_version IN (1,2)),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(chat_id,thread_id),
+        FOREIGN KEY(base_item_id,chat_id,thread_id) REFERENCES dnd_items(id,chat_id,thread_id),
+        CHECK((pricing_mode IS NULL AND enabled=0)
+           OR (pricing_mode IS NOT NULL AND base_item_id IS NOT NULL AND currency_signature IS NOT NULL
+               AND length(currency_signature)=64
+               AND ((pricing_mode='m' AND
+                      ((settings_version=1 AND factor='1' AND enabled=0)
+                       OR (settings_version=2 AND typeof(factor)='text'
+                           AND length(factor) BETWEEN 1 AND 1024
+                           AND factor!='0' AND factor NOT GLOB '*[^0-9/]*')))
+                 OR (pricing_mode='b' AND factor IN ('57/2000','57/200000'))))))""")
+    if needs_upgrade:
+        conn.execute("""INSERT INTO dnd_shop_settings
+            SELECT chat_id,thread_id,CASE WHEN pricing_mode='m' THEN 0 ELSE enabled END,
+                pricing_mode,factor,base_item_id,currency_signature,currency_units,
+                settings_version,created_at,updated_at FROM dnd_shop_settings_v1""")
+        conn.execute("""UPDATE dnd_shop_sessions SET closed=1
+            WHERE (chat_id,thread_id) IN
+              (SELECT chat_id,thread_id FROM dnd_shop_settings WHERE pricing_mode='m')""")
+        conn.execute('DROP TABLE dnd_shop_settings_v1')
+    # One durable intent per runtime file; all trading fails closed until it is
+    # finished by the same topic administrator. The original tables are untouched.
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_publications (
+        source_path TEXT PRIMARY KEY, chat_id INTEGER NOT NULL, thread_id INTEGER NOT NULL,
+        plan TEXT NOT NULL CHECK(length(plan)<=65536),
+        candidate BLOB NOT NULL CHECK(typeof(candidate)='blob' AND length(candidate)<=33554432),
+        digest TEXT NOT NULL CHECK(length(digest)=64),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS dnd_shop_test_migrations (
+        id TEXT PRIMARY KEY, chat_id INTEGER NOT NULL CHECK(chat_id=-5320347021),
+        thread_id INTEGER NOT NULL CHECK(thread_id=0),
+        plan_sha256 TEXT NOT NULL CHECK(length(plan_sha256)=64),
+        plan TEXT NOT NULL CHECK(length(plan)<=65536),
+        prepared_fingerprint TEXT NOT NULL CHECK(length(prepared_fingerprint)=64),
+        phase TEXT NOT NULL CHECK(phase IN ('prepared','complete')),
+        result TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT,
+        CHECK((phase='prepared' AND result IS NULL AND completed_at IS NULL)
+           OR (phase='complete' AND result IS NOT NULL AND completed_at IS NOT NULL)))""")
+
+    # No exchange rates or inventory data are modified during startup.
+    from app.dnd_shop.coin_migration import migrate as migrate_coins
+    migrate_coins(conn)

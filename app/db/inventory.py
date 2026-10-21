@@ -13,7 +13,7 @@ def add_inventory_item(
     quantity: int,
     description: str = "",
 ) -> tuple[str, int, str]:
-    if type(quantity) is not int or quantity <= 0:
+    if type(quantity) is not int or not 0 < quantity <= 2**63-1:
         raise ValueError('Количество должно быть положительным целым.')
     username = normalize_username(username)
     name = name.strip()
@@ -23,14 +23,33 @@ def add_inventory_item(
         conn.execute('PRAGMA foreign_keys=ON')
         conn.execute('BEGIN IMMEDIATE')
         from app.db.dnd_items import register_in_transaction
-        definition_id=register_in_transaction(conn,chat_id,thread_id,name,description)
+        from app.db import dnd_items
+        existing=conn.execute('SELECT id,category FROM dnd_items WHERE chat_id=? AND thread_id=? AND name_key=?',
+                              (chat_id,thread_id,name.casefold())).fetchone()
+        definition_id=existing[0] if existing else None
+        normalized_coin=False
+        if definition_id is not None and existing[1]=='currency':
+            from app.dnd_shop.coins import configured_profile
+            coin_profile=configured_profile(conn,(chat_id,thread_id),
+                                dnd_items.TOPIC_SETTINGS.get(chat_id,{}).get(thread_id),validate_mode=False)
+            mapping=coin_profile['bundles'].get(str(definition_id)) if coin_profile else None
+            if mapping:
+                normalized_coin=True
+                definition_id,factor=mapping
+                quantity*=factor
+                if quantity>2**63-1:
+                    raise ValueError('Превышен предел количества монет SQLite INTEGER.')
+                name=conn.execute('SELECT name FROM dnd_items WHERE id=?',(definition_id,)).fetchone()[0]
+        if definition_id is None:
+            definition_id=register_in_transaction(conn,chat_id,thread_id,name,description)
         cursor = conn.execute(
             """
             SELECT
                 id,
                 name,
                 quantity,
-                description
+                description,
+                item_id
             FROM inventory
             WHERE chat_id = ?
               AND thread_id = ?
@@ -40,14 +59,28 @@ def add_inventory_item(
             (chat_id, thread_id, username),
         )
 
+        stored_rows=cursor.fetchall()
+        if normalized_coin:
+            coin_rows=[r for r in stored_rows if r[4]==definition_id or r[1].strip().casefold()==name.casefold()]
+            if len(coin_rows)>1:
+                raise ValueError('Неоднозначные записи основных монет; нужна миграция.')
+            if coin_rows and coin_rows[0][1].strip().casefold()!=name.casefold():
+                raise ValueError('Название основной монеты конфликтует с item_id.')
         for (
             item_id,
             stored_name,
             stored_quantity,
             stored_description,
-        ) in cursor.fetchall():
-            if stored_name.casefold() == name.casefold():
+            stored_definition,
+        ) in stored_rows:
+            if (stored_name.strip() if normalized_coin else stored_name).casefold() == name.casefold():
+                if stored_definition is not None and stored_definition!=definition_id:
+                    raise ValueError('Название инвентаря конфликтует с item_id.')
+                if type(stored_quantity) is not int or stored_quantity<=0:
+                    raise ValueError('Некорректное старое количество предмета.')
                 new_quantity = stored_quantity + quantity
+                if new_quantity>2**63-1:
+                    raise ValueError('Превышен предел количества SQLite INTEGER.')
                 new_description = (
                     description
                     if description
@@ -59,12 +92,13 @@ def add_inventory_item(
                     UPDATE inventory
                     SET
                         quantity = ?,
-                        description = ?
+                        description = ?, item_id = ?
                     WHERE id = ?
                     """,
                     (
                         new_quantity,
                         new_description,
+                        definition_id,
                         item_id,
                     ),
                 )

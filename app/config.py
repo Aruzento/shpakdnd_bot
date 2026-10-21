@@ -15,6 +15,13 @@ GLOBAL_ADMIN_USERNAME = "@arukozento"
 
 load_dotenv(ENV_PATH)
 
+DND_SHOP_CSV_PATH = Path(os.getenv("DND_SHOP_CSV_PATH", "/var/lib/shpakdnd/shop.csv"))
+
+DND_LOOT_CSV_PATH = Path(os.getenv("DND_LOOT_CSV_PATH", "/var/lib/shpakdnd/loot.csv"))
+
+DND_SHOP_CODE_MAP_PATH = Path(os.getenv("DND_SHOP_CODE_MAP_PATH", "/var/lib/shpakdnd/loot_code_map.csv"))
+DND_SHOP_OFFERS_PATH = Path(os.getenv("DND_SHOP_OFFERS_PATH", "/var/lib/shpakdnd/shop_offers.csv"))
+
 TOKEN = os.getenv("BOT_TOKEN")
 TIMEZONE_NAME = os.getenv("BOT_TIMEZONE", "Europe/Moscow")
 

@@ -1,3 +1,4 @@
+from app.handlers.shop import router as dnd_shop_router
 from app.mini.titles.handlers import router as mini_titles_router
 from app.handlers.create import router as create_router
 from app.mini.superadmin.handlers import router as superadmin_router
@@ -14,6 +15,7 @@ from app.mini.events.handlers import router as mini_events_router
 from app.mini.events.pvp_handlers import router as mini_pvp_router
 
 ROUTERS = [
+    dnd_shop_router,
     mini_pvp_router,
     common_router,
     mini_titles_router,
