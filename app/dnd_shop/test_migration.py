@@ -5,7 +5,8 @@ import json
 import socket
 import sqlite3
 import subprocess
-from contextlib import closing
+import time
+from contextlib import closing, contextmanager, ExitStack
 from dataclasses import replace
 from datetime import datetime, timezone
 from fractions import Fraction
@@ -14,7 +15,7 @@ from pathlib import Path
 from app.db.dnd_shop import migrate
 from app.dnd_shop.audit import audit
 from app.dnd_shop.builder import REFERENCE_SHA256, encode_products, read_master, verify_snapshot
-from app.dnd_shop.catalog import CatalogError, bounded_bytes, catalog_lock, parse_catalog
+from app.dnd_shop.catalog import CatalogError, CatalogBusy, bounded_bytes, catalog_lock, parse_catalog
 from app.dnd_shop.control import PLAN_KEYS, persist_state, publish_locked
 from app.dnd_shop.diagnostics import analyze
 from app.dnd_shop.money import exact_text
@@ -29,6 +30,10 @@ LOOT = Path('/var/lib/shpakdnd-v144-stage/loot.csv')
 ID = 'test-b-source-copper-v2--5320347021-0'
 ROOT = Path(__file__).resolve().parents[2]
 MAX_AGE = 7200
+# A duplicate may join a PROVEN durable same-plan operation, never extend the
+# generic catalog lock timeout or retry monetary writes. A crashed owner still
+# has a finite wait and leaves the existing prepared journal for explicit resume.
+RECEIPT_WAIT = 5
 
 
 def digest(data):
@@ -138,14 +143,26 @@ def change_nominals(conn, changes):
             raise CatalogError('Currency changed since backup; no automatic repair.')
 
 
-def sync_existing(shop, conn, candidate):
+def confirmed_master(shop, master):
+    # Parsing may happen before the lock; every live use still verifies the
+    # current bytes, including read failures. Never fall back to a stale master.
+    if digest(bounded_bytes(shop.loot_path)) != master.digest:
+        raise CatalogError('Master changed during migration; keep closed and review.')
+    return master
+
+
+def sync_existing(shop, conn, candidate, *, catalog=None):
     # A migration must not register a missing item or touch another user's data.
+    if catalog is None:
+        catalog = shop.catalog_from_bytes(candidate)
+    if catalog.digest != digest(candidate):
+        raise CatalogError('Parsed candidate differs from approved publication.')
     allowed = {'dnd_shop_catalog_entries', 'dnd_shop_catalog_versions'}
     writes = {sqlite3.SQLITE_INSERT, sqlite3.SQLITE_UPDATE, sqlite3.SQLITE_DELETE}
     conn.set_authorizer(lambda action, table, *args: sqlite3.SQLITE_DENY
                         if action in writes and table not in allowed else sqlite3.SQLITE_OK)
     try:
-        shop.sync(conn, shop.catalog_from_bytes(candidate), force=True)
+        shop.sync(conn, catalog, force=True)
     finally:
         conn.set_authorizer(None)
 
@@ -270,6 +287,76 @@ def publication_matches(row, candidate, plan):
                 and json.loads(row['plan'])==dict(plan['profile'],test_migration_id=ID))
 
 
+def wait_for_receipt(shop, candidate, plan, approved_sha):
+    """Read-only join after lock timeout, only for the identical durable intent."""
+    deadline=time.monotonic()+RECEIPT_WAIT
+    with closing(sqlite3.connect(shop.db_path.resolve().as_uri()+'?mode=ro',
+                                 uri=True,timeout=0,isolation_level=None)) as conn:
+        conn.row_factory=sqlite3.Row
+        conn.execute('PRAGMA query_only=ON')
+        def read(sql,args=()):
+            # A writer's brief EXCLUSIVE commit can block read-only SELECTs.
+            # Proof and receipt reads share ONE budget, without a hidden timeout.
+            while True:
+                try:
+                    return conn.execute(sql,args).fetchone()
+                except sqlite3.OperationalError as error:
+                    code=getattr(error,'sqlite_errorcode',None)
+                    if code is None or code & 0xff not in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED):
+                        raise
+                    remaining=deadline-time.monotonic()
+                    if remaining<=0:
+                        return None
+                    time.sleep(min(0.05,remaining))
+        if not read("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'"):
+            return None
+        row=read("""SELECT m.*,p.candidate AS pending_candidate,
+            p.plan AS pending_plan,p.digest AS pending_digest
+            FROM dnd_shop_test_migrations m LEFT JOIN dnd_shop_publications p
+            ON p.source_path=? WHERE m.id=?""",(str(shop.csv_path),ID))
+        if (not row or row['plan_sha256']!=approved_sha or json.loads(row['plan'])!=plan
+                or (row['chat_id'],row['thread_id'])!=SCOPE):
+            return None
+        if row['phase']=='complete':
+            return json.loads(row['result'])
+        pending = dict(candidate=row['pending_candidate'],plan=row['pending_plan'],
+                       digest=row['pending_digest']) if row['pending_candidate'] is not None else None
+        if row['phase']!='prepared' or not publication_matches(pending,candidate,plan):
+            return None  # no evidence that this lock holder is our operation
+        stored_plan=row['plan']
+        while True:
+            remaining=deadline-time.monotonic()
+            if remaining<=0:
+                return None
+            time.sleep(min(0.05,remaining))
+            row=read('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,))
+            if (not row or row['plan_sha256']!=approved_sha or row['plan']!=stored_plan
+                    or (row['chat_id'],row['thread_id'])!=SCOPE):
+                return None
+            if row['phase']=='complete':
+                return json.loads(row['result'])
+            if row['phase']!='prepared':
+                return None
+
+
+@contextmanager
+def migration_lock(shop, candidate, plan, approved_sha):
+    # Catch ONLY failure to acquire EX. Errors from an acquired transaction must
+    # propagate unchanged and must never be masked by a saved receipt.
+    stack=ExitStack()
+    try:
+        stack.enter_context(catalog_lock(shop.csv_path,exclusive=True))
+    except CatalogBusy:
+        stack.close()
+        receipt=wait_for_receipt(shop,candidate,plan,approved_sha)
+        if receipt is None:
+            raise
+        yield receipt
+    else:
+        with stack:
+            yield None
+
+
 def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
     if digest(canonical(plan).encode())!=approved_sha:
         raise CatalogError('Explicit approved plan SHA-256 is required.')
@@ -279,7 +366,16 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
         raise CatalogError('Plan differs from recomputed backup/settings transformation.')
     meta=json.loads(Path(metadata).read_text(encoding='utf-8'))
     require_target(shop,meta,plan)  # no CLI / environment escape hatch
-    with catalog_lock(shop.csv_path,exclusive=True):
+    # Immutable, operation-local parsing is CPU-heavy for the full catalog.
+    # Do it once before taking EX; SQL/master validation stays inside the lock.
+    catalog = shop.catalog_from_bytes(candidate)
+    master = read_master(shop.loot_path)
+    if catalog.digest != plan['candidate_sha256'] or master.digest != plan['master_sha256']:
+        raise CatalogError('Approved candidate / master differs.')
+    with migration_lock(shop,candidate,plan,approved_sha) as receipt:
+        if receipt is not None:
+            require_target(shop,meta,plan)
+            return receipt
         with shop.transaction(catalog=False) as (conn,_):
             exists=conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone()
             record=conn.execute('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,)).fetchone() if exists else None
@@ -308,7 +404,7 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
                 if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                     raise CatalogError('Historical economy differs.')
                 change_nominals(conn,plan['currencies'])
-                profile=preflight(shop,conn,SCOPE,'m',read_master(shop.loot_path))
+                profile=preflight(shop,conn,SCOPE,'m',confirmed_master(shop,master))
                 if any(profile[k]!=plan['profile'][k] for k in PLAN_KEYS):
                     raise CatalogError('Live currency / topic configuration differs.')
                 persist_state(conn,SCOPE,profile,False)
@@ -316,7 +412,7 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
                 # Validate using exactly the normal sync; no persistent changes to
                 # registries/counters/history are permitted.
                 conn.execute('SAVEPOINT candidate')
-                sync_existing(shop,conn,candidate)
+                sync_existing(shop,conn,candidate,catalog=catalog)
                 if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                     raise CatalogError('Publication would modify historical economy.')
                 conn.execute('ROLLBACK TO candidate')
@@ -342,12 +438,12 @@ def apply(shop, backup, metadata, runtime_snapshot, plan, approved_sha):
             if (not record or record['phase']!='prepared' or fingerprint(conn)!=record['prepared_fingerprint']
                     or not publication_matches(pending,candidate,plan)):
                 raise CatalogError('State changed before finalization; migration stays closed.')
-            profile=preflight(shop,conn,SCOPE,'m',read_master(shop.loot_path))
+            profile=preflight(shop,conn,SCOPE,'m',confirmed_master(shop,master))
             if any(profile[k]!=plan['profile'][k] for k in PLAN_KEYS):
                 raise CatalogError('Currency profile changed during publication.')
             if digest(bounded_bytes(shop.csv_path))!=plan['candidate_sha256']:
                 raise CatalogError('Published runtime differs.')
-            sync_existing(shop,conn,candidate)
+            sync_existing(shop,conn,candidate,catalog=catalog)
             if fingerprint(conn,economic=True)!=plan['economic_fingerprint']:
                 raise CatalogError('Immutable economic values changed.')
             conn.execute('DELETE FROM dnd_shop_publications WHERE source_path=?',(str(shop.csv_path),))
