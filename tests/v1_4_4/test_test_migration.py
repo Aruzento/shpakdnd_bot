@@ -386,6 +386,86 @@ class TestOptionBMigrator(unittest.TestCase):
         self.assertEqual(self.sql('SELECT enabled FROM dnd_shop_settings'),[(0,)])
         self.assertEqual(self.apply_copy(),self.apply_copy())  # explicit resume, one receipt
 
+    def test_receipt_reader_retries_sqlite_busy_without_writes_or_extra_budget(self):
+        with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
+            self.apply_copy()
+        with closing(sqlite3.connect(self.db)) as conn:
+            before=tm.scoped_rows(conn)
+        real_connect=sqlite3.connect
+        errors=[]
+        class Reader(sqlite3.Connection):
+            def execute(reader,sql,*args,**kwargs):
+                try:
+                    return super().execute(sql,*args,**kwargs)
+                except sqlite3.OperationalError as error:
+                    errors.append(error.sqlite_errorcode)
+                    raise
+        with closing(real_connect(self.db,isolation_level=None)) as writer:
+            sleeps=[]
+            def next_read(seconds):
+                sleeps.append(seconds)
+                if len(sleeps)==1:
+                    writer.execute('BEGIN EXCLUSIVE')
+                elif len(sleeps)==2:
+                    writer.execute('ROLLBACK')
+                else:
+                    self.fail('receipt budget must not restart after SQLITE_BUSY')
+            try:
+                with patch.object(tm.sqlite3,'connect',side_effect=lambda *a,**kw: real_connect(*a,**kw,factory=Reader)), \
+                        patch.object(tm.time,'monotonic',side_effect=[0,0,0,tm.RECEIPT_WAIT+1]), \
+                        patch.object(tm.time,'sleep',side_effect=next_read):
+                    self.assertIsNone(tm.wait_for_receipt(self.shop,self.candidate,self.plan,self.sha))
+            finally:
+                if writer.in_transaction:
+                    writer.execute('ROLLBACK')
+        self.assertEqual(errors,[sqlite3.SQLITE_BUSY])
+        self.assertEqual(len(sleeps),2)  # blocked read retried; prepared record still cannot return a receipt
+        with closing(real_connect(self.db)) as conn:
+            self.assertEqual(tm.scoped_rows(conn),before)
+        self.assertEqual(self.sql('SELECT phase FROM dnd_shop_test_migrations'),[('prepared',)])
+        self.assertEqual(self.sql('SELECT enabled FROM dnd_shop_settings'),[(0,)])
+
+    def test_receipt_proof_read_handles_exclusive_commit_within_the_same_budget(self):
+        with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
+            self.apply_copy()
+        with closing(sqlite3.connect(self.db)) as conn:
+            before=tm.scoped_rows(conn)
+        with closing(sqlite3.connect(self.db,isolation_level=None)) as writer:
+            writer.execute('BEGIN EXCLUSIVE')
+            try:
+                with patch.object(tm.time,'monotonic',side_effect=[0,0,tm.RECEIPT_WAIT+1]), \
+                        patch.object(tm.time,'sleep',side_effect=lambda seconds: writer.execute('ROLLBACK')) as sleep:
+                    self.assertIsNone(tm.wait_for_receipt(self.shop,self.candidate,self.plan,self.sha))
+                self.assertEqual(sleep.call_count,1)  # first proof SELECT was blocked, then read successfully
+            finally:
+                if writer.in_transaction:
+                    writer.execute('ROLLBACK')
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(tm.scoped_rows(conn),before)
+
+    def test_receipt_reader_does_not_retry_sqlite_io_or_corruption(self):
+        with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
+            self.apply_copy()
+        real_connect=sqlite3.connect
+        with closing(real_connect(self.db)) as conn:
+            before=tm.scoped_rows(conn)
+        for code in (sqlite3.SQLITE_IOERR,sqlite3.SQLITE_CORRUPT):
+            class Reader(sqlite3.Connection):
+                def execute(reader,sql,*args,**kwargs):
+                    if sql.startswith('SELECT * FROM dnd_shop_test_migrations'):
+                        error=sqlite3.OperationalError('synthetic unrecoverable read')
+                        error.sqlite_errorcode=code
+                        raise error
+                    return super().execute(sql,*args,**kwargs)
+            with self.subTest(sqlite_errorcode=code), \
+                    patch.object(tm.sqlite3,'connect',side_effect=lambda *a,**kw: real_connect(*a,**kw,factory=Reader)), \
+                    patch.object(tm.time,'sleep') as sleep, \
+                    self.assertRaisesRegex(sqlite3.OperationalError,'unrecoverable'):
+                tm.wait_for_receipt(self.shop,self.candidate,self.plan,self.sha)
+            self.assertEqual(sleep.call_count,1)  # no second read after non-contention errors
+        with closing(real_connect(self.db)) as conn:
+            self.assertEqual(tm.scoped_rows(conn),before)
+
     def test_join_rejects_other_plan_and_damaged_publication(self):
         with patch.object(tm,'publish_locked',side_effect=OSError('synthetic crash')),self.assertRaises(OSError):
             self.apply_copy()

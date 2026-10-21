@@ -289,16 +289,31 @@ def publication_matches(row, candidate, plan):
 
 def wait_for_receipt(shop, candidate, plan, approved_sha):
     """Read-only join after lock timeout, only for the identical durable intent."""
+    deadline=time.monotonic()+RECEIPT_WAIT
     with closing(sqlite3.connect(shop.db_path.resolve().as_uri()+'?mode=ro',
-                                 uri=True,timeout=0.1,isolation_level=None)) as conn:
+                                 uri=True,timeout=0,isolation_level=None)) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('PRAGMA query_only=ON')
-        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'").fetchone():
+        def read(sql,args=()):
+            # A writer's brief EXCLUSIVE commit can block read-only SELECTs.
+            # Proof and receipt reads share ONE budget, without a hidden timeout.
+            while True:
+                try:
+                    return conn.execute(sql,args).fetchone()
+                except sqlite3.OperationalError as error:
+                    code=getattr(error,'sqlite_errorcode',None)
+                    if code is None or code & 0xff not in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED):
+                        raise
+                    remaining=deadline-time.monotonic()
+                    if remaining<=0:
+                        return None
+                    time.sleep(min(0.05,remaining))
+        if not read("SELECT 1 FROM sqlite_master WHERE name='dnd_shop_test_migrations'"):
             return None
-        row=conn.execute("""SELECT m.*,p.candidate AS pending_candidate,
+        row=read("""SELECT m.*,p.candidate AS pending_candidate,
             p.plan AS pending_plan,p.digest AS pending_digest
             FROM dnd_shop_test_migrations m LEFT JOIN dnd_shop_publications p
-            ON p.source_path=? WHERE m.id=?""",(str(shop.csv_path),ID)).fetchone()
+            ON p.source_path=? WHERE m.id=?""",(str(shop.csv_path),ID))
         if (not row or row['plan_sha256']!=approved_sha or json.loads(row['plan'])!=plan
                 or (row['chat_id'],row['thread_id'])!=SCOPE):
             return None
@@ -309,13 +324,12 @@ def wait_for_receipt(shop, candidate, plan, approved_sha):
         if row['phase']!='prepared' or not publication_matches(pending,candidate,plan):
             return None  # no evidence that this lock holder is our operation
         stored_plan=row['plan']
-        deadline=time.monotonic()+RECEIPT_WAIT
         while True:
             remaining=deadline-time.monotonic()
             if remaining<=0:
                 return None
             time.sleep(min(0.05,remaining))
-            row=conn.execute('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,)).fetchone()
+            row=read('SELECT * FROM dnd_shop_test_migrations WHERE id=?',(ID,))
             if (not row or row['plan_sha256']!=approved_sha or row['plan']!=stored_plan
                     or (row['chat_id'],row['thread_id'])!=SCOPE):
                 return None
