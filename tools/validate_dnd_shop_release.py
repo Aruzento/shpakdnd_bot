@@ -26,10 +26,76 @@ FORMULA_BASE = '6ef5d8bbac29f2b938b9c21448e1466abe676dc1'
 COINS_BASE = 'db0d5f5aa13554e15bf5cf1ffa89b13df8a6e0f8'
 DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE, COINS_BASE)
 sys.path.insert(0, str(ROOT))
-TABLES = ('inventory', 'characters', 'character_profiles', 'dnd_items', 'dnd_currencies',
-          'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
-          'dnd_shop_trades', 'dnd_shop_money', 'dnd_shop_credit', 'dnd_shop_credit_moves',
-          'dnd_shop_credit_redemptions', 'dnd_shop_credit_coins')
+# Only these additive V1.4.4 tables may appear during startup. Existing
+# tables (including older shop tables) are historical data, never exempted.
+SHOP_TABLES = frozenset((
+    'dnd_shop_skus', 'dnd_shop_owners', 'dnd_shop_sessions', 'dnd_shop_operations',
+    'dnd_shop_trades', 'dnd_shop_money', 'dnd_shop_catalog_versions',
+    'dnd_shop_catalog_entries', 'dnd_shop_credit', 'dnd_shop_credit_moves',
+    'dnd_shop_credit_redemptions', 'dnd_shop_credit_coins', 'dnd_shop_settings',
+    'dnd_shop_publications', 'dnd_shop_test_migrations', 'dnd_coin_migrations',
+))
+
+
+def typed_rows(rows):
+    # SQLite INTEGER/REAL and BLOB/TEXT must not compare equal accidentally.
+    return [tuple((type(value), value) for value in row) for row in rows]
+
+
+def publication_additions(before):
+    """Independent model of the existing v1_4_2_ui INSERT OR IGNORE contract."""
+    columns, rows = before.get('mini_ui_publications',
+                               (['player_id', 'operation_key', 'status'], []))
+    assert columns == ['player_id', 'operation_key', 'status'], 'mini_ui_publications schema'
+    existing = {(row[0], row[1]) for row in rows}
+    source_columns, shares = before.get('mini_public_shares', ([], []))
+    expected = set()
+    for share in shares:
+        player = share[source_columns.index('player_id')]
+        key = share[source_columns.index('operation_key')]
+        keys = {key}
+        parts = key.split(':')
+        if len(parts) == 3 and parts[0] == 'share':
+            keys.add('share:' + parts[1] + '.' + parts[2])
+        for compatible in keys:
+            if (player, compatible) not in existing:
+                expected.add((player, compatible, 'sending'))
+    return expected
+
+
+def assert_publications(actual, original, additions):
+    # INSERT appends; every pre-existing row, status and SQLite type is immutable.
+    assert typed_rows(actual[:len(original)]) == typed_rows(original), 'mini_ui_publications existing rows'
+    inserted = typed_rows(actual[len(original):])
+    expected = typed_rows(additions)
+    assert len(inserted) == len(expected) and set(inserted) == set(expected), 'mini_ui_publications unexpected inserts'
+
+
+def new_shop_tables(before, after):
+    introduced = after.keys() - before.keys()
+    assert introduced <= SHOP_TABLES, 'Unexpected new tables: ' + repr(introduced - SHOP_TABLES)
+    assert before.keys() <= after.keys(), 'Historical table removed'
+    # Startup creates schema, never economic rows in newly introduced tables.
+    result = {name: after[name] for name in introduced}
+    assert all(not rows for _, rows in result.values()), 'Unexpected new shop data'
+    return result
+
+
+def schema_snapshot(path):
+    with closing(sqlite3.connect(path)) as conn:
+        return conn.execute('SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name').fetchall()
+
+
+def assert_repeated(path, migrated, introduced, expected_schema):
+    """Freeze all columns after first startup, checking new tables separately."""
+    actual = snapshot(path)
+    assert schema_snapshot(path) == expected_schema, 'Schema changed after first startup'
+    for table, expected in introduced.items():
+        assert actual.get(table) == expected, 'New shop table changed: ' + table
+    assert actual.keys() == migrated.keys(), 'Tables changed after first startup'
+    for table, (columns, rows) in migrated.items():
+        assert actual[table][0] == columns, 'Columns changed: ' + table
+        assert typed_rows(actual[table][1]) == typed_rows(rows), 'Repeated startup changed: ' + table
 
 
 def snapshot(path):
@@ -44,11 +110,14 @@ def snapshot(path):
 
 
 def assert_preserved(path, before, *, upgrading_settings=False):
+    additions = publication_additions(before)
     with closing(sqlite3.connect(path)) as conn:
         for table, (columns, rows) in before.items():
             projection = ','.join('"' + col + '"' for col in columns)
             actual = conn.execute(f'SELECT {projection} FROM {table} ORDER BY rowid').fetchall()
-            if table == 'dnd_shop_settings':
+            if table == 'mini_ui_publications':
+                assert_publications(actual, rows, additions)
+            elif table == 'dnd_shop_settings':
                 mode_index, enabled_index = columns.index('pricing_mode'), columns.index('enabled')
                 expected = []
                 for row in rows:
@@ -56,7 +125,7 @@ def assert_preserved(path, before, *, upgrading_settings=False):
                     if upgrading_settings and row[mode_index] == 'm':
                         row[enabled_index] = 0
                     expected.append(tuple(row))
-                assert actual == expected, table
+                assert typed_rows(actual) == typed_rows(expected), table
             elif table == 'dnd_shop_sessions':
                 closed = columns.index('closed')
                 # Only the legacy CHECK rebuild closes sessions. A database
@@ -68,9 +137,9 @@ def assert_preserved(path, before, *, upgrading_settings=False):
                     if (row[columns.index('chat_id')], row[columns.index('thread_id')]) in master_scopes:
                         row[closed] = 1
                     expected.append(tuple(row))
-                assert actual == expected, table
+                assert typed_rows(actual) == typed_rows(expected), table
             else:
-                assert actual == rows, table
+                assert typed_rows(actual) == typed_rows(rows), table
         assert conn.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
 
@@ -100,6 +169,8 @@ def verify_ref(old_ref, source_path=None, topics_source=None):
         run_old(old_code, seed, """
 from app.db.schema import init_db
 init_db()
+import check_bot
+check_bot.main()
 from app.db.inventory import add_inventory_item
 from app.db.dnd_items import create_currency
 from app.db.character_registry import create_character
@@ -152,6 +223,7 @@ with sqlite3.connect(config.DB_PATH) as conn:
             from unittest.mock import patch
             from app.db import schema
             from app.db.dnd_shop import migrate
+            from app.mini.schema import init_mini_db
             fault = temp / f'fault-{index}.db'
             with closing(sqlite3.connect(copy)) as origin, closing(sqlite3.connect(fault)) as target:
                 origin.backup(target)
@@ -192,9 +264,18 @@ with sqlite3.connect(config.DB_PATH) as conn:
                 assert conn.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
                 assert not conn.execute('PRAGMA foreign_key_check').fetchall()
             with patch.object(schema, 'DB_PATH', copy), patch.object(schema, 'LEGACY_DB_PATH', temp / 'unused.db'):
-                for _ in range(3):
+                schema.init_db()
+                init_mini_db(copy)
+                assert_preserved(copy, before, upgrading_settings=upgrading_settings)
+                migrated = snapshot(copy)
+                introduced = new_shop_tables(before, migrated)
+                migrated_schema = schema_snapshot(copy)
+                for _ in range(2):
                     schema.init_db()
-            assert_preserved(copy, before, upgrading_settings=upgrading_settings)
+                    init_mini_db(copy)
+                    assert_preserved(copy, before, upgrading_settings=upgrading_settings)
+                    assert_repeated(copy, migrated, introduced, migrated_schema)
+            print('Expected Mini publication inserts:', len(publication_additions(before)))
             from app.dnd_shop.audit import audit
             with closing(sqlite3.connect(copy)) as conn:
                 print('Journal reconciliation:', audit(conn))
@@ -203,6 +284,7 @@ with sqlite3.connect(config.DB_PATH) as conn:
                 # Never write this configuration into the working checkout.
                 run_old(ROOT, copy, "import check_bot;check_bot.main()", topics_source=topics_source)
                 assert_preserved(copy, before, upgrading_settings=upgrading_settings)
+                assert_repeated(copy, migrated, introduced, migrated_schema)
             run_old(old_code, copy, """
 from app.db.schema import init_db
 init_db()
@@ -212,6 +294,7 @@ import check_bot
 check_bot.main()
 """, topics_source=topics_source if index else None)
             assert_preserved(copy, before, upgrading_settings=upgrading_settings)
+            assert_repeated(copy, migrated, introduced, migrated_schema)
             print(f'OK: source {index}, historical values preserved, repeated migration, DDL rollback, old startup, integrity and foreign keys')
     print(f'OK: ordinary D&D shop migration checks old_ref={old_ref}', flush=True)
 
