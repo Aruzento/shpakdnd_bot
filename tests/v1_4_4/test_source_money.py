@@ -143,7 +143,7 @@ class SourceMoneyTests(unittest.TestCase):
             self.assertEqual(self.sql('SELECT * FROM dnd_items'),before)
             self.assertEqual(self.sql('SELECT * FROM dnd_shop_settings'),[])
         self.shop.create(self.owner,'m')
-        self.assertEqual(self.sql("SELECT count(*) FROM dnd_shop_catalog_entries WHERE is_currency=1"),[(15,)])
+        self.assertEqual(self.sql("SELECT count(*) FROM dnd_shop_catalog_entries WHERE is_currency=1"),[(0,)])
         self.assert_clean()
 
     def test_wrong_test_scale_rejected_even_with_correct_names_and_fifteen_aliases(self):

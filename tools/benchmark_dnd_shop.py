@@ -108,7 +108,7 @@ def benchmark(master_path):
         tracemalloc.stop()
         with closing(original_connect(db)) as conn:
             reconciliation = audit(conn)
-            assert conn.execute('SELECT COUNT(*) FROM dnd_shop_skus').fetchone()[0] == 8900
+            assert conn.execute('SELECT COUNT(*) FROM dnd_shop_skus').fetchone()[0] == 8870
             assert conn.execute("SELECT sold FROM dnd_shop_skus WHERE chat_id=-991144 AND thread_id=0 AND code=?", (sword,)).fetchone()[0] == 1
         return dict(platform=platform.platform(), python=platform.python_version(), master_sha256=master.digest,
             import_report=imported, snapshot_bytes=len(data), validation_s=validation_s, cold=cold,
@@ -135,7 +135,7 @@ def lifecycle_benchmark(master_path):
             for thread in (0, 2):
                 base_id = create_currency(-991145, thread, 'Золотая монета', 1, '1', is_base=True, db_path=db)
                 for name, (unit, quantity) in MASTER_MONEY.items():
-                    if name == 'Золотая монета':
+                    if name == 'Золотая монета' or thread == 0 and quantity != 1:
                         continue
                     scale = ({'Медная монета': '0.0001', 'Серебряная монета': '0.01', 'Золотая монета': '1'}
                              if thread == 0 else
@@ -178,7 +178,7 @@ def lifecycle_benchmark(master_path):
         recreated = Shop(db, runtime, settings, loot_path=master_path, map_path=mapping, offers_path=offers)
         recreated.create(second, 'b')
         with closing(sqlite3.connect(db)) as conn:
-            assert conn.execute('SELECT count(*) FROM dnd_shop_skus').fetchone()[0] == 8900
+            assert conn.execute('SELECT count(*) FROM dnd_shop_skus').fetchone()[0] == 8870
             assert conn.execute('SELECT count(*) FROM dnd_items WHERE category="item"').fetchone()[0] == 8870
             reconciliation = audit(conn)
         return dict(**timings, scopes=2, runtime_bytes=runtime.stat().st_size,

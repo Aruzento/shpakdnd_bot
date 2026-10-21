@@ -18,6 +18,8 @@ from fractions import Fraction
 from pathlib import Path
 from types import MappingProxyType
 
+from app.dnd_shop.currency_units import is_source_money
+
 MAX_INTEGER = 2**63 - 1
 MAX_BYTES = 32 * 1024 * 1024
 MAX_ROWS = 25000
@@ -51,6 +53,10 @@ class Product:
     @property
     def key(self):
         return self.chat_id, self.thread_id, self.code
+
+    @property
+    def monetary(self):
+        return is_source_money(self.name)
 
     @property
     def quote(self):
@@ -174,6 +180,8 @@ def parse_catalog(data):
                     raise ValueError()
                 active = boolean(row['active'].lower())
                 enabled = boolean(row['buy_enabled']) if extended else True
+                if is_source_money(name) and enabled:
+                    raise ValueError('Денежные единицы и связки не являются товарами.')
                 master = row['master_sha256'] if extended else ''
                 if extended and (not re.fullmatch('[a-f0-9]{64}', master) or
                                  not row['rarity'].strip() or not row['category'].strip() or not row['effect'].strip()):

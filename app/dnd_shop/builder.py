@@ -14,6 +14,8 @@ from types import MappingProxyType
 from app.dnd_shop.catalog import (CatalogError, CODE, COLUMNS, EXTENDED, MAX_FIELD,
     MAX_INTEGER, MAX_ROWS, atomic_bytes, boolean, bounded_bytes, read_catalog, scope_values)
 
+from app.dnd_shop.currency_units import is_source_money
+
 REFERENCE_SHA256 = '7bffd8a9b8314651318c961838c9b6b872f5d02b6cd896e968f9226c7bcdfe20'
 MASTER_COLUMNS = ('Предмет', 'Эффект', 'Описание', 'Стоимость', 'Редкость', 'Категория')
 MAP_COLUMNS = ('code', 'name')
@@ -146,6 +148,8 @@ def read_offers(path, master, mapping, settings, scopes):
             if scope not in allowed or code not in mapping or mapping[code].casefold() not in master.by_name:
                 raise ValueError()
             enabled = boolean(row['buy_enabled'])
+            if enabled and is_source_money(mapping[code]):
+                raise CatalogError('Денежные единицы и связки исходного каталога не являются товарами.')
             if not re.fullmatch(r'0|[1-9][0-9]*', row['stock']) or int(row['stock']) > MAX_INTEGER:
                 raise ValueError()
             key = (*scope, code)
@@ -174,6 +178,8 @@ def build(master, mapping, offers_path, scopes, settings, *, previous=(), price_
     rows = []
     for chat, thread in scopes:
         for item in master.rows:
+            if is_source_money(item.name):
+                continue
             code = names[item.name.casefold()]
             key = chat, thread, code
             enabled, stock = offers.get(key, (False, old[key].stock if key in old else 0))
@@ -189,7 +195,7 @@ def build(master, mapping, offers_path, scopes, settings, *, previous=(), price_
     if len(data) > MAX_BYTES:
         raise CatalogError('Снимок превышает 32 MiB. Уменьшите число тем в файле.')
     return data, dict(master_sha256=master.digest, read=len(master.rows), imported=len(rows),
-        per_scope=len(master.rows), scopes=len(scopes), buy_disabled=sum(not r['buy_enabled'] == 'true' for r in rows),
+        per_scope=sum(not is_source_money(r.name) for r in master.rows), scopes=len(scopes), buy_disabled=sum(not r['buy_enabled'] == 'true' for r in rows),
         offers=sum(r['buy_enabled'] == 'true' for r in rows), errors=0)
 
 
@@ -207,13 +213,18 @@ def verify_snapshot(products, master, price_factors=None):
         if (product.name, product.description, product.effect, product.price, product.rarity, product.category) != (
                 item.name, item.description, item.effect, item.price * price_factors.get((product.chat_id, product.thread_id), 1), item.rarity, item.category):
             raise CatalogError('Цена/справочные поля snapshot отличаются от мастера.')
+        if product.monetary and product.buy_enabled:
+            raise CatalogError('Денежная позиция не может быть ассортиментом покупки.')
         scope = product.chat_id, product.thread_id
         scopes.setdefault(scope, set()).add(product.name.casefold())
         prior = global_codes.setdefault(product.name.casefold(), product.code)
         if prior != product.code:
             raise CatalogError('Коды одного канонического предмета отличаются по темам.')
-    if not scopes or any(names != set(master.by_name) for names in scopes.values()):
-        raise CatalogError('В каждой теме нужен полный мастер-справочник, без пропущенных строк.')
+    # New snapshots contain ordinary goods only. Complete historical snapshots
+    # are accepted read-only for compatibility, but their money rows are inert.
+    goods = {key for key in master.by_name if not is_source_money(key)}
+    if not scopes or any(names not in (goods, set(master.by_name)) for names in scopes.values()):
+        raise CatalogError('В каждой теме нужен полный мастер-справочник, без пропущенных обычных предметов.')
 
 def encode_products(products):
     from dataclasses import asdict

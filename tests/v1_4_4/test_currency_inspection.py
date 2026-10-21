@@ -34,23 +34,20 @@ class CurrencyInspectionTests(unittest.TestCase):
             conn.execute('PRAGMA query_only=ON')
             return inspect(conn, (-111, 0))
 
-    def test_missing_twelve_commands_use_existing_admin_contract_without_grants(self):
-        result = self.report()
-        self.assertFalse(result['errors'])
-        self.assertEqual(len(result['missing']), 12)
-        before = self.sql('SELECT * FROM inventory ORDER BY id')
-        for command in result['registration_commands']:
-            target, name, quantity, value = parse_currency_command(command, secondary=True)
-            self.assertEqual(target, '-111:0')
-            create_currency(-111, 0, name, quantity, value, db_path=self.db)
-        self.assertEqual(self.sql('SELECT * FROM inventory ORDER BY id'), before)
+    def test_three_coins_are_complete_without_registration_or_grants(self):
+        before_items = self.sql('SELECT * FROM dnd_items ORDER BY id')
+        before_inventory = self.sql('SELECT * FROM inventory ORDER BY id')
         result = self.report()
         self.assertTrue(result['complete'])
-        self.assertEqual(len(result['currencies']), 15)
+        self.assertEqual(result['missing'], [])
+        self.assertEqual(result['registration_commands'], [])
+        self.assertEqual(len(result['currencies']), 3)
         for row in result['currencies']:
             self.assertEqual(row['denomination'], row['expected'])
             registered = self.sql('SELECT code FROM dnd_items WHERE id=?', (row['item_id'],))[0][0]
             self.assertEqual(result['candidate_shop_currency_units']['master'][row['name']], registered)
+        self.assertEqual(self.sql('SELECT * FROM dnd_items ORDER BY id'), before_items)
+        self.assertEqual(self.sql('SELECT * FROM inventory ORDER BY id'), before_inventory)
 
     def test_names_do_not_prove_nominals(self):
         self.all_units()
@@ -60,19 +57,21 @@ class CurrencyInspectionTests(unittest.TestCase):
         self.assertTrue(any('Wrong denomination: Серебряная' in error for error in result['errors']))
         self.assertEqual(result['registration_commands'], [])
 
-    def test_ordinary_item_collision_blocks_registration_plan(self):
+    def test_historical_bundle_does_not_require_currency_registration(self):
         self.sql("INSERT INTO dnd_items(chat_id,thread_id,code,name,name_key) VALUES(-111,0,'collision','10 медных монет','10 медных монет')")
         result = self.report()
-        self.assertTrue(any('Not an active registered currency' in error for error in result['errors']))
+        self.assertTrue(result['complete'])
+        self.assertEqual(len(result['historical_bundles']), 1)
+        self.assertFalse(result['historical_bundles'][0]['registered_currency'])
         self.assertEqual(result['registration_commands'], [])
 
-    def test_read_only_cli_preserves_source_hash_and_requires_all_fifteen(self):
+    def test_read_only_cli_preserves_source_hash_and_accepts_three(self):
         before = hashlib.sha256(self.db.read_bytes()).hexdigest()
         command = [sys.executable, str(source.ROOT / 'tools/inspect_dnd_shop_currencies.py'),
                    '--source', str(self.db), '--chat-id=-111', '--thread-id=0']
         env = dict(os.environ, PYTHONIOENCODING='utf-8')
         result = subprocess.run(command, env=env, capture_output=True, text=True, encoding='utf-8')
-        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr)
         result = subprocess.run(command + ['--allow-missing'], env=env, capture_output=True, text=True, encoding='utf-8')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)['source_sha256'], before)

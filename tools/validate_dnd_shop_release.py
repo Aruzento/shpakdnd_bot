@@ -24,7 +24,8 @@ CONTROL_BASE = '6165e5137d34fb0efa7c39bb7fd61fcbad3524a4'
 PRICING_BASE = '07170497d1bd375b5bd9f265112eddc7e024d08c'
 FORMULA_BASE = '6ef5d8bbac29f2b938b9c21448e1466abe676dc1'
 COINS_BASE = 'db0d5f5aa13554e15bf5cf1ffa89b13df8a6e0f8'
-DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE, COINS_BASE)
+THREE_COIN_BASE = '7a2fcd30ca59478a97cbe6e8bb51c2b7770415f1'
+DEFAULT_OLD_REFS = (BASE, MAIN_BASE, SHOP_BASE, CONTROL_BASE, PRICING_BASE, FORMULA_BASE, COINS_BASE, THREE_COIN_BASE)
 sys.path.insert(0, str(ROOT))
 # Only these additive V1.4.4 tables may appear during startup. Existing
 # tables (including older shop tables) are historical data, never exempted.

@@ -5,24 +5,8 @@ from fractions import Fraction
 
 from app.dnd_shop.catalog import CatalogError
 
-# Explicit original monetary units, not a substring classifier. Coin purses remain items.
-MASTER_MONEY = {
-    'Медная монета': ('Медная монета', 1),
-    '10 медных монет': ('Медная монета', 10),
-    '50 медных монет': ('Медная монета', 50),
-    'Серебряная монета': ('Серебряная монета', 1),
-    '5 серебряных монет': ('Серебряная монета', 5),
-    '10 серебряных монет': ('Серебряная монета', 10),
-    '50 серебряных монет': ('Серебряная монета', 50),
-    'Золотая монета': ('Золотая монета', 1),
-    '2 золотые монеты': ('Золотая монета', 2),
-    '5 золотых монет': ('Золотая монета', 5),
-    '10 золотых монет': ('Золотая монета', 10),
-    '50 золотых монет': ('Золотая монета', 50),
-    '100 золотых монет': ('Золотая монета', 100),
-    '500 золотых монет': ('Золотая монета', 500),
-    '1000 золотых монет': ('Золотая монета', 1000),
-}
+from app.dnd_shop.currency_units import MASTER_MONEY, UNITS
+
 COPPER_FACTOR = Fraction(285, 10000)
 GOLD_FACTOR = Fraction(285, 1000000)
 
@@ -42,7 +26,11 @@ def preflight(shop, conn, scope, mode, master):
     by_code = {r['code']: r for r in rows}
     if len(by_code) != len(rows):
         raise CatalogError('Неоднозначный реестр валют.')
-    required = {name.casefold() for name in MASTER_MONEY if name.casefold() in master.by_name}
+    # -m needs only physical coins. Legacy declarations may retain verified
+    # bundle IDs for an explicit wallet-normalization plan, never as a requirement.
+    # The existing universal-mode preflight/formula is deliberately retained.
+    required = ({name.casefold() for name in UNITS} if mode == 'm' else
+                {name.casefold() for name in MASTER_MONEY if name.casefold() in master.by_name})
     declared = {}
     if len(declaration['master']) > 32:
         raise CatalogError('Слишком много денежных единиц в конфигурации темы.')
@@ -58,16 +46,18 @@ def preflight(shop, conn, scope, mode, master):
         if named and (named['id'] != row['id'] or named['category'] != 'currency'):
             raise CatalogError('Денежная единица конфликтует с прежним предметом: ' + name)
         declared[key] = row['id']
+    if mode == 'b' and not required <= declared.keys():
+        raise CatalogError('Прежний профиль -b требует отдельного рассмотрения; справочные связки регистрировать не нужно.')
     if not required <= declared.keys() or len(set(declared.values())) != len(declared):
-        raise CatalogError('Зарегистрируйте все денежные единицы loot.csv и их однозначные соответствия в shop_currency_units.master.')
+        raise CatalogError('Сопоставьте необходимые физические монеты в shop_currency_units.master; исторические связки регистрировать не нужно.')
     for name, (unit, quantity) in MASTER_MONEY.items():
-        if name.casefold() not in required:
+        if name.casefold() not in declared:
             continue
         reference = declared.get(unit.casefold())
         if not reference or denominations[declared[name.casefold()]] != quantity * denominations[reference]:
             raise CatalogError('Номинал денежной позиции не соответствует явному количеству: ' + name)
     for item in conn.execute("SELECT * FROM dnd_items WHERE chat_id=? AND thread_id=? AND category='currency'", scope):
-        if item['name_key'] in master.by_name and item['id'] not in denominations:
+        if item['id'] in declared.values() and item['id'] not in denominations:
             raise CatalogError('Валюта из каталога не имеет активного номинала: ' + item['name'])
     factor = Fraction(1)
     if mode == 'm':
@@ -80,6 +70,8 @@ def preflight(shop, conn, scope, mode, master):
         copper_value, silver_value, gold_value = (denominations[item_id] for item_id in units)
         if silver_value != 100 * copper_value or gold_value != 10000 * copper_value:
             raise CatalogError('Несовместимые номиналы -m: 1 серебряная = 100 медных, 1 золотая = 10000 медных. Номиналы не изменены; нужна проверка остатков и отдельная миграция.')
+        if base['id'] not in units:
+            raise CatalogError('Базовая валюта -m должна быть одной из трёх явно сопоставленных физических монет.')
         factor = copper_value
     if mode == 'b':
         if any(not isinstance(declaration.get(key), str) for key in ('universal_copper', 'universal_gold')):

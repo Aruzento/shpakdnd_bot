@@ -18,6 +18,7 @@ from app.context import normalize_username
 from app.db.dnd_items import register_in_transaction
 from app.dnd_shop.catalog import CatalogError, MAX_INTEGER, catalog_lock, snapshot
 from app.dnd_shop.money import CalculationLimit, MoneyError, payment, payment_with_credit
+from app.dnd_shop.currency_units import is_source_money
 from app.topics import TOPIC_SETTINGS
 
 
@@ -74,7 +75,9 @@ class Shop:
         path = str(self.csv_path)
         seen = conn.execute('SELECT digest,master_sha256 FROM dnd_shop_catalog_versions WHERE source_path=?', (path,)).fetchone()
         if not force and seen and seen[0] == catalog.digest:
-            return
+            return  # cached Snapshot was already parsed under the same policy
+        if any(p.monetary and p.buy_enabled for p in catalog.products):
+            raise CatalogError('Денежные единицы и связки не являются товарами.')
         products = catalog.products
         extended = any(p.master_sha256 for p in products)
         if seen and seen['master_sha256'] and not extended:
@@ -103,6 +106,8 @@ class Shop:
                             for r in conn.execute('SELECT * FROM dnd_shop_settings')}
         entries = []
         for product in products:
+            if product.monetary:
+                continue  # retain old SKU/item/history; never register missing bundles
             scope = product.chat_id, product.thread_id
             self.scope(*scope)
             currency_id = currency_aliases.get(scope, {}).get(product.name.casefold())
@@ -276,9 +281,11 @@ class Shop:
     def product(self, conn, products, session, code):
         key = session['chat_id'], session['thread_id'], code
         product = products.by_key.get(key)
-        if product is None or not product.active:
+        if product is None or not product.active or product.monetary:
             raise ShopError('Торговец: «Не, это я не куплю». Товар удалён или отключён.')
         mapping = conn.execute('SELECT * FROM dnd_shop_skus WHERE chat_id=? AND thread_id=? AND code=?', key).fetchone()
+        if is_source_money(mapping['original_name_key']):
+            raise ShopError('Денежная позиция не продаётся как предмет.')
         item = conn.execute('SELECT * FROM dnd_items WHERE id=?', (mapping['item_id'],)).fetchone()
         if not item['active']:
             raise ShopError('Предмет отключён в реестре.')
@@ -324,7 +331,7 @@ class Shop:
                         AND e.present=1 AND e.buy_enabled=1 AND e.active=1 AND i.active=1 AND e.is_currency=0
                         AND i.category!='currency' AND NOT EXISTS(SELECT 1 FROM dnd_currencies c WHERE c.item_id=i.id)
                         AND s.sold<e.stock ORDER BY e.code''', (str(self.csv_path), *scope)).fetchall()
-                    entries = [products.by_key[(*scope, row[0])] for row in codes]
+                    entries = [products.by_key[(*scope, row[0])] for row in codes if not products.by_key[(*scope, row[0])].monetary]
                 else:
                     inventory_rows = self.inventory(conn, session)
                     resolved = [(row, self.resolve(conn, row)) for row in inventory_rows]
@@ -338,7 +345,7 @@ class Shop:
                         if not item or not item['active'] or item['category'] == 'currency' or item['id'] in currencies:
                             continue
                         product = products.by_key.get((session['chat_id'], session['thread_id'], codes.get(item['id'])))
-                        if product and product.active and counts[item['id']] == 1:
+                        if product and product.active and not product.monetary and not is_source_money(item['name_key']) and counts[item['id']] == 1:
                             entries.append(row)
                 pages = max(1, (len(entries) + 3) // 4)
                 page = min(page, pages - 1)
@@ -484,6 +491,9 @@ class Shop:
             currency_rows, denominations = self.currencies(conn, session)
             from app.dnd_shop.coins import output_denominations
             payouts=output_denominations(self.coin_profile(conn,session,currency_rows,denominations),denominations)
+            # Historical bundles stay untouched until an explicitly approved
+            # normalization. Only physical coins enter new payment calculations.
+            spendable = payouts
             kind = operation['kind']
             debit, coins_out = {}, {}
             credit_added = credit_spent = Fraction(0)
@@ -492,7 +502,7 @@ class Shop:
                 if mapping['sold'] >= product.stock:
                     raise ShopError('Товара больше нет в наличии.')
                 holdings = {}
-                for item_id in denominations:
+                for item_id in spendable:
                     matches = self.rows_for_item(conn, inventory, item_id)
                     if len(matches) > 1:
                         raise ShopError('Неоднозначные записи монет в инвентаре.')
@@ -500,7 +510,7 @@ class Shop:
             # Keep planning and mutation separate so all failures precede writes.
             if kind == 'buy':
                 debit, coins_out, credit_spent = payment_with_credit(product.price,
-                    {i:v for i,v in denominations.items() if holdings.get(i,0) or i in payouts}, holdings,
+                    spendable, holdings,
                     balance_before, change_denominations=payouts)
                 value = product.price
             else:

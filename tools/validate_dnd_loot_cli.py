@@ -47,7 +47,7 @@ def main():
         cli('validate', str(staged))
         cli('publish', str(staged))
         products = read_catalog(runtime)
-        assert len(products) == 4450 and not any(p.buy_enabled for p in products)
+        assert len(products) == 4435 and not any(p.buy_enabled for p in products)
         with closing(sqlite3.connect(db)) as conn, conn:
             conn.execute('INSERT INTO characters VALUES(?,?,?,?)', (*scope, '@cli_fixture', 'CLI fixture'))
         shop = Shop(db, runtime, loot_path=master)
@@ -83,7 +83,7 @@ def main():
         with closing(sqlite3.connect(db)) as conn:
             assert conn.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
             assert not conn.execute('PRAGMA foreign_key_check').fetchall()
-        print(json.dumps(dict(real_master=4450, initial_buy_enabled=0, explicit_test_offers=1,
+        print(json.dumps(dict(real_master=4450, tradable=4435, initial_buy_enabled=0, explicit_test_offers=1,
                               previous_retained=True, invalid_publish_preserved=True, errors=0)))
 
 

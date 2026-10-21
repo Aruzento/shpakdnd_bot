@@ -15,8 +15,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from app.dnd_shop.pricing import MASTER_MONEY
-from app.dnd_shop.money import exact_text
+from app.dnd_shop.currency_units import MASTER_MONEY, UNITS
 
 VALUES = {'Медная монета': Fraction(1, 10000),
           'Серебряная монета': Fraction(1, 100), 'Золотая монета': Fraction(1)}
@@ -27,16 +26,15 @@ def inspect(conn, scope):
     items = conn.execute('SELECT * FROM dnd_items WHERE chat_id=? AND thread_id=? ORDER BY id', scope).fetchall()
     currencies = conn.execute('SELECT * FROM dnd_currencies WHERE chat_id=? AND thread_id=? ORDER BY item_id', scope).fetchall()
     by_id = {row['item_id']: row for row in currencies}
-    errors, missing, result, candidate, commands = [], [], [], {}, []
+    errors, missing, result, candidate = [], [], [], {}
     bases = [row for row in currencies if row['is_base']]
     if len(bases) != 1:
         errors.append('Exactly one registered base currency is required')
-    for name, (unit, count) in MASTER_MONEY.items():
-        expected = VALUES[unit] * count
+    for name in UNITS:
+        expected = VALUES[name]
         matches = [row for row in items if row['name_key'] == name.casefold()]
         if not matches:
             missing.append(name)
-            commands.append(f'/admscoin {scope[0]}:{scope[1]} "{name}" 1 = {exact_text(expected)}')
             continue
         if len(matches) != 1:
             errors.append('Ambiguous item: ' + name)
@@ -74,7 +72,11 @@ def inspect(conn, scope):
     return dict(scope=list(scope), complete=not missing and not errors, errors=errors,
                 missing=missing, currencies=result,
                 candidate_shop_currency_units={'master': candidate},
-                registration_commands=commands if not errors else [])
+                registration_commands=[],
+                historical_bundles=[dict(name=item['name'],item_id=item['id'],code=item['code'],
+                    registered_currency=item['id'] in by_id,requires_review=True)
+                    for item in items if item['name_key'] in
+                    {name.casefold() for name in MASTER_MONEY if name not in UNITS}])
 
 
 def main():
@@ -82,7 +84,7 @@ def main():
     parser.add_argument('--source', type=Path, required=True, help='Existing snapshot, opened mode=ro/query_only')
     parser.add_argument('--chat-id', type=int, required=True)
     parser.add_argument('--thread-id', type=int, required=True)
-    parser.add_argument('--allow-missing', action='store_true', help='Pre-registration inventory; never tolerates conflicts')
+    parser.add_argument('--allow-missing', action='store_true', help='Legacy flag; missing physical coins still fail closed')
     args = parser.parse_args()
     source = args.source.resolve(strict=True)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()

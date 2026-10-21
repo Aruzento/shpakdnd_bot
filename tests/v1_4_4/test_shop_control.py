@@ -121,7 +121,7 @@ class ControlTests(unittest.TestCase):
         result = self.shop.create(self.owner, 'm')
         self.assertEqual((result['registered'], result['buying'], result['base_name']), (4, 0, 'Золото'))
         self.assertEqual(self.sql('SELECT * FROM inventory'), before)
-        self.assertEqual(len(snapshot(self.csv).products), 7)
+        self.assertEqual(len(snapshot(self.csv).products), 4)
         self.assertEqual(self.sql("SELECT count(*) FROM dnd_items WHERE category='item' AND name IN ('Медная монета','Серебряная монета','Золотая монета')"), [(0,)])
         self.assertEqual(self.shop.view(self.open(), self.actor, 'buy')['buttons'], [])
         self.add('Кошель с монетами', 1)
@@ -483,7 +483,7 @@ class ControlTests(unittest.TestCase):
         self.codes = builder.index(builder.read_master(self.master), previous=self.codes)
         self.mapping.write_bytes(builder.csv_bytes(builder.MAP_COLUMNS, [dict(code=k,name=v) for k,v in self.codes.items()]))
         before = self.sql('SELECT * FROM dnd_items')
-        with self.assertRaisesRegex(CatalogError, 'все денежные единицы'):
+        with self.assertRaisesRegex(CatalogError, '10000'):
             self.shop.create(self.owner, 'm')
         self.assertEqual(self.sql('SELECT * FROM dnd_items'), before)
         bundle = self.currency('Медная связка', '0.2')

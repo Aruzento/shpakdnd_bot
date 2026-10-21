@@ -137,9 +137,18 @@ class CoinIntegrationTests(unittest.TestCase):
         self.assertTrue(all(r[0] in ids for r in self.sql('SELECT item_id FROM dnd_shop_money WHERE trade_id=?',(sold['trade_id'],))))
         self.assert_clean()
 
-    def test_legacy_bundle_payment_issues_only_unit_change(self):
+    def test_legacy_bundle_requires_explicit_value_preserving_normalization(self):
         self.setup_shop()
         self.raw('5 золотых монет',1)
+        before=self.sql('SELECT * FROM inventory')
+        with self.assertRaises(MoneyError):
+            self.shop.execute(*self.buy_offer(),self.actor)
+        self.assertEqual(self.sql('SELECT * FROM inventory'),before)
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.row_factory=sqlite3.Row
+            plan=migration.prepare(self.shop,conn,(-111,0))
+        migration.apply(self.shop,plan)  # disposable fixture, explicitly reviewed plan
+        self.shop.create(self.owner,'m')
         receipt=self.shop.execute(*self.buy_offer(),self.actor)
         self.assertEqual(self.amount('5 золотых монет'),0)
         self.assertEqual(self.amount('Золото'),1)

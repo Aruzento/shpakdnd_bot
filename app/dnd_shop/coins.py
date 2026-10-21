@@ -1,9 +1,7 @@
 """Explicit registry identities for physical coins and historical bundles."""
 from fractions import Fraction
 from app.dnd_shop.catalog import CatalogError
-from app.dnd_shop.pricing import MASTER_MONEY
-
-UNITS = ('Медная монета', 'Серебряная монета', 'Золотая монета')
+from app.dnd_shop.currency_units import MASTER_MONEY, UNITS
 
 
 def profile(rows, denominations, topic, mode=None):
