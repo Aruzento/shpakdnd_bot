@@ -27,3 +27,55 @@
 ## Истории
 
 Сценарии размещаются во внешнем `STORIES_DIR`, вне любого Git checkout и watcher. Подробный формат — STORIES_AUTHOR_GUIDE.md. Discovery при list/create/start без рестарта. Сюжетных production-примеров нет.
+
+## Повторная инвентаризация входов
+
+Targeted read-only поиск: C:/Users/Aruko/Downloads, C:/Users/Aruko/.codex/attachments, исходный Z: проект и C: worktree. Full independent entity set не найден; пользовательские original JSON/PNG не менялись, посторонние архивы не открывались. S5 manifest побайтово соответствует предоставленному JSON.
+
+Точные недостающие файлы в app/mini/content/hero_images/:
+
+- `daenerys_dragonflame.png` — S5, белый фон.
+- `kaiden_void_magus.png` — S5, белый фон.
+- `ordo_vallis_secretary.png` — S5, белый фон.
+- `ordo_vallis_inquisitor.png` — S5, белый фон.
+- `ordo_vallis_soul_lord.png` — S5, белый фон.
+- `ordo_vallis_legionary.png` — S5, белый фон.
+- `ordo_vallis_commander.png` — S5, белый фон.
+- `varzek_ash_fury.png` — S5, белый фон.
+- `sairen_red_needle.png` — S5, белый фон.
+- `draghar_black_cleaver.png` — S5, белый фон.
+- `talvira_blackroot.png` — S5, белый фон.
+- `azark_storm_spear.png` — S5, белый фон.
+- `shaar_ashen_palm.png` — S5, белый фон.
+- `master_puppeteer.png` — S5, белый фон.
+- `kaeron_shadow_reaver.png` — S5, белый фон.
+- `veirissa_darkarrow.png` — S5, белый фон.
+- `ezio_auditore_isekai.png` — S5, белый фон.
+
+- `ice_egg.png` — Mythic, чёрный фон.
+- `ice_young.png` — Mythic, чёрный фон.
+- `ice_adult.png` — Mythic, чёрный фон.
+- `lightning_egg.png` — Mythic, чёрный фон.
+- `lightning_young.png` — Mythic, чёрный фон.
+- `lightning_adult.png` — Mythic, чёрный фон.
+- `dark_egg.png` — Mythic, чёрный фон.
+- `dark_young.png` — Mythic, чёрный фон.
+- `dark_adult.png` — Mythic, чёрный фон.
+- `fire_egg.png` — Mythic, чёрный фон.
+- `fire_young.png` — Mythic, чёрный фон.
+- `fire_adult.png` — Mythic, чёрный фон.
+- `star_egg.png` — Mythic, чёрный фон.
+- `star_young.png` — Mythic, чёрный фон.
+- `star_adult.png` — Mythic, чёрный фон.
+- `earth_egg.png` — Mythic, чёрный фон.
+- `earth_young.png` — Mythic, чёрный фон.
+- `earth_adult.png` — Mythic, чёрный фон.
+- `moon_egg.png` — Mythic, чёрный фон.
+- `moon_young.png` — Mythic, чёрный фон.
+- `moon_adult.png` — Mythic, чёрный фон.
+- `sun_egg.png` — Mythic, чёрный фон.
+- `sun_young.png` — Mythic, чёрный фон.
+- `sun_adult.png` — Mythic, чёрный фон.
+
+Отдельно нужны8авторских records в mythic.json,4настоящие Boss records в raid/bosses.json и PNG в images/ (имена/features/counter/shadow links задаёт автор), реальные внешние Story JSON и доступный STORIES_DIR. Диагностика missing_inputs выводит абсолютные пути41недостающего hero PNG с причиной; агрегированные blockers перечисляют records/Stories.
+O01 требует решения, а не файлов: получатели,формула/валюта/размер,status/победа/Arise. O04 — авторские ordinary raid definitions, если нужны вместо none. Утвердить PROVISIONAL O02/O05/O06/O07/O08/O10 отдельно. Неизвестные имена/сюжеты/формулы не генерируются.

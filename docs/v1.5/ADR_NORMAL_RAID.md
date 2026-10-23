@@ -42,3 +42,10 @@ Normal Boss freezes shared Dark source instances at start (owner player_id + her
 Raid: a source instance is (owner player_id, hero_id), frozen at its first positive actual attack on that raid. Reusing/upgrading the hero on a later Moscow day does not create another Arise chance or retroactively change its first source. Different owner/hero instances are independent. Personal effects stay personal; Dark grants are shared to every positive contributor. Live catalog definitions are never consulted at finalization. Rewards and Arise decisions/results commit together. No extraction on cancellation/admin finish/zero HP contribution/missing Shadow mapping.
 
 freeze_hero(mode="raid") computes the basic raid attack without normal-only Duplicate Echoes, while preserving both independent frozen property definitions. Normal snapshots and ordinary attack growth remain compatible.
+
+## PROVISIONAL policy, actual HP и recovery
+
+mythic/policies.json явно содержит O05–O07 со статусом PROVISIONAL; числа не изменены. CLI/local/CI validator проверяет типы/селекторы. Boss initialize/Tower create_attempt/Raid start freeze policy. Старые snapshots без policy используют immutable compatibility constants, не новый live JSON. O02 остаётся explicit first_successful_counter_hero_attack_on_this_raid.
+Arise normal positive participation=total_damage>0; Tower отдельно actual_hit_count. Legacy hit_count и прежние условия victory effects сохранены. Tower extra class hooks без recursive chain, Sun neutralization до faction percent.
+Startup создаёт orphan Raid publication rows, sending→uncertain и retries только pending. Story только pending current-step. Неопределённая доставка автоматически не повторяется, recovery callback использует world_id.
+D&D creation сопоставлен с действующими /create и /charset: characters+character_profiles level1, имя≤100, race/class непустые freeform строки. Wizard не вводит собственный enum, хранит original Story scope отдельно от private input; повтор message ID не двигает этап дважды.

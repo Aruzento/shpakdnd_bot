@@ -1,6 +1,6 @@
 # Изменённые файлы V1.5
 
-База: d077dd2a2c29ad420b138bf07af23c77f4674d0b. Ветка: codex/v1.5.
+База: d077dd2a2c29ad420b138bf07af23c77f4674d0b. Ветка codex/v1.5; тот же draft PR #8. Назначение каждого файла и обоснования прежних тестов: COMPLETION_AUDIT.md. Final numstat/SHA/evidence записываются в итоговый отчёт после коммита.
 
 - `.github/workflows/linux-release.yml`
 - `app/handlers/__init__.py`
@@ -46,6 +46,8 @@
 - `app/mini/mythic/content.py`
 - `app/mini/mythic/handlers.py`
 - `app/mini/mythic/pets.py`
+- `app/mini/mythic/policies.json`
+- `app/mini/mythic/policies.py`
 - `app/mini/mythic/raid/__init__.py`
 - `app/mini/mythic/raid/catalog.py`
 - `app/mini/mythic/raid/contracts.py`
@@ -65,6 +67,7 @@
 - `app/mini/tower/repository.py`
 - `app/mini/tower/service.py`
 - `app/mini/ui/hero_cards.py`
+- `app/mini/ui/limits.py`
 - `app/mini/ui/registration.py`
 - `app/mini/village/handlers.py`
 - `app/mini/village/service.py`
@@ -78,10 +81,12 @@
 - `app/stories/schema.py`
 - `app/stories/service.py`
 - `bot.py`
+- `deploy/deploy-shpakdnd.sh`
 - `deploy/shpakdnd-bot-watch.path`
 - `docs/ui/v1.5-matrix.json`
 - `docs/v1.5/ADR_NORMAL_RAID.md`
 - `docs/v1.5/CHANGED_FILES.md`
+- `docs/v1.5/COMPLETION_AUDIT.md`
 - `docs/v1.5/CONTENT_IMPORT_CHECKLIST.md`
 - `docs/v1.5/DATABASE.md`
 - `docs/v1.5/IMPLEMENTATION_STATUS.md`
@@ -112,11 +117,13 @@
 - `tests/v1_4_4/test_main_compatibility.py`
 - `tests/v1_5/__init__.py`
 - `tests/v1_5/test_boss_stories.py`
+- `tests/v1_5/test_completion_audit.py`
 - `tests/v1_5/test_core.py`
 - `tests/v1_5/test_effect_matrix.py`
 - `tests/v1_5/test_integration.py`
 - `tools/check_v15.py`
 - `tools/import_v15_s5.py`
+- `tools/validate_deploy_bundle.py`
 - `tools/validate_dnd_shop_release.py`
 - `tools/validate_pvp_migration.py`
 - `tools/validate_v15_migration.py`

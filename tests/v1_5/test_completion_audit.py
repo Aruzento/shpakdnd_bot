@@ -10,6 +10,7 @@ from app.mini.players import create_mini_player
 from app.mini.combat import team
 from app.mini.combat.modes import freeze_hero
 from app.mini.combat.arise import shared_sources
+from app.mini.combat.hero_abilities.catalog import get_ability
 from app.mini.mythic.raid import service as raids
 from app.mini.mythic.wallet import transaction
 from tests.v1_3.support import MiniCase
@@ -375,9 +376,7 @@ class TeamAriseAudit(MiniCase):
         )
         snap["passives"]["normal"] = {
             "key": "none",
-            "definition": __import__(
-                "app.mini.combat.hero_abilities.catalog", fromlist=["get_ability"]
-            ).get_ability("none"),
+            "definition": get_ability("none"),
         }
         snap["passive_key"] = "none"
         self.sql(
@@ -613,6 +612,87 @@ class PipelineAudit(unittest.TestCase):
         )
         self.assertIn("❄️ Ледяные щиты: 2", text)
         self.assertIn("🌙 Лунные щиты: 1", text)
+
+    def test_tower_extra_hits_apply_warrior_bonus_without_recursion(self):
+        from app.mini.tower.combat import resolve_turn
+        from app.mini.tower.catalog import get_floor
+
+        hero = freeze_hero(
+            {
+                "attack": 100,
+                "rarity": "common",
+                "stars": 0,
+                "passive_key": "blood_frenzy",
+                "faction": "neutral",
+                "class_tag": "warrior",
+                "attack_range": "ranged",
+                "special_trait": "none",
+                "damage_type": "physical",
+            }
+        )
+        enemy = get_floor(1)
+        enemy.update(max_hp=10000, features=[], response="prepare", faction="neutral")
+        values = team.begin([hero], 10000, 0)
+        attempt = {
+            "player_id": 1,
+            "hero_json": json.dumps(hero),
+            "enemy_json": json.dumps(enemy),
+            "runtime_json": json.dumps(
+                {
+                    "rules_version": 15,
+                    "class_rules_version": 1,
+                    "actual_hit_count": 0,
+                    "hit_count": 3,
+                    "team": values,
+                }
+            ),
+            "equipment_bonus": 0,
+            "current_hp": 10000,
+            "shields": 3,
+            "turn": 3,
+        }
+        result = resolve_turn(attempt, roller=lambda _: False)
+        hits = [
+            e["damage"]
+            for e in json.loads(result["events_json"])
+            if e["type"] in ("attack", "extra_attack")
+        ]
+        self.assertEqual(hits, [150, 150])
+        self.assertEqual(json.loads(result["runtime_json"])["actual_hit_count"], 2)
+
+    def test_tower_sun_neutralization_precedes_faction_calculation(self):
+        from app.mini.tower.combat import resolve_turn
+        from app.mini.tower.catalog import get_floor
+        from app.mini.combat.tags import FACTION_CYCLE
+
+        hero = mythic("sun")
+        hero["faction"] = FACTION_CYCLE[0]
+        enemy = get_floor(1)
+        enemy.update(
+            max_hp=10000, features=[], response="prepare", faction=FACTION_CYCLE[1]
+        )
+        values = team.begin([hero], 10000, 0)
+        values["neutralized"] = True
+        attempt = {
+            "player_id": 1,
+            "hero_json": json.dumps(hero),
+            "enemy_json": json.dumps(enemy),
+            "runtime_json": json.dumps(
+                {
+                    "rules_version": 15,
+                    "class_rules_version": 1,
+                    "actual_hit_count": 0,
+                    "team": values,
+                }
+            ),
+            "equipment_bonus": 0,
+            "current_hp": 10000,
+            "shields": 3,
+            "turn": 0,
+        }
+        result = resolve_turn(attempt, roller=lambda _: False)
+        self.assertEqual(result["faction_percent"], 100)
+        self.assertEqual(result["damage"], 100)
 
 
 class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):

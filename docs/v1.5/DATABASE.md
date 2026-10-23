@@ -25,3 +25,9 @@
 Основные индексы: mini_pet_one_active, mini_raid_one_active, mini_raid_daily, mini_boss_daily_started, story one-active scope и перечисленные PRIMARY/UNIQUE keys. Все экономические действия и боевой шаг используют BEGIN IMMEDIATE; HP, попытка, вклад, награда и idempotency фиксируются одной транзакцией. Telegram-сеть находится за её пределами, публикация предварительно получает persisted claim.
 
 Исторические mini_mythic_fragments/mini_mythic_grants остаются. Ни миграция, ни новое API не выдумывают курс конверсии; старый craft/grant-per-hero явно отклоняются. Обычные shards/coins/equipment имеют прежних владельцев записи.
+
+## Completion-аудит: сохранённые источники и доставка
+
+Normal team_state_json.arise_team_sources freezes owner+hero Dark и один Lunar Shadows; reward_policy freezes временный баланс. Старый V15 без плана использует только saved participant snapshots, rules<15 legacy. Arise требует total_damage>0; счётчик попыток/условия прежних victory effects не меняются.
+Raid first positive own HP-event per owner+hero в attacks определяет Arise без повторов по дням/upgrade. Финальный shared plan в state_json; snapshot_json.runtime_policies фиксирует Eclipse. Result_json rank/reward/Arise — источник final ranking. Cancel audit хранит и refusal O01 с revision/payload, без экономики.
+Новые Tower runtime: actual_hit_count=0 и team.reward_policy; старые без поля читаются совместимо. Миграции не перезаписывают активные JSON. Story text message replay в story_operations; input_chat/input_thread в enrollment.data_json, authoritative character scope — исходная тема. Sending→uncertain; pending network retry только после durable claim, вне транзакции.

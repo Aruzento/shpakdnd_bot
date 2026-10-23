@@ -164,7 +164,7 @@ def grant_victory_rewards(
                 (player_id, item_ids[item["code"]], int(item["quantity"])),
             )
 
-        if not include_all_registered and int(row["hit_count"]) > 0 and (int(boss["rules_version"] or 0)<15 or int(row["total_damage"] or 0)>0):
+        if not include_all_registered and int(row["hit_count"]) > 0:
             from app.mini.shadow import extract_in_transaction
             extraction=extract_in_transaction(conn,boss,row,now=when) if allow_shadow else None
             if extraction: victory_events.append(log_hero_event(conn,boss,row,extraction,when or utcnow()))

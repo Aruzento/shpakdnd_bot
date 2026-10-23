@@ -1,23 +1,19 @@
-# D&D Mini V1.5 — статус реализации
+# D&D Mini V1.5 — после completion-аудита
 
-Статус: **В разработке**. Реализован код для независимого ревью в `codex/v1.5` от `d077dd2a2c29ad420b138bf07af23c77f4674d0b`. Источник требований — полный мастер-файл от 23.10.2026, включая R01–R20. Более ранний план используется только для нумерации блоков.
+**В разработке**. Независимое сопоставление каждого00–09/R01–R20: [COMPLETION_AUDIT.md](COMPLETION_AUDIT.md). Старый статус implemented+tested не принимается за доказательство. Финальные SHA/OS/count/log/CI — в итоговом отчёте после коммита.
 
-Main, исходное грязное дерево Z:, рабочая SQLite, systemd, staging и production не изменялись. Изменение файла конфигурации watcher в Git не является установкой/запуском watcher.
-
-| Блок | Статус | Реализация и проверка |
+| Блок | Итог | Ограничение |
 |---|---|---|
-| 00. База/совместимость | implemented+tested | `combat/modes.py`, аддитивная `migrations/v1_5.py`; replay, integrity/FK, старый код на отдельной копии; архитектурные тесты |
-| 01. Деревня/гача | implemented+tested | Персональный фактический доход, итог/еда/boost/звёзды, страницы работников; прогрессивные дубликаты в общем пути одиночного и ×10 призыва |
-| 02. Editorial/UI | implemented+tested | Сохранены права и callback, исправлены кнопки создателя/участника Boss; отдельная матрица `docs/ui/v1.5-matrix.json`, новые термины/названия зверей через существующий hot reload |
-| 03. Обычные Boss | implemented+tested | 14 таблиц HP/монеты/зелья R02, один игрок, права, 10 запусков/мир/московские сутки, frozen reward, `/superadminch`, eligibility |
-| 04. История/ходы | implemented+tested | Новые 900 секунд, старый таймер сохранён; отдельный admin_skip; журнал действий/событий с общей последовательностью и страницами |
-| 05. S5/пять пассивок | implemented+blocked-by-content | Пять механик работают в normal Boss и применимых Tower-сценариях; реальный S5 сохранён как импортный манифест. Импорт 17 героев не выполнен: отсутствуют все соответствующие 17 PNG |
-| 06. Мифические рейды | implemented+blocked-by-content | Свободные атаки, лимиты, atomic HP/вклад/награды, R09, восемь raid-эффектов, четыре Лунные арканы, UI, аудит и безопасная публикация. Реального каталога четырёх боссов/PNG нет. Отмена с наградой отдельно blocked-by-rule (O01) |
-| 07. Звери | implemented+blocked-by-content | Инвентарь/активный/резерв, активное время, уход/CD/защита/рост/настроение, расход одной ненадетой вещи, дневные лимиты, ручной взрослый claim. Нет 24 реальных PNG; эволюция ожидает реального героя/общего взрослого PNG |
-| 08. Mythic-герои/валюта | implemented+blocked-by-content | Универсальный ledger, 1–6★ и 300 суммарно, фиксированная атака, восемь normal + восемь raid-эффектов, 12 + 4 арканы, запрет Mythic в PvP. Реальный каталог восьми героев и изображения не предоставлены; кодов от Codex нет |
-| 09. Общие Истории | implemented+blocked-by-content | Общий router и сервис, настоящие D&D/Mini участники, быстрое создание, DAG, hot discovery, frozen snapshot, неизменяемый голос, tie/kick/replay/restart. Готовых сюжетных JSON нет |
+| 00 compatibility /01 Village+Gacha /02 UI /03 Boss /05 passives | DONE доступный код/изолированные проверки | Реальная Telegram-приёмка отдельно |
+| 04 S5 | BLOCKED_BY_INPUT | JSON есть,17PNG не найдены; importer/5normal passives готовы |
+| 06 Raid | PARTIAL | Нет4Boss records/PNG; O01with_reward BLOCKED_BY_RULE; counter/Eclipse PROVISIONAL |
+| 07 Pets | BLOCKED_BY_INPUT | Покупка/уход/резерв/лимиты/claim/equipment реализованы; adult unlock ждёт настоящих records/PNG |
+| 08 Mythic | PARTIAL | 16свойств/12+4arcana/upgrade/currency реализованы;8records/24PNG нет; rewards PROVISIONAL |
+| 09 Stories | BLOCKED_BY_INPUT | Общая цепочка/private wizard/restart работают на fixtures; реальных внешних сценариев нет |
 
-`implemented+tested` означает автоматические проверки кода на изолированных фикстурах, а не подтверждение игрового опыта в Telegram. Полные результаты финального SHA сообщаются отдельно после коммита. Матрица проверок — TEST_MATRIX.md.
+Исправлены shared Dark Arise normal/raid, normal-passive leak в raid, positive-HP Arise eligibility, frozen Draghar, starting overlays, Tower extra/neutralization/shields, Star banishment, Story private creation/text replay/catalog error, Raid cancel audit/receipt/final rank/pages/stale callbacks/recovery world ID, UTF-16. Pending восстанавливаются, uncertain не пересылаются; временные policy вынесены в JSON и frozen. Старые победные passive conditions сохранены. Linux Ctrl+C исправляется адресно в feature logger call, original PTY tests не ослаблены.
+
+Main, исходное грязное Z: дерево, рабочая SQLite, systemd/staging/production не изменялись. PR #8 остаётся draft. Strict content BLOCKED/exit2 не считается PASS.
 
 ## Открытые правила и временные политики
 
@@ -34,7 +30,7 @@ Main, исходное грязное дерево Z:, рабочая SQLite, sy
 | O09 | Реальный S5 JSON доступен; 17 PNG, 24 PNG, реальные 4 boss JSON/PNG, 8 hero records и story JSON не найдены в доступном комплекте | CONTENT_IMPORT_CHECKLIST.md содержит точные имена/пути |
 | O10 / PROVISIONAL | Solo Tower не создаёт союзников/дополнительных платных ходов; ледяные/Лунные защитные заряды отдельны; actual=0 не запускает эффекты успешного попадания; extra запускает пассивки без рекурсии | Требуется приёмка сочетаний/порядка щитов и частных сценариев Tower. Некоторые конкретные Shadow-формы в Tower не определены — Arise без явного разрешённого target не выдаётся |
 
-Требуют отдельного независимого ревью: сочетания индивидуальных Dark/Lunar Arise, сочетания боевых щитов/подавления, трактовка потерь после срабатывания Драгхара, полный Telegram transport с реальными изображениями. Исторические hero-specific фрагменты сохраняются, не конвертируются и не удаляются. Механические тесты новых правил не являются одобрением временного баланса.
+Dark/Lunar shared Arise, shields/suppression, frozen Draghar и handler→service→SQLite проверены дополнительно. Реальный Telegram с изображениями и PROVISIONAL требуют отдельной приёмки. Исторические hero-specific фрагменты сохраняются, не конвертируются и не удаляются. Механические тесты новых правил не являются одобрением временного баланса.
 
 ## Что остаётся недоступно
 

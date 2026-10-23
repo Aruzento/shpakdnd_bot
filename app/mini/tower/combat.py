@@ -177,7 +177,7 @@ def resolve_turn(attempt, *, roller=None):
         runtime['bonus_shards']=runtime.get('bonus_shards',0)+policy['star_shards']
     if won:
         kill = abilities.resolve_kill(passive,roller=roller,ability_definition=definition) if primary_killed else {"bonus_shards":0,"events":[]}
-        victory = abilities.resolve_victory(passive,roller=roller,ability_definition=definition) if runtime.get("actual_hit_count",runtime.get("hit_count",0)) else {"bonus_shards":0,"events":[]}
+        victory = abilities.resolve_victory(passive,roller=roller,ability_definition=definition) if runtime.get("hit_count",0) else {"bonus_shards":0,"events":[]}
         runtime["bonus_shards"] = runtime.get("bonus_shards",0)+kill["bonus_shards"]+victory["bonus_shards"]
         events.extend(kill["events"]+victory["events"])
     status = "won" if won else ("lost" if enemy["reward_shields"] == 0 else "active")

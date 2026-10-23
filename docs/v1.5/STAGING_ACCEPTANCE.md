@@ -18,3 +18,21 @@
 10. При сетевой неопределённости публикации не отправляются автоматически повторно. Проверить pending/sending/uncertain recovery; восстановление статуса не удваивает HP, попытки, награды или сообщения. Проверить реальные PNG и длинные подписи/рейтинги на Telegram-клиентах.
 
 Результаты каждого пункта фиксировать с SHA, изолированной БД и реальными message/session IDs. Успех автоматических фикстур не заменяет эту приёмку и не разрешает production.
+
+## Протокол A/B/Admin — пока NOT RUN
+
+Перед каждым сценарием фиксировать exact SHA,тестовый bot/chat/thread,backup hash,строки до/после,message IDs. Раздельные .env/DB/внешний контент. Предрелизные проверки до остановки любого рабочего бота; секреты в evidence не писать.
+
+| Действие | До | После / свидетельство |
+|---|---|---|
+| A создаёт Boss,B записывается/стартует | ready,started=N | fighting,N+1,timeout900;чужой C отклонён |
+| Admin skip A,повтор той же кнопки | current A/token | Один audit,no fake hit/timeout;admin skip сам по себе не лишает базовой награды |
+| A Dark+B без personal,оба positive,победа | no combat_arise | Saved sources/player,max1Shadow;restart/replay не меняет copies/ledger |
+| A/B одновременно last hit Raid | active HP мало | HP0,одна finalization,sum actual≤HP,один reward/egg/Arise;UI saved rank/amount |
+| Admin cancel with_reward/no_reward/stale | active revision R | O01refusal+audit,no economy;stale rejected;no_reward cancelled безArise/R09 |
+| Reserve/activate,care/eatask/claim | active_seconds/mood/CD | Reserve заморожен;eat только confirm и один spend;shared day limits |
+| A D&D+B Mini Story,private wizard,vote/kick | registration/no votes | Real rows исходной темы,no чужой input;one vote/transition;экономика неизменна |
+| Restart pending/sending/sent | durable publication | pending один send,sending uncertain без resend,sent не дублируется;raid callback world_id |
+| Unicode caption/Ice/Lunar shields | реальные PNG/рейтинг | Telegram принимает размеры;отдельные❄️/🌙;pages/stale buttons работают |
+
+SQLite evidence только в тестовой базе: integrity_check=ok;foreign_key_check=[];mini_mythic_ledger/raid_attacks/damage/rewards/combat_arise/pet_days/story_votes/steps/publications,boss audit/timeline. Логи без traceback/секретов. Без фактических записей этот протокол не считается выполненным.
