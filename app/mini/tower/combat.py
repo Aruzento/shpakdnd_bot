@@ -3,6 +3,7 @@
 Boss reward-only decay/corruption have no meaning here. Passive shard procs are
 banked until victory so losing/retrying cannot farm combat currency.
 """
+
 import json
 from app.mini.combat import creatures, classes
 from app.mini.combat.hero_abilities import engine as abilities
@@ -17,6 +18,7 @@ def resolve_turn(attempt, *, roller=None):
     v15=int(runtime.get("rules_version",0))>=15
     from app.mini.combat import team
     from app.mini.combat.modes import ordinary_damage
+
     values=runtime.get("team",{})
     enemy.update(current_hp=attempt["current_hp"], trait_rules_version=1,
                  class_rules_version=runtime.get("class_rules_version",0),
@@ -131,15 +133,28 @@ def resolve_turn(attempt, *, roller=None):
         if not won:
             apply(creatures.after_hero_turn(enemy,hero,roller=roller))
     if not won:
-        if runtime.get("skips",0):
+        if runtime.get("skips", 0):
             runtime["skips"] -= 1
-            events.append({"type":"enemy_skip","message":"⏭ Противник пропускает ответный ход."})
-        elif enemy.get("response","attack") == "prepare" and not runtime.get("enemy_actions",0):
+            events.append(
+                {
+                    "type": "enemy_skip",
+                    "message": "⏭ Противник пропускает ответный ход.",
+                }
+            )
+        elif enemy.get("response", "attack") == "prepare" and not runtime.get(
+            "enemy_actions", 0
+        ):
             runtime["enemy_actions"] = 1
-            events.append({"type":"enemy_prepare","message":"⏳ Противник готовит атаку; щиты целы."})
+            events.append(
+                {
+                    "type": "enemy_prepare",
+                    "message": "⏳ Противник готовит атаку; щиты целы.",
+                }
+            )
         else:
             runtime["enemy_actions"] = runtime.get("enemy_actions",0)+1
-            holy = creatures.holy_attack_attempt(enemy,roller=roller); apply(holy)
+            holy = creatures.holy_attack_attempt(enemy, roller=roller)
+            apply(holy)
             v15_guard=team.reward_attack(values,enemy['current_hp'],turn,roller=roller) if v15 and not holy['miss'] else None
             if v15_guard:
                 values=v15_guard['state']
@@ -148,21 +163,37 @@ def resolve_turn(attempt, *, roller=None):
                     if v15_guard['hp_damage']:
                         damage(v15_guard['hp_damage'],'ice_shield')
                         won=death() if enemy['current_hp']==0 else False
-            if not holy["miss"] and not (v15_guard and v15_guard['blocked']):
-                proc = abilities.resolve_boss_attack(passive,roller=roller,ability_definition=definition)
+            if not holy["miss"] and not (v15_guard and v15_guard["blocked"]):
+                proc = (
+                    abilities.resolve_boss_attack(
+                        passive, roller=roller, ability_definition=definition
+                    )
+                    if values.get("reward_policy", {}).get("version", 1) < 2
+                    or runtime.get("actual_hit_count", 0) > 0
+                    else {"bonus_shards": 0, "events": []}
+                )
                 runtime["bonus_shards"] = runtime.get("bonus_shards",0)+proc["bonus_shards"]
                 events.extend(proc["events"])
                 defense = abilities.resolve_reward_defense(passive, state=hero_state, shields=enemy["reward_shields"], roller=roller,ability_definition=definition)
                 hero_state = defense["state"]
                 guard = hero_state.get("reward_guard_charges",0)
                 if defense["blocked"]:
-                    events.append({"type":defense["type"],"message":"🛡 Атака поглощена."})
+                    events.append(
+                        {"type": defense["type"], "message": "🛡 Атака поглощена."}
+                    )
                 elif guard:
                     hero_state["reward_guard_charges"] = guard-1
-                    events.append({"type":"guard","message":"🛡 Защитный заряд поглотил ответную атаку."})
+                    events.append(
+                        {
+                            "type": "guard",
+                            "message": "🛡 Защитный заряд поглотил ответную атаку.",
+                        }
+                    )
                 else:
                     enemy["reward_shields"] = max(0,enemy["reward_shields"]-1)
-                    events.append({"type":"shield","message":"💥 Противник разбил щит."})
+                    events.append(
+                        {"type": "shield", "message": "💥 Противник разбил щит."}
+                    )
             # Shield exhaustion ends the attempt before poison can kill the enemy.
             if enemy["reward_shields"] > 0:
                 apply(creatures.poison_tick(enemy))
@@ -172,12 +203,29 @@ def resolve_turn(attempt, *, roller=None):
         if not won and enemy["reward_shields"] > 0:
             apply(creatures.end_round(enemy,participants))
     from app.mini.mythic.policies import normal
+
     policy=normal(values)
-    if won and v15 and hero.get('passive_key')=='mythic_star' and (roller or abilities._roll_success)(policy['star_chance'][team.level(hero)]):
+    if (
+        won
+        and v15
+        and policy.get("version", 1) < 2
+        and hero.get("passive_key") == "mythic_star"
+        and (roller or abilities._roll_success)(policy["star_chance"][team.level(hero)])
+    ):
         runtime['bonus_shards']=runtime.get('bonus_shards',0)+policy['star_shards']
     if won:
         kill = abilities.resolve_kill(passive,roller=roller,ability_definition=definition) if primary_killed else {"bonus_shards":0,"events":[]}
-        victory = abilities.resolve_victory(passive,roller=roller,ability_definition=definition) if runtime.get("hit_count",0) else {"bonus_shards":0,"events":[]}
+        victory = (
+            abilities.resolve_victory(
+                passive, roller=roller, ability_definition=definition
+            )
+            if (
+                runtime.get("actual_hit_count", 0)
+                if policy.get("version", 1) >= 2
+                else runtime.get("hit_count", 0)
+            )
+            else {"bonus_shards": 0, "events": []}
+        )
         runtime["bonus_shards"] = runtime.get("bonus_shards",0)+kill["bonus_shards"]+victory["bonus_shards"]
         events.extend(kill["events"]+victory["events"])
     status = "won" if won else ("lost" if enemy["reward_shields"] == 0 else "active")
@@ -185,7 +233,13 @@ def resolve_turn(attempt, *, roller=None):
     runtime.update(hero=hero_state,creature=json.loads(enemy["feature_state_json"]))
     # Shared hooks retain their established event types; presentation uses Tower terminology.
     for event in events:
-        event["message"] = event.get("message","").replace("босса","противника").replace("Босс","Противник").replace("босс","противник").replace("награды","щитов")
+        event["message"] = (
+            event.get("message", "")
+            .replace("босса", "противника")
+            .replace("Босс", "Противник")
+            .replace("босс", "противник")
+            .replace("награды", "щитов")
+        )
     return {"current_hp":enemy["current_hp"],"shields":enemy["reward_shields"],"turn":turn,
             "status":status,"runtime_json":json.dumps(runtime),"events_json":json.dumps(events,ensure_ascii=False),
             "damage":damage_total,"faction_percent":percent}

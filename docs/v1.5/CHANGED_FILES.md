@@ -1,6 +1,49 @@
 # Изменённые файлы V1.5
 
-База: d077dd2a2c29ad420b138bf07af23c77f4674d0b. Ветка codex/v1.5; тот же draft PR #8. Назначение каждого файла и обоснования прежних тестов: COMPLETION_AUDIT.md. Final numstat/SHA/evidence записываются в итоговый отчёт после коммита.
+Ветка codex/v1.5; тот же draft PR #8. База d077dd2a2c29ad420b138bf07af23c77f4674d0b. Итерация утверждённых O01–O10 начинается от dfe7df7311d9789469063c783d65f8390b281bcb. Финальные SHA/numstat/журналы — в итоговом отчёте после коммита.
+
+## Эта итерация: 38 файлов
+
+- `.github/workflows/linux-release.yml`
+- `app/mini/boss/rewards.py`
+- `app/mini/combat/star_rewards.py`
+- `app/mini/combat/team.py`
+- `app/mini/mythic/content.py`
+- `app/mini/mythic/handlers.py`
+- `app/mini/mythic/pets.py`
+- `app/mini/mythic/policies.json`
+- `app/mini/mythic/policies.py`
+- `app/mini/mythic/raid/catalog.py`
+- `app/mini/mythic/raid/contracts.py`
+- `app/mini/mythic/raid/effects.py`
+- `app/mini/mythic/raid/handlers.py`
+- `app/mini/mythic/raid/rewards.py`
+- `app/mini/mythic/raid/service.py`
+- `app/mini/mythic/schema.py`
+- `app/mini/schema.py`
+- `app/mini/tower/catalog.py`
+- `app/mini/tower/combat.py`
+- `app/mini/tower/repository.py`
+- `app/mini/tower/service.py`
+- `docs/v1.5/ADR_NORMAL_RAID.md`
+- `docs/v1.5/CHANGED_FILES.md`
+- `docs/v1.5/COMPLETION_AUDIT.md`
+- `docs/v1.5/COMPLETION_AUDIT_DFE7DF7.md`
+- `docs/v1.5/CONTENT_IMPORT_CHECKLIST.md`
+- `docs/v1.5/DATABASE.md`
+- `docs/v1.5/IMPLEMENTATION_STATUS.md`
+- `docs/v1.5/O01_O10_APPROVED_TZ.md`
+- `docs/v1.5/RELEASE_AND_ROLLBACK.md`
+- `docs/v1.5/STAGING_ACCEPTANCE.md`
+- `docs/v1.5/TEST_MATRIX.md`
+- `docs/v1.5/WORK_LOG.md`
+- `tests/test_mini_migrations.py`
+- `tests/v1_5/test_approved_o01_o10.py`
+- `tests/v1_5/test_completion_audit.py`
+- `tests/v1_5/test_integration.py`
+- `tools/validate_dnd_shop_release.py`
+
+## Полный PR: 130 файлов
 
 - `.github/workflows/linux-release.yml`
 - `app/handlers/__init__.py`
@@ -31,6 +74,7 @@
 - `app/mini/combat/hero_abilities/catalog.py`
 - `app/mini/combat/hero_abilities/engine.py`
 - `app/mini/combat/modes.py`
+- `app/mini/combat/star_rewards.py`
 - `app/mini/combat/team.py`
 - `app/mini/duels/handlers.py`
 - `app/mini/duels/service.py`
@@ -62,6 +106,7 @@
 - `app/mini/schema.py`
 - `app/mini/shadow.py`
 - `app/mini/superadmin/handlers.py`
+- `app/mini/tower/catalog.py`
 - `app/mini/tower/combat.py`
 - `app/mini/tower/handlers.py`
 - `app/mini/tower/repository.py`
@@ -87,9 +132,11 @@
 - `docs/v1.5/ADR_NORMAL_RAID.md`
 - `docs/v1.5/CHANGED_FILES.md`
 - `docs/v1.5/COMPLETION_AUDIT.md`
+- `docs/v1.5/COMPLETION_AUDIT_DFE7DF7.md`
 - `docs/v1.5/CONTENT_IMPORT_CHECKLIST.md`
 - `docs/v1.5/DATABASE.md`
 - `docs/v1.5/IMPLEMENTATION_STATUS.md`
+- `docs/v1.5/O01_O10_APPROVED_TZ.md`
 - `docs/v1.5/RELEASE_AND_ROLLBACK.md`
 - `docs/v1.5/S5_IMPORT_MANIFEST.json`
 - `docs/v1.5/STAGING_ACCEPTANCE.md`
@@ -116,6 +163,7 @@
 - `tests/v1_4_2/test_screen_contracts.py`
 - `tests/v1_4_4/test_main_compatibility.py`
 - `tests/v1_5/__init__.py`
+- `tests/v1_5/test_approved_o01_o10.py`
 - `tests/v1_5/test_boss_stories.py`
 - `tests/v1_5/test_completion_audit.py`
 - `tests/v1_5/test_core.py`

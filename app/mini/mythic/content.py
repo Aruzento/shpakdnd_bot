@@ -192,7 +192,7 @@ def report():
     from app.stories.catalog import discover
 
     heroes = load_hero_catalog()["heroes"]
-    blocked = validate_mythics(heroes)
+    blocked = validate_mythics(heroes, images=HERO_IMAGES_DIR)
     missing_inputs = []
     for element in sorted(ELEMENTS):
         for stage in STAGES:
@@ -210,12 +210,26 @@ def report():
                 missing_inputs.append(
                     {"path": str(path), "reason": "missing real S5 PNG"}
                 )
+                blocked.append("Missing S5 PNG: " + str(path))
+            else:
+                png(path, background=255)
         missing = [
             h["code"] for h in s5_heroes if h["code"] not in {e["code"] for e in heroes}
         ]
         if missing:
             blocked.append("S5 not imported: " + ", ".join(missing))
-    bosses = load()
+    bosses = load(require_images=False)
+    from app.mini.mythic.raid.catalog import IMAGES as RAID_IMAGES
+
+    for boss in bosses:
+        path = RAID_IMAGES / boss["image"]
+        if not path.is_file():
+            blocked.append("Missing raid PNG: " + str(path))
+            missing_inputs.append(
+                {"path": str(path), "reason": "missing real raid PNG"}
+            )
+        else:
+            png(path)
     if not bosses:
         blocked.append(
             "Missing four real raid boss JSON/PNG: app/mini/mythic/raid/bosses.json and images/"
@@ -226,7 +240,7 @@ def report():
     if not stories:
         blocked.append("No real stories in external STORIES_DIR")
     return {
-        "status": "blocked-by-content" if blocked else "validated",
+        "status": "BLOCKED_BY_INPUT" if blocked else "validated",
         "hero_count": len(heroes),
         "raid_bosses": len(bosses),
         "stories": len(stories),

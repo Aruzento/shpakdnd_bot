@@ -19,6 +19,13 @@ def validate(definition):
         definition.get("effects", []), list
     ):
         raise ValueError("raid definition needs effects list")
+    if set(definition) - {"key", "name", "description", "effects", "configured"}:
+        raise ValueError("Unknown raid definition field")
+    if "configured" in definition and type(definition["configured"]) is not bool:
+        raise ValueError("Invalid raid definition configured flag")
+    for key in ("key", "name", "description"):
+        if key in definition and not isinstance(definition[key], str):
+            raise ValueError("Invalid raid definition text")
     for effect in definition.get("effects", []):
         if not isinstance(effect, dict) or effect.get("type") not in FIELDS:
             raise ValueError("Unsupported raid effect type")

@@ -6,7 +6,7 @@ import secrets
 from app.config import DB_PATH
 from app.mini.mythic.wallet import transaction, change
 from app.mini.mythic.pets import timestamp, day, first_egg, damage_delta
-from app.mini.mythic.raid.catalog import load
+from app.mini.mythic.raid.catalog import load, COUNTER_POLICY
 from app.mini.mythic.raid.effects import resolve
 from app.mini.mythic.raid.rewards import allocate
 from app.mini.combat.modes import freeze_hero
@@ -54,7 +54,11 @@ def start(player_id, code, key, db_path=DB_PATH, *, now=None):
             raise ValueError("В мире уже идёт мифический рейд.")
         from app.mini.mythic.policies import load as load_policies
 
-        template = {**template, "runtime_policies": load_policies()}
+        template = {
+            **template,
+            "runtime_policies": load_policies(),
+            "counter_policy": COUNTER_POLICY,
+        }
         hp = template["max_hp"]
         cursor = conn.execute(
             "INSERT INTO mini_mythic_raids(world_id,template_code,snapshot_json,original_max_hp,max_hp,current_hp,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -247,11 +251,33 @@ def attack(
             pet_delta=damage_delta(conn, player_id, now),
             chooser=chooser,
         )
+        for event in result["audit"]:
+            if event["type"] == "counter_activated":
+                conn.execute(
+                    "INSERT INTO mini_mythic_raid_audit(raid_id,actor_id,operation_key,action,payload,created_at) VALUES(?,?,?,?,?,?)",
+                    (
+                        raid_id,
+                        player_id,
+                        f"counter:{raid_id}",
+                        "counter_activated",
+                        json.dumps({**event, "hero_id": hero_id}),
+                        now,
+                    ),
+                )
         for event in result["events"]:
             if event["actual_hp_damage"]:
+                old_damage = conn.execute(
+                    "SELECT damage FROM mini_mythic_raid_damage WHERE raid_id=? AND player_id=?",
+                    (raid_id, event["actor_id"]),
+                ).fetchone()
+                new_damage = (old_damage[0] if old_damage else 0) + event[
+                    "actual_hp_damage"
+                ]
+                if new_damage > 2**63 - 1:
+                    raise ValueError("Actual contribution exceeds SQLite integer")
                 conn.execute(
-                    "INSERT INTO mini_mythic_raid_damage VALUES(?,?,?) ON CONFLICT(raid_id,player_id) DO UPDATE SET damage=damage+excluded.damage",
-                    (raid_id, event["actor_id"], event["actual_hp_damage"]),
+                    "INSERT INTO mini_mythic_raid_damage VALUES(?,?,?) ON CONFLICT(raid_id,player_id) DO UPDATE SET damage=excluded.damage",
+                    (raid_id, event["actor_id"], new_damage),
                 )
         result["egg"] = (
             first_egg(conn, player_id, now, chooser=chooser)
@@ -294,6 +320,41 @@ def attack(
         return result
 
 
+def _admin(conn, world_id, actor_user_id, actor_username):
+    from app.context import get_topic_admin, normalize_username
+    from app.mini.superadmin.access import SUPERADMIN_USER_ID
+
+    world = conn.execute(
+        "SELECT chat_id,thread_id FROM mini_worlds WHERE id=?", (world_id,)
+    ).fetchone()
+    required = get_topic_admin(world["chat_id"], world["thread_id"]) if world else None
+    if actor_user_id != SUPERADMIN_USER_ID and (
+        not required
+        or not actor_username
+        or normalize_username(actor_username) != required
+    ):
+        raise ValueError("Нет прав администратора для отмены рейда.")
+
+
+def _compensation(conn, raid):
+    from app.mini.mythic.raid.rewards import compensation
+
+    damage = dict(
+        conn.execute(
+            "SELECT player_id,damage FROM mini_mythic_raid_damage WHERE raid_id=?",
+            (raid["id"],),
+        )
+    )
+    return compensation(raid["original_max_hp"], damage)
+
+
+def _revision(raid, expected_revision):
+    if type(expected_revision) is not int or expected_revision != raid["revision"]:
+        raise ValueError("Рейд изменился, подтверди отмену заново.")
+    if raid["status"] != "active":
+        raise ValueError("Рейд уже завершён.")
+
+
 def cancel(
     raid_id,
     world_id,
@@ -310,74 +371,212 @@ def cancel(
 ):
     if not confirmed:
         raise ValueError("Требуется подтверждение отмены.")
-    if not key or not isinstance(reason, str) or len(reason) > 500:
-        raise ValueError("Нужны ключ операции и причина длиной до 500 символов.")
+    if (
+        not isinstance(key, str)
+        or not key
+        or type(with_reward) is not bool
+        or not isinstance(reason, str)
+        or len(reason) > 500
+    ):
+        raise ValueError("Нужны ключ операции, режим и причина длиной до 500 символов.")
     now = timestamp(now)
+    error = None
     with transaction(db_path) as conn:
         raid = _raid(conn, raid_id, world_id)
-        world = conn.execute(
-            "SELECT chat_id,thread_id FROM mini_worlds WHERE id=?", (world_id,)
-        ).fetchone()
-        from app.context import get_topic_admin, normalize_username
-        from app.mini.superadmin.access import SUPERADMIN_USER_ID
-
-        required = (
-            get_topic_admin(world["chat_id"], world["thread_id"]) if world else None
-        )
-        if actor_user_id != SUPERADMIN_USER_ID and (
-            not required
-            or not actor_username
-            or normalize_username(actor_username) != required
-        ):
-            raise ValueError("Нет прав администратора для отмены рейда.")
+        _admin(conn, world_id, actor_user_id, actor_username)
         payload = {
             "reason": reason,
-            "with_reward": bool(with_reward),
+            "with_reward": with_reward,
             "revision": expected_revision,
         }
-        action = "cancel_reward_blocked" if with_reward else "cancel"
         old = conn.execute(
             "SELECT * FROM mini_mythic_raid_audit WHERE operation_key=?", (key,)
         ).fetchone()
         if old:
-            previous = json.loads(old["payload"])
-            # Existing V15 audit entries did not include a revision in their payload.
-            compared = {k: v for k, v in payload.items() if k in previous}
+            saved = json.loads(old["payload"])
+            compared = {k: v for k, v in payload.items() if k in saved}
             if (
                 old["raid_id"] != raid_id
                 or old["actor_id"] != actor_user_id
-                or old["action"] != action
-                or previous != compared
+                or {k: v for k, v in saved.items() if k != "result"} != compared
+                or old["action"]
+                not in (
+                    "cancel",
+                    "cancel_reward",
+                    "cancel_reward_refused",
+                    "cancel_reward_blocked",
+                )
             ):
                 raise ValueError("Ключ операции уже использован.")
-            result = {
-                "cancelled": not with_reward,
-                "applied": False,
-                "blocked": "O01" if with_reward else None,
-            }
+            if old["action"] == "cancel_reward_blocked":
+                error = "Историческая операция O01 была отклонена; открой новое подтверждение."
+            result = saved.get("result", {"cancelled": True})
+            error = result.get("error", error)
+            result = {**result, "applied": False}
         else:
-            if raid["status"] != "active":
-                raise ValueError("Рейд уже завершён.")
-            if expected_revision is not None and raid["revision"] != expected_revision:
-                raise ValueError("Рейд изменился, подтверди отмену заново.")
-            if not with_reward:
+            _revision(raid, expected_revision)
+            if raid["current_hp"] == 0:
+                raise ValueError("Финализация победы уже началась; отмена недоступна.")
+            plan = (
+                _compensation(conn, raid)
+                if with_reward
+                else {"cancel_mode": "without_reward", "rewards": []}
+            )
+            if with_reward and (plan["D"] == 0 or plan["P"] == 0):
+                error = "Компенсация недоступна: фактический вклад или компенсационный пул равен нулю."
+                result = {
+                    "cancelled": False,
+                    "applied": False,
+                    "error": error,
+                    "result": plan,
+                }
+                action = "cancel_reward_refused"
+            else:
+                plan.update(reason=reason, actor_id=actor_user_id, ended_at=now)
+                for reward in plan["rewards"]:
+                    if reward["amount"] <= 0:
+                        continue
+                    change(
+                        conn,
+                        reward["player_id"],
+                        reward["amount"],
+                        "raid_cancel_compensation",
+                        f"raid:{raid_id}:cancel",
+                        {
+                            "raid_id": raid_id,
+                            "M": plan["M"],
+                            "D": plan["D"],
+                            "F": plan["F"],
+                            "P": plan["P"],
+                        },
+                    )
+                    conn.execute(
+                        "INSERT INTO mini_mythic_raid_rewards VALUES(?,?,?,?,?,?)",
+                        (
+                            raid_id,
+                            reward["player_id"],
+                            reward["rank"],
+                            reward["damage"],
+                            reward["amount"],
+                            json.dumps(reward),
+                        ),
+                    )
                 conn.execute(
-                    "UPDATE mini_mythic_raids SET status='cancelled',ended_at=?,revision=revision+1 WHERE id=?",
-                    (now, raid_id),
+                    "UPDATE mini_mythic_raids SET status='cancelled',ended_at=?,revision=revision+1,result_json=? WHERE id=?",
+                    (now, json.dumps(plan), raid_id),
                 )
+                action = "cancel_reward" if with_reward else "cancel"
+                result = {"cancelled": True, "applied": True, "result": plan}
             conn.execute(
                 "INSERT INTO mini_mythic_raid_audit(raid_id,actor_id,operation_key,action,payload,created_at) VALUES(?,?,?,?,?,?)",
-                (raid_id, actor_user_id, key, action, json.dumps(payload), now),
+                (
+                    raid_id,
+                    actor_user_id,
+                    key,
+                    action,
+                    json.dumps({**payload, "result": result}),
+                    now,
+                ),
             )
-            result = {
-                "cancelled": not with_reward,
-                "applied": not with_reward,
-                "blocked": "O01" if with_reward else None,
-            }
-    # Persist the authorized refusal, with zero economic/state changes, before raising.
-    if with_reward:
-        raise ValueError("Параметры выплаты при отмене с наградой не утверждены (O01).")
+    if error:
+        raise ValueError(error)
     return result
+
+
+def request_cancel(
+    raid_id,
+    world_id,
+    actor_user_id,
+    with_reward,
+    expected_revision,
+    db_path=DB_PATH,
+    *,
+    actor_username=None,
+):
+    with transaction(db_path) as conn:
+        raid = _raid(conn, raid_id, world_id)
+        _admin(conn, world_id, actor_user_id, actor_username)
+        _revision(raid, expected_revision)
+        token = secrets.token_hex(6)
+        conn.execute(
+            "INSERT INTO mini_mythic_raid_cancel_requests(token,raid_id,world_id,actor_id,with_reward,revision,reason,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (
+                token,
+                raid_id,
+                world_id,
+                actor_user_id,
+                int(with_reward),
+                expected_revision,
+                "Административная отмена",
+                timestamp(),
+            ),
+        )
+        return _request(conn, token, world_id, actor_user_id)
+
+
+def _request(conn, token, world_id, actor_user_id):
+    row = conn.execute(
+        "SELECT * FROM mini_mythic_raid_cancel_requests WHERE token=? AND world_id=? AND actor_id=?",
+        (token, world_id, actor_user_id),
+    ).fetchone()
+    if not row:
+        raise ValueError("Подтверждение отмены не найдено.")
+    request = dict(row)
+    raid = _raid(conn, request["raid_id"], world_id)
+    request["preview"] = (
+        _compensation(conn, raid)
+        if request["with_reward"]
+        else {"cancel_mode": "without_reward", "rewards": []}
+    )
+    return request
+
+
+def cancel_request(
+    token,
+    world_id,
+    actor_user_id,
+    db_path=DB_PATH,
+    *,
+    actor_username=None,
+    reason=None,
+    prompt=None,
+):
+    with transaction(db_path) as conn:
+        _admin(conn, world_id, actor_user_id, actor_username)
+        request = _request(conn, token, world_id, actor_user_id)
+        _revision(_raid(conn, request["raid_id"], world_id), request["revision"])
+        if reason is not None:
+            if not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
+                raise ValueError("Причина: от 1 до 500 символов.")
+            conn.execute(
+                "UPDATE mini_mythic_raid_cancel_requests SET reason=?,prompt_message_id=NULL WHERE token=?",
+                (reason.strip(), token),
+            )
+        if prompt is not None:
+            conn.execute(
+                "UPDATE mini_mythic_raid_cancel_requests SET input_chat_id=?,input_thread_id=?,prompt_message_id=? WHERE token=?",
+                (*prompt, token),
+            )
+        return _request(conn, token, world_id, actor_user_id)
+
+
+def confirm_cancel(
+    token, world_id, actor_user_id, key, db_path=DB_PATH, *, actor_username=None
+):
+    with transaction(db_path) as conn:
+        request = _request(conn, token, world_id, actor_user_id)
+    return cancel(
+        request["raid_id"],
+        world_id,
+        actor_user_id,
+        key,
+        db_path,
+        with_reward=bool(request["with_reward"]),
+        confirmed=True,
+        reason=request["reason"],
+        actor_username=actor_username,
+        expected_revision=request["revision"],
+    )
 
 
 def state(world_id, db_path=DB_PATH, *, raid_id=None):
@@ -400,7 +599,7 @@ def state(world_id, db_path=DB_PATH, *, raid_id=None):
                 (raid["id"],),
             )
         ]
-        if raid["status"] == "rewarded":
+        if raid["status"] in ("rewarded", "cancelled"):
             payouts = {
                 r["player_id"]: r
                 for r in json.loads(raid["result_json"]).get("rewards", [])
@@ -419,3 +618,14 @@ def recover_publications(db_path=DB_PATH):
         return conn.execute(
             "UPDATE mini_mythic_raid_publications SET status='uncertain' WHERE status='sending'"
         ).rowcount
+
+
+def history(world_id, page=0, db_path=DB_PATH):
+    with transaction(db_path) as conn:
+        return [
+            dict(r)
+            for r in conn.execute(
+                "SELECT id,status,snapshot_json,result_json,ended_at FROM mini_mythic_raids WHERE world_id=? ORDER BY id DESC LIMIT 11 OFFSET ?",
+                (world_id, max(0, page) * 10),
+            )
+        ]

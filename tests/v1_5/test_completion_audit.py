@@ -200,7 +200,13 @@ class TeamAriseAudit(MiniCase):
             self.assertEqual(raids._arise(conn, row, self.other, roller=roll), [])
             roll.assert_not_called()
         raids.cancel(
-            raid["id"], self.world["id"], self.owner, "cancel", self.db, confirmed=True
+            raid["id"],
+            self.world["id"],
+            self.owner,
+            "cancel",
+            self.db,
+            confirmed=True,
+            expected_revision=1,
         )
         with transaction(self.db) as conn:
             row = raids._raid(conn, raid["id"])
@@ -520,7 +526,7 @@ class PipelineAudit(unittest.TestCase):
         self.assertNotIn("\ud83d", clip("😀" * 1000, 1024))
 
     def test_policy_validation_rejects_bool_and_unapproved_selectors(self):
-        from app.mini.mythic.policies import load, LEGACY
+        from app.mini.mythic.policies import load, APPROVED
         import tempfile
         from pathlib import Path
 
@@ -533,7 +539,7 @@ class PipelineAudit(unittest.TestCase):
                 ("normal_rewards.tower_chest_preserved", 1),
                 ("normal_rewards.star_outcome", "all_outcomes"),
             ]:
-                data = copy.deepcopy(LEGACY)
+                data = copy.deepcopy(APPROVED)
                 parts = key.split(".")
                 if len(parts) == 1:
                     data[key] = value
@@ -964,7 +970,7 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
             1,
         )
 
-    async def test_cancel_with_reward_handler_audits_refusal_once_without_state_or_money(
+    async def test_cancel_zero_pool_handler_audits_refusal_once_without_state_or_money(
         self,
     ):
         from app.mini.mythic.raid import handlers
@@ -987,7 +993,16 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
             patch("app.mini.boss.ui.get_topic_admin", return_value="@tester")
         )
         raid = raids.start(self.pid, "fixture", "start-blocked", self.db)
-        payload = f"cancel.{raid['id']}.1.0"
+        request = raids.request_cancel(
+            raid["id"],
+            self.world["id"],
+            900123,
+            True,
+            0,
+            self.db,
+            actor_username="@tester",
+        )
+        payload = f"cancelconfirm.{request['token']}"
         self.enterContext(
             patch(
                 "app.mini.mythic.raid.handlers.load_extended_context",
@@ -1002,13 +1017,13 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             len(
                 self.sql(
-                    "SELECT * FROM mini_mythic_raid_audit WHERE action='cancel_reward_blocked'"
+                    "SELECT * FROM mini_mythic_raid_audit WHERE action='cancel_reward_refused'"
                 )
             ),
             1,
         )
         self.assertEqual(self.sql("SELECT * FROM mini_mythic_ledger"), [])
-        self.assertIn("O01", self.answered.call_args.args[0])
+        self.assertIn("равен нулю", self.answered.call_args.args[0])
 
     async def test_restart_raid_pending_is_sent_once_uncertain_is_not_retried(self):
         from app.mini.mythic.raid import handlers
@@ -1118,6 +1133,7 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
             "cancel-first-world",
             self.db,
             confirmed=True,
+            expected_revision=0,
         )
         raid = raids.start(self.pid, "fixture", "second-recover-world", self.db)
         self.assertNotEqual(raid["id"], self.world["id"])

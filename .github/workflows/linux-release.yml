@@ -38,8 +38,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify exact candidate SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git rev-parse HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -172,7 +180,7 @@ jobs:
           path: ${{ runner.temp }}/loot-benchmark.json
           if-no-files-found: error
 
-      - name: Validate explicit provisional policies
+      - name: Validate approved O01-O10 policies
         run: python -m app.mini.mythic.policies
 
       - name: V1.5 content diagnostics (missing resources remain explicit blockers)

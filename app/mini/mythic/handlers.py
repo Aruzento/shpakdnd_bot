@@ -38,6 +38,7 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
     token = secrets.token_hex(3)
     b = lambda label, payload: button(wid, uid, label, payload)
     text = editorial_text("v15.mythic.balance", balance=state["mythic_shards"])
+    locations = {"inventory": "Инвентарь", "active": "Активный", "reserve": "Резерв"}
     if view == "home":
         active = next((p for p in state["pets"] if p["location"] == "active"), None)
         text += "\n" + (
@@ -46,9 +47,7 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
             else "Активного зверя нет. Полученные яйца находятся в инвентаре."
         )
         for pet in state["pets"]:
-            label = (
-                f"{NAMES[pet['element']]} · {STAGES[pet['stage']]} · {pet['location']}"
-            )
+            label = f"{NAMES[pet['element']]} · {STAGES[pet['stage']]} · {locations[pet['location']]}"
             rows.append([b(label, f'pet.{pet["id"]}')])
         if not state["pets"]:
             text += (
@@ -63,7 +62,7 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
         pet = next((p for p in state["pets"] if p["id"] == pet_id), None)
         if not pet:
             raise ValueError("Зверь не найден.")
-        text += f"\n{NAMES[pet['element']]} · {STAGES[pet['stage']]}\nНастроение: {pet['mood']}%\nРасположение: {pet['location']}\nЗачтено роста: {pet['stage_seconds']//3600} ч."
+        text += f"\n{NAMES[pet['element']]} · {STAGES[pet['stage']]}\nНастроение: {pet['mood']}%\nРасположение: {locations[pet['location']]}\nЗачтено роста: {pet['stage_seconds']//3600} ч."
         if pet["evolution_pending"]:
             text += "\nЭволюция ожидает реального каталога и изображения героя."
         if pet["location"] != "active":
@@ -97,6 +96,8 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
                             )
                         ]
                     )
+        if pet["location"] != "reserve":
+            rows.append([b("Убрать в резерв", f"reserve.{pet_id}.{token}")])
         rows.append([b(editorial_text("navigation.back"), "home")])
     rows.append(
         [
@@ -188,6 +189,10 @@ async def action(callback):
                 pet_id = int(parts[1])
                 pets.activate(pid, pet_id, key)
                 view = "pet"
+            elif op == "reserve":
+                pet_id = int(parts[1])
+                pets.reserve(pid, pet_id, key)
+                view = "pet"
             elif op == "care":
                 pet_id = int(parts[1])
                 pets.care(pid, pet_id, parts[2], key)
@@ -212,7 +217,7 @@ async def action(callback):
                 raise ValueError("Неизвестное действие Mythic.")
             text, markup = screen(pid, wid, uid, view=view, pet_id=pet_id)
         await callback.answer()
-        if op in ("pet", "care", "activate", "eat"):
+        if op in ("pet", "care", "activate", "eat", "reserve"):
             await send_pet(callback, world, pid, int(parts[1]), text, markup)
         else:
             await send_private_text_from_callback(callback, world, text, markup)

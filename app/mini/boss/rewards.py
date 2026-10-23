@@ -11,6 +11,7 @@ from app.mini.combat import classes
 from app.mini.boss.clock import utcnow, db_time
 from app.mini.boss.repository import log_hero_event
 
+
 def reward_items(raw: str | None) -> list[dict]:
     try:
         data = json.loads(raw or "[]")
@@ -80,19 +81,29 @@ def grant_victory_rewards(
 ) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
     from app.mini.boss.team import coin_reward
+
     coins_each = coin_reward(boss)
     items = reward_items(boss["reward_items_json"])
 
     values=json.loads(dict(boss).get('team_state_json') or '{}')
     from app.mini.mythic.policies import normal
+
     policy=normal(values)
     blessing=values.get('lunar',{}).get('arcana')==10
     if blessing:coins_each=0;items=[]
     star_bonus=False
-    if int(dict(boss).get('rules_version',0))>=15 and not include_all_registered and normal_victory:
+    star_level = None
+    individual = policy.get("version", 1) >= 2
+    if (
+        int(dict(boss).get("rules_version", 0)) >= 15
+        and not include_all_registered
+        and normal_victory
+    ):
         snapshots=[json.loads(r[0]) for r in conn.execute('SELECT hero_snapshot_json FROM mini_boss_participants WHERE boss_id=?',(boss['id'],))]
         star_levels=[max(0,min(5,int(h.get('stars',1))-1)) for h in snapshots if h.get('passive_key')=='mythic_star']
-        if star_levels:
+        if star_levels and individual and int(boss["current_hp"]) <= 0:
+            star_level = max(star_levels)
+        if star_levels and not individual:
             if 'star_reward_roll' not in values:
                 values['star_reward_roll']=hero_abilities._roll_success(policy['star_chance'][max(star_levels)])
                 conn.execute('UPDATE mini_bosses SET team_state_json=? WHERE id=?',(json.dumps(values),boss['id']))
@@ -143,6 +154,32 @@ def grant_victory_rewards(
             from app.mini.mythic.wallet import change
             victory_events.append(log_hero_event(conn,boss,row,{'type':'lunar_reward','message':f"🌙 {row['username'] or row['character_name']}: +{policy['blessing_mythic_shards']} мифических осколков вместо награды."},when or utcnow()))
             change(conn,player_id,policy['blessing_mythic_shards'],'lunar_blessing',f"boss:{boss['id']}:lunar",{'boss_id':boss['id']})
+        if star_level is not None:
+            from app.mini.combat.star_rewards import award
+
+            decision = award(
+                conn,
+                "boss",
+                boss["id"],
+                player_id,
+                star_level + 1,
+                policy,
+                roller=hero_abilities._roll_success,
+            )
+            if decision["success"]:
+                victory_events.append(
+                    log_hero_event(
+                        conn,
+                        boss,
+                        row,
+                        {
+                            "type": "star_reward",
+                            "message": f"✨ +{decision['amount']} обычных осколков.",
+                            **decision,
+                        },
+                        when or utcnow(),
+                    )
+                )
         if star_bonus:
             victory_events.append(log_hero_event(conn,boss,row,{'type':'star_reward','message':f"✨ {row['username'] or row['character_name']}: +{policy['star_shards']} обычных осколков."},when or utcnow()))
             conn.execute('UPDATE mini_players SET shards=shards+? WHERE id=?',(policy['star_shards'],player_id))

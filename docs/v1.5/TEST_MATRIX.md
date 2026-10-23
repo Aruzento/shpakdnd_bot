@@ -1,18 +1,23 @@
-# Матрица проверок V1.5
+# Проверки утверждённых O01–O10
 
-Запуск через `python scripts/run_isolated_checks.py --label NAME -- <python args>`. Фиктивный token, DB/legacy/STORIES_DIR в Temp, без polling. Новые Telegram tests дополнительно запрещают любой неожиданный HTTP через AiohttpSession.make_request; transport mocked, сервисы/SQLite настоящие.
+Все app checks через `python scripts/run_isolated_checks.py --label NAME -- <args>`: временные DB/legacy/STORIES_DIR, фиктивныйtoken, безpolling. Telegram tests запрещают неожиданныйHTTP, transport mocked, сервисы/SQLite реальные.
 
-| Команда/набор | Доказательство |
+| Команда / набор | Доказательство |
 |---|---|
-| `-m unittest discover -s tests -q` | Весь старый и новый набор на exact final SHA |
-| `-m unittest tests.v1_5.test_completion_audit -q` | 28 адресных регрессий: team normal/raid/old snapshots/rollback/zero/targets/admin/Star/UTF16/policy/Tower hooks/Story/Pet/Raid handlers/restart |
-| `tools/check_v15.py` | 12 отдельных checks: compileall,check_bot,protected bundle,policy,hero/boss abilities,Tower,V142,Editorial,content diagnostic,Editorial release,PvP migration |
-| `tools/validate_v15_migration.py` | Заполненный old-code fixture,3replay,nonzero legacy fragments,integrity=ok/FK=[],старый код на отдельной копии |
-| D&D shop/test_b/coins/loot validators + benchmark | Обычный D&D/реальные каталоги,CLI publish только disposable paths,экономика/old-code compatibility |
-| Linux workflow3.11/3.13 | Полный unittest и отдельно original real PTY Ctrl+C/SIGTERM/EOF/no/cleanup/redaction,все validators/historical migrations |
-| `-m app.mini.mythic.content --strict-content` | Отдельный BLOCKED/exit2 при отсутствии реальных файлов; диагностический exit0 не означает PASS контента |
-| `git diff --check`, `git diff d077dd2a...HEAD --check` | Финальная чистота diff; protected bundle отдельный строгий validator |
+| `-m unittest discover -s tests -q` | Полный набор наfinalcommit, без скрытых failures/newskips |
+| `-m unittest discover -s tests/v1_5 -q` | Все прежниеV1.5 и новыеO01–O10; список методов в test_approved_o01_o10.py |
+| ApprovedRaid/CompensationArithmetic | P/tie/D0/P0/D>M/Earth-attribution conservation,no extra bonuses/egg clawback,two admins,final hit race,rollback,revision,legacycounter,newzerocounter,overflow,Eclipseallstars |
+| ApprovedNormal/ApprovedTower | Per-playerStar/highestfrozen/eligible/no-hit/timeout,oldactivepolicy,forbiddenoutcomes,blessingindependence,chestonce,Goldenbaseonly,firstentry/hero-switch,noReroll,16shieldcombos,validShadow/zero |
+| ApprovedContracts/ApprovedTelegram | Typedno-leak,4Boss/schema/PNG/refs,strictCLIcomplete0/missing2/invalid1,preview/reason/scope/confirm/history/pages,paid confirmation/replay/manual reserve |
+| `tools/check_v15.py` |12offline checks:compileall,check_bot,protectedbundle,APPROVEDpolicy,hero/bossabilities,Tower,V142,Editorial,contentdiagnostic,Editorialrelease,PvPmigration |
+| `tools/validate_v15_migration.py` | Old-code populated fixture/nonzerolegacy,3migrations,integrity/FK,oldcodeonothercopy |
+| ApprovedRaid populatednewjournals + tests.test_mini_migrations |3replays with nonempty Star/cancel requests/rewards/ledger/legacy7, old historical tables/values retained |
+| D&D shop/testB/coins/loot + benchmark | OrdinaryD&D compatibility,real catalog4450/twoscopes,disposableCLI/accurate reconciliation |
+| `-m app.mini.mythic.content --strict-content` | Real content intentionally BLOCKED_BY_INPUT/exit2 until nextauthor stage; not a PASS |
+| `tools/import_v15_s5.py --help` and dry-run | Import interface and safe refusal without real17PNG; noapply now |
+| GitHub Linux3.11/3.13 | Checkout explicit PRheadSHA orworkflow_dispatchSHA, equalityassertionbeforetests, fullsuite+original35PTY/input+allvalidators/migrations/old-codecopy |
+| Both git diff --check commands | Clean feature and entirePRdiff |
 
-Baseline аудита c4dfb0f:1973tests/652.842s/0failures/errors/19Windows skips/exit0. Platform skips не добавлялись; real Linux PTY на Windows не выдаётся за PASS. Промежуточный полный прогон1988tests/879.383s поймал2регрессии holy_relic: слишком широкая actual-HP проверка ограничена Arise, исходные tests не изменялись. Linux f79f359 также поймал эти2ошибки. История промежуточных результатов в WORK_LOG; final SHA/count/log/CI URLs в итоговом отчёте/PR после последнего коммита.
+Baseline dfe7df7:100V1.5tests PASS16.690s; previousfull2001/Windows19platformskips and Linuxboth0skips. Firstnewregression100cases showed4obsoleteO01expectations; updated solely perapprovedcontract. One oldmigrationfixture needed exact2newtable metadata; added populated3replay test, did not hide user-data assertions. Original protecteddeploy tests unchanged. Intermediate focused/validators results in WORK_LOG; final SHA/count/skip/exit/log/CI are recorded after lastcommit in the final report/PR.
 
-Подробная матрица R01–R20 с путями/SQLite/test: COMPLETION_AUDIT.md. Production SQLite copy, реальная Telegram-визуальная/staging приёмка НЕ ВЫПОЛНЕНЫ.
+Current live content/staging/productioncopy/realTelegram NOTRUN. Author pack arrival requires full repeat at nextfinalSHA and live isolated acceptance.

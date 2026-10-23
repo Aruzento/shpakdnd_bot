@@ -73,7 +73,7 @@ def assert_publications(actual, original, additions):
 
 
 def new_shop_tables(before, after):
-    v15_tables={'mini_mythic_ledger','mini_mythic_operations','mini_mythic_pets','mini_mythic_pet_days','mini_mythic_raids','mini_mythic_raid_attacks','mini_mythic_raid_damage','mini_mythic_raid_rewards','mini_mythic_raid_audit','mini_mythic_raid_publications','mini_tower_lunar_choices','mini_combat_arise','mini_boss_admin_audit','mini_boss_timeline','story_sessions','story_participants','story_votes','story_steps','story_publications','story_operations','story_enrollment'}
+    v15_tables={'mini_star_rewards','mini_mythic_raid_cancel_requests','mini_mythic_ledger','mini_mythic_operations','mini_mythic_pets','mini_mythic_pet_days','mini_mythic_raids','mini_mythic_raid_attacks','mini_mythic_raid_damage','mini_mythic_raid_rewards','mini_mythic_raid_audit','mini_mythic_raid_publications','mini_tower_lunar_choices','mini_combat_arise','mini_boss_admin_audit','mini_boss_timeline','story_sessions','story_participants','story_votes','story_steps','story_publications','story_operations','story_enrollment'}
     introduced = after.keys() - before.keys()
     assert introduced <= SHOP_TABLES | v15_tables, 'Unexpected new tables: ' + repr(introduced - SHOP_TABLES - v15_tables)
     assert before.keys() <= after.keys(), 'Historical table removed'

@@ -1,37 +1,22 @@
-# D&D Mini V1.5 — после completion-аудита
+# D&D Mini V1.5 — утверждённые O01–O10
 
-**В разработке**. Независимое сопоставление каждого00–09/R01–R20: [COMPLETION_AUDIT.md](COMPLETION_AUDIT.md). Старый статус implemented+tested не принимается за доказательство. Финальные SHA/OS/count/log/CI — в итоговом отчёте после коммита.
+Статус: **В разработке** до авторского контента и живой приёмки. Все механические решения O01–O10 утверждены; повторного согласования не требуется. Приоритетный источник: [O01_O10_APPROVED_TZ.md](O01_O10_APPROVED_TZ.md), предоставленный как123.md. R01–R20 сохраняются за исключением явных новых решений.
 
-| Блок | Итог | Ограничение |
+Ветка codex/v1.5, тот же draft PR#8. Начальный проверенный HEAD dfe7df7311d9789469063c783d65f8390b281bcb; PR base/origin/main d077dd2a2c29ad420b138bf07af23c77f4674d0b. Оригинальное пользовательское дерево Z: и рабочая SQLite сохранены; merge/deployment/systemd/polling не выполнялись.
+
+| O | Реализация | Статус |
 |---|---|---|
-| 00 compatibility /01 Village+Gacha /02 UI /03 Boss /05 passives | DONE доступный код/изолированные проверки | Реальная Telegram-приёмка отдельно |
-| 04 S5 | BLOCKED_BY_INPUT | JSON есть,17PNG не найдены; importer/5normal passives готовы |
-| 06 Raid | PARTIAL | Нет4Boss records/PNG; O01with_reward BLOCKED_BY_RULE; counter/Eclipse PROVISIONAL |
-| 07 Pets | BLOCKED_BY_INPUT | Покупка/уход/резерв/лимиты/claim/equipment реализованы; adult unlock ждёт настоящих records/PNG |
-| 08 Mythic | PARTIAL | 16свойств/12+4arcana/upgrade/currency реализованы;8records/24PNG нет; rewards PROVISIONAL |
-| 09 Stories | BLOCKED_BY_INPUT | Общая цепочка/private wizard/restart работают на fixtures; реальных внешних сценариев нет |
+| O01 | Две отмены; compensation P=floor(ceil(M/5000)*min(D,M)/M), largest remainder с player_id tie, forecast/reason/revision/audit/ledger/replay/races, cancelled без победных бонусов | IMPLEMENTED_VERIFIED |
+| O02 | Первая подтверждённая контр-атака активирует100% даже приactual0; источник сохранён; legacy positive-only snapshots не переписываются | IMPLEMENTED_VERIFIED |
+| O03 | Строгий контракт ровно4Boss, PNG/Shadow/features/counter, empty-catalog UI и temporary-fixture tests готовы | BLOCKED_BY_INPUT: реальные4records+4PNG |
+| O04 | Раздельные normal/raid, none/not_configured без normal leak; typed effects/ссылки/поля проверяются | IMPLEMENTED_VERIFIED; авторские ordinary raid definitions добавляются позднее |
+| O05 | Eclipse10–15% original HP один раз, current/max увеличиваются, p/gain/stars frozen, фонды R09/O01 original | IMPLEMENTED_VERIFIED |
+| O06 | Независимый Star-бросок каждому eligible normal Boss; Tower player/floor once; durable journal, no admin/banish/loss/Raid/PvP | IMPLEMENTED_VERIFIED |
+| O07 | Golden/Thief/Blessing стандартной награды; независимые источники не умножаются/не дублируются, chest сохраняется; floor draw frozen с первого входа | IMPLEMENTED_VERIFIED |
+| O08 | Inventory/manual active/manual reserve,75currency/8distinct/no ninth,active-time care/growth/claim/equipment,explicit confirmation, evolution_pending | IMPLEMENTED_VERIFIED; взрослые арты/records — вход следующего этапа |
+| O09 | Import/schema/PNG/unique/references/strict0/1/2 проверены на temporary fixtures; fake production content не создаётся | BLOCKED_BY_INPUT: авторский комплект |
+| O10 | Solo3обычных щита; отмена→Ice→Lunar→обычные; zero не даёт on-hit/Arise, extra без рекурсии, explicit Shadow target, restart/reward protection | IMPLEMENTED_VERIFIED |
 
-Исправлены shared Dark Arise normal/raid, normal-passive leak в raid, positive-HP Arise eligibility, frozen Draghar, starting overlays, Tower extra/neutralization/shields, Star banishment, Story private creation/text replay/catalog error, Raid cancel audit/receipt/final rank/pages/stale callbacks/recovery world ID, UTF-16. Pending восстанавливаются, uncertain не пересылаются; временные policy вынесены в JSON и frozen. Старые победные passive conditions сохранены. Linux Ctrl+C исправляется адресно в feature logger call, original PTY tests не ослаблены.
+IMPLEMENTED_VERIFIED означает трассировку и изолированные автоматические проверки, а не выполненную Telegram/релизную приёмку. Финальный exact SHA, полные count/skip/exit/log и Linux3.11/3.13 фиксируются в итоговом отчёте после последнего коммита. Подробная матрица O→handler→service→SQLite→UI→test: COMPLETION_AUDIT.md.
 
-Main, исходное грязное Z: дерево, рабочая SQLite, systemd/staging/production не изменялись. PR #8 остаётся draft. Strict content BLOCKED/exit2 не считается PASS.
-
-## Открытые правила и временные политики
-
-| ID | Текущее поведение | Ограничение |
-|---|---|---|
-| O01 | Отмена без награды реализована. Для отмены с наградой есть права/подтверждение, сервис явно отклоняет выплату | Нет утверждённых получателей, формулы и статуса победы; ни монеты, ни осколки не списываются/выдаются |
-| O02 / PROVISIONAL | Глобальные 100% включаются первым положительным ударом героя с подходящей контрстихией в конкретном рейде; владение не активирует | Требуется окончательное утверждение. Policy выделен в каталоге, неизвестный policy отклоняется |
-| O03 | Пустой/отсутствующий каталог показывает диагностическое сообщение; неполные четыре записи отклоняются | Владелец должен предоставить четыре настоящих босса, защиты/регенерацию, PNG и Shadow-связи. Неподдерживаемые авторские свойства отклоняются, не игнорируются |
-| O04 | Отсутствующее `raid` = none/not_configured, базовый удар разрешён | Обычные raid-свойства пишет владелец. Есть строгий расширяемый контракт и тестовая фикстура, normal автоматически не переносится |
-| O05 / PROVISIONAL | Затмение увеличивает max/current HP на 10–15% исходного max HP; фонд R09 остаётся по исходному max HP | Требуется финальное утверждение базы и фонда |
-| O06 / PROVISIONAL | Star 300 обычных осколков только за обычную победу; одно сохранённое решение в Boss и одна награда за этаж Tower | Требуется окончательное утверждение исходов; в рейдах этого бонуса нет |
-| O07 / PROVISIONAL | Рабочая R16.5: ×3…×4 монет Boss/осколков Tower, штраф 90%, замена на 5 mythic; сундук Tower сохраняется; Лунный выбор зафиксирован игрок+этаж | Перед релизом обязательно подтвердить награды и антифарм |
-| O08 / PROVISIONAL | Бесплатное первое яйцо в инвентаре, без автозамены активного; покупка следующего после первого, без повторных стихий; все восемь — без списания | Подтвердить UX. Резерв и неактивированный инвентарь различаются |
-| O09 | Реальный S5 JSON доступен; 17 PNG, 24 PNG, реальные 4 boss JSON/PNG, 8 hero records и story JSON не найдены в доступном комплекте | CONTENT_IMPORT_CHECKLIST.md содержит точные имена/пути |
-| O10 / PROVISIONAL | Solo Tower не создаёт союзников/дополнительных платных ходов; ледяные/Лунные защитные заряды отдельны; actual=0 не запускает эффекты успешного попадания; extra запускает пассивки без рекурсии | Требуется приёмка сочетаний/порядка щитов и частных сценариев Tower. Некоторые конкретные Shadow-формы в Tower не определены — Arise без явного разрешённого target не выдаётся |
-
-Dark/Lunar shared Arise, shields/suppression, frozen Draghar и handler→service→SQLite проверены дополнительно. Реальный Telegram с изображениями и PROVISIONAL требуют отдельной приёмки. Исторические hero-specific фрагменты сохраняются, не конвертируются и не удаляются. Механические тесты новых правил не являются одобрением временного баланса.
-
-## Что остаётся недоступно
-
-Настоящий Mythic-рейд и получение первого яйца до заполнения четырёх боссов; реальная эволюция в Mythic-героя до каталога/изображения; 17 новых героев в гаче до полного S5-комплекта; реальные Истории до внешних сценариев; административная отмена с наградой до решения O01. На фикстурах эти независимые движки, кроме неопределённой выплаты O01, выполняют полный цикл.
+Активная policy schema_version2/statusAPPROVED. PROVISIONAL остаётся только в immutable legacy constants и именах старых frozen policies для совместимости, не как открытое решение владельца. Никаких BLOCKED_BY_RULE по O01–O10 больше нет. Strict content пока BLOCKED_BY_INPUT/exit2, отдельно от технических проверок.

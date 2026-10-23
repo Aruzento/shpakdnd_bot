@@ -1,38 +1,20 @@
-# Приёмка V1.5 на будущем тестовом стенде
+# Будущая приёмка после авторского контента — NOT RUN
 
-**В этом задании стенд не запускался.** Документ предназначен для следующего отдельно разрешённого этапа; команды deployment/systemd здесь не исполнялись. Текущий статус — «В разработке».
+Статус «В разработке». Этот документ не разрешает deployment. В данной итерации staging/production/systemd/polling/рабочаяSQLite не затрагивались. Сначала полный45PNG/8Mythic/4Boss/Storyкомплект и strict0, полныйтестнановомSHA+Linux3.11/3.13. До остановки любого рабочего бота выполнить изолированныеpreflight. Раздельные .env/token/SQLite/STORIES_DIR, productioncopy только явно предоставленная владельцем.
 
-Перед игровым TEST закрыть CONTENT_IMPORT_CHECKLIST.md, согласовать O01–O10/PROVISIONAL и выполнить независимое ревью. Проверки финального SHA должны быть зелёными; отдельная строгая content-проверка — без блокеров. Linux CI должен пройти на том же SHA. Скопировать SQLite штатным backup API в изолированный стенд, не использовать рабочий файл. Production-копия в текущем задании отсутствовала.
+Протокол:2игрока A/B, админC. Для каждого сценария записать exactSHA,chat/thread,userIDs,messageIDs,DBbackuphash,таблицыдо/после,логи безсекретов.
 
-На изолированном стенде проверить двумя настоящими Telegram-аккаунтами и администратором:
-
-1. Обычный D&D, магазин/инвентарь, дейлик/серия, Events/PvP, день/ночь и Editorial работают в своих chat/thread; чужие кнопки отвергаются до экономики.
-2. Любой зарегистрированный Mini-игрок создаёт Boss; один игрок закрывает регистрацию; участник начинает ready. Создатель отменяет до боя, сторонний пользователь не модерирует. 10 запусков считаются на мир, 11-й запрещён; граница суток — Москва.
-3. На новых боях 15 минут; из старой копии сохраняются старые реальные deadlines. Watcher/admin skip/удар у одного дедлайна не создают двух ходов. Admin skip не считается timeout, не выдумывает hit/Arise. История доступна после рестарта и корректно листается.
-4. Numeric superadmin может `/superadminch ID -hp/-drop/-shield N` только в нужном мире. Повтор/неверный статус/чужая тема/невалидное значение отклоняются. Старые 60%/25 п.п. от frozen base не меняются при позднем -drop.
-5. Все новые герои имеют настоящие изображения. По одной подтверждённой способности/каждой звезде проверить 5 normal S5 и 16 Mythic. Дополнительные атаки запускают разрешённые хуки, не дают рекурсивных цепочек. Нулевой удар/overkill/подавление/воскрешение дают реальные HP-события.
-6. Рейд: начать в мире, присоединиться без регистрации/очереди, выполнить одну/десять атак, повторить callback/рестарт, попробовать героя повторно/чужого героя/другой мир. Другой рейд в мире запрещён. Проверить атрибуцию Земного 115+15, регенерацию, counter policy, 12+4 арканы, R09 и однократный tie/payout. Отмена с наградой остаётся блокирована до решения O01.
-7. Первое яйцо — только за положительный raid HP-вклад. Инвентарь/активация/резерв сохраняются после рестарта; пауза роста/часов/CD/защиты в резерве. Все пять уходов на каждой стадии; ненадетый дубликат можно съесть, надетый последний экземпляр — нельзя; подтверждение/общие 5 в сутки; mood не повышается от экипировки. Взрослый claim только вручную при 100%, один на игрока/сутки.
-8. Герой от взрослого зверя остаётся в коллекции после резерва; stars 1–6 расходуют 20/35/55/80/110, базовый ATK неизменен. Mythic нельзя выбрать в Duel через UI/прямой callback/сервис, остальные PvP-правила сохранены.
-9. Общая История в обычной и Mini-теме: смешанный состав настоящих D&D/Mini, быстрое имя→раса→класс создаёт level=1 реальные строки. Все голоса обязательны, изменить свой голос нельзя, проценты сходятся к 100; последний голос/kick/tie дают один переход. Ноль оставшихся участников ждёт отмены. Replay — новый независимый session_id. Внешний сценарий изменяется без рестарта, запущенный snapshot неизменен.
-10. При сетевой неопределённости публикации не отправляются автоматически повторно. Проверить pending/sending/uncertain recovery; восстановление статуса не удваивает HP, попытки, награды или сообщения. Проверить реальные PNG и длинные подписи/рейтинги на Telegram-клиентах.
-
-Результаты каждого пункта фиксировать с SHA, изолированной БД и реальными message/session IDs. Успех автоматических фикстур не заменяет эту приёмку и не разрешает production.
-
-## Протокол A/B/Admin — пока NOT RUN
-
-Перед каждым сценарием фиксировать exact SHA,тестовый bot/chat/thread,backup hash,строки до/после,message IDs. Раздельные .env/DB/внешний контент. Предрелизные проверки до остановки любого рабочего бота; секреты в evidence не писать.
-
-| Действие | До | После / свидетельство |
+| Действия | До | Ожидаемое после |
 |---|---|---|
-| A создаёт Boss,B записывается/стартует | ready,started=N | fighting,N+1,timeout900;чужой C отклонён |
-| Admin skip A,повтор той же кнопки | current A/token | Один audit,no fake hit/timeout;admin skip сам по себе не лишает базовой награды |
-| A Dark+B без personal,оба positive,победа | no combat_arise | Saved sources/player,max1Shadow;restart/replay не меняет copies/ledger |
-| A/B одновременно last hit Raid | active HP мало | HP0,одна finalization,sum actual≤HP,один reward/egg/Arise;UI saved rank/amount |
-| Admin cancel with_reward/no_reward/stale | active revision R | O01refusal+audit,no economy;stale rejected;no_reward cancelled безArise/R09 |
-| Reserve/activate,care/eatask/claim | active_seconds/mood/CD | Reserve заморожен;eat только confirm и один spend;shared day limits |
-| A D&D+B Mini Story,private wizard,vote/kick | registration/no votes | Real rows исходной темы,no чужой input;one vote/transition;экономика неизменна |
-| Restart pending/sending/sent | durable publication | pending один send,sending uncertain без resend,sent не дублируется;raid callback world_id |
-| Unicode caption/Ice/Lunar shields | реальные PNG/рейтинг | Telegram принимает размеры;отдельные❄️/🌙;pages/stale buttons работают |
+| O01:A/B положительныйRaidвклад,Ccancelaskwithreward,всеforecastpages,reasonreply,confirm/replay | active/revisionR,knownM/D_i | Pточнопоформуле,oneledger/rewardpositive,allcontributionsinresult,statuscancelled/noArise/no+1/top3/Lunar,egg/attempts сохранены; UI/history отражаютcancel |
+| O01:P0/D0,500/501reason,чужойuser/topic,дваадмина,last-hitrace | active | отказбезmoney/status;authorizedzeroaudit;staleRтребуетновыйpreview;одинфиналR09илиcancel,необа |
+| O02:Bобычный10%,Aконтр-геройперваяподтверждённаяатакаactual0 | counterinactive | Aуже100%доshield;counteractive/source/auditодинраз;Bдальше100%,restart/dayнеreset;failedSQLнеактивирует |
+| O05:MoonEclipse1–6stars | originalM | max/current+floor(M*p/100)once,savedp/gain/stars,originalR09F/O01P |
+| O06:Star+дваeligible,разныеRNGoutcomes,adminnohit/timeout,forbiddenends | noStarrecords | отдельныеdecisions/amount300persuccess,oneledger,notshared;noadmin/banish/loss/Raid/PvP |
+| O07:Golden/Thief/Blessing+Star | standardrewards | standardonlymodifiers,independentStarunchanged;Blessing5mythic+successfulStar300ordinary;Towerfloor5chestonce,firstdrawnorerollafterloss/heroswitch/restart |
+| O08:starter/buyask/cancel/confirm/replay/all8/no9th | active+inventory | costs75once,newinventorydoesnotswapactive;manualreservefreezeclocks/mood/CD/protection;activate resumes;growth/cares/equip5/day/adultclaim1/day |
+| O10:3standard+Ice+Lunar+SoulSeal/Sun,zero/extra/Shadow | savedsnapshot | cancelbeforeIcebeforeLunarbeforestandard;oneconsumption,eventclamp,nozeroonhit/Arise,extraallowednorecursion,explicitvalidtargetonly |
+| R01–R20ordinarycompatibility/Stories | olddeadlines,oldbalances,realD&D/Mini | 900newonly,olddeadlinespreserved,10started/day/Moscow,adminskipnotimeout,history/scopes/PvPnoMythic,Storyrealrows/DAG/immutablevotes/replay/restart |
+| Pending/sending/sent/uncertain/networkrestart | durablepublication | pendingone-send,uncertainnoautomaticresend,noeconomyrepeat,correctworld_id |
 
-SQLite evidence только в тестовой базе: integrity_check=ok;foreign_key_check=[];mini_mythic_ledger/raid_attacks/damage/rewards/combat_arise/pet_days/story_votes/steps/publications,boss audit/timeline. Логи без traceback/секретов. Без фактических записей этот протокол не считается выполненным.
+SQLtestevidence: integrity_check=ok,foreign_key_check=[];mini_star_rewards,cancel_requests,raid_audit/rewards/damage/ledger/result,petdays,Storyvotes/steps,normalbossaudit/timeline. Сохранитьконкретныедо/послезначения; данныйплан сам по себе неявляетсяPASS. Проверкаподписей/45реальныхизображений/живыхcallbackбудетпослеконтента.

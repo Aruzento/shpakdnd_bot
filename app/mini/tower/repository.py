@@ -1,4 +1,5 @@
 """Tower persistence helpers; never open/commit a transaction."""
+
 import json
 
 
@@ -17,23 +18,48 @@ def attempt_by_id(conn,player_id,attempt_id):
     return dict(row) if row else None
 
 
-def create_attempt(conn,player_id,hero,enemy,bonus):
+def create_attempt(conn, player_id, hero, enemy, bonus):
     from copy import deepcopy
     from app.mini.combat.modes import freeze_hero
     from app.mini.combat import team
+
     hero=freeze_hero({**hero,'passives':json.loads(hero.get('passives_json') or '{}')})
     enemy=deepcopy(enemy)
-    lunar=None
-    if team.key(hero)=='mythic_moon':
-        prior=conn.execute('SELECT arcana_json FROM mini_tower_lunar_choices WHERE player_id=? AND floor=?',(player_id,enemy['floor'])).fetchone()
-        lunar=json.loads(prior[0]) if prior else None
-    values=team.begin([hero],enemy['max_hp'],0,lunar=lunar)
     from app.mini.mythic.policies import load
-    values['reward_policy']=load()['normal_rewards']
-    # Boss-only coin defenses never make Tower's three shields invulnerable.
-    values['soul_seal']=False;values['seal_penalty']=0
-    if 'lunar' in values:
-        conn.execute('INSERT OR IGNORE INTO mini_tower_lunar_choices VALUES(?,?,?)',(player_id,enemy['floor'],json.dumps(values['lunar'])))
+
+    policy = load()["normal_rewards"]
+    prior = conn.execute(
+        "SELECT arcana_json FROM mini_tower_lunar_choices WHERE player_id=? AND floor=?",
+        (player_id, enemy["floor"]),
+    ).fetchone()
+    if prior:
+        draw = json.loads(prior[0])
+    else:
+        import secrets
+
+        pool = [
+            index
+            for index, weight in enumerate(team.NORMAL_ARCANA_WEIGHTS)
+            for _ in range(weight)
+        ]
+        draw = {"arcana": secrets.choice(pool), "level": None, "reward_policy": policy}
+        conn.execute(
+            "INSERT INTO mini_tower_lunar_choices VALUES(?,?,?)",
+            (player_id, enemy["floor"], json.dumps(draw)),
+        )
+    lunar=None
+    if team.key(hero) == "mythic_moon":
+        if draw.get("level") is None:
+            draw["level"] = team.level(hero)
+            conn.execute(
+                "UPDATE mini_tower_lunar_choices SET arcana_json=? WHERE player_id=? AND floor=?",
+                (json.dumps(draw), player_id, enemy["floor"]),
+            )
+        lunar = {"arcana": draw["arcana"], "level": draw["level"]}
+    values=team.begin([hero],enemy['max_hp'],0,lunar=lunar)
+    values["reward_policy"] = draw.get("reward_policy", policy)
+    # Approved O10: Soul Seal cancels the answer before any shield is consumed.
+    values["seal_penalty"] = 0
     changes=team.start_changes(values)
     if 'max_hp' in changes:enemy['max_hp']=changes['max_hp']
     values['lunar_shields']=changes.get('extra_shields',0)

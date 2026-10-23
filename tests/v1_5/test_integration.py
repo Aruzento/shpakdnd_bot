@@ -102,8 +102,8 @@ class RaidBoundaries(MiniCase):
         )
         self.assertEqual(self.sql("SELECT * FROM mini_mythic_raid_rewards"), [])
 
-    def test_rewarded_cancel_is_blocked_without_financial_changes(self):
-        with self.assertRaisesRegex(ValueError, "O01"):
+    def test_rewarded_cancel_zero_pool_without_financial_changes(self):
+        with self.assertRaisesRegex(ValueError, "равен нулю"):
             raids.cancel(
                 self.raid["id"],
                 self.world["id"],
@@ -112,6 +112,7 @@ class RaidBoundaries(MiniCase):
                 self.db,
                 confirmed=True,
                 with_reward=True,
+                expected_revision=0,
             )
         self.assertEqual(raids.state(self.world["id"], self.db)["status"], "active")
         self.assertEqual(self.sql("SELECT * FROM mini_mythic_ledger"), [])

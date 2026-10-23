@@ -15,8 +15,28 @@ def validate_catalog(data):
     numbers, codes = set(), set()
     allowed = {"floor","code","name","max_hp","faction","damage_type","class_tag","attack_range","special_trait","features","response"}
     for record in floors:
-        if set(record) != allowed:
+        if set(record) - allowed - {
+            "shadow_extractable",
+            "shadow_hero_code",
+        } or allowed - set(record):
             raise ValueError("A floor must contain exactly one enemy record.")
+        if type(record.get("shadow_extractable", False)) is not bool:
+            raise ValueError("Invalid Tower shadow permission")
+        if "shadow_hero_code" in record and (
+            not isinstance(record["shadow_hero_code"], str)
+            or not record["shadow_hero_code"].strip()
+        ):
+            raise ValueError("Invalid Tower shadow code")
+        if record.get("shadow_extractable"):
+            from app.mini.catalog import load_hero_catalog
+
+            shadows = {
+                h["code"]
+                for h in load_hero_catalog()["heroes"]
+                if h["rarity"] == "shadow"
+            }
+            if record.get("shadow_hero_code") not in shadows:
+                raise ValueError("Unknown Tower Shadow target")
         f, hp = record["floor"], record["max_hp"]
         if type(f) is not int or f not in range(1,201) or f in numbers:
             raise ValueError("Invalid/duplicate floor.")
@@ -36,7 +56,8 @@ def validate_catalog(data):
         features = record["features"]
         if not isinstance(features,list) or any(not isinstance(x,str) for x in features) or len(set(features)) != len(features) or any(x not in CREATURE_TRAITS-{"none"} for x in features):
             raise ValueError("Invalid creature features.")
-        numbers.add(f); codes.add(code.casefold())
+        numbers.add(f)
+        codes.add(code.casefold())
     ordered = sorted(floors,key=lambda x:x["floor"])
     if numbers != set(range(1,201)) or any(a["max_hp"] >= b["max_hp"] for a,b in zip(ordered,ordered[1:])):
         raise ValueError("HP must grow across floors 1..200.")

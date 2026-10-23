@@ -72,6 +72,22 @@ def apply(conn):
     statements.append(
         "CREATE TABLE IF NOT EXISTS mini_mythic_raid_publications (raid_id INTEGER PRIMARY KEY REFERENCES mini_mythic_raids(id),status TEXT NOT NULL DEFAULT 'pending',message_id INTEGER)"
     )
+    statements.extend(
+        [
+            """CREATE TABLE IF NOT EXISTS mini_star_rewards (
+          mode TEXT NOT NULL CHECK(mode IN ('boss','tower')),battle_id INTEGER NOT NULL,
+          player_id INTEGER NOT NULL REFERENCES mini_players(id),chance INTEGER NOT NULL CHECK(chance BETWEEN 0 AND 100),
+          success INTEGER NOT NULL CHECK(success IN (0,1)),amount INTEGER NOT NULL CHECK(amount>=0),
+          source_stars INTEGER NOT NULL CHECK(source_stars BETWEEN 1 AND 6),result_json TEXT NOT NULL,
+          PRIMARY KEY(mode,battle_id,player_id))""",
+            """CREATE TABLE IF NOT EXISTS mini_mythic_raid_cancel_requests (
+          token TEXT PRIMARY KEY,raid_id INTEGER NOT NULL REFERENCES mini_mythic_raids(id),
+          world_id INTEGER NOT NULL REFERENCES mini_worlds(id),actor_id INTEGER NOT NULL,
+          with_reward INTEGER NOT NULL CHECK(with_reward IN (0,1)),revision INTEGER NOT NULL,
+          reason TEXT NOT NULL CHECK(length(reason)<=500),input_chat_id INTEGER,input_thread_id INTEGER,
+          prompt_message_id INTEGER,created_at INTEGER NOT NULL)""",
+        ]
+    )
     for statement in statements:
         conn.execute(statement)
     if "media_type" not in {
@@ -80,6 +96,16 @@ def apply(conn):
         conn.execute(
             "ALTER TABLE mini_mythic_raid_publications ADD COLUMN media_type TEXT NOT NULL DEFAULT 'text'"
         )
+
+    if conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='mini_tower_rewards'"
+    ).fetchone():
+        if "result_json" not in {
+            r[1] for r in conn.execute("PRAGMA table_info(mini_tower_rewards)")
+        }:
+            conn.execute(
+                "ALTER TABLE mini_tower_rewards ADD COLUMN result_json TEXT NOT NULL DEFAULT '{}'"
+            )
 
 
 def legacy_nonzero(conn):

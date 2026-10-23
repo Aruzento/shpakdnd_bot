@@ -97,7 +97,17 @@ def start_attempt(player_id,hero_id,expected_floor,db_path=DB_PATH,*,require_sel
         return _initial_outcome(conn,attempt)
 
 
-def grant_reward(conn,attempt,*,chooser=None):
+def grant_reward(conn, attempt, *, chooser=None, roller=None):
+    old = conn.execute(
+        "SELECT result_json FROM mini_tower_rewards WHERE player_id=? AND floor=?",
+        (attempt["player_id"], attempt["floor"]),
+    ).fetchone()
+    if old:
+        if old[0] and old[0] != "{}":
+            return json.loads(old[0])
+        raise ValueError("Награда этого этажа уже выдана.")
+    if attempt.get("status") != "won" or int(attempt["current_hp"]) != 0:
+        raise ValueError("Для награды нужна победа над этажом.")
     band=reward_band(attempt["floor"])
     chest=None
     if attempt["floor"]%5==0:
@@ -111,12 +121,22 @@ def grant_reward(conn,attempt,*,chooser=None):
     bonus=json.loads(attempt["runtime_json"]).get("bonus_shards",0)
     shards=band['shards']+bonus
     values=json.loads(attempt['runtime_json']).get('team',{})
-    lunar=values.get('lunar',{});arcana=lunar.get('arcana');mythic_amount=0
+    lunar = values.get("lunar", {})
+    arcana = lunar.get("arcana")
+    mythic_amount = 0
     from app.mini.mythic.policies import normal
+
     policy=normal(values)
-    if arcana==2:shards=shards*policy['gold_percent'][lunar['level']]//100
-    if arcana==9:shards=shards*policy['thief_remaining_percent']//100
-    if arcana==10:shards=0;mythic_amount=policy['blessing_mythic_shards']
+    approved = policy.get("version", 1) >= 2
+    standard = band["shards"] if approved else shards
+    if arcana == 2:
+        standard = standard * policy["gold_percent"][lunar["level"]] // 100
+    if arcana == 9:
+        standard = standard * policy["thief_remaining_percent"] // 100
+    if arcana == 10:
+        standard = 0
+        mythic_amount = policy["blessing_mythic_shards"]
+    shards = standard + bonus if approved else standard
     # The unique player/floor ledger is the reward claim. Any failure rolls everything back.
     conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
         VALUES(?,?,?,?,?)""",(attempt["player_id"],attempt["floor"],attempt["id"],shards,chest["code"] if chest else None))
@@ -126,18 +146,51 @@ def grant_reward(conn,attempt,*,chooser=None):
         change(conn,attempt['player_id'],mythic_amount,'tower_lunar',f"tower:{attempt['floor']}:lunar",{'floor':attempt['floor']})
     if chest: grant_in_transaction(conn,attempt["player_id"],chest["code"])
     from app.mini.combat.arise import sources,award
+
     runtime=json.loads(attempt['runtime_json'])
     arise=award(conn,'tower',attempt['id'],attempt['player_id'],json.loads(attempt['enemy_json']),runtime.get('actual_hit_count',runtime.get('hit_count',0))>0,sources(json.loads(attempt['hero_json']),team=values))
     conn.execute("""INSERT INTO mini_tower_progress(player_id,highest_cleared) VALUES(?,?)
         ON CONFLICT(player_id) DO UPDATE SET highest_cleared=excluded.highest_cleared""",
         (attempt["player_id"],attempt["floor"]))
-    return {"shards":shards,"mythic_shards":mythic_amount,"equipment":chest,"arise":arise}
+    result = {
+        "shards": shards,
+        "mythic_shards": mythic_amount,
+        "equipment": chest,
+        "arise": arise,
+    }
+    hero = json.loads(attempt["hero_json"])
+    if (
+        approved
+        and hero.get("passive_key") == "mythic_star"
+        and not values.get("initial_outcome")
+    ):
+        from app.mini.combat.star_rewards import award
+
+        decision = award(
+            conn,
+            "tower",
+            attempt["floor"],
+            attempt["player_id"],
+            int(hero["stars"]),
+            policy,
+            roller=roller,
+        )
+        result["star"] = decision
+        result["shards"] += decision["amount"]
+    conn.execute(
+        "UPDATE mini_tower_rewards SET shards=?,result_json=? WHERE player_id=? AND floor=?",
+        (result["shards"], json.dumps(result), attempt["player_id"], attempt["floor"]),
+    )
+    return result
 
 
-def attack(player_id,attempt_id,expected_turn,db_path=DB_PATH,*,roller=None,chooser=None):
+def attack(
+    player_id, attempt_id, expected_turn, db_path=DB_PATH, *, roller=None, chooser=None
+):
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
-        conn.execute("PRAGMA foreign_keys=ON");conn.execute("BEGIN IMMEDIATE")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("BEGIN IMMEDIATE")
         attempt=repo.attempt_by_id(conn,player_id,attempt_id)
         if not attempt or attempt["status"] != "active" or attempt["turn"] != expected_turn:
             raise ValueError(editorial_text('errors.tower.service.attack.01'))
@@ -146,7 +199,11 @@ def attack(player_id,attempt_id,expected_turn,db_path=DB_PATH,*,roller=None,choo
         result=resolve_turn(attempt,roller=roller)
         repo.save_turn(conn,attempt_id,result)
         attempt.update(result)
-        reward=grant_reward(conn,attempt,chooser=chooser) if result["status"]=="won" else None
+        reward = (
+            grant_reward(conn, attempt, chooser=chooser, roller=roller)
+            if result["status"] == "won"
+            else None
+        )
         return {"attempt":attempt,"reward":reward}
 
 

@@ -6,7 +6,8 @@ from app.mini.combat.modes import ELEMENTS
 
 CATALOG = Path(__file__).with_name("bosses.json")
 IMAGES = Path(__file__).with_name("images")
-COUNTER_POLICY = "first_successful_counter_hero_attack_on_this_raid_PROVISIONAL"
+LEGACY_COUNTER_POLICY = "first_successful_counter_hero_attack_on_this_raid_PROVISIONAL"
+COUNTER_POLICY = "first_confirmed_counter_hero_attack_on_this_raid"
 
 
 def validate(data, *, images=IMAGES, require_images=True):
@@ -68,6 +69,21 @@ def validate(data, *, images=IMAGES, require_images=True):
         regen = boss.get("regeneration_percent", 0)
         if type(regen) is not int or not 0 <= regen <= 100:
             raise ValueError("Invalid regeneration")
+        if "shadow_hero_code" in boss and (
+            not isinstance(boss["shadow_hero_code"], str)
+            or not boss["shadow_hero_code"].strip()
+        ):
+            raise ValueError("Invalid raid Shadow code")
+        if boss.get("shadow_extractable"):
+            from app.mini.catalog import load_hero_catalog
+
+            shadows = {
+                h["code"]
+                for h in load_hero_catalog()["heroes"]
+                if h["rarity"] == "shadow"
+            }
+            if boss.get("shadow_hero_code") not in shadows:
+                raise ValueError("Unknown raid Shadow target")
         if boss.get("shadow_extractable", False) and not boss.get("shadow_hero_code"):
             raise ValueError("Shadow code required")
         if not isinstance(boss.get("features", []), list) or any(
@@ -81,8 +97,10 @@ def validate(data, *, images=IMAGES, require_images=True):
     return data["bosses"]
 
 
-def load(path=None):
+def load(path=None, *, require_images=True):
     path = Path(path) if path is not None else CATALOG
     if not path.exists():
         return []
-    return validate(json.loads(path.read_text(encoding="utf-8")))
+    return validate(
+        json.loads(path.read_text(encoding="utf-8")), require_images=require_images
+    )

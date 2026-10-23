@@ -4,7 +4,7 @@ from copy import deepcopy
 import secrets
 from app.mini.combat.modes import hp_event, ordinary_damage, mode_property
 
-ECLIPSE_POLICY = "original_hp_fixed_fund_PROVISIONAL"
+ECLIPSE_POLICY = "original_hp_fixed_fund_APPROVED"
 ARCANA_WEIGHTS = (40, 30, 20, 10)
 
 
@@ -46,14 +46,22 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
         arcana = (chooser or secrets.choice)(pool)
         if arcana not in range(4):
             raise ValueError("Invalid lunar choice")
-        state["lunar"] = {"arcana": arcana, "owner": pid, "level": level}
+        state["lunar"] = {
+            "arcana": arcana,
+            "owner": pid,
+            "level": level,
+            "stars": stars,
+        }
         audit.append(
             {"type": "raid_lunar", "arcana": arcana, "owner": pid, "level": level}
         )
         if arcana == 3:
             from app.mini.mythic.policies import LEGACY
-            policy=snapshot.get("runtime_policies",LEGACY)["raid_eclipse"]
-            gain = original * policy["percent"][level] // 100
+
+            policy = snapshot.get("runtime_policies", LEGACY)["raid_eclipse"]
+            percent = policy["percent"][level]
+            gain = original * percent // 100
+            state["lunar"].update(percent=percent, gain=gain, original_max_hp=original)
             maximum += gain
             hp += gain
             audit.append(
@@ -123,8 +131,22 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
         amount //= 10
         unboosted //= 10
     actual = hit(amount)
-    if matching and actual and not state.get("counter_active"):
+    from app.mini.mythic.raid.catalog import COUNTER_POLICY, LEGACY_COUNTER_POLICY
+
+    counter_policy = snapshot.get("counter_policy", LEGACY_COUNTER_POLICY)
+    if counter_policy not in (COUNTER_POLICY, LEGACY_COUNTER_POLICY):
+        raise ValueError("Unknown frozen counter policy")
+    if (
+        matching
+        and (actual > 0 or counter_policy == COUNTER_POLICY)
+        and not state.get("counter_active")
+    ):
         state["counter_active"] = True
+        state["counter_source"] = {
+            "actor_id": pid,
+            "hero_id": hero.get("id"),
+            "policy": counter_policy,
+        }
         audit.append(
             {
                 "type": "counter_activated",

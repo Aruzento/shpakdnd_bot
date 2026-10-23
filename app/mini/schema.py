@@ -6,6 +6,7 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_star_rewards", "mini_mythic_raid_cancel_requests",
     "mini_combat_arise", "mini_mythic_raid_publications",
     "mini_mythic_ledger", "mini_mythic_operations", "mini_mythic_pets", "mini_mythic_pet_days",
     "mini_mythic_raids", "mini_mythic_raid_attacks", "mini_mythic_raid_damage", "mini_mythic_raid_rewards",

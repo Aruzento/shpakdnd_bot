@@ -5,10 +5,10 @@ import secrets
 from app.mini.combat.modes import mode_property, hp_event
 
 NORMAL_ARCANA_WEIGHTS = (15, 15, 8, 12, 12, 9, 10, 1, 1, 5, 2, 10)
-PROVISIONAL = {
+APPROVED_RULES = {
     "star_reward": "normal_victory_only",
     "tower_lunar": "first_player_floor_choice",
-    "lunar_rewards": "R16.5_working_table",
+    "lunar_rewards": "O07_approved",
 }
 
 

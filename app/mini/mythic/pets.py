@@ -16,7 +16,7 @@ CARE = {
     "play": (15, 86400),
     "sleep": (0, 86400),
 }
-FIRST_EGG_POLICY = "inventory_PROVISIONAL"
+FIRST_EGG_POLICY = "inventory_APPROVED"
 
 
 def timestamp(now=None):
@@ -349,3 +349,22 @@ def state(pid, db_path=DB_PATH, *, now=None):
         if player is None:
             raise ValueError("Игрок не найден.")
         return {"pets": pets, "mythic_shards": player[0]}
+
+
+def reserve(pid, pet_id, key, db_path=DB_PATH, *, now=None):
+    now = timestamp(now)
+    payload = ["reserve", pet_id]
+    with transaction(db_path) as conn:
+        old = previous(conn, pid, key, payload)
+        if old is not None:
+            return old
+        pet = conn.execute(
+            "SELECT * FROM mini_mythic_pets WHERE id=? AND player_id=?", (pet_id, pid)
+        ).fetchone()
+        if not pet:
+            raise ValueError("Чужой или отсутствующий зверь.")
+        pet = settle(conn, pet, now)
+        conn.execute(
+            "UPDATE mini_mythic_pets SET location='reserve' WHERE id=?", (pet_id,)
+        )
+        return remember(conn, pid, key, payload, {**dict(pet), "location": "reserve"})

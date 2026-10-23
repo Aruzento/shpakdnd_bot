@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "status": "PROVISIONAL",
+  "schema_version": 2,
+  "status": "APPROVED",
   "normal_rewards": {
     "gold_percent": [
       300,
@@ -23,7 +23,10 @@
     "star_shards": 300,
     "star_outcome": "normal_victory_only",
     "tower_chest_preserved": true,
-    "tower_arcana": "first_player_floor_choice"
+    "tower_arcana": "first_player_floor_choice",
+    "version": 2,
+    "star_distribution": "individual",
+    "star_blessing": "independent"
   },
   "raid_eclipse": {
     "percent": [

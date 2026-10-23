@@ -4,12 +4,15 @@ from app.mini.editorial import text as editorial_text, screen as editorial_scree
 
 import logging
 import hashlib
+import json
 
 logger = logging.getLogger(__name__)
 import secrets
 from aiogram import F, Router
+from aiogram.filters import Filter
 from aiogram.types import (
     FSInputFile,
+    ForceReply,
     InlineKeyboardButton as Button,
     InlineKeyboardMarkup,
 )
@@ -51,6 +54,20 @@ def public_text(raid):
         f"Статус: {raid['status']}",
         "Рейтинг фактического HP-урона:",
     ]
+    if raid["status"] == "cancelled":
+        outcome = json.loads(raid.get("result_json") or "{}")
+        lines.insert(
+            3,
+            (
+                "Отмена с частичной компенсацией — это не победа, Arise нет."
+                if outcome.get("cancel_mode") == "with_reward"
+                else "Отмена без новых наград."
+            ),
+        )
+        if outcome.get("cancel_mode") == "with_reward":
+            lines.insert(4, f"Компенсационный пул: {outcome['P']} мифических осколков.")
+        if outcome.get("reason"):
+            lines.insert(4, "Причина: " + outcome["reason"])
     for i, row in enumerate(raid["ranking"][:15], 1):
         line = f"{row.get('rank',i)}. {row['character_name']} — {row['damage']}"
         if "amount" in row:
@@ -156,14 +173,43 @@ async def publish(bot, world, raid):
 
 
 @editorial_screen
-def screen(world, player, user, *, pick=False, page=0, admin=False, rank_page=None):
+def screen(
+    world,
+    player,
+    user,
+    *,
+    pick=False,
+    page=0,
+    admin=False,
+    rank_page=None,
+    history_page=None,
+    raid_id=None,
+):
     wid = world["id"]
     uid = user
     pid = player["id"]
     rows = []
     b = lambda label, payload: button(wid, uid, label, payload)
-    raid = service.state(wid)
+    if history_page is not None:
+        entries = service.history(wid, history_page)
+        rows = [
+            [
+                b(
+                    f"#{v['id']} · {json.loads(v['snapshot_json'])['name']} · {v['status']}",
+                    f"past.{v['id']}.0",
+                )
+            ]
+            for v in entries[:10]
+        ]
+        if history_page:
+            rows.append([b("⬅️", f"history.{history_page-1}")])
+        if len(entries) > 10:
+            rows.append([b("➡️", f"history.{history_page+1}")])
+        rows.append([b("Назад", "home")])
+        return "История мифических рейдов", InlineKeyboardMarkup(inline_keyboard=rows)
+    raid = service.state(wid, raid_id=raid_id)
     if raid and rank_page is not None:
+        rank_prefix = f"past.{raid_id}." if raid_id is not None else "rank."
         ranking = raid["ranking"]
         size = 10
         rank_page = max(0, min(rank_page, max(0, (len(ranking) - 1) // size)))
@@ -175,9 +221,9 @@ def screen(world, player, user, *, pick=False, page=0, admin=False, rank_page=No
             + f"\nСтраница {rank_page+1}/{max(1,(len(ranking)+size-1)//size)}"
         )
         if rank_page:
-            rows.append([b("⬅️", f"rank.{rank_page-1}")])
+            rows.append([b("⬅️", rank_prefix + str(rank_page - 1))])
         if (rank_page + 1) * size < len(ranking):
-            rows.append([b("➡️", f"rank.{rank_page+1}")])
+            rows.append([b("➡️", rank_prefix + str(rank_page + 1))])
         rows.append([b("Назад", "home")])
         return text, InlineKeyboardMarkup(inline_keyboard=rows)
     if raid:
@@ -252,6 +298,7 @@ def screen(world, player, user, *, pick=False, page=0, admin=False, rank_page=No
             )
         if raid:
             text += "\n\n" + public_text(raid)
+    rows.append([b("История рейдов", "history.0")])
     rows.append(
         [Button(text="Мифическая эра", callback_data=f"mini:mythic:{wid}:{uid}")]
     )
@@ -326,21 +373,48 @@ async def action(callback):
                 raise ValueError("Недопустимый режим отмены.")
             if not is_admin(callback, world):
                 raise ValueError("Нет прав администратора темы.")
-            text = (
-                "Подтвердить отмену "
-                + (
-                    "с наградой (формула пока не утверждена)"
-                    if parts[2] == "1"
-                    else "без награды"
-                )
-                + "?"
+            request = service.request_cancel(
+                int(parts[1]),
+                world["id"],
+                uid,
+                parts[2] == "1",
+                int(parts[3]),
+                actor_username=username_from_user(callback.from_user),
             )
-            markup = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [b("Подтвердить", "cancel." + ".".join(parts[1:]))],
-                    [b("Назад", "home")],
-                ]
+            text, markup = cancel_preview(world["id"], uid, request)
+        elif op == "cancelpage":
+            request = service.cancel_request(
+                parts[1],
+                world["id"],
+                uid,
+                actor_username=username_from_user(callback.from_user),
             )
+            text, markup = cancel_preview(
+                world["id"], uid, request, page=max(0, int(parts[2]))
+            )
+        elif op == "cancelreason":
+            request = service.cancel_request(
+                parts[1],
+                world["id"],
+                uid,
+                actor_username=username_from_user(callback.from_user),
+            )
+            prompt = await callback.bot.send_message(
+                chat_id=uid,
+                text="Ответь на это сообщение причиной отмены (1–500 символов).",
+                reply_markup=ForceReply(selective=True),
+                parse_mode=None,
+            )
+            service.cancel_request(
+                parts[1],
+                world["id"],
+                uid,
+                actor_username=username_from_user(callback.from_user),
+                prompt=(uid, 0, prompt.message_id),
+            )
+            await callback.answer("Введи причину в личном чате.")
+            return
+
         else:
             if op == "start":
                 matches = [x for x in load() if short_code(x["code"]) == parts[1]]
@@ -365,21 +439,23 @@ async def action(callback):
                             receipt += "\nArise: получена тень!"
 
             elif op == "cancel":
-                service.cancel(
-                    int(parts[1]),
+                raise ValueError("Кнопка устарела. Открой новое подтверждение отмены.")
+            elif op == "cancelconfirm":
+                outcome = service.confirm_cancel(
+                    parts[1],
                     world["id"],
                     uid,
                     key,
-                    with_reward=parts[2] == "1",
-                    confirmed=True,
-                    reason="Telegram admin confirmation",
                     actor_username=username_from_user(callback.from_user),
-                    expected_revision=int(parts[3]),
                 )
-            elif op not in ("home", "pick", "rank"):
+                result = outcome["result"]
+                receipt = "Рейд отменён. Это не победа; Arise нет."
+                if result["cancel_mode"] == "with_reward":
+                    receipt += f" Выплачено {result['P']} мифических осколков."
+            elif op not in ("home", "pick", "rank", "history", "past"):
                 raise ValueError("Неизвестное действие рейда.")
             current = service.state(world["id"])
-            if current and op in ("start", "hit", "cancel"):
+            if current and op in ("start", "hit", "cancelconfirm"):
                 await publish(callback.bot, world, current)
             text, markup = screen(
                 world,
@@ -388,7 +464,13 @@ async def action(callback):
                 pick=op == "pick",
                 page=int(parts[1]) if op == "pick" else 0,
                 admin=is_admin(callback, world),
-                rank_page=int(parts[1]) if op == "rank" else None,
+                rank_page=(
+                    int(parts[1])
+                    if op == "rank"
+                    else (int(parts[2]) if op == "past" else None)
+                ),
+                history_page=max(0, int(parts[1])) if op == "history" else None,
+                raid_id=int(parts[1]) if op == "past" else None,
             )
         if receipt:
             text = receipt + "\n\n" + text
@@ -416,3 +498,105 @@ async def recover_pending(bot):
             )
         except Exception:
             logger.exception("Raid pending publication recovery failed: %s", row["id"])
+
+
+def cancel_preview(world_id, user_id, request, *, page=0):
+    plan = request["preview"]
+    rows = []
+    text = "Причина: " + request["reason"] + "\n"
+    if request["with_reward"]:
+        text += f"Частичная компенсация: пул {plan['P']} из {plan['F']}. Фактический вклад {plan['D']}; исходный HP {plan['M']}.\nЭто не победа, Arise нет. Нет +1/топ-3/лунных бонусов."
+        page = min(page, max(0, (len(plan["rewards"]) - 1) // 10))
+        for item in plan["rewards"][page * 10 : (page + 1) * 10]:
+            text += f"\nИгрок #{item['player_id']}: вклад {item['damage']}, +{item['amount']} миф."
+        if page:
+            rows.append(
+                [
+                    button(
+                        world_id,
+                        user_id,
+                        "⬅️",
+                        f"cancelpage.{request['token']}.{page-1}",
+                    )
+                ]
+            )
+        if (page + 1) * 10 < len(plan["rewards"]):
+            rows.append(
+                [
+                    button(
+                        world_id,
+                        user_id,
+                        "➡️",
+                        f"cancelpage.{request['token']}.{page+1}",
+                    )
+                ]
+            )
+    else:
+        text += (
+            "Отменить без новых наград? Первое яйцо и использованные атаки сохраняются."
+        )
+    if not request["with_reward"] or plan["P"] > 0:
+        rows.append(
+            [
+                button(
+                    world_id,
+                    user_id,
+                    "Подтвердить",
+                    f"cancelconfirm.{request['token']}",
+                )
+            ]
+        )
+    else:
+        text += "\nПул равен нулю: отмена с наградой недоступна."
+    rows.append(
+        [
+            button(
+                world_id,
+                user_id,
+                "Изменить причину",
+                f"cancelreason.{request['token']}",
+            )
+        ]
+    )
+    rows.append([button(world_id, user_id, "Назад", "home")])
+    return telegram_clip(text, 4000), InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+class PendingCancelReason(Filter):
+    async def __call__(self, message):
+        if (
+            not message.from_user
+            or not message.text
+            or message.text.startswith("/")
+            or not message.reply_to_message
+        ):
+            return False
+        with transaction() as conn:
+            row = conn.execute(
+                "SELECT q.* FROM mini_mythic_raid_cancel_requests q JOIN mini_mythic_raids r ON r.id=q.raid_id WHERE q.actor_id=? AND q.input_chat_id=? AND COALESCE(q.input_thread_id,0)=? AND q.prompt_message_id=? AND r.status='active' ORDER BY q.created_at DESC LIMIT 1",
+                (
+                    message.from_user.id,
+                    message.chat.id,
+                    message.message_thread_id or 0,
+                    message.reply_to_message.message_id,
+                ),
+            ).fetchone()
+        return {"cancel_prompt": dict(row)} if row else False
+
+
+@router.message(PendingCancelReason())
+async def cancel_reason(message, cancel_prompt):
+    try:
+        request = service.cancel_request(
+            cancel_prompt["token"],
+            cancel_prompt["world_id"],
+            message.from_user.id,
+            actor_username=username_from_user(message.from_user),
+            reason=message.text,
+        )
+        text, markup = cancel_preview(
+            cancel_prompt["world_id"], message.from_user.id, request
+        )
+        await message.answer(text, reply_markup=markup, parse_mode=None)
+    except ValueError as error:
+        await message.answer(str(error))
