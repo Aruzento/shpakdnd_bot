@@ -76,6 +76,10 @@ async def main():
     recover_stories()
     from app.mini.mythic.raid.service import recover_publications
     recover_publications()
+    from app.stories.handlers import recover_pending as recover_pending_stories
+    from app.mini.mythic.raid.handlers import recover_pending as recover_pending_raids
+    await recover_pending_stories(bot)
+    await recover_pending_raids(bot)
     print("Бот запущен.")
     try:
         await dp.start_polling(bot)

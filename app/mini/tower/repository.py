@@ -28,6 +28,8 @@ def create_attempt(conn,player_id,hero,enemy,bonus):
         prior=conn.execute('SELECT arcana_json FROM mini_tower_lunar_choices WHERE player_id=? AND floor=?',(player_id,enemy['floor'])).fetchone()
         lunar=json.loads(prior[0]) if prior else None
     values=team.begin([hero],enemy['max_hp'],0,lunar=lunar)
+    from app.mini.mythic.policies import load
+    values['reward_policy']=load()['normal_rewards']
     # Boss-only coin defenses never make Tower's three shields invulnerable.
     values['soul_seal']=False;values['seal_penalty']=0
     if 'lunar' in values:
@@ -41,7 +43,7 @@ def create_attempt(conn,player_id,hero,enemy,bonus):
     cursor=conn.execute("""INSERT INTO mini_tower_attempts
         (player_id,floor,hero_id,hero_json,enemy_json,equipment_bonus,current_hp,runtime_json)
         VALUES(?,?,?,?,?,?,?,?)""",(player_id,enemy["floor"],hero["id"],json.dumps(hero),
-        json.dumps(enemy),bonus,enemy["max_hp"],json.dumps({"class_rules_version":1,"rules_version":15,"team":values,"hero":{"reward_guard_charges":guard}})))
+        json.dumps(enemy),bonus,enemy["max_hp"],json.dumps({"class_rules_version":1,"rules_version":15,"actual_hit_count":0,"team":values,"hero":{"reward_guard_charges":guard}})))
     return attempt_by_id(conn,player_id,cursor.lastrowid)
 
 

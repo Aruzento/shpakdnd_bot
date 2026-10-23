@@ -51,7 +51,9 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
             {"type": "raid_lunar", "arcana": arcana, "owner": pid, "level": level}
         )
         if arcana == 3:
-            gain = original * (10 + level) // 100
+            from app.mini.mythic.policies import LEGACY
+            policy=snapshot.get("runtime_policies",LEGACY)["raid_eclipse"]
+            gain = original * policy["percent"][level] // 100
             maximum += gain
             hp += gain
             audit.append(

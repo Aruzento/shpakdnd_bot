@@ -48,7 +48,9 @@ def begin(sid, chat, thread, user_id, mode, db_path=DB_PATH, *, input_scope=None
         return session
 
 
-def input_text(chat, thread, user_id, username, text, db_path=DB_PATH):
+def input_text(
+    chat, thread, user_id, username, text, db_path=DB_PATH, *, operation_key=None
+):
     from app.context import normalize_username
 
     if not username:
@@ -65,6 +67,13 @@ def input_text(chat, thread, user_id, username, text, db_path=DB_PATH):
         raise ValueError("Введи текст длиной 1–100 символов.")
     text = text.strip()
     with transaction(db_path) as conn:
+        from app.stories.service import _prior, _save
+
+        payload = ["character_input", chat, thread or 0, user_id, username, text]
+        if operation_key:
+            prior = _prior(conn, operation_key, payload)
+            if prior is not None:
+                return prior
         row = _pending(conn, chat, thread, user_id)
         if row is None:
             raise ValueError("Нет активного создания персонажа.")
@@ -107,13 +116,14 @@ def input_text(chat, thread, user_id, username, text, db_path=DB_PATH):
                 user_id,
             ),
         )
-        return {
+        result = {
             "stage": next_stage,
             "session_id": row["session_id"],
             "data": data,
             "chat_id": chat,
             "thread_id": thread,
         }
+        return _save(conn, operation_key, payload, result) if operation_key else result
 
 
 def _pending(conn, chat, thread, user_id):

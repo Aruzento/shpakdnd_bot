@@ -67,7 +67,7 @@ def render_state(state,world,user,reward=None):
                   editorial_text('tower.render_state.line_04', value_1=f"{hero_button_text(hero, attempt['equipment_bonus'])}"),
                   editorial_text('tower.render_state.line_05', value_1=f"{faction_multiplier_percent(hero['faction'], enemy['faction']) / 100:g}"),
                   editorial_text('tower.render_state.line_06', shields=f"{attempt['shields']}")]
-        team_state=json.loads(attempt['runtime_json']).get('team',{})
+        team_state=json.loads(attempt.get('runtime_json') or '{}').get('team',{})
         if team_state.get('ice_shields'):lines.append(f"❄️ Ледяные щиты: {team_state['ice_shields']}")
         if team_state.get('lunar_shields'):lines.append(f"🌙 Лунные щиты: {team_state['lunar_shields']}")
         lines += [e.get('message','') for e in json.loads(attempt['events_json'])]

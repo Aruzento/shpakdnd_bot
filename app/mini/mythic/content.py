@@ -193,9 +193,23 @@ def report():
 
     heroes = load_hero_catalog()["heroes"]
     blocked = validate_mythics(heroes)
+    missing_inputs = []
+    for element in sorted(ELEMENTS):
+        for stage in STAGES:
+            path = HERO_IMAGES_DIR / f"{element}_{stage}.png"
+            if not path.is_file():
+                missing_inputs.append(
+                    {"path": str(path), "reason": "missing real Mythic PNG"}
+                )
     manifest = Path(__file__).resolve().parents[3] / "docs/v1.5/S5_IMPORT_MANIFEST.json"
     if manifest.exists():
         s5_heroes = json.loads(manifest.read_text(encoding="utf-8"))["heroes"]
+        for hero in s5_heroes:
+            path = HERO_IMAGES_DIR / hero["image"]
+            if not path.is_file():
+                missing_inputs.append(
+                    {"path": str(path), "reason": "missing real S5 PNG"}
+                )
         missing = [
             h["code"] for h in s5_heroes if h["code"] not in {e["code"] for e in heroes}
         ]
@@ -217,6 +231,7 @@ def report():
         "raid_bosses": len(bosses),
         "stories": len(stories),
         "blockers": blocked,
+        "missing_inputs": missing_inputs,
     }
 
 

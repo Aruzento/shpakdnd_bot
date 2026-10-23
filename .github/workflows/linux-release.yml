@@ -172,6 +172,9 @@ jobs:
           path: ${{ runner.temp }}/loot-benchmark.json
           if-no-files-found: error
 
+      - name: Validate explicit provisional policies
+        run: python -m app.mini.mythic.policies
+
       - name: V1.5 content diagnostics (missing resources remain explicit blockers)
         run: python -m app.mini.mythic.content
 

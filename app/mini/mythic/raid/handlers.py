@@ -52,7 +52,12 @@ def public_text(raid):
         "Рейтинг фактического HP-урона:",
     ]
     for i, row in enumerate(raid["ranking"][:15], 1):
-        lines.append(f"{i}. {row['character_name']} — {row['damage']}")
+        line = f"{row.get('rank',i)}. {row['character_name']} — {row['damage']}"
+        if "amount" in row:
+            line += f" · +{row['amount']} миф."
+        if any(r.get("success") for r in row.get("arise", [])):
+            line += " · 🌑 Arise"
+        lines.append(line)
     return telegram_clip("\n".join(lines), 3500)
 
 
@@ -151,13 +156,32 @@ async def publish(bot, world, raid):
 
 
 @editorial_screen
-def screen(world, player, user, *, pick=False, page=0, admin=False):
+def screen(world, player, user, *, pick=False, page=0, admin=False, rank_page=None):
     wid = world["id"]
     uid = user
     pid = player["id"]
     rows = []
     b = lambda label, payload: button(wid, uid, label, payload)
     raid = service.state(wid)
+    if raid and rank_page is not None:
+        ranking = raid["ranking"]
+        size = 10
+        rank_page = max(0, min(rank_page, max(0, (len(ranking) - 1) // size)))
+        view = {**raid, "ranking": ranking[rank_page * size : (rank_page + 1) * size]}
+        for i, row in enumerate(view["ranking"], rank_page * size + 1):
+            row.setdefault("rank", i)
+        text = (
+            public_text(view)
+            + f"\nСтраница {rank_page+1}/{max(1,(len(ranking)+size-1)//size)}"
+        )
+        if rank_page:
+            rows.append([b("⬅️", f"rank.{rank_page-1}")])
+        if (rank_page + 1) * size < len(ranking):
+            rows.append([b("➡️", f"rank.{rank_page+1}")])
+        rows.append([b("Назад", "home")])
+        return text, InlineKeyboardMarkup(inline_keyboard=rows)
+    if raid:
+        rows.append([b("Рейтинг / награды", "rank.0")])
     if raid and raid["status"] == "active":
         with transaction() as conn:
             from app.mini.mythic.pets import day, timestamp
@@ -259,7 +283,9 @@ async def public_open(callback):
         player = load_player(wid, callback)
         if not world or not player:
             raise ValueError("Сначала зарегистрируйся в Mini этой темы.")
-        service.state(wid, raid_id=rid)
+        requested = service.state(wid, raid_id=rid)
+        if requested["status"] != "active":
+            raise ValueError("Этот рейд завершён. Открой актуальное меню.")
         text, markup = screen(
             world,
             player,
@@ -350,7 +376,7 @@ async def action(callback):
                     actor_username=username_from_user(callback.from_user),
                     expected_revision=int(parts[3]),
                 )
-            elif op not in ("home", "pick"):
+            elif op not in ("home", "pick", "rank"):
                 raise ValueError("Неизвестное действие рейда.")
             current = service.state(world["id"])
             if current and op in ("start", "hit", "cancel"):
@@ -362,6 +388,7 @@ async def action(callback):
                 pick=op == "pick",
                 page=int(parts[1]) if op == "pick" else 0,
                 admin=is_admin(callback, world),
+                rank_page=int(parts[1]) if op == "rank" else None,
             )
         if receipt:
             text = receipt + "\n\n" + text
@@ -370,3 +397,22 @@ async def action(callback):
         await send_private_text_from_callback(callback, world, text, markup)
     except (ValueError, IndexError) as error:
         await callback.answer(str(error), show_alert=True)
+
+
+async def recover_pending(bot):
+    with transaction() as conn:
+        targets = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT r.id,r.world_id,w.chat_id,w.thread_id FROM mini_mythic_raids r JOIN mini_mythic_raid_publications p ON p.raid_id=r.id JOIN mini_worlds w ON w.id=r.world_id WHERE p.status='pending' AND w.enabled=1"
+            )
+        ]
+    for row in targets:
+        try:
+            await publish(
+                bot,
+                {**row, "id": row["world_id"]},
+                service.state(row["world_id"], raid_id=row["id"]),
+            )
+        except Exception:
+            logger.exception("Raid pending publication recovery failed: %s", row["id"])

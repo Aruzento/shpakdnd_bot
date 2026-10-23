@@ -250,8 +250,10 @@ def coins(state, current_base, *, stolen=0, boss_damage=0, shields_intact=False)
         value = value * (100 + state.get("lightning_reward_percent", 0)) // 100
     lunar = state.get("lunar", {})
     arc = lunar.get("arcana")
+    from app.mini.mythic.policies import normal
+    policy=normal(state)
     if arc == 2:
-        value = value * (300 + 20 * lunar["level"]) // 100
+        value = value * policy['gold_percent'][lunar['level']] // 100
     if arc == 9:
-        value = value // 10
+        value = value * policy['thief_remaining_percent'] // 100
     return value

@@ -375,6 +375,7 @@ async def quick_character(message):
             message.from_user.id,
             username(message.from_user),
             message.text,
+            operation_key=f"story-text:{message.chat.id}:{message.message_id}",
         )
         stage = result["stage"]
         chat, thread = result["chat_id"], result["thread_id"]
@@ -404,3 +405,22 @@ async def quick_character(message):
             )
     except ValueError as error:
         await message.answer(str(error))
+
+
+async def recover_pending(bot):
+    """Only unsent current nodes are retried; sending/uncertain is never resent."""
+    with transaction() as conn:
+        targets = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT s.id,s.chat_id,s.thread_id FROM story_sessions s JOIN story_publications p ON p.session_id=s.id AND p.step=s.step WHERE p.status='pending'"
+            )
+        ]
+    for row in targets:
+        try:
+            await publish(
+                bot,
+                service.status(row["chat_id"], row["thread_id"], session_id=row["id"]),
+            )
+        except Exception:
+            logger.exception("Story pending publication recovery failed: %s", row["id"])

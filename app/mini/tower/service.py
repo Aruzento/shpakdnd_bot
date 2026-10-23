@@ -112,9 +112,11 @@ def grant_reward(conn,attempt,*,chooser=None):
     shards=band['shards']+bonus
     values=json.loads(attempt['runtime_json']).get('team',{})
     lunar=values.get('lunar',{});arcana=lunar.get('arcana');mythic_amount=0
-    if arcana==2:shards=shards*(300+20*lunar['level'])//100
-    if arcana==9:shards=shards//10
-    if arcana==10:shards=0;mythic_amount=5
+    from app.mini.mythic.policies import normal
+    policy=normal(values)
+    if arcana==2:shards=shards*policy['gold_percent'][lunar['level']]//100
+    if arcana==9:shards=shards*policy['thief_remaining_percent']//100
+    if arcana==10:shards=0;mythic_amount=policy['blessing_mythic_shards']
     # The unique player/floor ledger is the reward claim. Any failure rolls everything back.
     conn.execute("""INSERT INTO mini_tower_rewards(player_id,floor,attempt_id,shards,equipment_code)
         VALUES(?,?,?,?,?)""",(attempt["player_id"],attempt["floor"],attempt["id"],shards,chest["code"] if chest else None))
@@ -125,7 +127,7 @@ def grant_reward(conn,attempt,*,chooser=None):
     if chest: grant_in_transaction(conn,attempt["player_id"],chest["code"])
     from app.mini.combat.arise import sources,award
     runtime=json.loads(attempt['runtime_json'])
-    arise=award(conn,'tower',attempt['id'],attempt['player_id'],json.loads(attempt['enemy_json']),runtime.get('hit_count',0)>0,sources(json.loads(attempt['hero_json']),team=values))
+    arise=award(conn,'tower',attempt['id'],attempt['player_id'],json.loads(attempt['enemy_json']),runtime.get('actual_hit_count',runtime.get('hit_count',0))>0,sources(json.loads(attempt['hero_json']),team=values))
     conn.execute("""INSERT INTO mini_tower_progress(player_id,highest_cleared) VALUES(?,?)
         ON CONFLICT(player_id) DO UPDATE SET highest_cleared=excluded.highest_cleared""",
         (attempt["player_id"],attempt["floor"]))

@@ -81,6 +81,7 @@ def resolve_turn(attempt, *, roller=None):
             resolved_damage=ordinary_damage(resolved_damage,**{k:modifiers[k] for k in ('bonus_bps','additive','multiplier','reduction_percent')},protected_zero=not reachable,element_percents=[v for e,v in enemy.get('element_multipliers',{}).items() if e in set(modifiers['elements'])|set(hero.get('elements',[]))])
         ordinary=creatures.feature_damage(enemy,hero,modify_damage(resolved_damage,percent))
         hit = damage(classes.beast_damage(ordinary,hero,hero_state,active=classes.enabled(enemy) and not v15) + (attack['pure_bonus'] if reachable else 0))
+        if v15 and hit>0:runtime["actual_hit_count"]=runtime.get("actual_hit_count",0)+1
         if not reachable:
             events.append({"type":"unreachable","message":"🪽 Нужен дальний бой или летающий герой."})
         apply(creatures.on_hit(enemy,hero,successful=hit>0,roller=roller))
@@ -111,6 +112,7 @@ def resolve_turn(attempt, *, roller=None):
                     if hero.get('class_tag')=='beast':modifiers['bonus_bps'].append(200*int(hero_state.get('class_successful_hits',0)))
                 raw=ordinary_damage(extra['damage'],**{k:modifiers[k] for k in ('bonus_bps','additive','multiplier','reduction_percent')},protected_zero=not reachable,element_percents=[v for e,v in enemy.get('element_multipliers',{}).items() if e in set(modifiers['elements'])|set(hero.get('elements',[]))])
                 extra_hit=damage(creatures.feature_damage(enemy,hero,modify_damage(raw,percent))+extra.get('pure_bonus',0),'extra_attack')
+                if extra_hit>0:runtime["actual_hit_count"]=runtime.get("actual_hit_count",0)+1
                 post=abilities.resolve_after_attack(passive,hit_number=hit_number,actual_hp_damage=extra_hit,state=hero_state,ability_definition=definition)
                 class_plan=classes.on_hit(enemy,hero,post['state'],successful=extra_hit>0,roller=roller)
                 apply(class_plan)
@@ -169,11 +171,13 @@ def resolve_turn(attempt, *, roller=None):
                     apply(creatures.holy_regeneration(enemy,participants))
         if not won and enemy["reward_shields"] > 0:
             apply(creatures.end_round(enemy,participants))
-    if won and v15 and hero.get('passive_key')=='mythic_star' and (roller or abilities._roll_success)(20+3*team.level(hero)):
-        runtime['bonus_shards']=runtime.get('bonus_shards',0)+300
+    from app.mini.mythic.policies import normal
+    policy=normal(values)
+    if won and v15 and hero.get('passive_key')=='mythic_star' and (roller or abilities._roll_success)(policy['star_chance'][team.level(hero)]):
+        runtime['bonus_shards']=runtime.get('bonus_shards',0)+policy['star_shards']
     if won:
         kill = abilities.resolve_kill(passive,roller=roller,ability_definition=definition) if primary_killed else {"bonus_shards":0,"events":[]}
-        victory = abilities.resolve_victory(passive,roller=roller,ability_definition=definition) if runtime.get("hit_count",0) else {"bonus_shards":0,"events":[]}
+        victory = abilities.resolve_victory(passive,roller=roller,ability_definition=definition) if runtime.get("actual_hit_count",runtime.get("hit_count",0)) else {"bonus_shards":0,"events":[]}
         runtime["bonus_shards"] = runtime.get("bonus_shards",0)+kill["bonus_shards"]+victory["bonus_shards"]
         events.extend(kill["events"]+victory["events"])
     status = "won" if won else ("lost" if enemy["reward_shields"] == 0 else "active")

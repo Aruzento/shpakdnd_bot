@@ -24,7 +24,9 @@ def initialize(conn, boss, participants, now):
     if not enabled(boss):
         return []
     heroes = [json.loads(p["hero_snapshot_json"]) for p in participants]
+    from app.mini.mythic.policies import load
     values = team.begin(heroes, boss["max_hp"], boss["reward_coins"])
+    values["reward_policy"]=load()["normal_rewards"]
     from app.mini.combat.arise import shared_sources
 
     values["arise_team_sources"] = shared_sources(

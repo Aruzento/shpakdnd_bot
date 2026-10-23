@@ -52,6 +52,9 @@ def start(player_id, code, key, db_path=DB_PATH, *, now=None):
             (player["world_id"],),
         ).fetchone():
             raise ValueError("В мире уже идёт мифический рейд.")
+        from app.mini.mythic.policies import load as load_policies
+
+        template = {**template, "runtime_policies": load_policies()}
         hp = template["max_hp"]
         cursor = conn.execute(
             "INSERT INTO mini_mythic_raids(world_id,template_code,snapshot_json,original_max_hp,max_hp,current_hp,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -130,6 +133,13 @@ def _finalize(conn, raid, now, *, chooser=None, roller=None):
     if raid["current_hp"] != 0:
         raise ValueError("Обычная победа требует нулевого HP босса.")
     roster = _arise_roster(conn, raid["id"])
+    from app.mini.combat.arise import shared_sources
+
+    raid["state"]["arise_team_sources"] = shared_sources(roster, mode="raid")
+    conn.execute(
+        "UPDATE mini_mythic_raids SET state_json=? WHERE id=?",
+        (json.dumps(raid["state"]), raid["id"]),
+    )
     contributions = dict(
         conn.execute(
             "SELECT player_id,damage FROM mini_mythic_raid_damage WHERE raid_id=?",
@@ -390,11 +400,22 @@ def state(world_id, db_path=DB_PATH, *, raid_id=None):
                 (raid["id"],),
             )
         ]
+        if raid["status"] == "rewarded":
+            payouts = {
+                r["player_id"]: r
+                for r in json.loads(raid["result_json"]).get("rewards", [])
+            }
+            for row in raid["ranking"]:
+                row.update(payouts.get(row["player_id"], {}))
+            raid["ranking"].sort(key=lambda r: r.get("rank", len(payouts) + 1))
         return raid
 
 
 def recover_publications(db_path=DB_PATH):
     with transaction(db_path) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO mini_mythic_raid_publications(raid_id) SELECT id FROM mini_mythic_raids"
+        )
         return conn.execute(
             "UPDATE mini_mythic_raid_publications SET status='uncertain' WHERE status='sending'"
         ).rowcount

@@ -277,7 +277,12 @@ class TeamAriseAudit(MiniCase):
 
         with patch("app.mini.shadow._roll_success", side_effect=roll):
             hit_boss(boss["id"], self.other, now=self.now, db_path=self.db)
-        self.assertEqual(calls, [1, 40, 25, 5, 40, 25])
+        self.assertEqual(
+            calls,
+            [1, 40, 25, 5, 40, 25],
+            self.sql("SELECT * FROM mini_combat_arise")
+            + self.sql("SELECT rules_version,team_state_json FROM mini_bosses"),
+        )
         self.assertEqual(len(self.own_shadows()), 2)
         self.assertTrue(all(r["copies"] == 1 for r in self.own_shadows()))
 
@@ -289,6 +294,155 @@ class TeamAriseAudit(MiniCase):
         with patch("app.mini.shadow._roll_success", side_effect=AssertionError):
             force_finish_battle(boss["id"], now=self.now, db_path=self.db)
         self.assertEqual(self.own_shadows(), [])
+
+    def test_raid_shadow_failure_rolls_back_final_hit_ledger_and_reward(self):
+        import sqlite3
+
+        raid = self.raid()
+        raids.attack(self.pid, raid["id"], self.dark["id"], "first", self.db, now=100)
+        self.sql("UPDATE mini_mythic_raids SET current_hp=1 WHERE id=?", (raid["id"],))
+        self.sql(
+            "CREATE TRIGGER reject_shadow BEFORE INSERT ON mini_player_heroes WHEN NEW.hero_id=%d BEGIN SELECT RAISE(ABORT,'fixture failure'); END"
+            % self.shadow["id"]
+        )
+        before = self.sql("SELECT * FROM mini_mythic_ledger")
+        with self.assertRaises(sqlite3.IntegrityError):
+            raids.attack(
+                self.other,
+                raid["id"],
+                self.ally["id"],
+                "last",
+                self.db,
+                now=100,
+                roller=lambda _: True,
+            )
+        self.assertEqual(raids.state(self.world["id"], self.db)["current_hp"], 1)
+        self.assertEqual(self.sql("SELECT * FROM mini_mythic_ledger"), before)
+        self.assertEqual(self.sql("SELECT * FROM mini_mythic_raid_rewards"), [])
+        self.assertEqual(self.sql("SELECT * FROM mini_combat_arise"), [])
+        self.assertEqual(len(self.sql("SELECT * FROM mini_mythic_raid_attacks")), 1)
+        self.sql("DROP TRIGGER reject_shadow")
+        raids.attack(
+            self.other,
+            raid["id"],
+            self.ally["id"],
+            "last",
+            self.db,
+            now=100,
+            roller=lambda _: True,
+        )
+        self.assertEqual(len(self.own_shadows()), 2)
+
+    def test_raid_missing_shadow_keeps_r09_and_never_rolls(self):
+        raid = self.raid()
+        snapshot = raid["snapshot"]
+        snapshot["shadow_hero_code"] = "missing_fixture_only"
+        self.sql(
+            "UPDATE mini_mythic_raids SET current_hp=1,snapshot_json=? WHERE id=?",
+            (json.dumps(snapshot), raid["id"]),
+        )
+        result = raids.attack(
+            self.pid,
+            raid["id"],
+            self.dark["id"],
+            "last",
+            self.db,
+            now=100,
+            roller=Mock(side_effect=AssertionError),
+        )
+        self.assertEqual(result["final"]["rewards"][0]["amount"], 36)
+        self.assertEqual(self.own_shadows(), [])
+
+    def test_normal_shared_dark_without_personal_and_old_snapshot_fallback(self):
+        from app.mini.boss.combat import hit_boss
+
+        boss = self.normal_boss()
+        # Simulate an already running V15 battle before shared-source persistence.
+        values = json.loads(
+            self.sql("SELECT team_state_json FROM mini_bosses")[0]["team_state_json"]
+        )
+        values.pop("arise_team_sources")
+        self.sql("UPDATE mini_bosses SET team_state_json=?", (json.dumps(values),))
+        self.sql(
+            "UPDATE mini_heroes SET passive_key='none',passives_json='{}' WHERE id=?",
+            (self.dark["id"],),
+        )
+        snap = json.loads(
+            self.sql(
+                "SELECT hero_snapshot_json FROM mini_boss_participants WHERE player_id=?",
+                (self.other,),
+            )[0]["hero_snapshot_json"]
+        )
+        snap["passives"]["normal"] = {
+            "key": "none",
+            "definition": __import__(
+                "app.mini.combat.hero_abilities.catalog", fromlist=["get_ability"]
+            ).get_ability("none"),
+        }
+        snap["passive_key"] = "none"
+        self.sql(
+            "UPDATE mini_boss_participants SET hero_snapshot_json=? WHERE player_id=?",
+            (json.dumps(snap), self.other),
+        )
+        hit_boss(boss["id"], self.pid, now=self.now, db_path=self.db)
+        self.sql("UPDATE mini_bosses SET current_hp=1")
+        with patch("app.mini.shadow._roll_success", return_value=True) as roll:
+            hit_boss(boss["id"], self.other, now=self.now, db_path=self.db)
+        self.assertEqual(
+            roll.call_args_list, [unittest.mock.call(40), unittest.mock.call(40)]
+        )
+        self.assertEqual(len(self.own_shadows()), 2)
+
+    def test_normal_zero_actual_hit_is_not_eligible_for_shared_arise(self):
+        from app.mini.boss.combat import hit_boss
+        from app.mini.shadow import extract_in_transaction
+
+        boss = self.normal_boss()
+        hit_boss(boss["id"], self.pid, now=self.now, db_path=self.db)
+        # Old attempted hit_count remains distinct from actual HP participation.
+        self.sql(
+            "UPDATE mini_boss_participants SET hit_count=1,total_damage=0 WHERE player_id=?",
+            (self.other,),
+        )
+        with transaction(self.db) as conn:
+            enemy = conn.execute(
+                "SELECT * FROM mini_bosses WHERE id=?", (boss["id"],)
+            ).fetchone()
+            participant = conn.execute(
+                "SELECT * FROM mini_boss_participants WHERE player_id=?", (self.other,)
+            ).fetchone()
+            self.assertIsNone(
+                extract_in_transaction(
+                    conn, enemy, participant, roller=Mock(side_effect=AssertionError)
+                )
+            )
+        self.assertEqual(self.own_shadows(), [])
+
+    def test_banishment_never_rolls_star_reward(self):
+        from app.mini.boss.rewards import finish_banishment
+        from app.mini.boss.repository import refresh_boss
+
+        boss = self.normal_boss()
+        snap = json.loads(
+            self.sql(
+                "SELECT hero_snapshot_json FROM mini_boss_participants WHERE player_id=?",
+                (self.pid,),
+            )[0]["hero_snapshot_json"]
+        )
+        snap["passive_key"] = "mythic_star"
+        self.sql(
+            "UPDATE mini_boss_participants SET hero_snapshot_json=? WHERE player_id=?",
+            (json.dumps(snap), self.pid),
+        )
+        before = self.sql("SELECT shards FROM mini_players ORDER BY id")
+        with transaction(self.db) as conn, patch(
+            "app.mini.boss.rewards.hero_abilities._roll_success",
+            side_effect=AssertionError,
+        ):
+            finish_banishment(conn, refresh_boss(conn, boss["id"]), self.now)
+        self.assertEqual(
+            self.sql("SELECT shards FROM mini_players ORDER BY id"), before
+        )
 
 
 class PipelineAudit(unittest.TestCase):
@@ -365,3 +519,533 @@ class PipelineAudit(unittest.TestCase):
         self.assertLessEqual(units(public_text(value)), 3500)
         self.assertLessEqual(units(clip("😀" * 1000, 1024)), 1024)
         self.assertNotIn("\ud83d", clip("😀" * 1000, 1024))
+
+    def test_policy_validation_rejects_bool_and_unapproved_selectors(self):
+        from app.mini.mythic.policies import load, LEGACY
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "policy.json"
+            for key, value in [
+                ("schema_version", True),
+                ("normal_rewards", []),
+                ("normal_rewards.star_chance", [True] * 6),
+                ("normal_rewards.tower_chest_preserved", 1),
+                ("normal_rewards.star_outcome", "all_outcomes"),
+            ]:
+                data = copy.deepcopy(LEGACY)
+                parts = key.split(".")
+                if len(parts) == 1:
+                    data[key] = value
+                else:
+                    data[parts[0]][parts[1]] = value
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    load(path)
+
+    def test_eclipse_and_normal_rewards_use_frozen_policy(self):
+        from app.mini.mythic.policies import LEGACY
+        from app.mini.mythic.raid.effects import resolve
+
+        values = team.begin(
+            [mythic("moon")], 100000, 100, lunar={"arcana": 2, "level": 0}
+        )
+        values["reward_policy"] = copy.deepcopy(LEGACY["normal_rewards"])
+        live = copy.deepcopy(LEGACY)
+        live["normal_rewards"]["gold_percent"] = [900] * 6
+        live["raid_eclipse"]["percent"] = [90] * 6
+        with patch("app.mini.mythic.policies.load", return_value=live):
+            self.assertEqual(team.coins(values, 100), 300)
+            raid = raid_value(runtime_policies=copy.deepcopy(LEGACY))
+            result = resolve(raid, mythic("moon"), 1, chooser=lambda _: 3)
+        self.assertEqual(result["max_hp"], 110000)
+        self.assertEqual(
+            (
+                result["audit"][0]["hp_added"]
+                if result["audit"][0].get("type") == "eclipse"
+                else next(
+                    v["hp_added"] for v in result["audit"] if v["type"] == "eclipse"
+                )
+            ),
+            10000,
+        )
+
+    def test_tower_zero_hit_and_separate_ice_lunar_shield_ui(self):
+        from app.mini.tower.combat import resolve_turn
+        from app.mini.tower.catalog import get_floor
+        from app.mini.tower.handlers import render_state
+
+        hero = mythic("ice")
+        hero.update(name="Fixture", attack_range="melee")
+        enemy = get_floor(1)
+        enemy.update(features=["flying"], response="prepare")
+        values = team.begin([hero], enemy["max_hp"], 0)
+        values["lunar_shields"] = 1
+        attempt = {
+            "id": 1,
+            "floor": 1,
+            "player_id": 1,
+            "hero_json": json.dumps(hero),
+            "enemy_json": json.dumps(enemy),
+            "runtime_json": json.dumps(
+                {
+                    "rules_version": 15,
+                    "class_rules_version": 1,
+                    "actual_hit_count": 0,
+                    "team": values,
+                }
+            ),
+            "events_json": "[]",
+            "equipment_bonus": 0,
+            "current_hp": enemy["max_hp"],
+            "shields": 3,
+            "turn": 0,
+            "status": "active",
+        }
+        result = resolve_turn(attempt, roller=lambda _: False)
+        self.assertEqual(result["damage"], 0)
+        runtime = json.loads(result["runtime_json"])
+        self.assertEqual(runtime["hit_count"], 1)
+        self.assertEqual(runtime["actual_hit_count"], 0)
+        text, _ = render_state(
+            {"attempt": attempt, "completed": False, "floor": enemy}, 1, 1
+        )
+        self.assertIn("❄️ Ледяные щиты: 2", text)
+        self.assertIn("🌙 Лунные щиты: 1", text)
+
+
+class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        from aiogram import Bot
+        from aiogram.types import Message, CallbackQuery
+        from aiogram.client.session.aiohttp import AiohttpSession
+
+        self.enterContext(
+            patch.object(
+                AiohttpSession,
+                "make_request",
+                new_callable=AsyncMock,
+                side_effect=AssertionError("Offline tests must never send HTTP"),
+            )
+        )
+        self.bot = Bot("123456:offline-audit")
+        self.addAsyncCleanup(self.bot.session.close)
+        returned = Message(
+            message_id=991,
+            date=datetime.now(timezone.utc),
+            chat={"id": self.world["chat_id"], "type": "group"},
+        ).as_(self.bot)
+        self.sent = self.enterContext(
+            patch.object(
+                Bot, "send_message", new_callable=AsyncMock, return_value=returned
+            )
+        )
+        self.answered = self.enterContext(
+            patch.object(CallbackQuery, "answer", new_callable=AsyncMock)
+        )
+        self.enterContext(
+            patch.object(
+                Message, "answer", new_callable=AsyncMock, return_value=returned
+            )
+        )
+        for name in (
+            "edit_message_text",
+            "edit_message_caption",
+            "edit_message_reply_markup",
+        ):
+            self.enterContext(patch.object(Bot, name, new_callable=AsyncMock))
+        self.tx = transaction
+        for name in (
+            "app.stories.handlers",
+            "app.stories.enrollment",
+            "app.stories.service",
+            "app.stories.publication",
+            "app.mini.mythic.raid.service",
+            "app.mini.mythic.raid.handlers",
+            "app.mini.mythic.pets",
+            "app.mini.mythic.handlers",
+        ):
+            self.enterContext(
+                patch(
+                    name + ".transaction", side_effect=lambda *a, **k: self.tx(self.db)
+                )
+            )
+
+    def message(self, text, mid=1, uid=900123, chat=None, thread=None):
+        from aiogram.types import Message, User
+
+        value = uid if chat is None else chat
+        return Message(
+            message_id=mid,
+            date=datetime.now(timezone.utc),
+            chat={"id": value, "type": "private" if value == uid else "group"},
+            message_thread_id=thread,
+            from_user=User(
+                id=uid, is_bot=False, first_name="Tester", username="tester"
+            ),
+            text=text,
+        ).as_(self.bot)
+
+    def callback(self, data, uid=900123, chat=None):
+        from aiogram.types import CallbackQuery
+
+        message = self.message("menu", uid=uid, chat=chat)
+        return CallbackQuery(
+            id="audit-query",
+            from_user=message.from_user,
+            chat_instance="audit",
+            message=message,
+            data=data,
+        ).as_(self.bot)
+
+    async def test_private_story_quick_creation_real_rows_join_publication_and_duplicate_text(
+        self,
+    ):
+        from app.stories import service, enrollment, handlers
+        from app.db.schema import (
+            create_characters_table,
+            create_character_profiles_table,
+        )
+        from tests.v1_5.test_boss_stories import StoryTests
+
+        with self.tx(self.db) as conn:
+            create_characters_table(conn)
+            create_character_profiles_table(conn)
+        import tempfile
+        from pathlib import Path
+
+        directory = Path(self.tmp.name) / "stories"
+        directory.mkdir()
+        story = {
+            "schema_version": 1,
+            "code": "fixture",
+            "title": "Fixture",
+            "description": "Fixture only",
+            "start_node": "end",
+            "nodes": {"end": {"text": "End", "end": True}},
+        }
+        (directory / "fixture.json").write_text(json.dumps(story), encoding="utf-8")
+        self.enterContext(patch("app.context.get_topic_admin", return_value="@admin"))
+        for name in (
+            "app.stories.service.discover",
+            "app.stories.presentation.discover",
+        ):
+            self.enterContext(patch(name, return_value=({"fixture": story}, {})))
+        sid = service.create(
+            -111, 7, 1, "admin", "fixture", "create", self.db, catalog_dir=directory
+        )["session_id"]
+        enrollment.begin(sid, -111, 7, 77, "choose", self.db)
+        original = enrollment.pending
+        self.enterContext(
+            patch(
+                "app.stories.enrollment.pending",
+                side_effect=lambda c, t, u: original(c, t, u, self.db),
+            )
+        )
+        await handlers.callback_action(self.callback(f"story:new:{sid}", uid=77))
+        filt = handlers.PendingStoryCharacter()
+        first = self.message("Имя", mid=11, uid=77)
+        self.assertTrue(await filt(first))
+        self.assertFalse(await filt(self.message("/mini", uid=77)))
+        self.assertFalse(await filt(self.message("не мой ответ", uid=78)))
+        self.assertFalse(
+            await filt(self.message("другая тема", uid=77, chat=-111, thread=7))
+        )
+        await handlers.quick_character(first)
+        await handlers.quick_character(first)
+        self.assertEqual(enrollment.pending(77, 0, 77)["stage"], "race")
+        await handlers.quick_character(
+            self.message("Произвольная раса", mid=12, uid=77)
+        )
+        await handlers.quick_character(
+            self.message("Произвольный класс", mid=13, uid=77)
+        )
+        row = self.sql(
+            "SELECT c.chat_id,c.thread_id,c.name,p.level,p.race,p.class_name FROM characters c JOIN character_profiles p USING(chat_id,thread_id,username)"
+        )[0]
+        self.assertEqual(
+            (row["chat_id"], row["thread_id"], row["name"], row["level"]),
+            (-111, 7, "Имя", 1),
+        )
+        self.assertEqual(row["race"], "Произвольная раса")
+        self.assertEqual(
+            len(
+                self.sql("SELECT * FROM story_participants WHERE session_id=?", (sid,))
+            ),
+            1,
+        )
+        self.assertEqual(
+            self.sql(
+                "SELECT status FROM story_publications WHERE session_id=?", (sid,)
+            )[0]["status"],
+            "sent",
+        )
+        self.assertIsNone(enrollment.pending(77, 0, 77))
+
+    async def test_raid_hit_handler_commits_once_and_displays_egg_and_saved_payout(
+        self,
+    ):
+        from app.mini.mythic.raid import handlers
+
+        h = self.hero()
+        self.sql("UPDATE mini_heroes SET attack=100 WHERE id=?", (h["id"],))
+        template = {
+            "code": "fixture",
+            "name": "Fixture only",
+            "max_hp": 100000,
+            "element": "ice",
+            "counter_elements": ["fire"],
+            "features": [],
+            "regeneration_percent": 0,
+            "shadow_extractable": False,
+        }
+        self.enterContext(
+            patch("app.mini.mythic.raid.service.load", return_value=[template])
+        )
+        self.enterContext(
+            patch("app.mini.mythic.raid.handlers.load", return_value=[template])
+        )
+        raid = raids.start(self.pid, "fixture", "start-ui", self.db)
+        self.sql("UPDATE mini_mythic_raids SET current_hp=3 WHERE id=?", (raid["id"],))
+        payload = f"hit.{raid['id']}.{h['id']}.abcdef"
+        self.enterContext(
+            patch(
+                "app.mini.mythic.raid.handlers.load_extended_context",
+                new_callable=AsyncMock,
+                return_value=(self.world, self.player, payload),
+            )
+        )
+        callback = self.callback("unused")
+        await handlers.action(callback)
+        await handlers.action(callback)
+        self.assertEqual(len(self.sql("SELECT * FROM mini_mythic_raid_attacks")), 1)
+        self.assertEqual(len(self.sql("SELECT * FROM mini_mythic_pets")), 1)
+        self.assertEqual(
+            self.sql("SELECT mythic_shards FROM mini_players WHERE id=?", (self.pid,))[
+                0
+            ]["mythic_shards"],
+            36,
+        )
+        text = self.sent.call_args.kwargs["text"]
+        self.assertIn("Снято HP: 3", text)
+        self.assertIn("первое яйцо", text)
+        self.assertIn("+36", text)
+        current = raids.state(self.world["id"], self.db)
+        self.assertEqual(current["ranking"][0]["amount"], 36)
+        self.assertIn("+36", handlers.public_text(current))
+
+    async def test_pet_equipment_confirmation_handler_and_replay(self):
+        from app.mini.mythic import pets, handlers
+
+        now = pets.timestamp()
+        with self.tx(self.db) as conn:
+            pet = pets.first_egg(conn, self.pid, now, chooser=lambda values: values[0])
+        pets.activate(self.pid, pet["id"], "activate", self.db, now=now)
+        self.sql(
+            "UPDATE mini_mythic_pets SET stage='wonder',mood=90 WHERE id=?",
+            (pet["id"],),
+        )
+        item = self.sql(
+            "SELECT rowid AS item_id,code FROM mini_equipment ORDER BY code LIMIT 1"
+        )[0]
+        self.sql(
+            "INSERT INTO mini_equipment_owned(player_id,code,quantity) VALUES(?,?,1)",
+            (self.pid, item["code"]),
+        )
+        context = self.enterContext(
+            patch(
+                "app.mini.mythic.handlers.load_extended_context", new_callable=AsyncMock
+            )
+        )
+        context.return_value = (
+            self.world,
+            self.player,
+            f"eatask.{pet['id']}.{item['item_id']}.abcdef",
+        )
+        await handlers.action(self.callback("unused"))
+        self.assertEqual(
+            self.sql("SELECT quantity FROM mini_equipment_owned")[0]["quantity"], 1
+        )
+        markup = self.sent.call_args.kwargs["reply_markup"]
+        payload = markup.inline_keyboard[0][0].callback_data.split(":", 4)[4]
+        context.return_value = (self.world, self.player, payload)
+        await handlers.action(self.callback("unused"))
+        await handlers.action(self.callback("unused"))
+        self.assertEqual(self.sql("SELECT * FROM mini_equipment_owned"), [])
+        self.assertEqual(
+            self.sql("SELECT consumed FROM mini_mythic_pet_days")[0]["consumed"], 1
+        )
+        self.assertEqual(self.sql("SELECT mood FROM mini_mythic_pets")[0]["mood"], 90)
+        self.assertEqual(
+            self.sql("SELECT mythic_shards FROM mini_players WHERE id=?", (self.pid,))[
+                0
+            ]["mythic_shards"],
+            1,
+        )
+
+    async def test_cancel_with_reward_handler_audits_refusal_once_without_state_or_money(
+        self,
+    ):
+        from app.mini.mythic.raid import handlers
+
+        template = {
+            "code": "fixture",
+            "name": "Fixture",
+            "max_hp": 100000,
+            "element": "ice",
+            "counter_elements": ["fire"],
+            "features": [],
+            "regeneration_percent": 0,
+            "shadow_extractable": False,
+        }
+        self.enterContext(
+            patch("app.mini.mythic.raid.service.load", return_value=[template])
+        )
+        self.enterContext(patch("app.context.get_topic_admin", return_value="@tester"))
+        self.enterContext(
+            patch("app.mini.boss.ui.get_topic_admin", return_value="@tester")
+        )
+        raid = raids.start(self.pid, "fixture", "start-blocked", self.db)
+        payload = f"cancel.{raid['id']}.1.0"
+        self.enterContext(
+            patch(
+                "app.mini.mythic.raid.handlers.load_extended_context",
+                new_callable=AsyncMock,
+                return_value=(self.world, self.player, payload),
+            )
+        )
+        callback = self.callback("unused")
+        await handlers.action(callback)
+        await handlers.action(callback)
+        self.assertEqual(raids.state(self.world["id"], self.db)["status"], "active")
+        self.assertEqual(
+            len(
+                self.sql(
+                    "SELECT * FROM mini_mythic_raid_audit WHERE action='cancel_reward_blocked'"
+                )
+            ),
+            1,
+        )
+        self.assertEqual(self.sql("SELECT * FROM mini_mythic_ledger"), [])
+        self.assertIn("O01", self.answered.call_args.args[0])
+
+    async def test_restart_raid_pending_is_sent_once_uncertain_is_not_retried(self):
+        from app.mini.mythic.raid import handlers
+
+        template = {
+            "code": "fixture",
+            "name": "Fixture",
+            "max_hp": 100000,
+            "element": "ice",
+            "counter_elements": ["fire"],
+            "features": [],
+            "regeneration_percent": 0,
+            "shadow_extractable": False,
+        }
+        self.enterContext(
+            patch("app.mini.mythic.raid.service.load", return_value=[template])
+        )
+        raid = raids.start(self.pid, "fixture", "start-recovery", self.db)
+        self.assertEqual(self.sql("SELECT * FROM mini_mythic_raid_publications"), [])
+        raids.recover_publications(self.db)
+        await handlers.recover_pending(self.bot)
+        await handlers.recover_pending(self.bot)
+        self.assertEqual(self.sent.await_count, 1)
+        self.assertEqual(
+            self.sql("SELECT status FROM mini_mythic_raid_publications")[0]["status"],
+            "sent",
+        )
+        self.sql(
+            "UPDATE mini_mythic_raid_publications SET status='sending',message_id=NULL"
+        )
+        raids.recover_publications(self.db)
+        await handlers.recover_pending(self.bot)
+        self.assertEqual(self.sent.await_count, 1)
+        self.assertEqual(
+            self.sql("SELECT status FROM mini_mythic_raid_publications")[0]["status"],
+            "uncertain",
+        )
+        self.assertEqual(self.sql("SELECT * FROM mini_mythic_ledger"), [])
+
+    async def test_restart_story_pending_is_sent_once_uncertain_is_not_retried(self):
+        from app.stories import service, publication, handlers
+        from pathlib import Path
+
+        directory = Path(self.tmp.name) / "stories"
+        directory.mkdir()
+        story = {
+            "schema_version": 1,
+            "code": "fixture",
+            "title": "Fixture",
+            "description": "Fixture only",
+            "start_node": "end",
+            "nodes": {"end": {"text": "End", "end": True}},
+        }
+        (directory / "fixture.json").write_text(json.dumps(story), encoding="utf-8")
+        self.enterContext(patch("app.context.get_topic_admin", return_value="@admin"))
+        self.enterContext(
+            patch(
+                "app.stories.presentation.discover",
+                return_value=({"fixture": story}, {}),
+            )
+        )
+        sid = service.create(
+            -111,
+            7,
+            1,
+            "admin",
+            "fixture",
+            "create-recovery",
+            self.db,
+            catalog_dir=directory,
+        )["session_id"]
+        await handlers.recover_pending(self.bot)
+        await handlers.recover_pending(self.bot)
+        self.assertEqual(self.sent.await_count, 1)
+        self.assertEqual(
+            self.sql("SELECT status FROM story_publications")[0]["status"], "sent"
+        )
+        self.sql("UPDATE story_publications SET status='sending',message_id=NULL")
+        publication.recover(self.db)
+        await handlers.recover_pending(self.bot)
+        self.assertEqual(self.sent.await_count, 1)
+        self.assertEqual(
+            self.sql("SELECT status FROM story_publications")[0]["status"], "uncertain"
+        )
+
+    async def test_recovered_raid_public_button_uses_world_not_raid_id(self):
+        from app.mini.mythic.raid import handlers
+
+        template = {
+            "code": "fixture",
+            "name": "Fixture",
+            "max_hp": 100000,
+            "element": "ice",
+            "counter_elements": ["fire"],
+            "features": [],
+            "regeneration_percent": 0,
+            "shadow_extractable": False,
+        }
+        self.enterContext(
+            patch("app.mini.mythic.raid.service.load", return_value=[template])
+        )
+        old = raids.start(self.pid, "fixture", "first-recover-world", self.db)
+        raids.cancel(
+            old["id"],
+            self.world["id"],
+            self.owner,
+            "cancel-first-world",
+            self.db,
+            confirmed=True,
+        )
+        raid = raids.start(self.pid, "fixture", "second-recover-world", self.db)
+        self.assertNotEqual(raid["id"], self.world["id"])
+        raids.recover_publications(self.db)
+        await handlers.recover_pending(self.bot)
+        calls = [c for c in self.sent.call_args_list if c.kwargs.get("reply_markup")]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(
+            calls[0].kwargs["reply_markup"].inline_keyboard[0][0].callback_data,
+            f"mini:raidopen:{self.world['id']}:{raid['id']}",
+        )

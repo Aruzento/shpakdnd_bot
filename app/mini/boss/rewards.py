@@ -84,6 +84,8 @@ def grant_victory_rewards(
     items = reward_items(boss["reward_items_json"])
 
     values=json.loads(dict(boss).get('team_state_json') or '{}')
+    from app.mini.mythic.policies import normal
+    policy=normal(values)
     blessing=values.get('lunar',{}).get('arcana')==10
     if blessing:coins_each=0;items=[]
     star_bonus=False
@@ -92,7 +94,7 @@ def grant_victory_rewards(
         star_levels=[max(0,min(5,int(h.get('stars',1))-1)) for h in snapshots if h.get('passive_key')=='mythic_star']
         if star_levels:
             if 'star_reward_roll' not in values:
-                values['star_reward_roll']=hero_abilities._roll_success(20+3*max(star_levels))
+                values['star_reward_roll']=hero_abilities._roll_success(policy['star_chance'][max(star_levels)])
                 conn.execute('UPDATE mini_bosses SET team_state_json=? WHERE id=?',(json.dumps(values),boss['id']))
             star_bonus=values['star_reward_roll']
     item_ids = {}
@@ -139,11 +141,11 @@ def grant_victory_rewards(
             continue
         if blessing:
             from app.mini.mythic.wallet import change
-            victory_events.append(log_hero_event(conn,boss,row,{'type':'lunar_reward','message':f"🌙 {row['username'] or row['character_name']}: +5 мифических осколков вместо награды."},when or utcnow()))
-            change(conn,player_id,5,'lunar_blessing',f"boss:{boss['id']}:lunar",{'boss_id':boss['id']})
+            victory_events.append(log_hero_event(conn,boss,row,{'type':'lunar_reward','message':f"🌙 {row['username'] or row['character_name']}: +{policy['blessing_mythic_shards']} мифических осколков вместо награды."},when or utcnow()))
+            change(conn,player_id,policy['blessing_mythic_shards'],'lunar_blessing',f"boss:{boss['id']}:lunar",{'boss_id':boss['id']})
         if star_bonus:
-            victory_events.append(log_hero_event(conn,boss,row,{'type':'star_reward','message':f"✨ {row['username'] or row['character_name']}: +300 обычных осколков."},when or utcnow()))
-            conn.execute('UPDATE mini_players SET shards=shards+300 WHERE id=?',(player_id,))
+            victory_events.append(log_hero_event(conn,boss,row,{'type':'star_reward','message':f"✨ {row['username'] or row['character_name']}: +{policy['star_shards']} обычных осколков."},when or utcnow()))
+            conn.execute('UPDATE mini_players SET shards=shards+? WHERE id=?',(policy['star_shards'],player_id))
         if coins_each > 0:
             change_balance_in_transaction(
                 conn, player_id, coins_each, f"Победа над боссом: {boss['name']}",
@@ -162,7 +164,7 @@ def grant_victory_rewards(
                 (player_id, item_ids[item["code"]], int(item["quantity"])),
             )
 
-        if not include_all_registered and int(row["hit_count"]) > 0:
+        if not include_all_registered and int(row["hit_count"]) > 0 and (int(boss["rules_version"] or 0)<15 or int(row["total_damage"] or 0)>0):
             from app.mini.shadow import extract_in_transaction
             extraction=extract_in_transaction(conn,boss,row,now=when) if allow_shadow else None
             if extraction: victory_events.append(log_hero_event(conn,boss,row,extraction,when or utcnow()))

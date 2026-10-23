@@ -6,7 +6,7 @@ import subprocess
 BASE = "d9856b2038a36490f93a4f5613ba7887698ac7e8"
 ROOT = Path(__file__).resolve().parents[1]
 OLD = 'as_bot "$PYTHON" "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -a "$LOG"'
-NEW = 'as_bot "$PYTHON" -c \'import runpy,signal,sys; signal.signal(signal.SIGINT,signal.SIG_IGN); signal.signal(signal.SIGTERM,signal.SIG_IGN); runpy.run_path(sys.argv.pop(1),run_name="__main__")\' "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -a "$LOG"'
+NEW = 'as_bot "$PYTHON" -c \'import runpy,signal,sys; signal.signal(signal.SIGINT,signal.SIG_IGN); signal.signal(signal.SIGTERM,signal.SIG_IGN); runpy.run_path(sys.argv.pop(1),run_name="__main__")\' "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -i -a "$LOG"'
 PATHS = (
     "deploy/deploy-shpakdnd.sh",
     "deploy/deploy_helpers.py",
