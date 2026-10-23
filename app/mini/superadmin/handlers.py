@@ -27,3 +27,21 @@ async def superadmin_handler(message: Message):
             await message.answer(chunk);chunk=''
         chunk += line+'\n'
     if chunk: await message.answer(chunk.rstrip())
+
+
+@router.message(Command("superadminch"))
+async def change_boss_handler(message: Message):
+    from app.mini.boss.operations import parse_change,change_boss
+    from app.mini.worlds import get_mini_world
+    try:
+        if not message.from_user or not is_superadmin(message.from_user.id):raise ValueError('Команда доступна только superadmin Mini.')
+        world=get_mini_world(message.chat.id,message.message_thread_id or 0)
+        if not world:raise ValueError('Команда работает только в текущем Mini-мире.')
+        bid,flag,value=parse_change(message.text)
+        result=change_boss(bid,world['id'],message.from_user.id,flag,value,f'superadminch:{message.chat.id}:{message.message_id}')
+    except ValueError as error:
+        await message.answer(str(error));return
+    await message.answer(f"Босс #{bid}: {result['field']} {result['old']} → {result['new']}. Изменение сохранено.")
+    from app.mini.boss.public import refresh_public_boss
+    from app.mini.boss.service import get_boss
+    await refresh_public_boss(message.bot,world,get_boss(bid))

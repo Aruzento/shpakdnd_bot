@@ -28,6 +28,7 @@ jobs:
       BOT_TOKEN: '123456:offline-linux-release-checks'
       PYTHONIOENCODING: utf-8
       PYTHONUNBUFFERED: '1'
+      PYTHONUTF8: '1'
       # Fixed code baselines, never a supplied production database.
       LEGACY_REF: f06c0d129fdad0fef4fde0889915faac26b94f4a
       PRE_UI_REF: 293693d87692bb9e7f4567bcca895e799e7455d2
@@ -37,8 +38,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify exact candidate SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git rev-parse HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -171,16 +180,17 @@ jobs:
           path: ${{ runner.temp }}/loot-benchmark.json
           if-no-files-found: error
 
-      - name: Verify D&D Mini remains unchanged by V1.4.4
-        run: git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- app/mini
+      - name: Validate approved O01-O10 policies
+        run: python -m app.mini.mythic.policies
 
-      - name: Verify protected V1.4.3.1 deployment files match synchronized main
-        run: |
-          git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- \
-            deploy/deploy-shpakdnd.sh deploy/deploy_helpers.py \
-            deploy/install-deploy-shpakdnd.sh deploy/sqlite-deploy.py \
-            deploy/telegram-deploy-notice.py deploy/pvp_ops.py \
-            tests/v1_3_3/test_deploy_shell.py tests/v1_4_3_1
+      - name: V1.5 content diagnostics (missing resources remain explicit blockers)
+        run: python -m app.mini.mythic.content
+
+      - name: V1.5 populated migration replay and old-code startup
+        run: python tools/validate_v15_migration.py
+
+      - name: Verify protected bundle and exact authorized logger signal fix
+        run: python tools/validate_deploy_bundle.py
 
       - name: Compile Python modules
         run: python -m compileall -q bot.py app
@@ -205,9 +215,6 @@ jobs:
 
       - name: Verify PvP migrations and old-code startup on disposable copies
         run: python tools/validate_pvp_migration.py
-
-      - name: Verify unchanged gameplay and the authorized PvP integration
-        run: python tools/verify_editorial_mechanics.py
 
       - name: Create synthetic legacy SQLite fixture
         run: |

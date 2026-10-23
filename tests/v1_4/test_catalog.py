@@ -31,7 +31,7 @@ class CatalogTests(unittest.TestCase):
         for rarity in RARITIES:
             content=json.loads((self.root/f'{rarity}.json').read_text(encoding='utf-8'))['heroes']
             loaded=[h for h in catalog['heroes'] if h['rarity']==rarity]
-            self.assertEqual(loaded,content)
+            self.assertEqual([{k:v for k,v in h.items() if k!='passives'} for h in loaded],content)
             self.assertTrue(all(h['rarity']==rarity for h in content))
         self.assertEqual([h for h in catalog['heroes'] if h['rarity']=='mythic'],[])
         shadows=[h for h in catalog['heroes'] if h['rarity']=='shadow']
@@ -61,14 +61,14 @@ class CatalogTests(unittest.TestCase):
         for old in original:
             self.assertIn(old['code'],current)
             if old['code'] not in ('Kirito','SonDzhi'):
-                self.assertEqual(current[old['code']],old)
+                self.assertEqual({k:v for k,v in current[old['code']].items() if k!='passives'},old)
 
-    def test_mythic_requires_positive_fragment_cost(self):
+    def test_mythic_requires_approved_element_instead_of_retired_cost(self):
         hero=copy.deepcopy(load_hero_catalog()['heroes'][0]);hero.update(code='myth',rarity='mythic')
-        for cost in (None,0,-1,True,1.5):
-            hero['fragment_cost']=cost;self.write('mythic',[hero])
-            with self.assertRaisesRegex(ValueError,'fragment_cost'):load_hero_catalog()
-        hero['fragment_cost']=5;self.write('mythic',[hero]);load_hero_catalog()
+        for element in (None,'red','',True):
+            hero['mythic_element']=element;self.write('mythic',[hero])
+            with self.assertRaisesRegex(ValueError,'mythic_element'):load_hero_catalog()
+        hero['mythic_element']='ice';self.write('mythic',[hero]);load_hero_catalog()
 
     def test_gacha_excludes_mythic_shadow_even_with_positive_weights(self):
         data=load_hero_catalog()
@@ -91,16 +91,16 @@ class OwnershipTests(MiniCase):
     def test_collection_and_upgrade_accept_both_exclusive_rarities(self):
         data=load_hero_catalog()
         for rarity in ('shadow','mythic'):
-            hero=copy.deepcopy(data['heroes'][0]);hero.update(code='fixture_'+rarity,rarity=rarity,fragment_cost=5)
+            hero=copy.deepcopy(data['heroes'][0]);hero.update(code='fixture_'+rarity,rarity=rarity,mythic_element='ice')
             data['heroes'].append(hero)
         with patch('app.mini.catalog._read_hero_catalog',return_value=data):
             sync_hero_catalog(self.db)
-            self.sql('UPDATE mini_players SET shards=1000 WHERE id=?',(self.pid,))
+            self.sql('UPDATE mini_players SET shards=1000,mythic_shards=1000 WHERE id=?',(self.pid,))
             for rarity in ('shadow','mythic'):
-                hero=self.hero('fixture_'+rarity)
+                hero=self.hero('fixture_'+rarity,stars=1 if rarity=='mythic' else 0)
                 state=hero_upgrade_state(hero);self.assertIn('can_upgrade',state)
-                result=upgrade_hero(self.pid,hero['id'],self.db)
-                self.assertEqual(result['stars'],1)
+                result=upgrade_hero(self.pid,hero['id'],self.db,expected_stars=1 if rarity=='mythic' else 0)
+                self.assertEqual(result['stars'],2 if rarity=='mythic' else 1)
             self.assertTrue({'shadow','mythic'} <= {h['rarity'] for h in get_player_heroes(self.pid,self.db)})
 
     def test_sync_preserves_hero_ids_and_ownership(self):
@@ -140,7 +140,7 @@ class OwnershipTests(MiniCase):
         from app.mini.gacha import get_gacha_state
         data=load_hero_catalog()
         for rarity in ('mythic','shadow'):
-            h=copy.deepcopy(data['heroes'][0]);h.update(code='pool_'+rarity,rarity=rarity,fragment_cost=10)
+            h=copy.deepcopy(data['heroes'][0]);h.update(code='pool_'+rarity,rarity=rarity,mythic_element='ice')
             data['heroes'].append(h);data['settings']['rarity_weights'][rarity]=100000
         with patch('app.mini.catalog._read_hero_catalog',return_value=data):
             sync_hero_catalog(self.db);state=get_gacha_state(self.pid,self.db)

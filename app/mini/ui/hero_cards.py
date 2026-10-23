@@ -18,6 +18,7 @@ from app.mini.gacha import get_gacha_state
 from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
 from app.mini.ui.navigation import clip
+from app.mini.ui.limits import clip as telegram_clip, units as telegram_units
 
 
 @editorial_screen
@@ -42,6 +43,8 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
         lines += ['', editorial_text('hero_cards.hero_caption.line_05', rarity=f'{rarity}'), editorial_text('hero_cards.hero_caption.line_06', value_1=f"{hero.get('copies', 1)}", value_2=f"{hero.get('shards', 0)}"),
                   editorial_text('hero_cards.hero_caption.line_08') if upgrade['at_max'] else editorial_text('hero_cards.hero_caption.line_09', next_star=f"{upgrade['next_star']}", upgrade_cost=f"{upgrade['upgrade_cost']}")]
+    if hero.get('rarity')=='mythic':
+        lines+=['',f"Мифические осколки: {hero.get('mythic_shards',0)}",'Звёзды усиливают способность; базовая атака не растёт. Получение — только выращиванием.']
     if pull_result is not None:
         lines.append("")
         if pull_result["is_duplicate"]:
@@ -75,8 +78,8 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
     if pull_result is not None and pull_result.get('pity') is not None:
         from app.mini.pity import format_progress
         progress = format_progress(pull_result['pity'])
-        return caption[:1018-len(progress)] + '\n\n' + progress
-    return caption if resident else caption[:1020]
+        return telegram_clip(caption,1018-telegram_units(progress)) + '\n\n' + progress
+    return caption if resident else telegram_clip(caption,1020)
 
 
 @editorial_screen

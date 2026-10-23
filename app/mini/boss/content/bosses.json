@@ -5,10 +5,15 @@
       "code": "training_golem",
       "name": "Каменный голем",
       "description": "Тяжёлый каменный страж пробудился у старых ворот. Медленный, но очень живучий. Победите его и начните мини приключение!",
-      "max_hp": 5000,
-      "min_players": 4,
-      "reward_coins": 60,
-      "reward_items": [],
+      "max_hp": 9000,
+      "min_players": 1,
+      "reward_coins": 90,
+      "reward_items": [
+        {
+          "code": "damage_potion",
+          "quantity": 1
+        }
+      ],
       "reward_shields": 10,
       "reward_decay_percent": 30,
       "shadow_extractable": false,
@@ -26,13 +31,17 @@
       "code": "graveyard_warden",
       "name": "Смотритель старого кладбища",
       "description": "Когда-то он охранял кладбищенские ворота. Теперь охраняет всё кладбище сразу — и очень не любит незваных гостей.",
-      "max_hp": 2100,
-      "min_players": 2,
-      "reward_coins": 30,
+      "max_hp": 8000,
+      "min_players": 1,
+      "reward_coins": 45,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
           "quantity": 2
+        },
+        {
+          "code": "phantom_participation_potion",
+          "quantity": 1
         }
       ],
       "reward_shields": 2,
@@ -51,13 +60,17 @@
       "code": "Vov4ik",
       "name": "Вов4ик Рыговский",
       "description": "ээЭЭКххее, ЛАДНО! Я все хотел спросить.. бля, ща. *танцует* Давай драться... Гей",
-      "max_hp": 3333,
-      "min_players": 3,
-      "reward_coins": 60,
+      "max_hp": 10000,
+      "min_players": 1,
+      "reward_coins": 90,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
           "quantity": 3
+        },
+        {
+          "code": "luck_potion",
+          "quantity": 1
         }
       ],
       "reward_shields": 3,
@@ -77,9 +90,9 @@
       "code": "swamp_hydra",
       "name": "Болотная гидра",
       "description": "Из трясины поднялось многоголовое чудовище. Чем дольше длится бой, тем больше кажется, что голов становится только больше.",
-      "max_hp": 260,
-      "min_players": 4,
-      "reward_coins": 36,
+      "max_hp": 7000,
+      "min_players": 1,
+      "reward_coins": 54,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
@@ -87,6 +100,10 @@
         },
         {
           "code": "boss_shard_casket",
+          "quantity": 1
+        },
+        {
+          "code": "damage_potion",
           "quantity": 1
         }
       ],
@@ -107,13 +124,17 @@
       "code": "iron_juggernaut",
       "name": "Железный исполин",
       "description": "Древняя боевая машина снова заработала. Магическое ядро раскалено, броня почти непробиваема, а команда отключения давно забыта.",
-      "max_hp": 800,
-      "min_players": 5,
-      "reward_coins": 75,
+      "max_hp": 12000,
+      "min_players": 1,
+      "reward_coins": 113,
       "reward_items": [
         {
           "code": "boss_shard_casket",
           "quantity": 2
+        },
+        {
+          "code": "damage_potion",
+          "quantity": 1
         }
       ],
       "reward_shields": 3,
@@ -133,9 +154,9 @@
       "code": "crimson_vampire",
       "name": "Багровый лорд",
       "description": "Древний вампир покинул свой склеп ради новой охоты. Он слишком долго жил, слишком многое видел и совершенно не планирует умирать сегодня.",
-      "max_hp": 480,
-      "min_players": 5,
-      "reward_coins": 50,
+      "max_hp": 10000,
+      "min_players": 1,
+      "reward_coins": 75,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
@@ -143,6 +164,10 @@
         },
         {
           "code": "boss_shard_casket",
+          "quantity": 1
+        },
+        {
+          "code": "phantom_participation_potion",
           "quantity": 1
         }
       ],
@@ -166,9 +191,9 @@
       "code": "wild_berserker",
       "name": "Одичавшая берсеркерша",
       "description": "Она слишком долго прожила среди чудовищ и теперь почти не отличает охоту от войны. Её топор затупился, но ярость — нет.",
-      "max_hp": 205,
-      "min_players": 4,
-      "reward_coins": 36,
+      "max_hp": 9000,
+      "min_players": 1,
+      "reward_coins": 54,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
@@ -176,6 +201,10 @@
         },
         {
           "code": "boss_shard_casket",
+          "quantity": 1
+        },
+        {
+          "code": "damage_potion",
           "quantity": 1
         }
       ],
@@ -194,9 +223,9 @@
       "code": "fallen_sun_champion",
       "name": "Падшая Чемпионка Солнца",
       "description": "Когда-то её золотые доспехи сияли на полях сражений. Теперь свет внутри них почернел, а священный клинок оставляет после себя только выжженную землю.",
-      "max_hp": 420,
-      "min_players": 5,
-      "reward_coins": 150,
+      "max_hp": 12000,
+      "min_players": 1,
+      "reward_coins": 225,
       "reward_shields": 2,
       "reward_decay_percent": 10,
       "shadow_extractable": true,
@@ -209,16 +238,27 @@
       "features": [
         "armored",
         "holy"
+      ],
+      "reward_items": [
+        {
+          "code": "luck_potion",
+          "quantity": 1
+        }
       ]
     },
     {
       "code": "mister_inversion",
       "name": "Мистер Инверсия",
       "description": "Чем сильнее герой кажется на первый взгляд, тем бесполезнее он становится рядом с Инверсией. Иногда слабость — единственная настоящая сила.",
-      "max_hp": 500,
-      "min_players": 3,
-      "reward_coins": 90,
-      "reward_items": [],
+      "max_hp": 7000,
+      "min_players": 1,
+      "reward_coins": 135,
+      "reward_items": [
+        {
+          "code": "luck_potion",
+          "quantity": 1
+        }
+      ],
       "reward_shields": 3,
       "reward_decay_percent": 10,
       "image": "mister_inversion.png",
@@ -236,13 +276,17 @@
       "code": "flying_schoolboy",
       "name": "Летающий школьник",
       "description": "Он каким-то образом научился летать раньше, чем делать домашнее задание. Слишком сильные герои только зря тратят на него время.",
-      "max_hp": 420,
-      "min_players": 3,
-      "reward_coins": 20,
+      "max_hp": 7000,
+      "min_players": 1,
+      "reward_coins": 30,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
           "quantity": 3
+        },
+        {
+          "code": "phantom_participation_potion",
+          "quantity": 1
         }
       ],
       "reward_shields": 2,
@@ -262,17 +306,22 @@
       "code": "training_dummy",
       "name": "Тренировочный манекен",
       "description": "Обычный тренировочный манекен. Он не сопротивляется, не угрожает награде и терпеливо принимает каждый удар.",
-      "max_hp": 30,
+      "max_hp": 7000,
       "min_players": 1,
-      "reward_coins": 30,
-      "reward_items": [],
+      "reward_coins": 45,
+      "reward_items": [
+        {
+          "code": "damage_potion",
+          "quantity": 1
+        }
+      ],
       "reward_shields": 0,
       "reward_decay_percent": 10,
       "image": "training_dummy.png",
       "active": true,
       "faction": "warriors",
       "ability_key": "training",
-      "ability_text": "Тренировка: любой отдельный удар наносит ровно 1 урон. Манекен никогда не атакует награду и не может быть поднят в виде тени.",
+      "ability_text": "Тренировка: успешный удар снимает 10% исходного максимального HP. Манекен не атакует награду.",
       "features": [],
       "shadow_extractable": false
     },
@@ -280,12 +329,16 @@
       "code": "doppelganger",
       "name": "Дуппельгангер",
       "description": "У него нет собственного лица. Каждый новый противник становится для него ещё одной формой.",
-      "max_hp": 1400,
-      "min_players": 4,
-      "reward_coins": 60,
+      "max_hp": 12000,
+      "min_players": 1,
+      "reward_coins": 90,
       "reward_items": [
         {
           "code": "boss_coin_pouch",
+          "quantity": 1
+        },
+        {
+          "code": "phantom_participation_potion",
           "quantity": 1
         }
       ],
@@ -305,9 +358,14 @@
       "name": "Ван панч моб",
       "description": "Ему не нужно много ударов. Ему нужен всего один.",
       "max_hp": 8000,
-      "min_players": 4,
-      "reward_coins": 150,
-      "reward_items": [],
+      "min_players": 1,
+      "reward_coins": 225,
+      "reward_items": [
+        {
+          "code": "damage_potion",
+          "quantity": 1
+        }
+      ],
       "reward_shields": 0,
       "reward_decay_percent": 100,
       "image": "one_punch_mob.png",
@@ -323,13 +381,17 @@
       "code": "simple_village_guy",
       "name": "Простой деревенский парень",
       "description": "Никаких хитростей, древних проклятий и магических правил. Просто парень. Просто победи его.",
-      "max_hp": 1800,
-      "min_players": 2,
-      "reward_coins": 10,
+      "max_hp": 7000,
+      "min_players": 1,
+      "reward_coins": 15,
       "reward_items": [
         {
           "code": "boss_shard_casket",
           "quantity": 2
+        },
+        {
+          "code": "luck_potion",
+          "quantity": 1
         }
       ],
       "reward_shields": 3,

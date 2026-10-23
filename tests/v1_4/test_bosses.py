@@ -166,11 +166,11 @@ class BossIntegrationTests(MiniCase):
 
     def test_olaf_dummy_three_primary_plus_two_real_hits_no_counter_recursion(self):
         b=self.battle('training_dummy','olaf_taliy');self.hit(b);self.hit(b,1);result=self.hit(b,2)
-        self.assertEqual((result['damage'],result['extra_damage']),(1,2));self.assertEqual(get_boss(b,self.db)['current_hp'],25)
+        self.assertEqual((result['damage'],result['extra_damage']),(700,1400));self.assertEqual(get_boss(b,self.db)['current_hp'],3500)
         p=self.sql('SELECT hit_count,total_damage FROM mini_boss_participants WHERE boss_id=?',(b,))[0]
-        self.assertEqual(p,{'hit_count':3,'total_damage':5})
+        self.assertEqual(p,{'hit_count':3,'total_damage':3500})
         self.assertEqual(get_boss(b,self.db)['reward_percent'],100)
-        self.assertEqual(self.sql("SELECT damage FROM mini_boss_actions WHERE boss_id=? AND action_type='extra_attack'",(b,)),[{'damage':1},{'damage':1}])
+        self.assertEqual(self.sql("SELECT damage FROM mini_boss_actions WHERE boss_id=? AND action_type='extra_attack'",(b,)),[{'damage':700},{'damage':700}])
 
     def test_olaf_extra_hits_stop_immediately_on_death(self):
         b=self.battle('training_dummy','olaf_taliy',max_hp=4);self.hit(b);self.hit(b,1);result=self.hit(b,2)

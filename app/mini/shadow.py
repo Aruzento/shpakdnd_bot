@@ -16,6 +16,23 @@ def extract_in_transaction(conn,boss,participant,*,roller=None,now=None):
     if not boss.get('shadow_extractable',True) or not boss.get('shadow_hero_code') or not participant.get('hit_count'):
         return None
     snapshot = battle_loadout(participant['hero_snapshot_json'])
+    if int(boss.get('rules_version',0))>=15:
+        if int(participant.get('total_damage',0))<=0:return None
+        import json
+        from app.mini.combat.arise import personal_sources,shared_sources,award
+        target={**boss,'shadow_extractable':boss.get('shadow_extractable',True)}
+        values=json.loads(boss.get('team_state_json') or '{}')
+        shared=values.get('arise_team_sources')
+        if shared is None:  # Existing V15 battles use only persisted snapshots.
+            roster=[(r['player_id'],r['hero_id'],battle_loadout(r['hero_snapshot_json']))
+                    for r in conn.execute('SELECT player_id,hero_id,hero_snapshot_json FROM mini_boss_participants WHERE boss_id=? ORDER BY queue_position',(boss['id'],))]
+            shared=shared_sources(roster,team=values)
+        results=award(conn,'boss',boss['id'],participant['player_id'],target,True,personal_sources(snapshot)+shared,now=now,roller=roller or _roll_success)
+        if not results:return None
+        success=any(r['success'] for r in results)
+        # Preserve the legacy audit summary while recording all independent sources.
+        conn.execute('INSERT OR IGNORE INTO mini_shadow_rolls VALUES(?,?,?,?,?,?)',(boss['id'],participant['player_id'],participant['hero_id'],results[-1]['chance'],results[-1]['shadow_code'],int(success)))
+        return {'type':'arise','success':success,'sources':results,'shadow_code':results[-1]['shadow_code'],'message':f"🌑 Arise: {'получена тень' if success else 'тень ускользнула'} {results[-1]['shadow_code']}."}
     chance = 100 if snapshot.get('spirit_lantern') else arise_chance(snapshot)
     if chance is None: return None
     hero=conn.execute("SELECT id,code FROM mini_heroes WHERE code=? AND rarity='shadow'",(boss['shadow_hero_code'],)).fetchone()

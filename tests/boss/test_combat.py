@@ -179,7 +179,7 @@ class MiniBossCombatTests(unittest.TestCase):
         self._start()
         result = advance_expired_turns(
             self.boss["id"],
-            now=self.start_time + timedelta(hours=4, seconds=1),
+            now=self.start_time + timedelta(seconds=901),
             db_path=self.db,
         )
         self.assertTrue(result["changed"])
@@ -191,7 +191,7 @@ class MiniBossCombatTests(unittest.TestCase):
         self._start()
         result = advance_expired_turns(
             self.boss["id"],
-            now=self.start_time + timedelta(hours=8, seconds=1),
+            now=self.start_time + timedelta(seconds=1801),
             db_path=self.db,
         )
         self.assertEqual(len(result["skipped"]), 2)
@@ -199,7 +199,7 @@ class MiniBossCombatTests(unittest.TestCase):
         self.assertEqual(result["state"]["boss"]["reward_shields"], 2)
         self.assertEqual(result["state"]["current"]["player_id"], self.player1["id"])
 
-    def test_victory_rewards_only_players_who_hit_by_default(self):
+    def test_victory_rewards_players_without_own_timeout(self):
         self._start()
         with connect_mini_db(self.db) as conn:
             conn.execute(
@@ -215,8 +215,8 @@ class MiniBossCombatTests(unittest.TestCase):
         self.assertTrue(result["battle_ended"])
         self.assertEqual(result["state"]["boss"]["status"], "defeated")
         self.assertEqual(result["rewards"]["coins_each"], 60)
-        self.assertEqual(result["rewards"]["players"], 1)
-        self.assertEqual(result["rewards"]["missed_players"], 1)
+        self.assertEqual(result["rewards"]["players"], 2)
+        self.assertEqual(result["rewards"]["missed_players"], 0)
 
         fighter = get_mini_player(
             self.world_id, self.player1["telegram_user_id"], self.db
@@ -230,8 +230,8 @@ class MiniBossCombatTests(unittest.TestCase):
         spectator = get_mini_player(
             self.world_id, self.player2["telegram_user_id"], self.db
         )
-        self.assertEqual(spectator["coins"], 0)
-        self.assertEqual(get_player_goods(self.player2["id"], self.db)["inventory"], [])
+        self.assertEqual(spectator["coins"], 60)
+        self.assertEqual(len(get_player_goods(self.player2["id"], self.db)["inventory"]), 2)
 
     def test_phantom_potion_rewards_registered_player_without_a_hit(self):
         item_id = self._grant_item(
@@ -295,7 +295,7 @@ class MiniBossCombatTests(unittest.TestCase):
         )
         self.assertEqual(result["ability_damage"], 3)
         self.assertEqual(result["damage_bonus_percent"], 10)
-        self.assertEqual(result["damage"], 4)
+        self.assertEqual(result["damage"], 3)
         self.assertTrue(
             any(
                 event.get("type") == "item_damage_boost"

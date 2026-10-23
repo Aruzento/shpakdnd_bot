@@ -32,7 +32,10 @@ def boss_event_line(event: dict, participants: list[dict]) -> str:
         "magic_shield_removed": editorial_text('boss.boss_event_line.line_13'),
         "magic_shield_blocked": editorial_text('boss.boss_event_line.line_14'),
     }
-    return lines.get(kind, str(event.get("message") or ""))
+    message=lines.get(kind,str(event.get('message') or ''))
+    if kind=='arise' and event.get('player_id') is not None:
+        message=f"{target} — {message}"
+    return message
 
 
 @editorial_screen

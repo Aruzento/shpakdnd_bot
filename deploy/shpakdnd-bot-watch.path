@@ -35,5 +35,8 @@ PathModified=/opt/shpakdnd-bot/app/mini/mythic
 PathModified=/opt/shpakdnd-bot/app/mini/editorial
 PathModified=/opt/shpakdnd-bot/app/mini/editorial/defaults/ru
 
+PathModified=/opt/shpakdnd-bot/app/stories
+PathModified=/opt/shpakdnd-bot/app/mini/mythic/raid
+
 [Install]
 WantedBy=multi-user.target

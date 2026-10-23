@@ -62,13 +62,13 @@ async def boss_start_callback(callback: CallbackQuery):
 @editorial_screen
 async def boss_hit_callback(callback: CallbackQuery):
     parts = (callback.data or "").split(":")
-    if len(parts) not in {4, 6}:
+    if len(parts) not in {4, 6, 7}:
         await callback.answer(editorial_text('boss.boss_hit_callback.line_03'), show_alert=True)
         return
     try:
         world_id, boss_id = int(parts[2]), int(parts[3])
-        expected_round = int(parts[4]) if len(parts) == 6 else None
-        expected_position = int(parts[5]) if len(parts) == 6 else None
+        expected_round = int(parts[4]) if len(parts) >= 6 else None
+        expected_position = int(parts[5]) if len(parts) >= 6 else None
     except ValueError:
         await callback.answer(editorial_text('boss.boss_hit_callback.line_10'), show_alert=True)
         return
@@ -89,7 +89,7 @@ async def boss_hit_callback(callback: CallbackQuery):
     # Старые карточки (до turn-token) и дубли предыдущего хода не должны
     # оставаться рабочими после обновления. Актуальную карточку восстановит
     # ensure_public_turn. Это также обезвреживает уже висящие старые дубли.
-    if expected_round is None or expected_position is None:
+    if expected_round is None or expected_position is None or (int(boss.get("rules_version",0))>=15 and len(parts)!=7):
         await ensure_public_turn(callback.bot, world, boss)
         await callback.answer(
             editorial_text('boss.boss_hit_callback.line_07'),
@@ -113,6 +113,7 @@ async def boss_hit_callback(callback: CallbackQuery):
         result = hit_boss(
             boss_id, player["id"],
             expected_round=expected_round, expected_position=expected_position,
+            expected_token=parts[6] if len(parts)==7 else None,
         )
     except (BossNotYourTurn, BossNotParticipant, BossCombatError) as error:
         refreshed = get_boss(boss_id)
@@ -228,3 +229,6 @@ from app.mini.boss.ui import _BOSS_PUBLISH_LOCKS, publish_boss as _publish_boss
 from app.mini.boss.selection import boss_heroes_callback, boss_select_hero_callback
 from app.mini.boss.presentation import battle_hero_menu as _battle_hero_menu
 from app.mini.boss.presentation import boss_private_menu as _boss_private_menu
+
+from app.mini.boss.v15_handlers import router as v15_router
+router.include_router(v15_router)

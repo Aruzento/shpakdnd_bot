@@ -264,7 +264,7 @@ main() {
             # Keep the logger alive while the main shell handles Ctrl+C/TERM.
             # It finishes on pipe EOF; it must not break the interrupt summary.
             trap '' INT TERM
-            as_bot "$PYTHON" "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -a "$LOG"
+            as_bot "$PYTHON" -c 'import runpy,signal,sys; signal.signal(signal.SIGINT,signal.SIG_IGN); signal.signal(signal.SIGTERM,signal.SIG_IGN); runpy.run_path(sys.argv.pop(1),run_name="__main__")' "$TOOLS/deploy_helpers.py" --redact-env "$PROJECT/.env" | tee -i -a "$LOG"
         ) 2>&1
     fi
     printf 'D&D Mini Deploy — %s\n' "$(date -Is)"

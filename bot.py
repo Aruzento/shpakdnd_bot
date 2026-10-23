@@ -72,6 +72,14 @@ async def main():
     pvp_watch_task = asyncio.create_task(watch_loop(bot))
     boss_watch_task = asyncio.create_task(boss_watch_loop(bot))
     mini_notice_task = asyncio.create_task(mini_notice_watch_loop(bot))
+    from app.stories.publication import recover as recover_stories
+    recover_stories()
+    from app.mini.mythic.raid.service import recover_publications
+    recover_publications()
+    from app.stories.handlers import recover_pending as recover_pending_stories
+    from app.mini.mythic.raid.handlers import recover_pending as recover_pending_raids
+    await recover_pending_stories(bot)
+    await recover_pending_raids(bot)
     print("Бот запущен.")
     try:
         await dp.start_polling(bot)

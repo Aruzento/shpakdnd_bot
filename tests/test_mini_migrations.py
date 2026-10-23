@@ -149,7 +149,8 @@ class MiniMigrationTests(unittest.TestCase):
         self.seed(); before=self.snapshot()
         for _ in range(3): init_mini_db(self.db); init_boss_db(self.db)
         self.assertEqual(self.snapshot(),before)
-        self.assertTrue(all(before.values()),'Fixture must cover every Mini table')
+        new_v15={'mini_star_rewards','mini_mythic_raid_cancel_requests','mini_combat_arise','mini_mythic_ledger','mini_mythic_operations','mini_mythic_pets','mini_mythic_pet_days','mini_mythic_raids','mini_mythic_raid_attacks','mini_mythic_raid_damage','mini_mythic_raid_rewards','mini_mythic_raid_audit','mini_mythic_raid_publications','mini_tower_lunar_choices'}
+        self.assertTrue(all(rows for name,rows in before.items() if name not in new_v15),'Fixture must cover every historical Mini table')
 
     def test_legacy_columns_and_shards_migrate_once_without_losing_history(self):
         player=self.seed()

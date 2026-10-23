@@ -78,6 +78,15 @@ def _state(conn,player_id,now):
         (player_id,now,now))}
     for building,resource in (('market','coins'),('mine','shards')):
         if resource in boosts: hourly[building] *= Decimal('1.25')
+    from app.mini.village.balance import load_balance
+    rarity_rates={**RATE_UNITS,'mythic':load_balance()['mythic_rate_units']}
+    for resident in residents:
+        building=resident['building']
+        rate=Decimal(rarity_rates[resident['rarity']]*(resident['stars']+1))/32 if building else Decimal(0)
+        if building in ('mine','market') and not rates['fed']:rate=Decimal(0)
+        resource={'mine':'shards','market':'coins'}.get(building)
+        if resource in boosts:rate*=Decimal('1.25')
+        resident['hourly_income']=rate
     unsettled=conn.execute('SELECT COUNT(*) FROM mini_player_heroes ph WHERE ph.player_id=? AND NOT EXISTS (SELECT 1 FROM mini_village_residents r WHERE r.player_id=ph.player_id AND r.hero_id=ph.hero_id)',(player_id,)).fetchone()[0]
     return {**v,'unsettled_count':unsettled,'capacity' :v['houses']*10,'residents':residents,'rates':rates,
         'hourly':hourly,'boosts':boosts,

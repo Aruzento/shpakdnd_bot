@@ -131,7 +131,7 @@ class BossAbilityIntegrationTests(unittest.TestCase):
             )
 
         self.assertEqual(result["base_damage"], 40)
-        self.assertEqual(result["damage"], 60)
+        self.assertEqual(result["damage"], 50)
         self.assertEqual(result["bonus_shards"], 30)
         self.assertTrue(result["battle_ended"])
         self.assertEqual(result["state"]["boss"]["status"], "defeated")

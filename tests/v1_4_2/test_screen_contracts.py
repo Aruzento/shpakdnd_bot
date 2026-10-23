@@ -75,7 +75,7 @@ def render_screen(sid):
     if sid=='hero_card':return hero_cards.hero_caption(hero,full=True),hero_cards.hero_card_menu(wid,user,hero,state,collection=True,nav_token='aabbccdd'),hero_cards.hero_card_menu
     if sid=='shards_sell':return heroes._format_shard_sell(hero,10000),heroes._shard_sell_menu(wid,user,hero,nav_token='aabbccdd'),heroes._shard_sell_menu
     if sid=='mythic':
-        with patch.object(mythic.service,'list_heroes',return_value=[dict(id=2,name='Мифический',fragment_cost=5,fragments=5,owned=False)]):text,markup=mythic.screen(1,wid,user)
+        with patch.object(mythic.pets,'state',return_value={'pets':[],'mythic_shards':5}):text,markup=mythic.screen(1,wid,user)
         return text,markup,mythic.screen
     if sid=='daily_result':return 'Результат ежедневного боя',activities._daily_result_menu(wid,user),activities._daily_result_menu
     if sid=='inventory':return inventory._format_inventory(world,player,goods),inventory._inventory_menu(wid,user,goods),inventory._inventory_menu
@@ -224,7 +224,7 @@ class MapContractTests(unittest.TestCase):
                 for b in row:self.assertIn(b['next_msg_id'],ids|{'ui_back','nav_back','current','same','previous',''} ,standard['id'])
 
     def test_final_matrix_covers_each_renderer_handler_action_and_test(self):
-        records=json.loads((ROOT/'docs/ui/v1.4.3-matrix.json').read_text(encoding='utf-8'))['screens']
+        records=json.loads((ROOT/'docs/ui/v1.5-matrix.json').read_text(encoding='utf-8'))['screens']
         self.assertEqual([r['screen'] for r in records],[s['id'] for s in SOURCE])
         for record in records:
             self.assertTrue(record['action']);self.assertTrue(record['renderer'])
@@ -241,9 +241,9 @@ class MapContractTests(unittest.TestCase):
             'gacha_batch_result':[1,3,1,3],'gacha_result':[2,2,3],'collection':[1,2,2],
             'collection_favorites':[2,1,2,2],'collection_all':[2,2,3,2],
             'collection_filter':[3,3,1,2,2],'collection_results':[2,2,3,2],
-            'inventory':[2,3],'village':[2,3,2],'village_houses':[1,2,1,2],
+            'inventory':[2,3],'village':[2,3,1,2],'village_houses':[1,2,1,2],
             'village_residents':[2,2,3,2],'village_resident':[1,1,1],
-            'village_mine':[2,1],'village_market':[2,1],'village_hunt':[2,1],
+            'village_mine':[1,2,1],'village_market':[1,2,1],'village_hunt':[1,2,1],
             'tower':[2,2],'tower_ready':[2,1,2],'tower_active':[1,1,2],'tower_lost':[2,1,2]}
         for sid,rows in expected.items():
             with self.subTest(screen=sid):self.assertEqual([len(r) for r in render_screen(sid)[1].inline_keyboard],rows)

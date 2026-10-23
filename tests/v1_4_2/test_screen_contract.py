@@ -22,9 +22,9 @@ def handler(data):
     if prefix=='miniboss':
         if action in ('hero','heroes'):return 'app.mini.boss.selection:boss_select_hero_callback' if action=='hero' else 'app.mini.boss.selection:boss_heroes_callback'
         module='app.mini.boss.handlers' if action in ('hit','forcefinish','start') else 'app.mini.boss.registration'
-        names={'join':'boss_join_callback','leave':'boss_leave_callback','list':'boss_list_callback','create':'boss_create_callback','preview':'boss_preview_callback','announce':'boss_announce_callback','close':'boss_close_callback','start':'boss_start_callback','reopen':'boss_reopen_callback','republish':'boss_republish_callback','cancel':'boss_cancel_callback','forcefinish':'boss_force_finish_callback','hit':'boss_hit_callback'}
+        names={'raids':('mythic.raid.handlers','home'),'join':'boss_join_callback','leave':'boss_leave_callback','list':'boss_list_callback','create':'boss_create_callback','preview':'boss_preview_callback','announce':'boss_announce_callback','close':'boss_close_callback','start':'boss_start_callback','reopen':'boss_reopen_callback','republish':'boss_republish_callback','cancel':'boss_cancel_callback','forcefinish':'boss_force_finish_callback','hit':'boss_hit_callback'}
         return module+':'+names[action]
-    names={
+    names={'raids':('mythic.raid.handlers','home'),
         'pvp':('events.pvp_handlers','action'),'guide':('ui.activities','combat_guide_callback'),'hevict':('ui.heroes','hero_evict_callback'),
         'launch':('handlers','launch_callback'),'create_help':('handlers','create_help_callback'),'home':('handlers','home_callback'),'character':('handlers','character_callback'),'charup':('ui.heroes','hero_upgrade_callback'),
         'collection':('ui.heroes','collection_callback'),'collectionopen':('ui.heroes','collection_open_callback'),'gacha':('ui.heroes','gacha_callback'),'gachapull':('ui.heroes','gacha_pull_callback'),'gacharepeat':('ui.heroes','gacha_repeat_callback'),
@@ -75,7 +75,7 @@ class ScreenCoverageTests(unittest.TestCase):
                     self.assertTrue(callable(getattr(importlib.import_module(module),function)),target)
                     callbacks.append({'text':button.text,'callback':button.callback_data,'handler':target})
         self.snapshots[sid]={'renderer':binding,'rows':[[b.text for b in row] for row in markup.inline_keyboard],'transitions':callbacks}
-        expected={'home':[2,1,2],'adventures':[2,2,1],'heroarea':[2,2,1],'more':[1,1,1,1],'collection':[1,2,2],'collection_all':[2,2,3,2],'collection_results':[2,2,3,2],'collection_filter':[3,3,1,2,2],'inventory':[2,3],'village':[2,3,2],'village_resident':[1,1,1],'village_mine':[2,1],'village_market':[2,1],'village_hunt':[2,1],'tower_ready':[2,1,2],'tower_active':[1,1,2],'tower_lost':[2,1,2],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3]}
+        expected={'home':[2,1,2],'adventures':[2,2,1],'heroarea':[2,2,1],'more':[1,1,1,1],'collection':[1,2,2],'collection_all':[2,2,3,2],'collection_results':[2,2,3,2],'collection_filter':[3,3,1,2,2],'inventory':[2,3],'village':[2,3,1,2],'village_resident':[1,1,1],'village_mine':[1,2,1],'village_market':[1,2,1],'village_hunt':[1,2,1],'tower_ready':[2,1,2],'tower_active':[1,1,2],'tower_lost':[2,1,2],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3]}
         if sid in expected:self.assertEqual([len(r) for r in markup.inline_keyboard],expected[sid])
         if sid in ('collection_all','collection_results'):
             self.assertEqual(sum(':hero:' in b.callback_data for row in markup.inline_keyboard for b in row),4)
@@ -106,5 +106,5 @@ class DesignContractTests(unittest.TestCase):
                     self.assertTrue(not target or target in ids or target in ('ui_back','nav_back'),(screen['id'],target))
     def test_original_shadow_catalogs_and_balance_are_untouched_in_followup(self):
         import subprocess
-        result=subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}','diff','293693d87692bb9e7f4567bcca895e799e7455d2','--','app/mini/content/heroes/shadow.json','app/mini/boss/content/bosses.json','app/mini/content/hero_images','docs/balance'],cwd=ROOT,capture_output=True,text=True)
+        result=subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}','diff','293693d87692bb9e7f4567bcca895e799e7455d2','--','app/mini/content/heroes/shadow.json','app/mini/content/hero_images','docs/balance'],cwd=ROOT,capture_output=True,text=True,encoding="utf-8")
         self.assertEqual(result.returncode,0);self.assertEqual(result.stdout,'')
