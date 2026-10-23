@@ -34,3 +34,11 @@ Provisional policies and unavailable content are listed in IMPLEMENTATION_STATUS
 У special HP-события — actor_id, kind, requested, actual_hp_damage, hp_before, hp_after. Вклад учитывает actual, не requested. Целочисленный floor выполняется на событии, после него следующий эффект видит обновлённое HP. Контрстихии добавляются отдельным overlay, физический damage_type не заменяется. При нехватке диапазона SQLite операция отклоняется транзакционно, скрытый игровой cap не вводится.
 
 Для обычного Boss необязательная `ability_config.element_multipliers` — проверяемая карта восьми стихий в integer percent; она замораживается вместе с конфигурацией. Реальные дополнительные слабости в 14 игровых шаблонов не придумывались. Из подходящих overlays применяется один наибольший множитель, при отсутствии совпадений — 100%.
+
+## Completion audit: team Arise and attack mode
+
+Normal Boss freezes shared Dark source instances at start (owner player_id + hero_id) and a single Lunar Shadows arcana. Each eligible actual attacker combines own allowed sources/lantern with every shared Dark instance and the single Lunar grant, rolling independently until one success. The source plan is persisted in team_state_json. Existing V15 battles without that field derive it from participant snapshots only. Legacy rules_version<15 keeps its original extraction path.
+
+Raid: a source instance is (owner player_id, hero_id), frozen at its first positive actual attack on that raid. Reusing/upgrading the hero on a later Moscow day does not create another Arise chance or retroactively change its first source. Different owner/hero instances are independent. Personal effects stay personal; Dark grants are shared to every positive contributor. Live catalog definitions are never consulted at finalization. Rewards and Arise decisions/results commit together. No extraction on cancellation/admin finish/zero HP contribution/missing Shadow mapping.
+
+freeze_hero(mode="raid") computes the basic raid attack without normal-only Duplicate Echoes, while preserving both independent frozen property definitions. Normal snapshots and ordinary attack growth remain compatible.

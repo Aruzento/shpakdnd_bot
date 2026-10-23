@@ -25,6 +25,15 @@ def initialize(conn, boss, participants, now):
         return []
     heroes = [json.loads(p["hero_snapshot_json"]) for p in participants]
     values = team.begin(heroes, boss["max_hp"], boss["reward_coins"])
+    from app.mini.combat.arise import shared_sources
+
+    values["arise_team_sources"] = shared_sources(
+        [
+            (p["player_id"], p["hero_id"], json.loads(p["hero_snapshot_json"]))
+            for p in participants
+        ],
+        team=values,
+    )
     save(conn, boss["id"], values)
     conn.execute(
         "UPDATE mini_bosses SET original_max_hp=?,original_reward_coins=? WHERE id=?",

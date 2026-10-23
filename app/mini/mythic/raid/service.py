@@ -74,24 +74,39 @@ def start(player_id, code, key, db_path=DB_PATH, *, now=None):
         return _raid(conn, rid)
 
 
-def _arise(conn, raid, pid, *, roller=None, now=None):
-    target = raid["snapshot"]
-    if not target.get("shadow_extractable", False):
-        return []
-    shadow = conn.execute(
-        "SELECT id,code FROM mini_heroes WHERE rarity='shadow' AND code=?",
-        (target.get("shadow_hero_code"),),
-    ).fetchone()
-    if shadow is None:
-        return []
-    from app.mini.combat.arise import sources, award
-
-    chances = []
+def _arise_roster(conn, raid_id):
+    # First positive attack per instance freezes its victory sources for this raid.
+    # No catalog reads: later upgrades/config edits cannot mutate these records.
+    roster, seen = [], set()
     for row in conn.execute(
-        "SELECT hero_json FROM mini_mythic_raid_attacks WHERE raid_id=? AND player_id=? ORDER BY id",
-        (raid["id"], pid),
+        "SELECT player_id,hero_id,hero_json,events_json FROM mini_mythic_raid_attacks WHERE raid_id=? ORDER BY id",
+        (raid_id,),
     ):
-        chances.extend(sources(json.loads(row[0]), mode="raid"))
+        identity = (row["player_id"], row["hero_id"])
+        positive = any(
+            e.get("actual_hp_damage", 0) > 0 and e.get("actor_id") == row["player_id"]
+            for e in json.loads(row["events_json"])
+        )
+        if identity not in seen and positive:
+            seen.add(identity)
+            roster.append((*identity, json.loads(row["hero_json"])))
+    return roster
+
+
+def _arise(conn, raid, pid, *, roller=None, now=None, roster=None):
+    if raid["status"] != "active" or raid["current_hp"] != 0:
+        return []
+    from app.mini.combat.arise import personal_sources, shared_sources, award
+
+    roster = _arise_roster(conn, raid["id"]) if roster is None else roster
+    chances = []
+    for owner, hid, hero in roster:
+        if owner == pid:
+            chances.extend(
+                (f"personal:{owner}:{hid}:{source}", chance)
+                for source, chance in personal_sources(hero, mode="raid")
+            )
+    chances.extend(shared_sources(roster, mode="raid"))
     contribution = conn.execute(
         "SELECT damage FROM mini_mythic_raid_damage WHERE raid_id=? AND player_id=?",
         (raid["id"], pid),
@@ -101,7 +116,7 @@ def _arise(conn, raid, pid, *, roller=None, now=None):
         "raid",
         raid["id"],
         pid,
-        target,
+        raid["snapshot"],
         bool(contribution and contribution[0] > 0),
         chances,
         now=now,
@@ -112,6 +127,9 @@ def _arise(conn, raid, pid, *, roller=None, now=None):
 def _finalize(conn, raid, now, *, chooser=None, roller=None):
     if raid["status"] != "active":
         return json.loads(raid["result_json"])
+    if raid["current_hp"] != 0:
+        raise ValueError("Обычная победа требует нулевого HP босса.")
+    roster = _arise_roster(conn, raid["id"])
     contributions = dict(
         conn.execute(
             "SELECT player_id,damage FROM mini_mythic_raid_damage WHERE raid_id=?",
@@ -133,7 +151,7 @@ def _finalize(conn, raid, now, *, chooser=None, roller=None):
             f"raid:{raid['id']}:reward",
             {"raid_id": raid["id"]},
         )
-        reward["arise"] = _arise(conn, raid, pid, roller=roller, now=now)
+        reward["arise"] = _arise(conn, raid, pid, roller=roller, now=now, roster=roster)
         conn.execute(
             "INSERT INTO mini_mythic_raid_rewards VALUES(?,?,?,?,?,?)",
             (
@@ -208,7 +226,7 @@ def attack(
         assert_available(conn, player_id, hero_id)
         source = dict(row)
         source["passives"] = json.loads(source.get("passives_json") or "{}")
-        hero = freeze_hero(source)
+        hero = freeze_hero(source, mode="raid")
         from app.mini.equipment.service import aggregate_in_transaction
 
         hero["attack"] += aggregate_in_transaction(conn, player_id)
@@ -282,57 +300,74 @@ def cancel(
 ):
     if not confirmed:
         raise ValueError("Требуется подтверждение отмены.")
+    if not key or not isinstance(reason, str) or len(reason) > 500:
+        raise ValueError("Нужны ключ операции и причина длиной до 500 символов.")
     now = timestamp(now)
     with transaction(db_path) as conn:
         raid = _raid(conn, raid_id, world_id)
         world = conn.execute(
             "SELECT chat_id,thread_id FROM mini_worlds WHERE id=?", (world_id,)
         ).fetchone()
-        from app.context import get_topic_admin
+        from app.context import get_topic_admin, normalize_username
+        from app.mini.superadmin.access import SUPERADMIN_USER_ID
 
         required = (
             get_topic_admin(world["chat_id"], world["thread_id"]) if world else None
         )
-        from app.mini.superadmin.access import SUPERADMIN_USER_ID
-
-        # Callers resolve topic administrator by Telegram identity; superadmin is numeric.
         if actor_user_id != SUPERADMIN_USER_ID and (
             not required
             or not actor_username
-            or actor_username.lower().lstrip("@") != required.lower().lstrip("@")
+            or normalize_username(actor_username) != required
         ):
             raise ValueError("Нет прав администратора для отмены рейда.")
-        if with_reward:
-            raise ValueError(
-                "Параметры выплаты при отмене с наградой не утверждены (O01)."
-            )
+        payload = {
+            "reason": reason,
+            "with_reward": bool(with_reward),
+            "revision": expected_revision,
+        }
+        action = "cancel_reward_blocked" if with_reward else "cancel"
         old = conn.execute(
             "SELECT * FROM mini_mythic_raid_audit WHERE operation_key=?", (key,)
         ).fetchone()
         if old:
-            if old["raid_id"] != raid_id or old["actor_id"] != actor_user_id:
+            previous = json.loads(old["payload"])
+            # Existing V15 audit entries did not include a revision in their payload.
+            compared = {k: v for k, v in payload.items() if k in previous}
+            if (
+                old["raid_id"] != raid_id
+                or old["actor_id"] != actor_user_id
+                or old["action"] != action
+                or previous != compared
+            ):
                 raise ValueError("Ключ операции уже использован.")
-            return {"cancelled": True, "applied": False}
-        if raid["status"] != "active":
-            raise ValueError("Рейд уже завершён.")
-        if expected_revision is not None and raid["revision"] != expected_revision:
-            raise ValueError("Рейд изменился, подтверди отмену заново.")
-        conn.execute(
-            "UPDATE mini_mythic_raids SET status='cancelled',ended_at=?,revision=revision+1 WHERE id=?",
-            (now, raid_id),
-        )
-        conn.execute(
-            "INSERT INTO mini_mythic_raid_audit(raid_id,actor_id,operation_key,action,payload,created_at) VALUES(?,?,?,?,?,?)",
-            (
-                raid_id,
-                actor_user_id,
-                key,
-                "cancel",
-                json.dumps({"reason": reason, "with_reward": False}),
-                now,
-            ),
-        )
-        return {"cancelled": True, "applied": True}
+            result = {
+                "cancelled": not with_reward,
+                "applied": False,
+                "blocked": "O01" if with_reward else None,
+            }
+        else:
+            if raid["status"] != "active":
+                raise ValueError("Рейд уже завершён.")
+            if expected_revision is not None and raid["revision"] != expected_revision:
+                raise ValueError("Рейд изменился, подтверди отмену заново.")
+            if not with_reward:
+                conn.execute(
+                    "UPDATE mini_mythic_raids SET status='cancelled',ended_at=?,revision=revision+1 WHERE id=?",
+                    (now, raid_id),
+                )
+            conn.execute(
+                "INSERT INTO mini_mythic_raid_audit(raid_id,actor_id,operation_key,action,payload,created_at) VALUES(?,?,?,?,?,?)",
+                (raid_id, actor_user_id, key, action, json.dumps(payload), now),
+            )
+            result = {
+                "cancelled": not with_reward,
+                "applied": not with_reward,
+                "blocked": "O01" if with_reward else None,
+            }
+    # Persist the authorized refusal, with zero economic/state changes, before raising.
+    if with_reward:
+        raise ValueError("Параметры выплаты при отмене с наградой не утверждены (O01).")
+    return result
 
 
 def state(world_id, db_path=DB_PATH, *, raid_id=None):

@@ -270,13 +270,18 @@ async def callback_action(callback):
             await enrollment_menu(callback, session)
             return
         if action == "new":
-            if callback.message.chat.type == "private":
-                raise ValueError(
-                    "Для быстрого создания вернись в тему истории и нажми «Участвовать»."
-                )
             if not user:
                 raise ValueError("Добавь username Telegram для D&D или выбери Mini.")
-            enrollment.begin(sid, chat, thread, uid, "dnd")
+            enrollment.begin(
+                sid,
+                chat,
+                thread,
+                uid,
+                "dnd",
+                input_scope=(
+                    (uid, 0) if callback.message.chat.type == "private" else None
+                ),
+            )
             await callback.answer()
             await callback.message.answer(
                 "Быстрое создание D&D-персонажа: введи имя. Затем попрошу расу и класс."
@@ -354,20 +359,11 @@ class PendingStoryCharacter(Filter):
     async def __call__(self, message):
         if not message.from_user or not message.text or message.text.startswith("/"):
             return False
-        import sqlite3
-        from app.mini.db import connect_mini_db
-
-        with connect_mini_db() as conn:
-            conn.row_factory = sqlite3.Row
-            if not conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='story_enrollment'"
-            ).fetchone():
-                return False
-            row = conn.execute(
-                "SELECT e.* FROM story_enrollment e JOIN story_sessions s ON s.id=e.session_id WHERE e.chat_id=? AND e.thread_id=? AND e.user_id=? AND e.mode='dnd' AND e.stage IN ('name','race','class') AND s.status='registration'",
-                (message.chat.id, message.message_thread_id or 0, message.from_user.id),
-            ).fetchone()
-        return bool(row)
+        return bool(
+            enrollment.pending(
+                message.chat.id, message.message_thread_id or 0, message.from_user.id
+            )
+        )
 
 
 @router.message(PendingStoryCharacter())
@@ -381,14 +377,15 @@ async def quick_character(message):
             message.text,
         )
         stage = result["stage"]
+        chat, thread = result["chat_id"], result["thread_id"]
         if stage == "done":
             service.join(
                 result["session_id"],
-                message.chat.id,
-                message.message_thread_id or 0,
+                chat,
+                thread,
                 message.from_user.id,
                 "dnd",
-                {"thread_id": message.message_thread_id or 0},
+                {"thread_id": thread},
                 f"story-enroll:{result['session_id']}:{message.from_user.id}",
                 username=username(message.from_user),
             )
@@ -396,8 +393,8 @@ async def quick_character(message):
             await refresh(
                 message.bot,
                 service.status(
-                    message.chat.id,
-                    message.message_thread_id or 0,
+                    chat,
+                    thread,
                     session_id=result["session_id"],
                 ),
             )

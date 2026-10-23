@@ -178,13 +178,8 @@ jobs:
       - name: V1.5 populated migration replay and old-code startup
         run: python tools/validate_v15_migration.py
 
-      - name: Verify protected V1.4.3.1 deployment files match synchronized main
-        run: |
-          git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- \
-            deploy/deploy-shpakdnd.sh deploy/deploy_helpers.py \
-            deploy/install-deploy-shpakdnd.sh deploy/sqlite-deploy.py \
-            deploy/telegram-deploy-notice.py deploy/pvp_ops.py \
-            tests/v1_3_3/test_deploy_shell.py tests/v1_4_3_1
+      - name: Verify protected bundle and exact authorized logger signal fix
+        run: python tools/validate_deploy_bundle.py
 
       - name: Compile Python modules
         run: python -m compileall -q bot.py app

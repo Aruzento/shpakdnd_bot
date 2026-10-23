@@ -18,6 +18,7 @@ from app.mini.gacha import get_gacha_state
 from app.mini.heroes import get_hero_image, get_player_hero
 from app.mini.hero_upgrades import hero_upgrade_state
 from app.mini.ui.navigation import clip
+from app.mini.ui.limits import clip as telegram_clip, units as telegram_units
 
 
 @editorial_screen
@@ -77,8 +78,8 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
     if pull_result is not None and pull_result.get('pity') is not None:
         from app.mini.pity import format_progress
         progress = format_progress(pull_result['pity'])
-        return caption[:1018-len(progress)] + '\n\n' + progress
-    return caption if resident else caption[:1020]
+        return telegram_clip(caption,1018-telegram_units(progress)) + '\n\n' + progress
+    return caption if resident else telegram_clip(caption,1020)
 
 
 @editorial_screen

@@ -21,6 +21,7 @@ from app.mini.ui.context import (
     username_from_user,
 )
 from app.mini.ui.transport import send_private_text_from_callback
+from app.mini.ui.limits import clip as telegram_clip
 from app.mini.mythic.raid import service
 from app.mini.mythic.raid.catalog import load, IMAGES
 from app.mini.mythic.wallet import transaction
@@ -52,7 +53,7 @@ def public_text(raid):
     ]
     for i, row in enumerate(raid["ranking"][:15], 1):
         lines.append(f"{i}. {row['character_name']} — {row['damage']}")
-    return "\n".join(lines)[:3900]
+    return telegram_clip("\n".join(lines), 3500)
 
 
 async def publish(bot, world, raid):
@@ -61,7 +62,7 @@ async def publish(bot, world, raid):
         IMAGES / raid["snapshot"]["image"] if raid["snapshot"].get("image") else None
     )
     medium = "photo" if image and image.is_file() else "text"
-    caption = "\n".join(public_text(raid).splitlines()[:9])[:1024]
+    caption = telegram_clip("\n".join(public_text(raid).splitlines()[:9]), 1024)
     # Claim delivery before sending. Uncertain sends are never automatically repeated.
     with transaction() as conn:
         conn.execute(
@@ -283,6 +284,7 @@ async def action(callback):
     uid = callback.from_user.id
     b = lambda label, payload: button(world["id"], uid, label, payload)
     key = f"raid-ui:{world['id']}:{uid}:{payload}"
+    receipt = ""
     try:
         if op == "hitask":
             rid, hid = int(parts[1]), int(parts[2])
@@ -294,6 +296,8 @@ async def action(callback):
                 ]
             )
         elif op == "cancelask":
+            if parts[2] not in ("0", "1"):
+                raise ValueError("Недопустимый режим отмены.")
             if not is_admin(callback, world):
                 raise ValueError("Нет прав администратора темы.")
             text = (
@@ -318,11 +322,23 @@ async def action(callback):
                     raise ValueError("Каталог изменился, обнови меню.")
                 service.start(player["id"], matches[0]["code"], key)
             elif op == "hit":
-                service.attack(player["id"], int(parts[1]), int(parts[2]), key)
+                outcome = service.attack(
+                    player["id"], int(parts[1]), int(parts[2]), key
+                )
+                receipt = f"Снято HP: {outcome['actual_hp_damage']}. Осталось атак: {outcome['attempts_left']}/10."
+                if outcome.get("egg"):
+                    from app.mini.mythic.handlers import NAMES
+
+                    receipt += f"\nПолучено первое яйцо: {NAMES[outcome['egg']['element']]}. Оно в инвентаре зверей."
+                for reward in outcome.get("final", {}).get("rewards", []):
+                    if reward["player_id"] == player["id"]:
+                        receipt += (
+                            f"\nНаграда: +{reward['amount']} мифических осколков."
+                        )
+                        if any(r["success"] for r in reward.get("arise", [])):
+                            receipt += "\nArise: получена тень!"
+
             elif op == "cancel":
-                current = service.state(world["id"], raid_id=int(parts[1]))
-                if current["revision"] != int(parts[3]):
-                    raise ValueError("Рейд изменился, подтверди отмену заново.")
                 service.cancel(
                     int(parts[1]),
                     world["id"],
@@ -347,6 +363,9 @@ async def action(callback):
                 page=int(parts[1]) if op == "pick" else 0,
                 admin=is_admin(callback, world),
             )
+        if receipt:
+            text = receipt + "\n\n" + text
+        text = telegram_clip(text, 4000)
         await callback.answer()
         await send_private_text_from_callback(callback, world, text, markup)
     except (ValueError, IndexError) as error:

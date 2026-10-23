@@ -75,6 +75,7 @@ def grant_victory_rewards(
     *,
     include_all_registered: bool = False,
     allow_shadow: bool = True,
+    normal_victory: bool = True,
     when: datetime | None = None,
 ) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
@@ -86,7 +87,7 @@ def grant_victory_rewards(
     blessing=values.get('lunar',{}).get('arcana')==10
     if blessing:coins_each=0;items=[]
     star_bonus=False
-    if int(dict(boss).get('rules_version',0))>=15 and not include_all_registered:
+    if int(dict(boss).get('rules_version',0))>=15 and not include_all_registered and normal_victory:
         snapshots=[json.loads(r[0]) for r in conn.execute('SELECT hero_snapshot_json FROM mini_boss_participants WHERE boss_id=?',(boss['id'],))]
         star_levels=[max(0,min(5,int(h.get('stars',1))-1)) for h in snapshots if h.get('passive_key')=='mythic_star']
         if star_levels:
@@ -286,7 +287,7 @@ def finish_admin_victory(
 
 def finish_banishment(conn,boss,when):
     """Living boss leaves treasure; no extraction or death hooks."""
-    rewards=grant_victory_rewards(conn,boss,when=when,allow_shadow=False)
+    rewards=grant_victory_rewards(conn,boss,when=when,allow_shadow=False,normal_victory=False)
     conn.execute("UPDATE mini_bosses SET status='defeated',battle_result='banished',ended_at=?,turn_started_at=NULL WHERE id=?",(db_time(when),boss['id']))
     return rewards
 

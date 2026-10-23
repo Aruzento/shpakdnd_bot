@@ -29,6 +29,7 @@ def resolve_turn(attempt, *, roller=None):
     form = abilities.resolve_round_start(hero, state=hero_state, round_number=turn, roller=roller)
     hero, hero_state = form['hero'], form['state']
     events.extend(form['events'])
+    if v15 and values.get('neutralized'):enemy['faction']='neutral'
     percent = faction_multiplier_percent(hero["faction"], enemy["faction"])
     passive = hero.get("passive_key") or "none"
     participants = [{"hero_snapshot_json":json.dumps(hero)}]
@@ -105,10 +106,15 @@ def resolve_turn(attempt, *, roller=None):
                 events.extend(extra['events'])
                 modifiers=team.modifiers(values,hero,attempt['player_id'],turn)
                 modifiers['bonus_bps'].append(extra.get('ordinary_bonus_bps',0))
+                if classes.enabled(enemy):
+                    if hero.get('class_tag')=='warrior':modifiers['bonus_bps'].append(500)
+                    if hero.get('class_tag')=='beast':modifiers['bonus_bps'].append(200*int(hero_state.get('class_successful_hits',0)))
                 raw=ordinary_damage(extra['damage'],**{k:modifiers[k] for k in ('bonus_bps','additive','multiplier','reduction_percent')},protected_zero=not reachable,element_percents=[v for e,v in enemy.get('element_multipliers',{}).items() if e in set(modifiers['elements'])|set(hero.get('elements',[]))])
                 extra_hit=damage(creatures.feature_damage(enemy,hero,modify_damage(raw,percent))+extra.get('pure_bonus',0),'extra_attack')
                 post=abilities.resolve_after_attack(passive,hit_number=hit_number,actual_hp_damage=extra_hit,state=hero_state,ability_definition=definition)
-                hero_state=post['state'];events.extend(post['events'])
+                class_plan=classes.on_hit(enemy,hero,post['state'],successful=extra_hit>0,roller=roller)
+                apply(class_plan)
+                hero_state=class_plan['state'];events.extend(post['events'])
                 if post.get('restore_shield'):enemy['reward_shields']=min(3,enemy['reward_shields']+1)
                 shared=team.after_hit(values,hero,attempt['player_id'],enemy['current_hp'],enemy['max_hp'],turn,extra_hit,is_extra=True,roller=roller)
                 values=shared['state']

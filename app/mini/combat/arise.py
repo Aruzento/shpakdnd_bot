@@ -88,3 +88,34 @@ def award(
         (mode, battle_id, pid, json.dumps(results)),
     )
     return results
+
+
+def personal_sources(hero, *, mode="normal"):
+    """Personal passives/lantern, excluding the two shared team grants."""
+    return [
+        (name, chance)
+        for name, chance in sources(hero, mode=mode)
+        if name not in {"mythic_dark", "lunar_shadows"}
+    ]
+
+
+def shared_sources(roster, *, mode="normal", team=None):
+    """One independent grant per owner+hero instance, from its first snapshot.
+
+    Roster entries are (owner player_id, hero_id, frozen hero). Callers order
+    first appearances; recurring attacks/days never add another chance.
+    Lunar Shadows is a single frozen normal team arcana, not one per hero.
+    """
+    result, seen = [], set()
+    for owner, hero_id, hero in roster:
+        identity = (owner, hero_id)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        for name, chance in sources(hero, mode=mode):
+            if name == "mythic_dark":
+                result.append((f"team:{owner}:{hero_id}:mythic_dark", chance))
+    lunar = (team or {}).get("lunar", {})
+    if mode == "normal" and lunar.get("arcana") == 11:
+        result.append(("team:lunar_shadows", 25 + 2 * lunar["level"]))
+    return result

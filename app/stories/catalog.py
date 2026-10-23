@@ -35,6 +35,7 @@ def validate(data):
     if (
         not isinstance(nodes, dict)
         or not 1 <= len(nodes) <= 1000
+        or not isinstance(data.get("start_node"), str)
         or data.get("start_node") not in nodes
     ):
         raise ValueError("Invalid nodes/start_node")

@@ -38,7 +38,10 @@ def begin(heroes, original_hp, base_coins, *, chooser=None, lunar=None):
         "sum_stars": sum(int(h.get("stars", 0)) for h in heroes),
         "round_buffs": {},
         "sun_marks": {},
-        "elements": [],
+        "elements": [
+            e for e in ("dark", "star", "moon", "sun") if "mythic_" + e in keys
+        ],
+        "draghar_present": "bloodthirsty_fight" in keys,
     }
     if "mythic_ice" in keys:
         ice = heroes[keys.index("mythic_ice")]
@@ -237,7 +240,11 @@ def reward_attack(state, current_hp, round_number, *, roller=None):
 
 
 def coins(state, current_base, *, stolen=0, boss_damage=0, shields_intact=False):
-    base = state["draghar_cap"] if state.get("last_stand_active") else int(current_base)
+    base = (
+        state["draghar_cap"]
+        if state.get("draghar_present", state.get("last_stand_active"))
+        else int(current_base)
+    )
     value = max(0, base - state.get("seal_penalty", 0) - int(stolen) - int(boss_damage))
     if shields_intact:
         value = value * (100 + state.get("lightning_reward_percent", 0)) // 100

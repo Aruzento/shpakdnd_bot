@@ -67,18 +67,18 @@ def mode_property(hero, mode):
     return passive_contract(hero)[mode]
 
 
-def normalized_attack(hero):
+def normalized_attack(hero, *, mode="normal"):
     from app.mini.hero_upgrades import calculate_attack
 
     base = max(0, int(hero.get("base_attack", hero.get("attack", 0))))
-    if mode_property(hero, "normal")["key"] == "duplicate_echoes":
+    if mode == "normal" and mode_property(hero, "normal")["key"] == "duplicate_echoes":
         base = base * (100 + 2 * max(0, int(hero.get("copies", 1)) - 1)) // 100
     return calculate_attack(
         base, int(hero.get("stars", 0)), rarity=hero.get("rarity", "common")
     )
 
 
-def freeze_hero(hero):
+def freeze_hero(hero, *, mode="normal"):
     result = deepcopy(dict(hero))
     result["base_attack"] = int(hero.get("base_attack", hero.get("attack", 0)))
     result["copies"] = int(hero.get("copies", 1))
@@ -88,15 +88,15 @@ def freeze_hero(hero):
     result["rules_version"] = VERSION
     from app.mini.combat.hero_abilities.catalog import get_ability
 
-    for mode, prop in result["passives"].items():
+    for property_mode, prop in result["passives"].items():
         if "definition" not in prop:
-            prop["definition"] = deepcopy(get_ability(prop["key"], mode=mode))
+            prop["definition"] = deepcopy(get_ability(prop["key"], mode=property_mode))
         prop["configured"] = bool(
             prop.get("configured") and prop["definition"].get("configured")
         )
         if not prop["configured"]:
             prop["key"] = "none"
-            prop["definition"] = deepcopy(get_ability("none", mode=mode))
+            prop["definition"] = deepcopy(get_ability("none", mode=property_mode))
     result["passive_key"] = result["passives"]["normal"]["key"]
     overlays = list(result.get("elements", []))
     if any(e not in ELEMENTS for e in overlays):
@@ -105,7 +105,7 @@ def freeze_hero(hero):
     if result.get("rarity") == "mythic" and own in ELEMENTS and own not in overlays:
         overlays.append(own)
     result["elements"] = overlays
-    result["attack"] = normalized_attack(result)
+    result["attack"] = normalized_attack(result, mode=mode)
     return result
 
 

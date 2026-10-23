@@ -18,6 +18,7 @@ COMMANDS = [
         "tools/validate_v15_migration.py",
     ],
     ["check_bot.py"],
+    ["tools/validate_deploy_bundle.py"],
     ["-m", "app.mini.combat.hero_abilities.validate"],
     ["-m", "app.mini.boss.boss_abilities.validate"],
     ["-m", "app.mini.tower.validate"],
