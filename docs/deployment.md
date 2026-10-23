@@ -229,3 +229,11 @@ Frozen bundle, pvp_ops.py, lock/backup/SQLite и rollback gates не измен�
 Реальные production/TEST VM проверки не выполняются автоматически.
 
 [Аварийное восстановление, покрытие и план установки/отката deployment tooling](operations/DEPLOY-CONFIRM-V1.4.3.1.md).
+
+## Автоматизированный TEST staging (отдельный контур)
+
+Для feature PR использовать только trusted main workflow
+`.github/workflows/staging-deploy.yml`; production-команда не применяется.
+[Контракт, однократная установка, secrets, отчёты и ограничения](operations/STAGING-AUTOMATION.md).
+[Проект переноса долгих production проверок до остановки](operations/PRODUCTION-PREFLIGHT-PROPOSAL.md)
+не меняет установленный production bundle.

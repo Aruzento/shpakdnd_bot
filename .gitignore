@@ -7,3 +7,6 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+
+.worktrees/
+.staging-checks/

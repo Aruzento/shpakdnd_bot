@@ -37,8 +37,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Record exact tested PR HEAD
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -129,8 +135,15 @@ jobs:
           print('Application SQLite is isolated outside the checkout.')
           PY
 
+      - name: Verify privileged SQLite boundary on isolated runner
+        run: sudo -n -- "$(command -v python)" -B tests/staging/privileged_sqlite_probe.py
+
+      - name: Verify effective systemd runtime policy on isolated runner
+        run: sudo -n -- "$(command -v python)" -B tests/staging/runtime_policy_probe.py
+
       - name: Full unittest suite
-        run: python -m unittest discover -s tests -q
+        # Full discover -s tests -q, with explicit failure on unexplained skips.
+        run: python deploy/staging/unittest_policy.py
 
       - name: V1.4.3.1 protected input and real Linux PTY deployment regressions
         run: python -m unittest tests.v1_4_3_1.test_deploy_confirm -q
@@ -183,7 +196,7 @@ jobs:
             tests/v1_3_3/test_deploy_shell.py tests/v1_4_3_1
 
       - name: Compile Python modules
-        run: python -m compileall -q bot.py app
+        run: python -m compileall -q bot.py app deploy/staging tests/staging
 
       - name: Validate hero abilities
         run: python -m app.mini.combat.hero_abilities.validate
@@ -274,3 +287,19 @@ jobs:
         run: |
           git diff --check
           git diff --check origin/main...HEAD
+
+      - name: Audit all 109 offline screens
+        run: python deploy/audit-v142-ui.py --output .staging-checks/ui-audit
+
+      - name: Create review release manifest
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python deploy/staging/manifest.py --sha "$EXPECTED_SHA" --output .staging-checks/release-manifest.json
+
+      - name: Upload review release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ github.event.pull_request.head.sha || github.sha }}-py${{ matrix.python-version }}
+          path: .staging-checks/
+          include-hidden-files: true
+          if-no-files-found: error

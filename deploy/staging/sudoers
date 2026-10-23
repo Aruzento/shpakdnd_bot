@@ -1,0 +1,4 @@
+# /etc/sudoers.d/shpakdnd-staging -- mode 0440, root:root, validate with visudo -cf.
+# Arguments after the fixed script path are independently validated by controller.py.
+Defaults:staging-deploy env_reset, !setenv
+staging-deploy ALL=(root) NOPASSWD: /usr/bin/python3 -I /usr/local/lib/shpakdnd-staging/controller.py *
