@@ -33,6 +33,10 @@ def load_ability_catalog() -> dict:
     for key, ability in abilities.items():
         if not str(key).strip() or not isinstance(ability, dict):
             raise AbilityCatalogError("Некорректная запись пассивки.")
+        if 'raid' in ability:
+            from app.mini.mythic.raid.contracts import validate
+            try:validate(ability['raid'])
+            except ValueError as error:raise AbilityCatalogError(f'Ability {key}: {error}') from error
         effects = ability.get("effects", [])
         if not isinstance(effects, list):
             raise AbilityCatalogError(
@@ -72,10 +76,15 @@ def load_ability_catalog() -> dict:
     return data
 
 
-def get_ability(passive_key: str) -> dict:
+def get_ability(passive_key: str, *, mode='normal') -> dict:
+    if mode not in ('normal','raid'):raise AbilityCatalogError('Unknown ability mode.')
     key = str(passive_key or "none").strip() or "none"
     catalog = load_ability_catalog()
     ability = catalog["abilities"].get(key)
+    if mode=='raid':
+        if key.startswith('mythic_') and key.removeprefix('mythic_') in {'fire','ice','lightning','earth','dark','star','moon','sun'}:
+            ability={'name':key,'effects':[]}
+        else:ability=ability.get('raid') if ability else None
     if ability is None:
         # Не ломаем бой из-за нового passive_key: герой просто бьёт базовой атакой.
         return {

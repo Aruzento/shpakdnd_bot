@@ -472,7 +472,7 @@ def grant_summoned_hero_in_transaction(conn, player, hero, duplicate_shards):
             (int(player_id), int(hero["id"])),
         )
     else:
-        shards_awarded = int(duplicate_shards.get(hero["rarity"], 0))
+        shards_awarded = int(duplicate_shards.get(hero["rarity"], 0)) * int(owned["copies"])
         copies = int(owned["copies"]) + 1
         shards += shards_awarded
         conn.execute(

@@ -354,7 +354,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         with patch.object(engine, "_roll_success") as roll:
             result = self.hit(1)
             roll.assert_not_called()
-        self.assertEqual(result["rewards"]["missed_players"], 1)
+        self.assertEqual(result["rewards"]["missed_players"], 0)
         self.assertEqual(self.shards(0), 0)
 
     def test_critical_guarded_attacks_each_roll_salvage_once(self):
@@ -467,7 +467,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         self.start("battle_echo")
         self.seed_runtime(0, pending_echo_damage=45)
         self.advance()
-        self.advance(self.now + timedelta(hours=4))
+        self.advance(self.now + timedelta(seconds=900))
         self.assertEqual(len(self.events("battle_echo")), 1)
         self.assertEqual(self.participant(0)["total_damage"], 45)
         self.assertEqual(self.participant(0)["skipped_turns"], 1)
@@ -479,7 +479,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         with patch.object(engine, "_roll_success", return_value=True):
             result = self.advance()
         self.assertEqual(result["state"]["boss"]["status"], "defeated")
-        self.assertEqual(result["rewards"]["players"], 1)
+        self.assertEqual(result["rewards"]["players"], 2)
         self.assertEqual(self.participant(0)["total_damage"], 1000)
         self.assertEqual(self.participant(0)["hit_count"], 0)
         self.assertEqual(self.shards(1), 3)
@@ -525,12 +525,12 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         self.start("blood_frenzy")
         for number, expected in enumerate((100, 115, 130, 145, 100), 1):
             result = self.hit(0)
-            self.assertEqual(result["ability_damage"], expected)
+            self.assertEqual(result["ability_damage"], 100)
             self.assertEqual(result["damage"], expected)
-            self.assertEqual(result["extra_damage"], 100 if number == 4 else 0)
+            self.assertEqual(result["extra_damage"], 145 if number == 4 else 0)
             self.assertEqual(self.participant(0)["hit_count"], number)
             self.hit(1)
-        self.assertEqual(self.participant(0)["total_damage"], 690)
+        self.assertEqual(self.participant(0)["total_damage"], 735)
         with connect_mini_db(self.db) as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM mini_boss_actions WHERE action_type = 'extra_attack'").fetchone()[0], 1)
 
@@ -538,22 +538,22 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         self.start("blood_frenzy", ability="mechanism", faction="dark")
         self.participant_update(0, hit_count=3, damage_bonus_percent=10)
         result = self.hit(0)
-        self.assertEqual(result["ability_damage"], 145)
-        self.assertEqual(result["damage_after_faction"], 290)
-        self.assertEqual(result["damage_before_external_bonus"], 232)
-        self.assertEqual(result["damage"], 256)
-        self.assertEqual(result["extra_damage"], 176)
+        self.assertEqual(result["ability_damage"], 100)
+        self.assertEqual(result["damage_after_faction"], 200)
+        self.assertEqual(result["damage_before_external_bonus"], 160)
+        self.assertEqual(result["damage"], 248)
+        self.assertEqual(result["extra_damage"], 248)
         self.assertEqual(self.participant(0)["hit_count"], 4)
-        self.assertEqual(self.participant(0)["total_damage"], 432)
+        self.assertEqual(self.participant(0)["total_damage"], 496)
 
-    def test_frenzy_extra_does_not_call_attack_or_kill_passive_again(self):
+    def test_frenzy_extra_runs_passive_and_one_kill_without_recursion(self):
         self.start("blood_frenzy", hp=240)
         self.participant_update(0, hit_count=3)
         with patch("app.mini.boss.calculations.resolve_attack", wraps=engine.resolve_attack) as attack, patch(
-            "app.mini.boss.combat.resolve_kill", side_effect=AssertionError("No extra kill hook")
+            "app.mini.boss.combat.resolve_kill", wraps=engine.resolve_kill
         ):
             result = self.hit(0)
-        self.assertEqual(attack.call_count, 1)
+        self.assertEqual(attack.call_count, 2)
         self.assertEqual(result["extra_damage"], 95)
         self.assertEqual(result["state"]["boss"]["status"], "defeated")
         self.assertEqual(self.participant(0)["hit_count"], 4)
@@ -571,7 +571,7 @@ class NewHeroPassiveIntegrationTests(unittest.TestCase):
         self.participant_update(0, hit_count=3)
         result = self.hit(0)
         self.assertEqual(result["damage"], 0)
-        self.assertEqual(result["extra_damage"], 100)
+        self.assertEqual(result["extra_damage"], 145)
         self.assertEqual(self.participant(0)["hit_count"], 4)
 
     def test_runtime_migration_preserves_all_existing_fighting_values(self):

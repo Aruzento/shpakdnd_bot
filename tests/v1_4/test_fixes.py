@@ -304,7 +304,7 @@ class ShadowBattleTests(MiniCase):
                 result['effects']=[*result['effects'],dict(trigger='attack',type='every_n_extra_hits',every=3,extra_attacks=1,damage_percent=100,message='fixture')]
             return result
         with patch.object(heroes,'get_ability',side_effect=ability):third=self.hit(b,2)
-        self.assertEqual((third['damage'],third['extra_damage']),(28,14))
+        self.assertEqual((third['damage'],third['extra_damage']),(28,0))
         self.assertEqual(self.participant(b)['hit_count'],3)
         self.hit(b,3);self.hit(b,4);self.assertEqual(self.hit(b,5)['damage'],28)
 
@@ -325,7 +325,7 @@ class ShadowBattleTests(MiniCase):
         h=json.loads(self.participant(b)['hero_snapshot_json']);h.update(class_tag='beast',attack_range='melee')
         self.sql('UPDATE mini_boss_participants SET hero_snapshot_json=? WHERE boss_id=?',(json.dumps(h),b))
         result=self.hit(b)
-        self.assertEqual(result['damage'],result['extra_damage']);self.assertEqual(result['damage'],4)
+        self.assertEqual(result['damage'],result['extra_damage']);self.assertEqual(result['damage'],3)
 
     def test_waste_stops_extra_when_first_double_hit_kills_boss(self):
         b=self.battle('shadow_waste_of_time')

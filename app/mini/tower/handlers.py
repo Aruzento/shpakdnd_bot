@@ -94,6 +94,7 @@ def render_state(state,world,user,reward=None):
             rows.append([button(editorial_text('tower.render_state.line_25'),world,user,f"heroes.{enemy['floor']}.0"),equipment])
     if reward:
         lines.append(editorial_text('tower.render_state.line_07', shards=f"{reward['shards']}"))
+        if reward.get('mythic_shards'):lines.append(f"✨ Мифические осколки: +{reward['mythic_shards']}")
         if reward['equipment']:
             e=reward['equipment'];lines.append(editorial_text('tower.render_state.line_12', name=f"{e['name']}", attack_bonus=f"{e['attack_bonus']}"))
     if not any(equipment in row for row in rows):rows.append([equipment])
@@ -139,7 +140,7 @@ async def tower_callback(callback):
             state=get_state(player['id']);text,markup=render_state(state,w,u)
         else:
             if parts[0]=='start' and len(parts)==3:
-                state['attempt']=start_selected_attempt(player['id'],floor,int(parts[2]))
+                state['attempt']=start_selected_attempt(player['id'],floor,int(parts[2]));reward=state['attempt'].get('initial_reward')
             elif parts[0]=='retry' and len(parts)==2:
                 attempt=retry_attempt(player['id'],int(parts[1]))
                 state=get_state(player['id']);state['attempt']=attempt

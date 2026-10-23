@@ -57,8 +57,16 @@ def screen(state,world_id,user_id,view='home',page=0,hero_id=None):
         text=editorial_text('village.screen.line_08', name=f"{hero['name']}", value_2=f"{LABELS[hero['building']]}")
         rows=[[mutation(editorial_text('village.screen.line_25'),'assign',hero_id)], [mutation(editorial_text('village.screen.line_26'),'evict',hero_id,target='residents')]]
     elif view in service.BUILDINGS:
-        text=LABELS[view]+editorial_text('village.screen.line_20')
-        rows=[[b(editorial_text('village.screen.line_31'),f'add_{view}.0'),b(editorial_text('village.screen.line_32'),f'workers_{view}.0')]]
+        from app.mini.editorial import glossary
+        workers=[h for h in state['residents'] if h['building']==view]
+        start=max(0,int(page))*8
+        text=LABELS[view]+'\n\n'+f"Работников: {len(workers)}\n"
+        text+='\n'.join(f"{glossary('rarity.'+h['rarity'])+' · ' if h.get('rarity') else ''}{h['name']} — +{h.get('hourly_income',0)}/час" for h in workers[start:start+8])
+        text+=f"\n\nИтого: +{state['hourly'][view]}/час"
+        if not state['fed'] and view in ('mine','market'):text+='\nПроизводство остановлено: недостаточно еды.'
+        if start:rows.append([b('⬅️',f'{view}.{page-1}')])
+        if start+8<len(workers):rows.append([b('➡️',f'{view}.{page+1}')])
+        rows.append([b(editorial_text('village.screen.line_31'),f'add_{view}.0'),b(editorial_text('village.screen.line_32'),f'workers_{view}.0')])
     else:
         if view=='add':
             owned=get_player_heroes(state['player_id'],sync_catalog=False)
@@ -81,6 +89,9 @@ def screen(state,world_id,user_id,view='home',page=0,hero_id=None):
         pages=max(1,(len(heroes)+size-1)//size);page=max(0,min(page,pages-1))
         buttons=[]
         for hero in heroes[page*size:(page+1)*size]:
+            hero=dict(hero)
+            from app.mini.editorial import glossary
+            hero['name']=(glossary('rarity.'+hero['rarity'])+' · ' if hero.get('rarity') else '')+hero['name']
             hid=hero.get('hero_id',hero.get('id'))
             if view=='add': button=mutation(hero['name'],'settle',hid)
             elif view=='evict':button=mutation(editorial_text('village.screen.line_38')+hero['name'],'evict',hid)
@@ -97,6 +108,7 @@ def screen(state,world_id,user_id,view='home',page=0,hero_id=None):
         if page+1<pages: nav.append(b(editorial_text('village.screen.line_35'),f'{view}.{page+1}'))
         if nav: rows.append(nav)
         text+=editorial_text('village.screen.line_14', value_1=f'{page + 1}', pages=f'{pages}')
+    if view=='home':rows.append([Button(text='✨ Мифический зверь',callback_data=personal_callback('mythic',world_id,user_id))])
     if view=='hero':rows.append([b(editorial_text('general.back'),f'residents.{page}')])
     elif view in service.BUILDINGS or '_' in view:
         back=view.split('_',1)[1]+'.0' if '_' in view else 'home'

@@ -16,6 +16,16 @@ def extract_in_transaction(conn,boss,participant,*,roller=None,now=None):
     if not boss.get('shadow_extractable',True) or not boss.get('shadow_hero_code') or not participant.get('hit_count'):
         return None
     snapshot = battle_loadout(participant['hero_snapshot_json'])
+    if int(boss.get('rules_version',0))>=15:
+        import json
+        from app.mini.combat.arise import sources,award
+        target={**boss,'shadow_extractable':boss.get('shadow_extractable',True)}
+        results=award(conn,'boss',boss['id'],participant['player_id'],target,True,sources(snapshot,team=json.loads(boss.get('team_state_json') or '{}')),now=now,roller=roller)
+        if not results:return None
+        success=any(r['success'] for r in results)
+        # Preserve the legacy audit summary while recording all independent sources.
+        conn.execute('INSERT OR IGNORE INTO mini_shadow_rolls VALUES(?,?,?,?,?,?)',(boss['id'],participant['player_id'],participant['hero_id'],results[-1]['chance'],results[-1]['shadow_code'],int(success)))
+        return {'type':'arise','success':success,'sources':results,'shadow_code':results[-1]['shadow_code'],'message':f"🌑 Arise: {'получена тень' if success else 'тень ускользнула'} {results[-1]['shadow_code']}."}
     chance = 100 if snapshot.get('spirit_lantern') else arise_chance(snapshot)
     if chance is None: return None
     hero=conn.execute("SELECT id,code FROM mini_heroes WHERE code=? AND rarity='shadow'",(boss['shadow_hero_code'],)).fetchone()

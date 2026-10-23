@@ -229,6 +229,11 @@ def load_hero_catalog() -> dict:
         for field, default in LEGACY_HERO_TRAITS.items():
             hero.setdefault(field, default)
         hero.setdefault("passive_key", "none")
+        from app.mini.combat.modes import passive_contract
+        hero["passives"] = passive_contract(hero)
+        for mode, property in hero["passives"].items():
+            if property["key"] not in passive_keys:
+                raise ValueError(f"Unknown {mode} passive_key: {property['key']}")
         code = str(hero.get("code", "")).strip()
         name = str(hero.get("name", "")).strip()
         rarity = str(hero.get("rarity", "")).strip()
@@ -270,8 +275,8 @@ def load_hero_catalog() -> dict:
                 raise ValueError(f"heroes.json: hero {code}: {field} must be a nonempty string tag.")
         if not isinstance(hero.get("passive_key"), str) or hero["passive_key"] not in passive_keys:
             raise ValueError(f"heroes.json: hero {code}: unknown passive_key {hero.get('passive_key')!r}.")
-        if rarity == "mythic" and (type(hero.get("fragment_cost")) is not int or hero["fragment_cost"] <= 0):
-            raise ValueError(f"Mythic {code}: fragment_cost должен быть > 0.")
+        if rarity == "mythic" and hero.get("mythic_element") not in {"ice","lightning","dark","fire","star","earth","moon","sun"}:
+            raise ValueError(f"Mythic {code}: требуется утверждённая стихия mythic_element.")
         if "arise_chance_percent" in hero:
             from app.mini.combat.hero_abilities.engine import arise_chance
             chance=hero["arise_chance_percent"]

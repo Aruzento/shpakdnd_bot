@@ -173,6 +173,8 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
         editorial_text('boss.format_public_boss.line_05', coins=f'{coins}', value_2=f"{boss.get('reward_shields', 3)}"),
         editorial_text('boss.format_public_boss.line_06', value_1=f"{(', '.join(items) if items else 'Нет.')}"),
     ]
+    values=json.loads(boss.get('team_state_json') or '{}')
+    if values.get('ice_shields'):lines.append(f"❄️ Ледяные щиты: {values['ice_shields']}")
     if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
             editorial_text('boss.format_public_boss.line_07', value_1=f'{creatures.effective_reward_percent(boss)}', value_2=f"{int(boss.get('reward_temp_hp', 0))}", value_3=f"{int(boss.get('reward_corruption', 0))}")
@@ -180,7 +182,7 @@ def format_public_boss(boss: dict, participants: list[dict]) -> str:
     status = str(boss["status"])
     if status in ("announced", "ready"):
         lines.extend([
-            "", editorial_text('boss.format_public_boss.line_08', value_1=f'{len(participants)}', value_2=f"{boss.get('min_players', 1)}"),
+            "", f'👥 Участники: {len(participants)}',
             STATUS_TEXT[status],
         ])
     elif status == "defeated":
@@ -234,6 +236,8 @@ def format_public_turn(
         "",
         editorial_text('boss.format_public_turn.line_03', value_1=f"{boss.get('reward_shields', 0)}", value_2=f"{boss.get('reward_shields_max', 0)}", value_3=f"{(creatures.effective_reward_percent(boss) if classes.enabled(boss) else boss.get('reward_percent', 100))}"),
     ]
+    values=json.loads(boss.get('team_state_json') or '{}')
+    if values.get('ice_shields'):lines.append(f"❄️ Ледяные щиты: {values['ice_shields']}")
     if any(int(boss.get(key,0)) for key in ("reward_temp_hp","reward_corruption","sneaky_stolen","boss_damage")):
         lines.append(
             editorial_text('boss.format_public_turn.line_04', value_1=f'{classes.real_reward(boss)}', value_2=f"{int(boss.get('reward_temp_hp', 0))}", value_3=f"{int(boss.get('reward_corruption', 0))}", value_4=f'{creatures.effective_reward_percent(boss)}', value_5=f"{(classes.effective_reward(boss) if classes.enabled(boss) else int(boss['reward_coins']) * creatures.effective_reward_percent(boss) // 100)}")
@@ -244,7 +248,7 @@ def format_public_turn(
             lines.extend([
                 "",
                 editorial_text('boss.format_public_turn.line_07', value_1=f'{_participant_mention(current)}', value_2=f"{current.get('hero_name') or 'герой'}"),
-                editorial_text('boss.format_public_turn.line_08', skip_after_hours=f"{boss['skip_after_hours']}"),
+                f"⏳ На ход: {int(boss.get('turn_timeout_seconds',int(boss['skip_after_hours'])*3600))//60} минут",
             ])
         else:
             lines.extend(["", editorial_text('boss.format_public_turn.line_09')])
@@ -300,13 +304,21 @@ def public_boss_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup:
             )
         ]
     )
+    if boss['status'] in ('defeated','failed'):
+        rows.append([InlineKeyboardButton(text='📜 История боя',callback_data=f"miniboss:history:{world_id}:{boss['id']}:0")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def history_menu(world_id,boss):
+    if boss.get('status') not in ('defeated','failed'):return None
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='📜 История боя',callback_data=f"miniboss:history:{world_id}:{boss['id']}:0")]])
 
 
 @editorial_screen
 def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
+    from app.mini.boss.operations import turn_token
     if boss.get("status") != "fighting":
-        return None
+        return history_menu(world_id,boss)
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -316,6 +328,7 @@ def public_turn_menu(world_id: int, boss: dict) -> InlineKeyboardMarkup | None:
                         f"miniboss:hit:{world_id}:{boss['id']}:"
                         f"{boss.get('current_round', 0)}:"
                         f"{boss.get('current_turn_position', 0)}"
+                        + (f":{turn_token(boss)}" if int(boss.get("rules_version",0))>=15 else "")
                     ),
                 )
             ],
@@ -546,7 +559,7 @@ async def publish_admin_victory(
     )
 
     try:
-        await bot.send_message(
+        await bot.send_message(reply_markup=history_menu(world['id'],boss),
             chat_id=world["chat_id"],
             message_thread_id=world["thread_id"] or None,
             text=text,

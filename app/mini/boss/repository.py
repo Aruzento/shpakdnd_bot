@@ -140,12 +140,13 @@ def log_hero_event(conn, boss, participant, raw: dict, when: datetime) -> dict:
     participant = dict(participant)
     event = {**raw, "actor_kind": "hero", "player_id": int(participant["player_id"]),
              "hero_name": str(participant.get("hero_name") or "герой")}
-    conn.execute(
+    cursor=conn.execute(
         """INSERT INTO mini_boss_events (boss_id, round_number, event_type,
            target_player_id, event_json, boss_hp_after, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (int(boss["id"]), int(boss["current_round"]), event["type"], event["player_id"],
          json.dumps(event, ensure_ascii=False), int(boss["current_hp"]), db_time(when)),
     )
+    event['journal_event_id']=cursor.lastrowid
     return event
 
 
@@ -159,7 +160,7 @@ def start_participants(conn, boss_id: int):
             h.faction, h.damage_type, h.class_tag, h.attack_range, h.special_trait,
             h.passive_key, h.passive_text, h.rarity, h.code,
             h.attack AS base_attack,
-            ph.stars
+            ph.stars, ph.copies, h.name, h.passives_json, h.mythic_element
         FROM mini_boss_participants bp
         JOIN mini_players p ON p.id = bp.player_id
         LEFT JOIN mini_heroes h ON h.id = p.active_hero_id
@@ -172,13 +173,20 @@ def start_participants(conn, boss_id: int):
     ).fetchall()
 
 
-def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, spirit_lantern=False):
+def save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, spirit_lantern=False, *, now=None):
     from app.mini.catalog import load_hero_catalog
     row = dict(row)
     source = next((h for h in load_hero_catalog()["heroes"] if h["code"] == row["code"]), {})
     snapshot = {field: row[field] for field in (
         "faction", "damage_type", "class_tag", "attack_range", "special_trait",
         "passive_key", "passive_text", "rarity", "code", "base_attack")}
+    from app.mini.combat.modes import freeze_hero
+    snapshot.update(stars=row['stars'],copies=row['copies'],name=row['name'],
+                    passives=json.loads(row['passives_json'] or '{}'),mythic_element=row['mythic_element'])
+    snapshot=freeze_hero(snapshot)
+    snapshot['pet_damage_delta']=0
+    from app.mini.mythic.pets import damage_delta, timestamp
+    snapshot['pet_damage_delta']=damage_delta(conn,row['player_id'],timestamp(now))
     snapshot["spirit_lantern"] = bool(spirit_lantern)
     if "arise_chance_percent" in source:
         snapshot["arise_chance_percent"] = source["arise_chance_percent"]
@@ -263,12 +271,16 @@ def record_primary_attack(conn, boss, player_id, damage, hp_after, now):
         ),
     )
 
+    hero_row=conn.execute('SELECT hero_snapshot_json FROM mini_boss_participants WHERE boss_id=? AND player_id=?',(boss_id,player_id)).fetchone()
+    conn.execute("UPDATE mini_boss_actions SET event_json=? WHERE id=(SELECT MAX(id) FROM mini_boss_actions WHERE boss_id=? AND player_id=? AND action_type='attack')",
+                 (json.dumps({'hero':json.loads(hero_row[0] or '{}'),'actual_hp_damage':min(max(0,damage),int(boss['current_hp']))},ensure_ascii=False),boss_id,player_id))
+
 
 def save_attack_events(conn, boss_id, player_id, passive_events):
-    conn.execute(
-        "UPDATE mini_boss_actions SET event_json = ? WHERE id = (SELECT MAX(id) FROM mini_boss_actions WHERE boss_id = ? AND player_id = ? AND action_type = 'attack')",
-        (json.dumps({"passive_events": passive_events}, ensure_ascii=False), int(boss_id), int(player_id)),
-    )
+    row=conn.execute("SELECT id,event_json FROM mini_boss_actions WHERE boss_id=? AND player_id=? AND action_type='attack' ORDER BY id DESC LIMIT 1",(boss_id,player_id)).fetchone()
+    if row:
+        event=json.loads(row['event_json'] or '{}');event['passive_events']=passive_events
+        conn.execute('UPDATE mini_boss_actions SET event_json=? WHERE id=?',(json.dumps(event,ensure_ascii=False),row['id']))
 
 
 def queue_boss_skips(conn, boss, player_id, hp_after, boss_skip_turns, now):
@@ -368,3 +380,8 @@ def apply_round_forms(conn, boss, when):
             )
         events.extend(log_hero_event(conn, boss, participant, event, when) for event in form['events'])
     return events
+
+
+def record_free_extra_turn(conn,boss_id,player_id):
+    conn.execute('UPDATE mini_boss_participants SET hit_count=MAX(0,hit_count-1) WHERE boss_id=? AND player_id=?',(boss_id,player_id))
+    conn.execute("UPDATE mini_boss_actions SET action_type='extra_attack' WHERE id=(SELECT MAX(id) FROM mini_boss_actions WHERE boss_id=? AND player_id=? AND action_type='attack')",(boss_id,player_id))

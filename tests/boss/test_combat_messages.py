@@ -61,7 +61,7 @@ class MessageFormatTests(unittest.TestCase):
         expected = (
             "РАУНД 1\n\n👹 Багровый лорд - ❤️ HP: 480/480\n\n"
             "🛡 Щиты: 3/3 • 💎 Состояние награды: 100%\n\n"
-            '⚔️ Ход: @user - "Ведьмак"\n⏳ На ход: 4 ч.'
+            '⚔️ Ход: @user - "Ведьмак"\n⏳ На ход: 240 минут'
         )
         self.assertEqual(format_public_turn(self.boss, self.participants), expected)
 

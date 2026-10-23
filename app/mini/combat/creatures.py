@@ -20,6 +20,10 @@ def rules_enabled(boss: dict) -> bool:
 def features(boss: dict) -> frozenset[str]:
     if not rules_enabled(boss):
         return frozenset()
+    if int(boss.get('rules_version',0))>=15:
+        team_state=json.loads(boss.get('team_state_json') or '{}')
+        if team_state.get('blind_round')==boss.get('current_round'):
+            return frozenset()
     raw = boss.get("features_json", "[]")
     values = json.loads(raw) if isinstance(raw, str) else list(raw)
     if boss.get("ability_key") == "transformation":
@@ -55,6 +59,10 @@ def active_heroes(participants: list[dict]) -> list[dict]:
             for p in participants if not p.get("banished", 0)]
 
 def effective_reward_percent(boss: dict) -> int:
+    if int(boss.get('rules_version',0))>=15:
+        team_state=json.loads(boss.get('team_state_json') or '{}')
+        if team_state.get('last_stand_active') and int(boss.get('reward_percent',0))>0 and not int(boss.get('reward_corruption',0)):
+            return max(1,int(boss.get('reward_percent',0)))
     if classes.enabled(boss) and int(boss.get('reward_coins',0))>0:
         base=int(boss['reward_coins'])
         return (classes.effective_reward(boss)*100+base-1)//base

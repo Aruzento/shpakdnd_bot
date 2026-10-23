@@ -6,6 +6,10 @@ from app.mini.db import connect_mini_db
 
 
 MINI_TABLES = (
+    "mini_combat_arise", "mini_mythic_raid_publications",
+    "mini_mythic_ledger", "mini_mythic_operations", "mini_mythic_pets", "mini_mythic_pet_days",
+    "mini_mythic_raids", "mini_mythic_raid_attacks", "mini_mythic_raid_damage", "mini_mythic_raid_rewards",
+    "mini_mythic_raid_audit", "mini_tower_lunar_choices",
     "mini_event_pvp_shard_awards", "mini_event_pvp_control",
     "mini_event_pvp_members", "mini_event_pvp",
     "mini_registration_sessions", "mini_public_shares",

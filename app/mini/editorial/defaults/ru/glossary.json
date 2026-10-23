@@ -276,8 +276,8 @@
     "icon_key": "icon.resource.reward_shields"
   },
   "resource.mythic_fragments": {
-    "full": "Мифические фрагменты",
-    "short": "Мифические фрагменты",
+    "full": "Мифические осколки",
+    "short": "Мифические осколки",
     "emoji": "✨",
     "icon_key": "icon.resource.mythic_fragments"
   },

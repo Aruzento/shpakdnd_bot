@@ -430,6 +430,71 @@
           "damage_percent": 2
         }
       ]
+    },
+    "mana_allegory": {
+      "name": "mana_allegory",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "holy_smite": {
+      "name": "holy_smite",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "soul_seal": {
+      "name": "soul_seal",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "bloodthirsty_fight": {
+      "name": "bloodthirsty_fight",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "duplicate_echoes": {
+      "name": "duplicate_echoes",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_ice": {
+      "name": "mythic_ice",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_lightning": {
+      "name": "mythic_lightning",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_dark": {
+      "name": "mythic_dark",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_fire": {
+      "name": "mythic_fire",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_star": {
+      "name": "mythic_star",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_earth": {
+      "name": "mythic_earth",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_moon": {
+      "name": "mythic_moon",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
+    },
+    "mythic_sun": {
+      "name": "mythic_sun",
+      "description": "V1.5 mode-aware property; see R06/R16 and combat adapters.",
+      "effects": []
     }
   }
 }

@@ -22,6 +22,11 @@ def validate_config(key: str, config: dict) -> None:
         "hydra_regeneration": {"heal_percent"},
         "mechanism": {"damage_percent"},
     }.get(key, set())
+    allowed=allowed | {'element_multipliers'}
+    if 'element_multipliers' in config:
+        from app.mini.combat.modes import ELEMENTS
+        mapping=config['element_multipliers']
+        if not isinstance(mapping,dict) or any(k not in ELEMENTS or type(v) is not int or not 0<=v<=1000000 for k,v in mapping.items()):raise ValueError('Invalid elemental multiplier map')
     unknown = set(config) - allowed
     if unknown:
         raise ValueError(f"Boss ability {key}: unknown config fields {sorted(unknown)}.")

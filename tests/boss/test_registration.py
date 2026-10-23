@@ -138,8 +138,8 @@ class MiniBossRegistrationTests(unittest.TestCase):
             conn.commit()
 
         register_player(boss["id"], self.player1["id"], self.db)
-        with self.assertRaises(BossNotEnoughPlayers):
-            close_registration(boss["id"], self.db)
+        self.assertEqual(close_registration(boss["id"], self.db)["status"],"ready")
+        reopen_registration(boss["id"], self.db)
 
         register_player(boss["id"], self.player2["id"], self.db)
         ready = close_registration(boss["id"], self.db)

@@ -42,6 +42,8 @@ def hero_caption(hero: dict, *, pull_result: dict | None = None, full: bool = Fa
         upgrade=hero.get('upgrade') or hero_upgrade_state(hero)
         lines += ['', editorial_text('hero_cards.hero_caption.line_05', rarity=f'{rarity}'), editorial_text('hero_cards.hero_caption.line_06', value_1=f"{hero.get('copies', 1)}", value_2=f"{hero.get('shards', 0)}"),
                   editorial_text('hero_cards.hero_caption.line_08') if upgrade['at_max'] else editorial_text('hero_cards.hero_caption.line_09', next_star=f"{upgrade['next_star']}", upgrade_cost=f"{upgrade['upgrade_cost']}")]
+    if hero.get('rarity')=='mythic':
+        lines+=['',f"Мифические осколки: {hero.get('mythic_shards',0)}",'Звёзды усиливают способность; базовая атака не растёт. Получение — только выращиванием.']
     if pull_result is not None:
         lines.append("")
         if pull_result["is_duplicate"]:

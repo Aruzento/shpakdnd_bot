@@ -17,6 +17,7 @@ EXPIRY=120
 def _hero(conn,pid,hid):
     assert_available(conn,pid,hid)
     row=conn.execute('SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id WHERE ph.player_id=? AND ph.hero_id=?',(pid,hid)).fetchone()
+    if row['rarity']=='mythic':raise ValueError('Мифические герои недоступны в PvP V1.5.')
     return {'id':hid,'code':row['code'],'name':row['name'],'attack':calculate_attack(row['attack'],row['stars'])}
 
 
