@@ -59,7 +59,9 @@ def award(
     for source, chance in chances.items():
         if not 0 <= chance <= 100:
             raise ValueError("Arise chance must be 0..100")
-        success = bool((roller or _roll_success)(chance))
+        success = chance == 100 or (
+            chance > 0 and bool((roller or _roll_success)(chance))
+        )
         results.append(
             {
                 "source": source,
