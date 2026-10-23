@@ -20,7 +20,7 @@ def extract_in_transaction(conn,boss,participant,*,roller=None,now=None):
         import json
         from app.mini.combat.arise import sources,award
         target={**boss,'shadow_extractable':boss.get('shadow_extractable',True)}
-        results=award(conn,'boss',boss['id'],participant['player_id'],target,True,sources(snapshot,team=json.loads(boss.get('team_state_json') or '{}')),now=now,roller=roller)
+        results=award(conn,'boss',boss['id'],participant['player_id'],target,True,sources(snapshot,team=json.loads(boss.get('team_state_json') or '{}')),now=now,roller=roller or _roll_success)
         if not results:return None
         success=any(r['success'] for r in results)
         # Preserve the legacy audit summary while recording all independent sources.

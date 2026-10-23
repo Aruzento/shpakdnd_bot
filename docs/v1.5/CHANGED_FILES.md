@@ -109,6 +109,7 @@
 - `tests/v1_4/test_ui.py`
 - `tests/v1_4_2/test_screen_contract.py`
 - `tests/v1_4_2/test_screen_contracts.py`
+- `tests/v1_4_4/test_main_compatibility.py`
 - `tests/v1_5/__init__.py`
 - `tests/v1_5/test_boss_stories.py`
 - `tests/v1_5/test_core.py`
