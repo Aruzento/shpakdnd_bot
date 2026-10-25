@@ -187,36 +187,47 @@ jobs:
         run: python -m app.mini.mythic.content
 
       - name: V1.5 populated migration replay and old-code startup
+        if: always()
         run: python tools/validate_v15_migration.py
 
       - name: Verify protected bundle and exact authorized logger signal fix
+        if: always()
         run: python tools/validate_deploy_bundle.py
 
       - name: Compile Python modules
+        if: always()
         run: python -m compileall -q bot.py app
 
       - name: Validate hero abilities
+        if: always()
         run: python -m app.mini.combat.hero_abilities.validate
 
       - name: Validate boss abilities
+        if: always()
         run: python -m app.mini.boss.boss_abilities.validate
 
       - name: Validate Tower
+        if: always()
         run: python -m app.mini.tower.validate
 
       - name: Validate V1.4.2 catalogs
+        if: always()
         run: python -m app.mini.validate_v142
 
       - name: Validate editorial defaults
+        if: always()
         run: python -m app.mini.editorial.validator
 
       - name: Validate all JSON and repeated disposable SQLite startup
+        if: always()
         run: python tools/validate_editorial_release.py
 
       - name: Verify PvP migrations and old-code startup on disposable copies
+        if: always()
         run: python tools/validate_pvp_migration.py
 
       - name: Create synthetic legacy SQLite fixture
+        if: always()
         run: |
           python - <<'PY'
           import os
@@ -264,12 +275,14 @@ jobs:
           PY
 
       - name: Verify repeated SQLite migration on a copy
+        if: always()
         run: |
           python deploy/verify-v142-migration.py \
             --source "$RELEASE_SANDBOX/legacy-fixture.db" \
             --copy-dir "$RELEASE_SANDBOX"
 
       - name: Verify old-code rollback compatibility on a separate copy
+        if: always()
         run: |
           python deploy/verify-v142-rollback.py \
             --source "$RELEASE_SANDBOX/legacy-fixture.db" \
@@ -278,6 +291,7 @@ jobs:
             --old-ref "$INTERMEDIATE_REF"
 
       - name: Check diff whitespace
+        if: always()
         run: |
           git diff --check
           git diff --check origin/main...HEAD

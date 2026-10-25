@@ -54,6 +54,9 @@ def public_text(raid):
         f"Статус: {raid['status']}",
         "Рейтинг фактического HP-урона:",
     ]
+    from app.mini.mythic.raid.mechanics import lines as mechanic_lines
+
+    lines[3:3] = mechanic_lines(raid)
     if raid["status"] == "cancelled":
         outcome = json.loads(raid.get("result_json") or "{}")
         lines.insert(
@@ -426,6 +429,11 @@ async def action(callback):
                     player["id"], int(parts[1]), int(parts[2]), key
                 )
                 receipt = f"Снято HP: {outcome['actual_hp_damage']}. Осталось атак: {outcome['attempts_left']}/10."
+                from app.mini.mythic.raid.mechanics import event_lines
+
+                details = event_lines(outcome.get("audit", []))
+                if details:
+                    receipt += "\n" + "\n".join(details)
                 if outcome.get("egg"):
                     from app.mini.mythic.handlers import NAMES
 

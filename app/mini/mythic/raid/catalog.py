@@ -34,6 +34,7 @@ def validate(data, *, images=IMAGES, require_images=True):
             "shadow_extractable",
             "shadow_hero_code",
             "counter_policy",
+            "mechanic",
         }
         if not isinstance(boss, dict) or set(boss) - allowed:
             raise ValueError("Unknown raid boss fields")
@@ -92,15 +93,42 @@ def validate(data, *, images=IMAGES, require_images=True):
             raise ValueError("Unsupported raid defense feature")
         if type(boss.get("shadow_extractable", False)) is not bool:
             raise ValueError("shadow_extractable must be boolean")
+        if len(boss.get("features", [])) != len(set(boss.get("features", []))):
+            raise ValueError("Duplicate raid defense feature")
+        if "mechanic" in boss:
+            from app.mini.mythic.raid.mechanics import validate_profile
+
+            validate_profile(boss)
         if boss.get("counter_policy", COUNTER_POLICY) != COUNTER_POLICY:
             raise ValueError("Unapproved counter activation policy")
+    dynamic = [b for b in data["bosses"] if "mechanic" in b]
+    if dynamic:
+        from app.mini.mythic.raid.mechanics import SPECS
+
+        if len(dynamic) != 4 or {b["mechanic"]["type"] for b in dynamic} != set(SPECS):
+            raise ValueError(
+                "Supply all four distinct approved raid mechanics together"
+            )
+        if len({b["image"] for b in dynamic}) != 4:
+            raise ValueError("Each of the four raid bosses needs its own image")
     return data["bosses"]
 
 
-def load(path=None, *, require_images=True):
+def _unique_fields(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate raid JSON field: " + key)
+        result[key] = value
+    return result
+
+
+def load(path=None, *, require_images=True, images=None):
     path = Path(path) if path is not None else CATALOG
     if not path.exists():
         return []
     return validate(
-        json.loads(path.read_text(encoding="utf-8")), require_images=require_images
+        json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_fields),
+        images=IMAGES if images is None else images,
+        require_images=require_images,
     )

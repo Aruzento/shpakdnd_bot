@@ -26,3 +26,12 @@ COMPLETION_AUDIT.md содержит каждый00–09/R01–R20/R20.1–12 и
 
 Approved O01–O10 iteration: прочитан целиком123.md (приоритетныйapprovedТЗ), actualHEAD/upstreamdfe7df7/baseoriginmaind077dd2, cleanfeature/originaldirtytreepreserved.100V1.5baselinePASS16.690s. Реализованы O01compensation/forecast/reason/history/revision/atomicwallet,auditedD0/P0; O02confirmed-zero activation сlegacyversioncompat; O06individualStar journal; O05p/gain/stars; O07base-onlyTower и firstentrydraw; O08explicitreserve; O10SoulSeal/explicitShadow typedfields; strictcomplete/missing/invalidchecks. Protecteddeployunchanged. CIcheckoutтеперьявноheadSHAсassertion.
 PreflightV1.5 PASS136cases21.828s (затем добавленыeligibility/populatedmigrationcases);12validatorsPASS.135legacyBoss/Tower/migrationcases поймалиодноmetadataожиданиестаройfixture: exact2newtablesдобавленывwhitelist, отдельныйтестзаполняетновыеданныеиnonzeroLegacy7перед3replay.42focusednew+migrationPASS10.849s. Formatting-onlychurn впрежнихBoss/Towerузлахсокращён, ASTдо/послеполностьюэквивалентен. Новыеtestfixtures строгоTemp; реальныйконтентбудетпоследующимэтапом. ВсеfinalchecksпроводятсяпоследнимSHAиещёразпослеauthorcontent.
+
+## 26.10.2026 — четыре утверждённые механики рейдовых боссов
+
+Проверены initial HEAD/upstream f0b9c1c и main/base d077dd2a; оригинальный dirty checkout сохранён.
+Реализованы armor10/5, flight8/2, heal325/15 и монотонные HP-фазы от original150000;
+строгая JSON-схема, immutable specs, state/audit/receipt, atomic replay/rollback, Telegram UI.
+Без миграции схемы. Приложенные четыре JPG сохранены как порядковые PNG.
+Baseline138 имел2photo-mock failures после предыдущей поставки; исправлен только offline harness.
+Новое тестирование/контентные блокеры/финальный exact SHA и CI — в итоговом отчёте.

@@ -727,6 +727,11 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
                 Bot, "send_message", new_callable=AsyncMock, return_value=returned
             )
         )
+        self.photos = self.enterContext(
+            patch.object(
+                Bot, "send_photo", new_callable=AsyncMock, return_value=returned
+            )
+        )
         self.answered = self.enterContext(
             patch.object(CallbackQuery, "answer", new_callable=AsyncMock)
         )

@@ -20,3 +20,11 @@
 IMPLEMENTED_VERIFIED означает трассировку и изолированные автоматические проверки, а не выполненную Telegram/релизную приёмку. Финальный exact SHA, полные count/skip/exit/log и Linux3.11/3.13 фиксируются в итоговом отчёте после последнего коммита. Подробная матрица O→handler→service→SQLite→UI→test: COMPLETION_AUDIT.md.
 
 Активная policy schema_version2/statusAPPROVED. PROVISIONAL остаётся только в immutable legacy constants и именах старых frozen policies для совместимости, не как открытое решение владельца. Никаких BLOCKED_BY_RULE по O01–O10 больше нет. Strict content пока BLOCKED_BY_INPUT/exit2, отдельно от технических проверок.
+
+## Следующая итерация: четыре механики рейдовых боссов
+
+Утверждённый engine реализован отдельно от авторских records. Начальный HEAD f0b9c1c;
+полная спецификация, JSON/SQLite/UI/test trace и ограничения — [RAID_BOSSES_MECHANICS.md](RAID_BOSSES_MECHANICS.md).
+Четыре настоящих босса-изображения теперь лежат в raid/images/raid_boss_1.png…4.png
+по порядку вложений. Реальные Boss code/name/records и восемь Mythic records/Stories ещё нужны.
+Статус «В разработке» сохраняется; финальные проверки относятся к SHA итогового отчёта.

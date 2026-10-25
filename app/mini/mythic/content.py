@@ -112,7 +112,10 @@ def png(path, *, background=None):
     target = (background,) * 3
     if any(alpha != 255 or rgb != target for rgb, alpha in corners):
         raise ValueError(
-            "PNG corners must be opaque " + ("black" if background == 0 else "white")
+            "PNG corners must be opaque "
+            + ("black" if background == 0 else "white")
+            + ": "
+            + str(path)
         )
     return {"width": width, "height": height, "background": background}
 
@@ -133,7 +136,9 @@ def ready_hero(hero):
 def validate_mythics(heroes, *, images=HERO_IMAGES_DIR):
     values = [h for h in heroes if h["rarity"] == "mythic"]
     if not values:
-        return ["Missing real 8-hero Mythic catalog and 24 PNG"]
+        return [
+            "Missing real 8-hero Mythic catalog (pet PNG alone do not create hero records)"
+        ]
     if len(values) != 8 or {h.get("mythic_element") for h in values} != ELEMENTS:
         raise ValueError("Mythic catalog needs exactly eight distinct elements")
     missing = []
@@ -232,7 +237,7 @@ def report():
             png(path)
     if not bosses:
         blocked.append(
-            "Missing four real raid boss JSON/PNG: app/mini/mythic/raid/bosses.json and images/"
+            "Missing four real raid boss records: app/mini/mythic/raid/bosses.json; supplied images do not create records"
         )
     stories, errors = discover()
     if errors:

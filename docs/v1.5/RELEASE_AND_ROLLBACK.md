@@ -22,3 +22,10 @@ Completion-аудит меняет только logger call deploy-скрипт�
 
 
 ИтерацияO01–O10: newpolicyversion2/counterconfirmed сохраняются в новыхsnapshots, oldactiveversion1/positive-only не переписываются. Новые mini_star_rewards/cancel_requests и Towerresult_json аддитивны. Старый код может прочитать базовуюсхему, но не обслуживает новыеcancel/Star/runtime/activepet процессы; oldstartupнаcopy не разрешаетlive rollback. Перед будущимоткатом согласованныйdrain,backupвсехновыхжурналов/runtime/externalcontent и проверка отдельнойкопии. Не удалять новые таблицы/остатки и не восстанавливать старыйbackupповерх прогресса без отдельного решения.
+
+## Совместимость нового raid mechanic engine
+
+Схема SQLite прежняя; mechanic хранится в JSON. Старые snapshots без него воспроизводимы.
+Старый executable не умеет интерпретировать новый mechanic даже при совместимой схеме:
+автоматический откат активных новых рейдов недопустим; будущий отдельный план должен
+дождаться завершения/разрешённой отмены активных сессий. Реальный rollback не выполнялся.

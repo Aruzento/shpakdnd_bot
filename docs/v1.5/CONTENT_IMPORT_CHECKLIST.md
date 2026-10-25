@@ -94,3 +94,16 @@
 5. Отдельно предоставленная безопасная productionSQLitecopy, migration/replay/oldcode, затем реальнаяTelegram/stagingприёмка и independentreview; merge/deploy решает владелец отдельно.
 
 Текущий sourcepack неполон и это ожидаемый контентный BLOCKED_BY_INPUT. В тестах complete fixtures создаются только во временныхкаталогах; fakeproduction records/images не добавлялись.
+
+## Поставка изображений и движок четырёх боссов — 26.10.2026
+
+17 S5 и 24 Mythic PNG уже добавлены в feature-ветку; S5 records не импортированы.
+Предоставленные JPG боссов перекодированы и размещены: app/mini/mythic/raid/images/raid_boss_1.png,
+raid_boss_2.png, raid_boss_3.png, raid_boss_4.png. Порядок/оригиналы — images/README.md.
+Это технические имена файлов по просьбе владельца, не новые игровые code/name.
+Остаются реальные четыре Boss records (code/name/image и явная Shadow-связь при наличии),
+восемь Mythic records, внешние Story DAG. Прежние слова «45 PNG отсутствуют» — исторический
+статус до поставки, не актуальный inventory. PNG наличия недостаточно для strict PASS.
+Почти белые углы ранее поставленных S5 (RGB252…255) не удовлетворяют прежнему exact-white
+контракту; строгость не ослабляется без отдельного ответа владельца. Master Puppeteer
+перекодирован из JPEG payload в настоящий PNG без перерисовки.

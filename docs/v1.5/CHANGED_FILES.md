@@ -1,49 +1,38 @@
 # Изменённые файлы V1.5
 
-Ветка codex/v1.5; тот же draft PR #8. База d077dd2a2c29ad420b138bf07af23c77f4674d0b. Итерация утверждённых O01–O10 начинается от dfe7df7311d9789469063c783d65f8390b281bcb. Финальные SHA/numstat/журналы — в итоговом отчёте после коммита.
+Текущая итерация четырёх рейдовых механик: 26 файлов относительно f0b9c1c.
+Полный PR #8: 180 файлов относительно base d077dd2a. Финальный SHA фиксируется в отчёте после коммита.
 
-## Эта итерация: 38 файлов
+## Эта итерация
 
 - `.github/workflows/linux-release.yml`
-- `app/mini/boss/rewards.py`
-- `app/mini/combat/star_rewards.py`
-- `app/mini/combat/team.py`
+- `app/mini/content/hero_images/master_puppeteer.png`
 - `app/mini/mythic/content.py`
-- `app/mini/mythic/handlers.py`
-- `app/mini/mythic/pets.py`
-- `app/mini/mythic/policies.json`
-- `app/mini/mythic/policies.py`
 - `app/mini/mythic/raid/catalog.py`
-- `app/mini/mythic/raid/contracts.py`
 - `app/mini/mythic/raid/effects.py`
 - `app/mini/mythic/raid/handlers.py`
-- `app/mini/mythic/raid/rewards.py`
+- `app/mini/mythic/raid/images/README.md`
+- `app/mini/mythic/raid/images/raid_boss_1.png`
+- `app/mini/mythic/raid/images/raid_boss_2.png`
+- `app/mini/mythic/raid/images/raid_boss_3.png`
+- `app/mini/mythic/raid/images/raid_boss_4.png`
+- `app/mini/mythic/raid/mechanics.py`
 - `app/mini/mythic/raid/service.py`
-- `app/mini/mythic/schema.py`
-- `app/mini/schema.py`
-- `app/mini/tower/catalog.py`
-- `app/mini/tower/combat.py`
-- `app/mini/tower/repository.py`
-- `app/mini/tower/service.py`
-- `docs/v1.5/ADR_NORMAL_RAID.md`
 - `docs/v1.5/CHANGED_FILES.md`
 - `docs/v1.5/COMPLETION_AUDIT.md`
-- `docs/v1.5/COMPLETION_AUDIT_DFE7DF7.md`
 - `docs/v1.5/CONTENT_IMPORT_CHECKLIST.md`
 - `docs/v1.5/DATABASE.md`
 - `docs/v1.5/IMPLEMENTATION_STATUS.md`
-- `docs/v1.5/O01_O10_APPROVED_TZ.md`
+- `docs/v1.5/RAID_BOSSES_MECHANICS.md`
+- `docs/v1.5/RAID_BOSSES_MECHANICS_APPROVED_TZ.md`
 - `docs/v1.5/RELEASE_AND_ROLLBACK.md`
 - `docs/v1.5/STAGING_ACCEPTANCE.md`
 - `docs/v1.5/TEST_MATRIX.md`
 - `docs/v1.5/WORK_LOG.md`
-- `tests/test_mini_migrations.py`
-- `tests/v1_5/test_approved_o01_o10.py`
 - `tests/v1_5/test_completion_audit.py`
-- `tests/v1_5/test_integration.py`
-- `tools/validate_dnd_shop_release.py`
+- `tests/v1_5/test_raid_mechanics.py`
 
-## Полный PR: 130 файлов
+## Весь PR
 
 - `.github/workflows/linux-release.yml`
 - `app/handlers/__init__.py`
@@ -76,6 +65,47 @@
 - `app/mini/combat/modes.py`
 - `app/mini/combat/star_rewards.py`
 - `app/mini/combat/team.py`
+- `app/mini/content/hero_images/azark_storm_spear.png`
+- `app/mini/content/hero_images/daenerys_dragonflame.png`
+- `app/mini/content/hero_images/dark_adult.png`
+- `app/mini/content/hero_images/dark_egg.png`
+- `app/mini/content/hero_images/dark_young.png`
+- `app/mini/content/hero_images/draghar_black_cleaver.png`
+- `app/mini/content/hero_images/earth_adult.png`
+- `app/mini/content/hero_images/earth_egg.png`
+- `app/mini/content/hero_images/earth_young.png`
+- `app/mini/content/hero_images/ezio_auditore_isekai.png`
+- `app/mini/content/hero_images/fire_adult.png`
+- `app/mini/content/hero_images/fire_egg.png`
+- `app/mini/content/hero_images/fire_young.png`
+- `app/mini/content/hero_images/ice_adult.png`
+- `app/mini/content/hero_images/ice_egg.png`
+- `app/mini/content/hero_images/ice_young.png`
+- `app/mini/content/hero_images/kaeron_shadow_reaver.png`
+- `app/mini/content/hero_images/kaiden_void_magus.png`
+- `app/mini/content/hero_images/lightning_adult.png`
+- `app/mini/content/hero_images/lightning_egg.png`
+- `app/mini/content/hero_images/lightning_young.png`
+- `app/mini/content/hero_images/master_puppeteer.png`
+- `app/mini/content/hero_images/moon_adult.png`
+- `app/mini/content/hero_images/moon_egg.png`
+- `app/mini/content/hero_images/moon_young.png`
+- `app/mini/content/hero_images/ordo_vallis_commander.png`
+- `app/mini/content/hero_images/ordo_vallis_inquisitor.png`
+- `app/mini/content/hero_images/ordo_vallis_legionary.png`
+- `app/mini/content/hero_images/ordo_vallis_secretary.png`
+- `app/mini/content/hero_images/ordo_vallis_soul_lord.png`
+- `app/mini/content/hero_images/sairen_red_needle.png`
+- `app/mini/content/hero_images/shaar_ashen_palm.png`
+- `app/mini/content/hero_images/star_adult.png`
+- `app/mini/content/hero_images/star_egg.png`
+- `app/mini/content/hero_images/star_young.png`
+- `app/mini/content/hero_images/sun_adult.png`
+- `app/mini/content/hero_images/sun_egg.png`
+- `app/mini/content/hero_images/sun_young.png`
+- `app/mini/content/hero_images/talvira_blackroot.png`
+- `app/mini/content/hero_images/varzek_ash_fury.png`
+- `app/mini/content/hero_images/veirissa_darkarrow.png`
 - `app/mini/duels/handlers.py`
 - `app/mini/duels/service.py`
 - `app/mini/editorial/defaults/ru/glossary.json`
@@ -97,6 +127,12 @@
 - `app/mini/mythic/raid/contracts.py`
 - `app/mini/mythic/raid/effects.py`
 - `app/mini/mythic/raid/handlers.py`
+- `app/mini/mythic/raid/images/README.md`
+- `app/mini/mythic/raid/images/raid_boss_1.png`
+- `app/mini/mythic/raid/images/raid_boss_2.png`
+- `app/mini/mythic/raid/images/raid_boss_3.png`
+- `app/mini/mythic/raid/images/raid_boss_4.png`
+- `app/mini/mythic/raid/mechanics.py`
 - `app/mini/mythic/raid/rewards.py`
 - `app/mini/mythic/raid/service.py`
 - `app/mini/mythic/schema.py`
@@ -137,6 +173,8 @@
 - `docs/v1.5/DATABASE.md`
 - `docs/v1.5/IMPLEMENTATION_STATUS.md`
 - `docs/v1.5/O01_O10_APPROVED_TZ.md`
+- `docs/v1.5/RAID_BOSSES_MECHANICS.md`
+- `docs/v1.5/RAID_BOSSES_MECHANICS_APPROVED_TZ.md`
 - `docs/v1.5/RELEASE_AND_ROLLBACK.md`
 - `docs/v1.5/S5_IMPORT_MANIFEST.json`
 - `docs/v1.5/STAGING_ACCEPTANCE.md`
@@ -169,6 +207,7 @@
 - `tests/v1_5/test_core.py`
 - `tests/v1_5/test_effect_matrix.py`
 - `tests/v1_5/test_integration.py`
+- `tests/v1_5/test_raid_mechanics.py`
 - `tools/check_v15.py`
 - `tools/import_v15_s5.py`
 - `tools/validate_deploy_bundle.py`

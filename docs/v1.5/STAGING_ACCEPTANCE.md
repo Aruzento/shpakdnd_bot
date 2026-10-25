@@ -18,3 +18,11 @@
 | Pending/sending/sent/uncertain/networkrestart | durablepublication | pendingone-send,uncertainnoautomaticresend,noeconomyrepeat,correctworld_id |
 
 SQLtestevidence: integrity_check=ok,foreign_key_check=[];mini_star_rewards,cancel_requests,raid_audit/rewards/damage/ledger/result,petdays,Storyvotes/steps,normalbossaudit/timeline. Сохранитьконкретныедо/послезначения; данныйплан сам по себе неявляетсяPASS. Проверкаподписей/45реальныхизображений/живыхcallbackбудетпослеконтента.
+
+## Дополнительная будущая приёмка четырёх рейдовых механик — NOT RUN
+
+После реальных Boss records: A/B чередуют любые подтверждённые атаки, включая нулевые.
+C сверяет armour10/5 и flight8/2 по attack ledger, Sun incoming suppression на15/30,
+HP±1 и переход нескольких порогов с оригинальной базой, отсутствие возврата фаз после Eclipse.
+Проверить фото/счётчики/остатки, двойной callback/restart, отдельный Earth-вклад, O01/R09.
+Синтетические автоматические PASS не заменяют эту будущую живую приёмку.

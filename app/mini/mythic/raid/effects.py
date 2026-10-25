@@ -16,6 +16,9 @@ def element(hero):
 def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
     state = deepcopy(raid.get("state", {}))
     snapshot = raid["snapshot"]
+    from app.mini.mythic.raid import mechanics
+
+    mechanic_context = mechanics.prepare(raid, state)
     hp = int(raid["current_hp"])
     maximum = int(raid["max_hp"])
     original = int(raid["original_max_hp"])
@@ -99,7 +102,11 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
         additive += 200 + 50 * lunar["level"]
     if arcana == 2 and pid != lunar["owner"]:
         additive += 200 + 50 * lunar["level"]
-    features = set(snapshot.get("features", []))
+    features = set(
+        mechanic_context["effective_features"]
+        if mechanic_context
+        else snapshot.get("features", [])
+    )
     unreachable = (
         "flying" in features
         and hero.get("attack_range") != "ranged"
@@ -213,9 +220,13 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
     hp += regeneration
     if regeneration:
         audit.append({"type": "regeneration", "healed_hp": regeneration})
+    hp, mechanic_audit, mechanic_receipt = mechanics.finish(
+        raid, state, mechanic_context, hp, maximum, events, sun_suppressed=suppressed
+    )
+    audit.extend(mechanic_audit)
     if maximum > 2**63 - 1 or hp > 2**63 - 1:
         raise ValueError("HP рейда выходит за пределы целого SQLite; атака отменена.")
-    return {
+    result = {
         "state": state,
         "current_hp": hp,
         "max_hp": maximum,
@@ -226,3 +237,6 @@ def resolve(raid, hero, pid, *, pet_delta=0, chooser=None):
         ),
         "passive_configured": mode_property(hero, "raid")["configured"],
     }
+    if mechanic_receipt is not None:
+        result["mechanic"] = mechanic_receipt
+    return result

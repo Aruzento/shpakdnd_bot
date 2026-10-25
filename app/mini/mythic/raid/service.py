@@ -26,10 +26,6 @@ def _raid(conn, raid_id, world_id=None):
 
 def start(player_id, code, key, db_path=DB_PATH, *, now=None):
     now = timestamp(now)
-    entries = load()
-    template = next((v for v in entries if v["code"] == code), None)
-    if template is None:
-        raise ValueError("Реальный каталог четырёх мифических боссов ещё не заполнен.")
     with transaction(db_path) as conn:
         player = conn.execute(
             "SELECT * FROM mini_players WHERE id=?", (player_id,)
@@ -52,6 +48,12 @@ def start(player_id, code, key, db_path=DB_PATH, *, now=None):
             (player["world_id"],),
         ).fetchone():
             raise ValueError("В мире уже идёт мифический рейд.")
+        entries = load()
+        template = next((v for v in entries if v["code"] == code), None)
+        if template is None:
+            raise ValueError(
+                "Реальный каталог четырёх мифических боссов ещё не заполнен."
+            )
         from app.mini.mythic.policies import load as load_policies
 
         template = {
@@ -59,13 +61,17 @@ def start(player_id, code, key, db_path=DB_PATH, *, now=None):
             "runtime_policies": load_policies(),
             "counter_policy": COUNTER_POLICY,
         }
+        from app.mini.mythic.raid.mechanics import initialize
+
         hp = template["max_hp"]
+        mechanic_state = initialize(template, hp)
         cursor = conn.execute(
-            "INSERT INTO mini_mythic_raids(world_id,template_code,snapshot_json,original_max_hp,max_hp,current_hp,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO mini_mythic_raids(world_id,template_code,snapshot_json,state_json,original_max_hp,max_hp,current_hp,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
             (
                 player["world_id"],
                 code,
                 json.dumps(template, ensure_ascii=False),
+                json.dumps(mechanic_state),
                 hp,
                 hp,
                 hp,
@@ -260,6 +266,19 @@ def attack(
                         player_id,
                         f"counter:{raid_id}",
                         "counter_activated",
+                        json.dumps({**event, "hero_id": hero_id}),
+                        now,
+                    ),
+                )
+        for index, event in enumerate(result["audit"]):
+            if event["type"] in ("raid_mechanic_transition", "raid_periodic_heal"):
+                conn.execute(
+                    "INSERT INTO mini_mythic_raid_audit(raid_id,actor_id,operation_key,action,payload,created_at) VALUES(?,?,?,?,?,?)",
+                    (
+                        raid_id,
+                        player_id,
+                        f"raid-mechanic:{raid_id}:{result['mechanic']['attack_number']}:{index}",
+                        event["type"],
                         json.dumps({**event, "hero_id": hero_id}),
                         now,
                     ),

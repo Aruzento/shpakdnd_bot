@@ -43,3 +43,11 @@ Cancel with_reward: миниraid status остаётся cancelled, result_json 
 New Raid snapshot.counter_policy — first_confirmed_counter_hero_attack_on_this_raid. counter_source и uniqueauditcounter:ID сохраняются один раз; старый positive-only snapshot не обновляется. Индивидуальныйdamage проверяется на int64 перед UPSERT, не допускается SQLite promotion вREAL. D=sum(D_i) и промежуточные произведения Pythonint могут быть большеint64 без потери точности; HP/wallet/individualdamage bounded передSQLite.
 
 First Tower entry arcana_json хранитindex,level(null доMoon),reward_policy; уровень фиксируется при первом Moon, index/policy не перебрасываются. Новые active snapshots policyversion2, legacy snapshots остаются version1. Изменений CHECKstatusraid не потребовалось; старые mini_mythic_fragments/ненулевыеостатки сохранены. Тройной replay проверяется как наold-code fixture, так и на непустых новых cancel/Star/ledger/request данных.
+
+## Динамика четырёх рейдовых механик
+
+Новых таблиц/колонок/миграций нет. snapshot_json.mechanic неизменяем; state_json.mechanic
+содержит version/type/confirmed_attacks/phase/effective_features/last_heal/last_transition.
+mini_mythic_raid_audit получает raid_mechanic_transition и raid_periodic_heal с уникальным
+ключом raid-mechanic:raid:attempt:event; result_json атаки хранит использованные/следующие теги.
+Atomic ledger/revision/HP/rewards и legacy snapshots не переписываются. Подробнее RAID_BOSSES_MECHANICS.md.

@@ -46,3 +46,11 @@ Tower: при первом входе любого героя сохраняет
 ## Остаток
 
 Механические O01/O02/O05/O06/O07/O08/O10 утверждены и реализованы. O03/O09 — только реальные авторские файлы следующего этапа; O04 typed contract готов, ordinary raid definitions автор добавит позднее. Никакого повторного согласования механик не нужно. Strict real content остаётся BLOCKED_BY_INPUT, статусрелиза «В разработке». Production SQLite copy/staging/real Telegram/deployment не выполнялись. Полные final-SHA результаты/CI ссылки — в итоговом отчёте после последнего коммита.
+
+## Дополнение: утверждённые четыре Boss-механики
+
+Трассировка mechanic JSON→catalog.validate_profile→start frozen snapshot/state→
+effects.prepare/resolve/finish→attack atomic audit/ledger/revision/finalize→
+handlers.public_text/action/publish→test_raid_mechanics полностью описана в
+[RAID_BOSSES_MECHANICS.md](RAID_BOSSES_MECHANICS.md). Старые O01–O10 не переопределяются.
+Реальные четыре Boss records не сочинены; четыре авторских арта уже сохранены.
