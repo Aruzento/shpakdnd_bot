@@ -1,6 +1,6 @@
 # Изменённые файлы V1.5
 
-Текущая итерация четырёх рейдовых механик: 26 файлов относительно f0b9c1c.
+Текущая итерация четырёх рейдовых механик: 27 файлов относительно f0b9c1c.
 Полный PR #8: 180 файлов относительно base d077dd2a. Финальный SHA фиксируется в отчёте после коммита.
 
 ## Эта итерация
@@ -29,6 +29,7 @@
 - `docs/v1.5/STAGING_ACCEPTANCE.md`
 - `docs/v1.5/TEST_MATRIX.md`
 - `docs/v1.5/WORK_LOG.md`
+- `tests/v1_4_2/test_screen_contract.py`
 - `tests/v1_5/test_completion_audit.py`
 - `tests/v1_5/test_raid_mechanics.py`
 

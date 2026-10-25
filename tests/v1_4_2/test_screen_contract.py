@@ -106,5 +106,17 @@ class DesignContractTests(unittest.TestCase):
                     self.assertTrue(not target or target in ids or target in ('ui_back','nav_back'),(screen['id'],target))
     def test_original_shadow_catalogs_and_balance_are_untouched_in_followup(self):
         import subprocess
-        result=subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}','diff','293693d87692bb9e7f4567bcca895e799e7455d2','--','app/mini/content/heroes/shadow.json','app/mini/content/hero_images','docs/balance'],cwd=ROOT,capture_output=True,text=True,encoding="utf-8")
-        self.assertEqual(result.returncode,0);self.assertEqual(result.stdout,'')
+        # Preserve every original asset/catalog/balance byte. The owner later
+        # supplied 17 S5 portraits and 24 Mythic stages; only additions at those
+        # exact approved paths are allowed by this historical follow-up guard.
+        approved=json.loads((ROOT/'docs/v1.5/S5_IMPORT_MANIFEST.json').read_text(encoding='utf-8'))['heroes']
+        added_images={'app/mini/content/hero_images/'+h['image'] for h in approved}
+        added_images.update('app/mini/content/hero_images/'+element+'_'+stage+'.png'
+                            for element in ('ice','lightning','dark','fire','star','earth','moon','sun')
+                            for stage in ('egg','young','adult'))
+        result=subprocess.run(['git','-c',f'safe.directory={ROOT.as_posix()}','diff','--no-ext-diff','--no-renames','--name-status','293693d87692bb9e7f4567bcca895e799e7455d2','--','app/mini/content/heroes/shadow.json','app/mini/content/hero_images','docs/balance'],cwd=ROOT,capture_output=True,text=True,encoding="utf-8")
+        self.assertEqual(result.returncode,0)
+        for line in result.stdout.splitlines():
+            status,path=line.split('\t',1)
+            self.assertEqual(status,'A',line)  # No modified/deleted original file.
+            self.assertIn(path,added_images,line)  # No unrelated new content.

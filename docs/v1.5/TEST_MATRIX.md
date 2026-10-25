@@ -29,3 +29,11 @@ tests/v1_5/test_raid_mechanics.py добавляет pure/schema, service/SQLite
 Покрыты exact cycle indices, HP±1, Sun timing, healing325/clamp/fatal, Eclipse/original fund,
 all8Mythic, 10/day/hero-day, ledger attribution, INSERT rollback, cancel/fatal race и migration3x.
 Фото transport в прежнем TelegramAudit теперь mock-ается, HTTP остаётся запрещён.
+
+Дополнение после полного Linux-прогона кандидата 93d7fa1: старый V1.4.2 guard
+защищал целиком hero_images от любых новых файлов и отклонил прежнюю разрешённую
+поставку S5/Mythic. Guard сохранён и уточнён: каждое изменение сравнивается с тем же
+историческим SHA 293693d8; допустим только статус A для точных 17 S5 + 24 Mythic путей.
+Любое M/D исходных артов/Shadow JSON/баланса и любое постороннее добавление по-прежнему
+роняет тест. Тест не удалён/не skip'нут; он продолжает защищать все исходные байты.
+Финальный полный прогон повторяется на новом коммите после этого исправления.
