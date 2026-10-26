@@ -1069,7 +1069,7 @@
         ],
         [
           {
-            "text": "Редкий",
+            "text": "Мифический",
             "callback": "mini:select:999999:9999999999:c0.s03.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1078,7 +1078,7 @@
         ],
         [
           {
-            "text": "Теневой",
+            "text": "Редкий",
             "callback": "mini:select:999999:9999999999:c0.s04.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1087,8 +1087,17 @@
         ],
         [
           {
-            "text": "Необычный",
+            "text": "Теневой",
             "callback": "mini:select:999999:9999999999:c0.s05.0.0000000",
+            "handlers": [
+              "app.mini.ui.hero_selector.selector_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Необычный",
+            "callback": "mini:select:999999:9999999999:c0.s06.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
             ]
@@ -3114,7 +3123,7 @@
         ],
         [
           {
-            "text": "Редкий",
+            "text": "Мифический",
             "callback": "mini:select:999999:9999999999:t77.s03.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -3123,7 +3132,7 @@
         ],
         [
           {
-            "text": "Теневой",
+            "text": "Редкий",
             "callback": "mini:select:999999:9999999999:t77.s04.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -3132,8 +3141,17 @@
         ],
         [
           {
-            "text": "Необычный",
+            "text": "Теневой",
             "callback": "mini:select:999999:9999999999:t77.s05.0.0000000",
+            "handlers": [
+              "app.mini.ui.hero_selector.selector_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Необычный",
+            "callback": "mini:select:999999:9999999999:t77.s06.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
             ]
@@ -4199,7 +4217,7 @@
         ],
         [
           {
-            "text": "Редкий",
+            "text": "Мифический",
             "callback": "mini:select:999999:9999999999:b77.s03.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -4208,7 +4226,7 @@
         ],
         [
           {
-            "text": "Теневой",
+            "text": "Редкий",
             "callback": "mini:select:999999:9999999999:b77.s04.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -4217,8 +4235,17 @@
         ],
         [
           {
-            "text": "Необычный",
+            "text": "Теневой",
             "callback": "mini:select:999999:9999999999:b77.s05.0.0000000",
+            "handlers": [
+              "app.mini.ui.hero_selector.selector_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Необычный",
+            "callback": "mini:select:999999:9999999999:b77.s06.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
             ]
