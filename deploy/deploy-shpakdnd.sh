@@ -282,7 +282,7 @@ main() {
     # Freeze the small helper bundle: it also survives a rollback to older code.
     TOOLS="$(mktemp -d "$RUNTIME_DIR/shpakdnd-deploy.XXXXXXXX")"
     chmod 755 "$TOOLS"
-    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py release_preflight.py release_content.py release_guard.py release_schema.json; do
+    for helper in deploy-shpakdnd.sh deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py release_preflight.py release_content.py release_guard.py release_schema.json; do
         install -m 644 "$SOURCE_DIR/$helper" "$TOOLS/$helper"
     done
     as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1

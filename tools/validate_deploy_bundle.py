@@ -9,6 +9,7 @@ import subprocess
 BASE = "d9856b2038a36490f93a4f5613ba7887698ac7e8"
 ROOT = Path(__file__).resolve().parents[1]
 HARDENED = {
+    "deploy/install_bundle.py", "tests/v1_5/test_atomic_bundle.py",
     "deploy/deploy-shpakdnd.sh", "deploy/install-deploy-shpakdnd.sh",
     "deploy/release_preflight.py", "deploy/release_content.py", "deploy/release_guard.py",
     "deploy/release_schema.json", "scripts/run_isolated_checks.py",

@@ -1,3 +1,5 @@
+> V1.5 installer: [atomic bundle, explicit SHA and installer-only rollback](v1.5/ATOMIC_BUNDLE_AND_CI.md). Real installation requires separate authorization.
+
 # Production deployment D&D Mini
 
 ## Установка команды
@@ -12,11 +14,12 @@ Production: `/opt/shpakdnd-bot`, пользователь `shpakbot`, Python
 
 ```bash
 cd /opt/shpakdnd-bot
-sudo bash deploy/install-deploy-shpakdnd.sh
+sudo bash deploy/install-deploy-shpakdnd.sh --sha <independently-reviewed-full-SHA>
 sudo deploy-shpakdnd --dry-run
 ```
 
-Installer копирует небольшой bundle в `/usr/local/lib/shpakdnd-deploy` и создаёт
+Installer проверяет полный source SHA, подготавливает immutable bundle в
+`/usr/local/lib/shpakdnd-deploy/releases/<SHA>` и атомарно переключает
 symlink `/usr/local/bin/deploy-shpakdnd`. Команда продолжает существовать даже
 после code rollback на релиз без deployment scripts. При обновлении самого
 tooling повторить installer; каждое обычное обновление этого не требует.

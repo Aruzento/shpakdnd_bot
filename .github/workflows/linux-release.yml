@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.13"]
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -41,6 +41,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Enable per-step timing and durable diagnostic logs
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          printf 'BASH_ENV=%s/scripts/ci_step_diagnostics.sh\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$RUNNER_TEMP/release-diagnostics/candidate-sha.txt"
 
       - name: Verify exact candidate SHA
         env:
@@ -192,6 +198,10 @@ jobs:
       - name: Release hardening real content gates (PASS0 missing2 invalid1)
         run: python tools/validate_release_hardening.py
 
+      - name: Full V1.5 launcher contract in an independent SQLite sandbox
+        if: always()
+        run: python scripts/run_isolated_checks.py --label linux-v15 -- tools/check_v15.py
+
       - name: V1.5 populated migration replay and old-code startup
         if: always()
         run: python tools/validate_v15_migration.py
@@ -301,3 +311,11 @@ jobs:
         run: |
           git diff --check
           git diff --check origin/main...HEAD
+
+      - name: Preserve exact-SHA diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-diagnostics-python-${{ matrix.python-version }}
+          path: ${{ runner.temp }}/release-diagnostics/
+          if-no-files-found: error
