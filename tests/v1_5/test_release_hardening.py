@@ -527,7 +527,7 @@ class DeploymentNegativePaths(unittest.TestCase):
         f.h.env.update(FAKE_CHECK_FAIL="1",FAKE_V15_GUARD_REAL="1")
         t=pty.Terminal(f.h);self.addCleanup(t.close)
         f.first_two(t)
-        t.wait_text("Р’С‹Р±РѕСЂ [1]:");t.send("2\r\n")
+        t.wait_text("\u0412\u044b\u0431\u043e\u0440 [1]:");t.send("2\r\n")
         self.assertEqual(t.finish(),1,t.text)
         self.assertIn("BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED",t.text)
         self.assertNotIn("systemctl start",f.trace())
