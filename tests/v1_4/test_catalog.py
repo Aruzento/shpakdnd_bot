@@ -22,7 +22,7 @@ class CatalogTests(unittest.TestCase):
     def write(self,rarity,heroes):
         (self.root/f'{rarity}.json').write_text(json.dumps({'heroes':heroes}),encoding='utf-8')
 
-    def test_six_catalogs_loaded_with_published_shadows_and_empty_mythic(self):
+    def test_six_catalogs_loaded_with_published_shadows_and_eight_mythic(self):
         self.assertEqual(len(list(self.root.glob('*.json'))),6)
         catalog=load_hero_catalog();self.assertIn('settings',catalog)
         self.assertGreater(len(catalog['heroes']),30)
@@ -31,9 +31,14 @@ class CatalogTests(unittest.TestCase):
         for rarity in RARITIES:
             content=json.loads((self.root/f'{rarity}.json').read_text(encoding='utf-8'))['heroes']
             loaded=[h for h in catalog['heroes'] if h['rarity']==rarity]
-            self.assertEqual([{k:v for k,v in h.items() if k!='passives'} for h in loaded],content)
+            self.assertEqual([{k:v for k,v in h.items() if k!='passives'} for h in loaded],[{k:v for k,v in h.items() if k!='passives'} for h in content])
+            for source,actual in zip(content,loaded):
+                for mode,prop in source.get('passives',{}).items():
+                    for key,value in prop.items():self.assertEqual(actual['passives'][mode][key],value)
             self.assertTrue(all(h['rarity']==rarity for h in content))
-        self.assertEqual([h for h in catalog['heroes'] if h['rarity']=='mythic'],[])
+        mythics=[h for h in catalog['heroes'] if h['rarity']=='mythic']
+        self.assertEqual(len(mythics),8)
+        self.assertEqual(len({h['mythic_element'] for h in mythics}),8)
         shadows=[h for h in catalog['heroes'] if h['rarity']=='shadow']
         self.assertTrue(expected_shadows<={h['code'] for h in shadows})
         self.assertEqual(len(shadows),len({h['code'] for h in shadows}))
@@ -64,7 +69,7 @@ class CatalogTests(unittest.TestCase):
                 self.assertEqual({k:v for k,v in current[old['code']].items() if k!='passives'},old)
 
     def test_mythic_requires_approved_element_instead_of_retired_cost(self):
-        hero=copy.deepcopy(load_hero_catalog()['heroes'][0]);hero.update(code='myth',rarity='mythic')
+        hero=copy.deepcopy(next(h for h in load_hero_catalog()['heroes'] if h.get('mythic_element')=='ice'));hero.update(code='myth',rarity='mythic')
         for element in (None,'red','',True):
             hero['mythic_element']=element;self.write('mythic',[hero])
             with self.assertRaisesRegex(ValueError,'mythic_element'):load_hero_catalog()
@@ -91,7 +96,8 @@ class OwnershipTests(MiniCase):
     def test_collection_and_upgrade_accept_both_exclusive_rarities(self):
         data=load_hero_catalog()
         for rarity in ('shadow','mythic'):
-            hero=copy.deepcopy(data['heroes'][0]);hero.update(code='fixture_'+rarity,rarity=rarity,mythic_element='ice')
+            source=next(h for h in data['heroes'] if h['rarity']==rarity)
+            hero=copy.deepcopy(source);hero.update(code='fixture_'+rarity,rarity=rarity,mythic_element='ice')
             data['heroes'].append(hero)
         with patch('app.mini.catalog._read_hero_catalog',return_value=data):
             sync_hero_catalog(self.db)
@@ -140,7 +146,8 @@ class OwnershipTests(MiniCase):
         from app.mini.gacha import get_gacha_state
         data=load_hero_catalog()
         for rarity in ('mythic','shadow'):
-            h=copy.deepcopy(data['heroes'][0]);h.update(code='pool_'+rarity,rarity=rarity,mythic_element='ice')
+            source=next(h for h in data['heroes'] if h['rarity']==rarity)
+            h=copy.deepcopy(source);h.update(code='pool_'+rarity,rarity=rarity,mythic_element='ice')
             data['heroes'].append(h);data['settings']['rarity_weights'][rarity]=100000
         with patch('app.mini.catalog._read_hero_catalog',return_value=data):
             sync_hero_catalog(self.db);state=get_gacha_state(self.pid,self.db)

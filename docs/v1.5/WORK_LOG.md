@@ -113,3 +113,11 @@ BatchTests.test_replay_restart_and_parallel_requests. Расширенная д�
 фильтры редкости collection/Boss/Tower теперь включают Mythic. Добавлена только
 эта реальная кнопка с подтверждёнными router handlers; тест не ослаблен.
 Проверки кандидата 21bf462 остановлены и не выдаются за финальные.
+
+Полный 3549aea: Windows2121/1327.868s/19skips, Linux3.11 2121/843.152s,
+Linux3.13 2121/969.928s — везде3fail+3error. Все шесть ошибок — исторические
+предпосылки: два ожидания пустого Mythic, удаление modern полей в legacy-default
+fixture, две фикстуры Mythic из Villager, имя поля в diagnostic regex.
+Legacy defaults проверяются на прежних71, modern malformed отдельно отвергается;
+валидные ownership/gacha fixtures берутся из настоящего Mythic, raw/catalog
+сравниваются с сохранением явных mode полей. Тесты/проверки не удалены/не skipped.

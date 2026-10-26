@@ -21,6 +21,10 @@ class CreatureContentTests(unittest.TestCase):
 
     def test_old_hero_json_missing_combat_fields_uses_safe_defaults(self):
         data=copy.deepcopy(load_hero_catalog())
+        # Legacy defaults apply to old cards; V1.5 Mythic require authored fields.
+        modern=[h for h in data["heroes"] if h["rarity"]=="mythic"]
+        data["heroes"]=[h for h in data["heroes"] if h["rarity"]!="mythic"]
+        self.assertEqual(len(data["heroes"]),71)
         for hero in data["heroes"]:
             for field in LEGACY_HERO_TRAITS:hero.pop(field)
             hero.pop("passive_key")
@@ -30,6 +34,10 @@ class CreatureContentTests(unittest.TestCase):
         for hero in result["heroes"]:
             for field,value in LEGACY_HERO_TRAITS.items():self.assertEqual(hero[field],value)
             self.assertEqual(hero["passive_key"],"none")
+        for modern_hero in modern:
+            changed=copy.deepcopy(modern_hero);changed.pop("passive_key")
+            with self.subTest(modern=changed["code"]),patch("app.mini.catalog._read_hero_catalog",return_value={**data,"heroes":[changed]}),self.assertRaises(ValueError):
+                load_hero_catalog()
 
     def test_old_boss_json_missing_fields_has_no_features_or_ability(self):
         data=copy.deepcopy(load_boss_catalog())

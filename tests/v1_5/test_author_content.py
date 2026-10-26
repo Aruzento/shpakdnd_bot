@@ -60,6 +60,10 @@ class AuthorCatalog(unittest.TestCase):
             changed = copy.deepcopy(data);changed["heroes"][index][field] = value
             with self.subTest(field=field,value=value), patch.object(catalog,"_read_hero_catalog",return_value=changed), self.assertRaises(ValueError):
                 catalog.load_hero_catalog()
+        for field in ("faction", "damage_type", "class_tag", "attack_range", "special_trait"):
+            changed=copy.deepcopy(data);changed["heroes"][index].pop(field)
+            with self.subTest(missing=field),patch.object(catalog,"_read_hero_catalog",return_value=changed),self.assertRaises(ValueError):
+                catalog.load_hero_catalog()
         for field in ("code", "name", "mythic_element"):
             changed=copy.deepcopy(MYTHICS);changed[1][field]=changed[0][field]
             with self.subTest(duplicate=field), self.assertRaises(ValueError):

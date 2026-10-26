@@ -145,8 +145,11 @@ def validate_mythic_fields(hero):
 
     element = hero.get("mythic_element")
     if not isinstance(element, str) or element not in BASE_ATTACK:
-        raise ValueError("Mythic requires an approved element")
-    for field in ("code", "name", "race", "class_name", "description", "passive_text"):
+        raise ValueError("Mythic requires an approved mythic_element")
+    for field in (
+        "code", "name", "race", "class_name", "description", "passive_text",
+        "faction", "damage_type", "class_tag", "attack_range", "special_trait",
+    ):
         if not isinstance(hero.get(field), str) or not hero[field].strip():
             raise ValueError("Mythic requires nonempty " + field)
     if type(hero.get("attack")) is not int or hero["attack"] != BASE_ATTACK[element]:

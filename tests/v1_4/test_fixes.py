@@ -48,7 +48,10 @@ class ShadowHitTests(unittest.TestCase):
         self.assertTrue(expected.items()<={h['code']:h['passive_key'] for h in shadows}.items())
         self.assertTrue(all(h['passive_key'] in ability_catalog.configured_ability_keys() for h in shadows))
         self.assertEqual(set(expected.values()),keys)
-        self.assertEqual(json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes'],[])
+        mythics=json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes']
+        self.assertEqual(len(mythics),8)
+        self.assertTrue({h['code'] for h in mythics}.isdisjoint(h['code'] for h in shadows))
+        self.assertTrue(all(h['passive_key'].startswith('mythic_') for h in mythics))
 
     def test_collapse_first_two_normal_third_base_times_two_and_sixth_repeats(self):
         self.assertEqual([self.hit('shadow_collapse',n)['damage'] for n in range(1,7)], [70,70,28,70,70,28])
