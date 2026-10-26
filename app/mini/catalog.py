@@ -139,6 +139,38 @@ def _read_hero_catalog() -> dict:
     return data
 
 
+def validate_mythic_fields(hero):
+    """Reject malformed authored Mythic before legacy defaults/normalization."""
+    from app.mini.mythic.content import BASE_ATTACK
+
+    element = hero.get("mythic_element")
+    if not isinstance(element, str) or element not in BASE_ATTACK:
+        raise ValueError("Mythic requires an approved element")
+    for field in ("code", "name", "race", "class_name", "description", "passive_text"):
+        if not isinstance(hero.get(field), str) or not hero[field].strip():
+            raise ValueError("Mythic requires nonempty " + field)
+    if type(hero.get("attack")) is not int or hero["attack"] != BASE_ATTACK[element]:
+        raise ValueError("Incorrect fixed Mythic base attack")
+    if type(hero.get("active")) is not bool:
+        raise ValueError("Mythic active must be boolean")
+    expected = "mythic_" + element
+    if hero.get("passive_key") != expected:
+        raise ValueError("Mythic legacy key must match its element")
+    props = hero.get("passives")
+    if not isinstance(props, dict) or set(props) != {"normal", "raid"}:
+        raise ValueError("Mythic requires both explicit mode properties")
+    for mode in ("normal", "raid"):
+        prop = props[mode]
+        if (
+            not isinstance(prop, dict)
+            or prop.get("key") != expected
+            or prop.get("configured", True) is not True
+        ):
+            raise ValueError("Mythic mode key must match its element and be enabled")
+    if hero.get("image") != element + "_adult.png":
+        raise ValueError("Mythic requires its adult PNG basename")
+
+
 def load_hero_catalog() -> dict:
     from app.mini.combat.matchups import FACTIONS, DAMAGE_TYPES, ATTACK_RANGES
     from app.mini.combat.hero_abilities.catalog import configured_ability_keys
@@ -225,6 +257,9 @@ def load_hero_catalog() -> dict:
     for hero in heroes:
         if not isinstance(hero, dict):
             raise ValueError("heroes.json: герой должен быть объектом.")
+
+        if hero.get("rarity") == "mythic":
+            validate_mythic_fields(hero)
 
         for field, default in LEGACY_HERO_TRAITS.items():
             hero.setdefault(field, default)

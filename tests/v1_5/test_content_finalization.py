@@ -581,6 +581,7 @@ class AuthorContracts(unittest.TestCase):
                     h[key] = True if key == "active" else "Temporary author fixture"
                 h.update(
                     code="fixture_mythic_" + h["mythic_element"],
+                    name="Fixture " + h["mythic_element"],
                     faction="neutral",
                     damage_type="magic",
                     attack_range="ranged",

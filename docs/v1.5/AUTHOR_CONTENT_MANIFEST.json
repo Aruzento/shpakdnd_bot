@@ -1,0 +1,21 @@
+{
+  "title": "DND Mini V1.5 Codex author payload",
+  "prepared_date": "2026-10-26",
+  "repo": "Aruzento/shpakdnd_bot",
+  "branch": "codex/v1.5",
+  "checked_start_sha": "407577640d3141cbd4cb9cc0ad3fdf3b9b28aeaa",
+  "payload": {
+    "mythic": {
+      "path": "payload/app/mini/content/heroes/mythic.json",
+      "sha256": "71207e4ab59e4ab5f83823380d0f15ea90a611fe5d87ae2cb7a7cec202d030d4",
+      "entries": 8
+    },
+    "bosses": {
+      "path": "payload/app/mini/mythic/raid/bosses.json",
+      "sha256": "83534af0900a46cb6aa6e5aaee029f833ceb9b5e2450acd2f1bd5139b4e0e3dd",
+      "entries": 4
+    }
+  },
+  "non_production_story_author_content_included": false,
+  "user_art_images_included": false
+}

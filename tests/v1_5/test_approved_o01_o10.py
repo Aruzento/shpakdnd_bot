@@ -1223,7 +1223,7 @@ class ApprovedContracts(unittest.TestCase):
             # Real S5 may already be imported; keep exactly one full set in this fixture.
             codes = {h["code"] for h in manifest}
             data["heroes"] = [
-                h for h in data["heroes"] if h["code"] not in codes
+                h for h in data["heroes"] if h["code"] not in codes and h["rarity"] != "mythic"
             ] + copy.deepcopy(manifest)
             for h in manifest:
                 (images / h["image"]).write_bytes(png((255, 255, 255)))
@@ -1231,7 +1231,7 @@ class ApprovedContracts(unittest.TestCase):
                 h = copy.deepcopy(real["heroes"][0])
                 h.update(
                     code="fixture_" + element,
-                    name="Fixture only",
+                    name="Fixture only " + element,
                     rarity="mythic",
                     attack=attack,
                     mythic_element=element,

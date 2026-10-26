@@ -190,6 +190,13 @@ def validate_mythics(heroes, *, images=HERO_IMAGES_DIR):
         ]
     if len(values) != 8 or {h.get("mythic_element") for h in values} != ELEMENTS:
         raise ValueError("Mythic catalog needs exactly eight distinct elements")
+    from app.mini.catalog import validate_mythic_fields
+
+    for hero in values:
+        validate_mythic_fields(hero)
+    for field in ("code", "name"):
+        if len({h.get(field) for h in values}) != 8:
+            raise ValueError("Duplicate Mythic " + field)
     missing = []
     for hero in values:
         element = hero["mythic_element"]

@@ -8,3 +8,7 @@
 *.cmd text eol=crlf
 # Owner-provided catalog: retain the exact upstream SHA-256 on every platform.
 data/loot.csv -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Exact owner-provided V1.5 JSON payloads: preserve manifest bytes on every OS.
+app/mini/content/heroes/mythic.json -text
+app/mini/mythic/raid/bosses.json -text

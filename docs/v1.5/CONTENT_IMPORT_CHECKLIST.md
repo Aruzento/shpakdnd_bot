@@ -1,68 +1,57 @@
-# Контент V1.5: текущая поставка и оставшиеся поля
+# Контент V1.5: авторские 8 Mythic и 4 Raid
 
-Состояние после технического прохода 26.10.2026 от HEAD 9ef98aa.
+Статус: **В разработке. Релиз заблокирован**. Проход от проверенного
+`407577640d3141cbd4cb9cc0ad3fdf3b9b28aeaa`, ветка `codex/v1.5`, draft PR #8.
+Источник: `AUTHOR_CONTENT_IMPORT_APPROVED_TZ.md`, точные байтовые JSON и SHA-256
+из `AUTHOR_CONTENT_MANIFEST.json`. Префикс доставки payload/ в Git не создаётся.
 
 | Компонент | Результат |
 |---|---|
-| PNG_PASS | Все 45 реальных PNG присутствуют и проходят отдельную проверку, независимо от карточек |
-| S5_IMPORTED | 17/17 импортированы в common/uncommon/rare/legendary (5/6/4/2); повторный apply — no-op |
-| MYTHIC_RECORDS_READY | BLOCKED_BY_INPUT: нет авторских полей восьми героев |
-| RAID_RECORDS_READY | BLOCKED_BY_INPUT: для четырёх записей нужны code/name |
-| STORIES_READY | BLOCKED_BY_INPUT: нет настоящих авторских сюжетов |
-| STRICT_CONTENT_PASS | BLOCKED_BY_INPUT; диагностический exit 0 не означает приёмку, strict exit 2 |
+| PNG_PASS | PASS: все 45 настоящих PNG, исходные SHA-256 сохранены |
+| S5_IMPORTED | PASS: прежние 17 записей 5/6/4/2, без повторного импорта |
+| MYTHIC_RECORDS_READY | PASS: 8 авторских активных карточек; 71 прежняя → 79 |
+| RAID_RECORDS_READY | PASS: 4 авторские записи, существующие raid_boss_1..4.png |
+| STORIES_READY | BLOCKED_BY_INPUT: настоящие Story DAG JSON пока не предоставлены |
+| STRICT_CONTENT_PASS | BLOCKED_BY_INPUT, strict exit 2 только из-за Историй |
 
-## Графика
+## Неизменность и связи
 
-17 белых S5: каждый RGB-канал 252–255, alpha 255. Для 24 Mythic и четырёх Raid:
-каждый RGB-канал 0–4, alpha 255, только четыре угла. RGB 5 или alpha 254 отклоняются.
-Оттенки вне углов не ограничиваются; художественная композиция остаётся авторской.
-PNG signature, CRC, квадратность, декодирование scanlines и прозрачность проверяются.
-У Raid цвет проверяется также через catalog.validate(require_images=True) и strict-content.
-Прочие изображения без явно указанного background не получают новый цветовой контракт.
+Все 71 прежние карточки семантически сохранены, settings/веса/цены/S5 manifest
+не менялись. Обычная гача исключает Mythic/Shadow; старый craft Mythic запрещён.
+Авторские имена/code/тексты/числа сохранены побайтно. SQLite использует штатный
+sync каталога, дополнительная миграция схемы не нужна. Snapshot старого боя/рейда
+не пересчитывается по новым JSON.
 
-45 SHA-256 до изменений зафиксированы в CONTENT_ASSET_SHA256.json; автоматический тест
-сверяет реальные файлы с ним. Полный отчёт с RGBA/размерами и до/после хешами — в evidence.
-Все байты изображений сохранены. Boss 1..4: app/mini/mythic/raid/images/raid_boss_1.png…4.png.
-Mythic: app/mini/content/hero_images/{ice,lightning,dark,fire,star,earth,moon,sun}_{egg,young,adult}.png.
-S5: точные image и code — S5_IMPORT_MANIFEST.json, игровые поля манифеста не изменяются.
+24 Mythic PNG: восемь элементов ice/lightning/dark/fire/star/earth/moon/sun,
+стадии egg/young/adult. Внутренняя стадия wonder использует young.png.
+Четыре босса используют raid_boss_1.png…raid_boss_4.png по порядку поставки.
+Для 17 S5 RGB всех четырёх углов 252–255, для Mythic/Raid 0–4, alpha всегда 255.
+Исходные 45 хешей — CONTENT_ASSET_SHA256.json. Арт не редактировался.
 
-## Безопасный S5 importer
+## Каталоги и проверки
 
-`python tools/import_v15_s5.py --source docs/v1.5/S5_IMPORT_MANIFEST.json --images app/mini/content/hero_images`
-— read-only preflight. Та же команда с --apply разрешена только в codex/v1.5.
-Источник — именно утверждённый manifest. --images явно выбирает доверенный входной каталог;
-читаются только PNG-basename манифеста, symlink/выход из каталога запрещён.
-Существующий destination с равными байтами переиспользуется, в том числе source==destination;
-его mtime/PNG не меняются. Различные байты — отказ до записи, даже если оба PNG валидны.
-Полный идентичный набор записей — no-op; частичный/конфликтный — отказ, не автозамена.
+Основной каталог проверяет Mythic до legacy defaults: integer ATK, явные
+normal/raid ключи своего элемента, legacy key, adult PNG, boolean active и
+авторские строки. Невалидные faction/range и неизвестные registry keys запрещены.
+Полный Mythic content требует восемь разных элементов/code/name и все 24 PNG.
+Raid сохраняет строгие четыре профиля, уникальные code/image, unknown/duplicate
+JSON fields, no Shadow links, точные HP/контрстихии/счётчики и black PNG.
 
-Все JSON/PNG и общий каталог проверяются до записи. Lock исключает параллельный импорт;
-все входы повторно сверяются с preflight. Новые файлы и backups fsync-ятся во временном
-каталоге на целевой файловой системе; os.replace заменяет каждый файл целиком.
-При ошибке выполненные замены откатываются. Это не межпроцессная транзакция всех файлов:
-импорт выполняется только в feature-checkout без live bot. При аварии rollback backups
-сохраняются с точным путём в ошибке, lock после kill требует проверки оператором.
+Новые тесты tests/v1_5/test_author_content.py используют настоящие JSON: byte
+manifest, 79 catalog, сохранение прежних карточек, registry, normal и raid,
+pet evolution/pending/resume/однократная выдача, звёзды 1..6 за 20/35/55/80/110,
+Telegram/photo, counter при zero, фазы, heal, ledger/replay и restart. Общая
+матрица также проверяет Sun suppression, Eclipse, гонки отмены/победы, rollback
+транзакций и защиту снимков. Тестовые карточки остаются только в tests.
 
-Старые 54 записи сохранены; текущий итог — 71, из них 17 новых S5. Гача продолжает
-использовать только common/uncommon/rare/legendary; Mythic/Shadow исключены. Веса, pity,
-формула дубликатов, ранги, оборудование и legacy fragments не меняются.
+## Единственный оставшийся контентный пакет
 
-## Один пакет оставшихся авторских данных
+Нужны настоящие внешние Story JSON по STORIES_IMPORT_GUIDE.md. Шаблон в docs
+не устанавливается в STORIES_DIR и не считается поставленной Историей.
+MYTHIC_AUTHOR_INPUT_REQUIRED.md и RAID_BOSSES_AUTHOR_INPUT_REQUIRED.md —
+исторические незаполненные шаблоны предыдущего этапа; их запросы теперь закрыты.
+Данные поставлены в игровых каталогах, дополнительного согласования механик нет.
 
-- MYTHIC_AUTHOR_INPUT_REQUIRED.md: восемь строк и ready-to-complete JSON; известные
-  attack/image/элемент/normal+raid свойства заполнены, отсутствующие поля явно null.
-- RAID_BOSSES_AUTHOR_INPUT_REQUIRED.md: четыре записи с точными SPECS/порядком PNG;
-  нужны только code/name, Shadow=false. Ни одного placeholder-кода в игровом каталоге.
-- STORY_AUTHOR_TEMPLATE.json: TEMPLATE / NOT PRODUCTION. STORIES_IMPORT_GUIDE.md содержит
-  read-only CLI и внешний тестовый путь. Шаблон не копируется в рабочий STORIES_DIR.
-
-Mythic каталог остаётся пустым; Boss каталог корректно отсутствует. Интеграционные fixtures
-доказывают механику, но не заменяют авторскую поставку и строгую приёмку.
-
-До следующей приёмки нужны весь настоящий контент, независимое финальное ревью,
-production DB copy и реальный staging. Сейчас рабочая SQLite, main и серверы не затронуты.
-Вердикт: **Релиз заблокирован**.
-
-Предыдущий checklist со всеми историческими фактами сохранён без изменений в
-CONTENT_IMPORT_CHECKLIST_BEFORE_FINALIZATION.md; его старые слова об отсутствии PNG
-или ещё не утверждённом чёрном допуске описывают прежнее состояние.
+Полные Windows/Linux3.11/3.13 count/skip/exit/log и точный финальный SHA —
+в итоговом отчёте и том же draft PR. До Историй, независимого ревью, проверки
+копии production DB и реального staging выкладка не разрешена.

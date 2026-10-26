@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "bosses": [
+    {
+      "code": "baldur_adamantine_colossus",
+      "name": "Адамантиевый исполин подземелья Балдура",
+      "image": "raid_boss_1.png",
+      "max_hp": 100000,
+      "element": "fire",
+      "counter_elements": [
+        "ice"
+      ],
+      "features": [
+        "armored"
+      ],
+      "mechanic": {
+        "type": "armor_cycle",
+        "armored_attacks": 10,
+        "exposed_attacks": 5
+      },
+      "regeneration_percent": 0,
+      "shadow_extractable": false,
+      "counter_policy": "first_confirmed_counter_hero_attack_on_this_raid"
+    },
+    {
+      "code": "tsurumi_thunderbird",
+      "name": "Громовая птица острова Цуруми",
+      "image": "raid_boss_2.png",
+      "max_hp": 115000,
+      "element": "lightning",
+      "counter_elements": [
+        "star"
+      ],
+      "features": [
+        "flying"
+      ],
+      "mechanic": {
+        "type": "flight_cycle",
+        "flying_attacks": 8,
+        "grounded_attacks": 2
+      },
+      "regeneration_percent": 0,
+      "shadow_extractable": false,
+      "counter_policy": "first_confirmed_counter_hero_attack_on_this_raid"
+    },
+    {
+      "code": "wood_steel_butcher_golem",
+      "name": "Голем мясник из дерева и стали",
+      "image": "raid_boss_3.png",
+      "max_hp": 130000,
+      "element": "dark",
+      "counter_elements": [
+        "sun"
+      ],
+      "features": [],
+      "mechanic": {
+        "type": "periodic_heal",
+        "every_attacks": 15,
+        "heal_bps_of_original_hp": 25,
+        "sun_suppresses": true
+      },
+      "regeneration_percent": 0,
+      "shadow_extractable": false,
+      "counter_policy": "first_confirmed_counter_hero_attack_on_this_raid"
+    },
+    {
+      "code": "spatial_anomaly_angel",
+      "name": "Ангел из пространственной аномалии",
+      "image": "raid_boss_4.png",
+      "max_hp": 150000,
+      "element": "star",
+      "counter_elements": [
+        "moon"
+      ],
+      "features": [
+        "armored",
+        "flying"
+      ],
+      "mechanic": {
+        "type": "hp_defense_phases",
+        "threshold_percent": [
+          75,
+          50,
+          25
+        ],
+        "phase_features": [
+          [
+            "armored",
+            "flying"
+          ],
+          [
+            "armored"
+          ],
+          [
+            "flying"
+          ],
+          []
+        ],
+        "threshold_base": "original_max_hp",
+        "monotonic": true
+      },
+      "regeneration_percent": 0,
+      "shadow_extractable": false,
+      "counter_policy": "first_confirmed_counter_hero_attack_on_this_raid"
+    }
+  ]
+}

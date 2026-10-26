@@ -178,11 +178,13 @@ class PublicationIntegrationTests(unittest.TestCase):
                 source.extractall(code)
         return code
 
-    def test_old_startup_only_deactivates_new_s5_on_disposable_copy(self):
+    def test_old_startup_only_deactivates_new_s5_and_mythic_on_disposable_copy(self):
         import json
         release.run_old(release.ROOT,self.db,'import check_bot;check_bot.main()')
         manifest=json.loads((release.ROOT/'docs/v1.5/S5_IMPORT_MANIFEST.json').read_text(encoding='utf-8'))['heroes']
         codes={h['code'] for h in manifest}
+        mythics=json.loads((release.ROOT/'app/mini/content/heroes/mythic.json').read_text(encoding='utf-8'))['heroes']
+        codes.update(h['code'] for h in mythics)
         with closing(sqlite3.connect(self.db)) as conn, conn:
             hero=conn.execute('SELECT id FROM mini_heroes WHERE code=?',(manifest[0]['code'],)).fetchone()[0]
             conn.execute('INSERT INTO mini_player_heroes(player_id,hero_id,copies,stars) VALUES(?,?,3,2)',(self.player,hero))
@@ -193,7 +195,7 @@ class PublicationIntegrationTests(unittest.TestCase):
             source.backup(target)
         expected=release.snapshot(copy)
         columns,rows=expected['mini_heroes']; code_index=columns.index('code'); active_index=columns.index('active')
-        self.assertEqual(sum(r[code_index] in codes for r in rows),17)
+        self.assertEqual(sum(r[code_index] in codes for r in rows),25)
         updated=[]
         for row in rows:
             row=list(row)

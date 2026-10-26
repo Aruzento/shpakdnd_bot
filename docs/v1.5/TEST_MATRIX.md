@@ -82,3 +82,18 @@ BatchTests.test_replay_restart_and_parallel_requests. Расширенная д�
 модулей, подменяющих _choose_hero_code, нашла первую утечку именно там. Общий patch
 также перенесён за пределы batch workers; проверяется восстановление исходной функции.
 Исходный S5 weighted-pool test не меняется. Полные exact-SHA проверки повторяются.
+
+
+## Настоящий авторский контент 8+4
+
+`tests/v1_5/test_author_content.py`: manifest byte identity, preservation71/count79,
+8 mode registry links and invalid author fields, four strict boss profiles,
+real pet evolution/pending/restart/one-time grant/stars6, real normal service
+battles and raid cycles/heal/HP phases, first counter including zero, R09 funds,
+concurrent receipt replay, SQLite sync3x, Telegram cards/photos/raid callbacks.
+Readiness accepts Mythic/Raid and leaves only external Stories blocked (strict2).
+Все прежние отрицательные тесты сохраняются. Полная временная фикстура strict0
+заменяет настоящие Mythic временными, не дублирует их. Исторический old-code
+copy guard разрешает только active=0 для 17 S5 + 8 Mythic, остальные поля и
+владение/деньги/звёзды строго сохраняются. Финальные exact-SHA проверки и логи —
+в отчёте и draft PR #8, результаты предыдущего SHA не считаются текущими.
