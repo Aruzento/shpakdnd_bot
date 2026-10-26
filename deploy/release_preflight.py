@@ -88,6 +88,13 @@ def configuration(project, requested="", service=None):
             properties[name] = subprocess.check_output(
                 ["systemctl", "show", "-p", name, "--value", service], text=True,
                 stderr=subprocess.DEVNULL).strip()
+        # ExecStart's D-Bus rendering includes live pid/start/stop/code/status.
+        # Those change on an ordinary stop and must not invalidate static identity.
+        properties["ExecStart"] = re.sub(
+            r";\s*(?:start_time|stop_time|pid|code|status)=[^;{}]*", "", properties["ExecStart"])
+        properties["UnitDefinition"] = subprocess.check_output(
+            ["systemctl", "cat", "--no-pager", service], text=True,
+            stderr=subprocess.DEVNULL)
         try:
             for item in shlex.split(properties["Environment"]):
                 if item.startswith("STORIES_DIR=") and external_directory(item.split("=", 1)[1], project) != directory:

@@ -389,10 +389,19 @@ class ExactSHAIsolation(unittest.TestCase):
         other=self.base/"other-stories";other.mkdir()
         with self.assertRaisesRegex(ValueError,"CONFIGURATION_MISMATCH"):
             preflight.configuration(self.project,str(other))
-        values={"Environment":shlex.quote("STORIES_DIR="+str(self.stories)),"EnvironmentFiles":str(self.project/".env")+" (ignore_errors=no)","WorkingDirectory":str(self.project),"ExecStart":"python bot.py","User":"fixture"}
-        def value(command,**kwargs): return values[command[3]]+"\n"
+        values={"Environment":shlex.quote("STORIES_DIR="+str(self.stories)),"EnvironmentFiles":str(self.project/".env")+" (ignore_errors=no)","WorkingDirectory":str(self.project),"ExecStart":"{ path=/usr/bin/python ; argv[]=/usr/bin/python bot.py ; ignore_errors=no ; start_time=[Mon] ; stop_time=[n/a] ; pid=7 ; code=(null) ; status=0/0 }","User":"fixture"}
+        def value(command,**kwargs):
+            if command[1]=="cat": return "# fake.service\n[Service]\nExecStart=python bot.py\n"
+            return values[command[3]]+"\n"
         with patch.object(preflight.subprocess,"check_output",side_effect=value):
-            self.assertIsNotNone(preflight.configuration(self.project,str(self.stories),"fake.service")["service_signature"])
+            running=preflight.configuration(self.project,str(self.stories),"fake.service")["service_signature"]
+            self.assertIsNotNone(running)
+            before=values["ExecStart"]
+            values["ExecStart"]=before.replace("pid=7","pid=0").replace("stop_time=[n/a]","stop_time=[Mon]").replace("code=(null)","code=exited")
+            self.assertEqual(preflight.configuration(self.project,str(self.stories),"fake.service")["service_signature"],running)
+            values["ExecStart"]=before.replace("bot.py","different.py")
+            self.assertNotEqual(preflight.configuration(self.project,str(self.stories),"fake.service")["service_signature"],running)
+            values["ExecStart"]=before
             values["Environment"]=shlex.quote("STORIES_DIR="+str(other))
             with self.assertRaisesRegex(ValueError,"SERVICE_STORIES_OVERRIDE"):
                 preflight.configuration(self.project,str(self.stories),"fake.service")
