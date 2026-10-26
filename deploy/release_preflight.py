@@ -4,6 +4,9 @@ import argparse
 import hashlib
 import json
 import os
+import io
+import re
+import shlex
 from pathlib import Path
 import shutil
 import subprocess
@@ -61,12 +64,52 @@ def validate_frozen_bundle(candidate):
             raise ValueError("BLOCKED_FROZEN_BUNDLE_TARGET_MISMATCH:" + name)
 
 
+def configuration(project, requested="", service=None):
+    from dotenv import dotenv_values
+    project = Path(project).resolve(strict=True)
+    path = project / ".env"
+    if path.is_symlink():
+        raise ValueError("BLOCKED_CONFIG_SYMLINK")
+    raw = path.read_bytes()
+    try:
+        values = dotenv_values(stream=io.StringIO(raw.decode("utf-8")), interpolate=False)
+    except UnicodeError:
+        raise ValueError("BLOCKED_CONFIG_ENCODING") from None
+    configured = values.get("STORIES_DIR")
+    if not configured:
+        raise ValueError("BLOCKED_EXPLICIT_TARGET_STORIES_DIR_REQUIRED")
+    directory = external_directory(configured, project)
+    if requested and external_directory(requested, project) != directory:
+        raise ValueError("BLOCKED_TARGET_CONFIGURATION_MISMATCH")
+    signature = None
+    if service:
+        properties = {}
+        for name in ("Environment", "EnvironmentFiles", "WorkingDirectory", "ExecStart", "User"):
+            properties[name] = subprocess.check_output(
+                ["systemctl", "show", "-p", name, "--value", service], text=True,
+                stderr=subprocess.DEVNULL).strip()
+        try:
+            for item in shlex.split(properties["Environment"]):
+                if item.startswith("STORIES_DIR=") and external_directory(item.split("=", 1)[1], project) != directory:
+                    raise ValueError("BLOCKED_SERVICE_STORIES_OVERRIDE")
+        except ValueError:
+            raise ValueError("BLOCKED_SERVICE_STORIES_OVERRIDE_OR_FORMAT") from None
+        files = properties["EnvironmentFiles"]
+        matches = re.findall(r"(.+?) \(ignore_errors=(?:yes|no)\)(?: |$)", files)
+        if files and (not matches or any(Path(name.strip().strip('"')).resolve() != path for name in matches)):
+            raise ValueError("BLOCKED_UNREVIEWED_SERVICE_ENVIRONMENT_FILE")
+        # Never log environment values/tokens, only the digest of static unit settings.
+        signature = hashlib.sha256(json.dumps(properties, sort_keys=True).encode()).hexdigest()
+    return dict(directory=str(directory), env_sha256=hashlib.sha256(raw).hexdigest(), service=service, service_signature=signature)
+
+
 def prepare(args):
     project = Path(args.project).resolve(strict=True)
     workspace = validate_workspace(args.workspace, project)
     target = exact_sha(args.sha)
     old = exact_sha(args.old_sha)
-    stories = external_directory(args.stories_directory, project)
+    config = configuration(project, args.stories_directory, getattr(args, "service", None))
+    stories = Path(config["directory"])
     if git(project, "rev-parse", "HEAD") != old or git(project, "status", "--porcelain", "--untracked-files=all"):
         raise ValueError("BLOCKED_LIVE_HEAD_OR_DIRTY")
     if git(project, "rev-parse", "origin/main^{commit}") != target:
@@ -98,7 +141,10 @@ def prepare(args):
     receipt = dict(run_id=run_id, target_sha=target, old_sha=old, candidate=str(candidate),
                    stories_directory=str(stories), python=sys.version, command=command,
                    exit_code=proc.returncode, seconds=round(time.monotonic()-began, 3), log=str(log))
+    receipt["configuration"] = config
     if proc.returncode == 0:
+        if config != configuration(project, args.stories_directory, getattr(args, "service", None)):
+            raise ValueError("BLOCKED_CONFIGURATION_CHANGED_DURING_PREFLIGHT")
         if story_files != fingerprint(stories, project):
             raise ValueError("BLOCKED_TARGET_STORIES_CHANGED_DURING_PREFLIGHT")
         receipt["story_files"] = story_files
@@ -126,6 +172,9 @@ def verify(args):
     candidate = workspace / "candidate"
     if str(candidate) != receipt["candidate"] or git(candidate, "rev-parse", "HEAD") != target or git(candidate, "status", "--porcelain"):
         raise ValueError("BLOCKED_CANDIDATE_RECEIPT")
+    current_config = configuration(project, receipt["stories_directory"], receipt["configuration"]["service"])
+    if current_config != receipt["configuration"]:
+        raise ValueError("BLOCKED_CONFIGURATION_CHANGED")
     if receipt["story_files"] != fingerprint(receipt["stories_directory"], project):
         raise ValueError("BLOCKED_TARGET_STORIES_CHANGED")
     print("Preflight receipt and target fingerprint: PASS " + target)
@@ -151,17 +200,13 @@ def main():
     parser.add_argument("--old-sha")
     parser.add_argument("--stories-directory", default="")
     parser.add_argument("--installed", action="store_true")
+    parser.add_argument("--service")
     args = parser.parse_args()
     try:
         if args.action == "configuration":
-            from dotenv import dotenv_values
             if args.workspace:
                 external_directory(args.workspace, args.project)
-            # Parse data only, never import live app.config or execute .env.
-            path = args.stories_directory or dotenv_values(Path(args.project)/".env", interpolate=False).get("STORIES_DIR")
-            if not path or not Path(path).is_absolute():
-                raise ValueError("BLOCKED_EXPLICIT_TARGET_STORIES_DIR_REQUIRED")
-            print(path)
+            print(configuration(args.project, args.stories_directory, args.service)["directory"])
         elif args.action == "export":
             export_reports(args)
         elif args.action == "prepare":

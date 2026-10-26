@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -189,6 +190,8 @@ class RollbackMatrix(MiniCase):
             result = self.inspect("v15-once-raid-pets-economy")
             self.assertEqual(result["rollback_ready"], status=="pending")
         self.sql("DELETE FROM story_publications")
+        self.sql("UPDATE story_sessions SET snapshot_json='{}' WHERE id=?",(sid,))
+        self.assertEqual(self.inspect("v15-once-raid-pets-economy")["counts"]["story_v2:registration"],1)
         self.sql("UPDATE story_sessions SET snapshot_json='{}',code='unknown' WHERE id=?",(sid,))
         self.assertIn("BLOCKED_UNKNOWN_STORY_SNAPSHOT", self.inspect()["blockers"])
 
@@ -219,6 +222,14 @@ class RollbackMatrix(MiniCase):
         self.sql("UPDATE mini_event_pvp_control SET paused=0")
         self.assertIn("BLOCKED_PVP_UNRESOLVED", self.inspect()["blockers"])
         self.sql("UPDATE mini_event_pvp_control SET paused=1")
+        from app.mini.events import pvp
+        self.sql("UPDATE mini_players SET coins=100")
+        self.sql("UPDATE mini_event_pvp_control SET paused=0")
+        event=pvp.create(self.pid,self.world["id"],"hardening-escrow",self.db,now=1000)
+        self.sql("UPDATE mini_event_pvp_control SET paused=1")
+        escrow=self.inspect("v15-once-raid-pets-economy")
+        self.assertFalse(escrow["rollback_ready"])
+        self.assertEqual(escrow["counts"]["pvp:active_stake_coins"],5)
         self.sql("CREATE TABLE mini_mythic_unknown(id)")
         with self.assertRaisesRegex(guard.GuardError, "UNKNOWN_V15_SCHEMA"):
             self.inspect()
@@ -287,8 +298,10 @@ class ExactSHAIsolation(unittest.TestCase):
         git("init");git("config","user.email","fixture@example.invalid");git("config","user.name","Fixture")
         shutil.copytree(ROOT/"deploy",self.project/"deploy",ignore=shutil.ignore_patterns("__pycache__"))
         (self.project/"app").mkdir();(self.project/"app/file.py").write_text("# fixture\n")
+        (self.project/".gitignore").write_bytes((ROOT/".gitignore").read_bytes())
+        (self.project/".env").write_text("BOT_TOKEN=123456:fixture-only\nSTORIES_DIR="+str(self.stories)+"\n",encoding="utf-8")
         (self.project/".gitattributes").write_bytes((ROOT/".gitattributes").read_bytes())
-        git("add","app","deploy",".gitattributes");git("commit","-m","fixture")
+        git("add","app","deploy",".gitattributes",".gitignore");git("commit","-m","fixture")
         self.sha=git("rev-parse","HEAD");git("update-ref","refs/remotes/origin/main",self.sha)
         self.args=SimpleNamespace(project=str(self.project),workspace=str(self.workspace),sha=self.sha,old_sha=self.sha,stories_directory=str(self.stories),installed=False)
 
@@ -368,6 +381,31 @@ class ExactSHAIsolation(unittest.TestCase):
             self.prepare()
         with self.assertRaisesRegex(ValueError,"WORKSPACE_BOUNDARY"):
             preflight.validate_workspace(self.project,self.project)
+
+    def test_runtime_env_and_systemd_target_are_bound_not_overridden(self):
+        original=(self.project/".env").read_bytes()
+        config=preflight.configuration(self.project,str(self.stories))
+        self.assertEqual(config["directory"],str(self.stories.resolve()))
+        other=self.base/"other-stories";other.mkdir()
+        with self.assertRaisesRegex(ValueError,"CONFIGURATION_MISMATCH"):
+            preflight.configuration(self.project,str(other))
+        values={"Environment":shlex.quote("STORIES_DIR="+str(self.stories)),"EnvironmentFiles":str(self.project/".env")+" (ignore_errors=no)","WorkingDirectory":str(self.project),"ExecStart":"python bot.py","User":"fixture"}
+        def value(command,**kwargs): return values[command[3]]+"\n"
+        with patch.object(preflight.subprocess,"check_output",side_effect=value):
+            self.assertIsNotNone(preflight.configuration(self.project,str(self.stories),"fake.service")["service_signature"])
+            values["Environment"]=shlex.quote("STORIES_DIR="+str(other))
+            with self.assertRaisesRegex(ValueError,"SERVICE_STORIES_OVERRIDE"):
+                preflight.configuration(self.project,str(self.stories),"fake.service")
+            values["Environment"]=""
+            values["EnvironmentFiles"]=str(self.base/"foreign.env")+" (ignore_errors=no)"
+            with self.assertRaisesRegex(ValueError,"ENVIRONMENT_FILE"):
+                preflight.configuration(self.project,str(self.stories),"fake.service")
+        self.prepare()
+        (self.project/".env").write_bytes(original+b"# config changed during operator review\n")
+        with self.assertRaisesRegex(ValueError,"CONFIGURATION_CHANGED"):
+            preflight.verify(self.args)
+        (self.project/".env").write_bytes(original)
+        preflight.verify(self.args)
 
     def test_workspace_environment_denies_tokens_live_sqlite_and_network(self):
         with patch.dict(os.environ,BOT_TOKEN="REAL_TOKEN",OTHER_SECRET="REAL_SECRET"):

@@ -32,7 +32,9 @@ STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
    audit hook запрещает Python open/sqlite live DB/.env
    и socket.connect. Отдельный explicit content gate читает только целевой Stories.
 3. Все команды/exit/time/Python/SHA/sandbox paths в release-gates.json; receipt содержит
-   run ID, TARGET_SHA, OLD_SHA, fingerprint всех target JSON до/после полного preflight.
+   run ID, TARGET_SHA, OLD_SHA, fingerprint всех target JSON до/после полного preflight,
+   hash .env и статических systemd settings (без записи секретов). Конфликт runtime
+   STORIES_DIR/другой EnvironmentFile или смена конфигурации блокирует stop/start.
    Любой nonzero gate оставляет live bot/watcher/HEAD прежними. После operator consent
    fetch/recheck HEAD/origin/main/clean/candidate/receipt/content, только затем stop.
 4. После stop: финальный консистентный backup+integrity/FK+SHA256; явное подтверждение
@@ -98,7 +100,8 @@ Frozen helpers должны совпадать побайтово с reviewed ta
 через install-deploy-shpakdnd.sh — только после отдельного разрешения из независимого
 проверенного checkout, без предварительного переключения live checkout. Несовпадение
 BLOCKED_FROZEN_BUNDLE_TARGET_MISMATCH требует review/обновления bundle, не bypass.
-Целевой каталог явно задан SHPAKDND_STORIES_DIR или STORIES_DIR в .env; никакого
+Целевой каталог обязательно объявлен literal absolute STORIES_DIR в .env.
+SHPAKDND_STORIES_DIR — дополнительная проверка равенства, не override runtime; никакого
 неявного выбора директории и никакой установки сюжета скриптом. Для владельца staging:
 создать отдельный внешний каталог, вручную перенести ТОЛЬКО approved JSON после
 разрешения, сравнить SHA256, запустить isolated validate_release_content с --directory.

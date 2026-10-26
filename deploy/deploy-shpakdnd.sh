@@ -157,17 +157,18 @@ validators() {
     # Other content/schema validators are part of the existing check_bot path.
 }
 offline_preflight() {
-    TARGET_STORIES_DIR="$(as_bot "$PYTHON" "$TOOLS/release_preflight.py" configuration --project "$PROJECT" --workspace "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}" --stories-directory "${SHPAKDND_STORIES_DIR:-}")" || return 1
+    TARGET_STORIES_DIR="$(as_bot "$PYTHON" "$TOOLS/release_preflight.py" configuration --service "$SERVICE" --project "$PROJECT" --workspace "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}" --stories-directory "${SHPAKDND_STORIES_DIR:-}")" || return 1
     PREFLIGHT_DIR="$(as_bot mktemp -d "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}/shpakdnd-preflight.XXXXXXXX")" || return 1
-    check_step offline_preflight as_bot "$PYTHON" "$TOOLS/release_preflight.py" prepare --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" --stories-directory "$TARGET_STORIES_DIR" || return 1
+    check_step offline_preflight as_bot "$PYTHON" "$TOOLS/release_preflight.py" prepare --service "$SERVICE" --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" --stories-directory "$TARGET_STORIES_DIR" || return 1
     TEST_COUNT="see exact-SHA preflight receipt"
 }
 recheck_target() {
+    preflight || return 1
     # Fetch again after the operator has had time to inspect the report/prompt.
     git_bot fetch origin || return 1
     [[ "$(git_bot rev-parse --verify 'origin/main^{commit}')" == "$TARGET_HEAD" ]] || { printf 'BLOCKED_TARGET_MOVED\n'; return 1; }
     verify_head "$OLD_HEAD" && require_clean || return 1
-    as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
+    as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --service "$SERVICE" --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
 }
 checks() {
     local expected="$1" range_start="$2"
@@ -182,7 +183,7 @@ checks() {
     check_step HEAD verify_head "$expected" || return 1
     check_step worktree require_clean || return 1
     if [[ "$expected" == "$TARGET_HEAD" ]]; then
-        check_step receipt as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
+        check_step receipt as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --service "$SERVICE" --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
     fi
 }
 start_stack() {
@@ -326,7 +327,7 @@ main() {
     if ! confirm "Установить версию ${TARGET_HEAD:0:7} из origin/main?"; then
         printf 'Код не изменён.\n'
         if confirm 'Снова запустить прежнюю версию?' Y; then
-            if ! verify_head "$OLD_HEAD" || ! start_stack; then failed_start; return 1; fi
+            if ! preflight || ! verify_head "$OLD_HEAD" || ! as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --service "$SERVICE" --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || ! start_stack; then failed_start; return 1; fi
             finished_notice
             summary
             return 0
@@ -340,7 +341,7 @@ main() {
     if ! confirm 'Запустить новую версию?' Y; then
         printf 'Проверенный код установлен; bot и watcher остаются остановленными.\n'; summary; return 2
     fi
-    if ! as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD"; then
+    if ! preflight || ! as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --service "$SERVICE" --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD"; then
         FAILED_STEP=receipt_before_start; failure_choice || true; return 1
     fi
     if ! start_stack; then failed_start; failure_choice || true; return 1; fi
