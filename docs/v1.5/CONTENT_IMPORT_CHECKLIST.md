@@ -1,5 +1,16 @@
 # Контент V1.5: авторские 8 Mythic и 4 Raid
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Статус: **В разработке. Релиз заблокирован**. Проход от проверенного
 `407577640d3141cbd4cb9cc0ad3fdf3b9b28aeaa`, ветка `codex/v1.5`, draft PR #8.
 Источник: `AUTHOR_CONTENT_IMPORT_APPROVED_TZ.md`, точные байтовые JSON и SHA-256

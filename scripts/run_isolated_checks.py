@@ -28,6 +28,24 @@ class ConfigFinder(MetaPathFinder):
    spec.loader=ConfigLoader(spec.loader)
    return spec
 sys.meta_path.insert(0,ConfigFinder())
+# Additional fail-closed deployment preflight boundary. The normal test harness
+# remains unchanged unless these explicit offline deployment settings are set.
+if os.environ.get('DND_CHECK_DENY_PROJECT'):
+ forbidden=Path(os.environ['DND_CHECK_DENY_PROJECT']).resolve()
+ def offline_audit(event,args):
+  if event in ('open','sqlite3.connect') and args and isinstance(args[0],(str,bytes,os.PathLike)):
+   raw=os.fsdecode(args[0])
+   if raw.startswith('file:'):
+    from urllib.parse import urlsplit,unquote
+    parsed=urlsplit(raw);raw=unquote(parsed.path)
+    if parsed.netloc: raw='//'+parsed.netloc+raw
+    if os.name=='nt' and len(raw)>2 and raw[0]=='/' and raw[2]==':': raw=raw[1:]
+   path=Path(raw).resolve()
+   if path==forbidden/'.env' or (path.parent==forbidden and path.name.startswith(('shpakdnd.db','timers.db'))):
+    raise PermissionError('Offline preflight cannot open live config/SQLite')
+  if event=='socket.connect' and os.environ.get('DND_CHECK_OFFLINE')=='1':
+   raise PermissionError('Offline preflight cannot connect to a network')
+ sys.addaudithook(offline_audit)
 """
 
 

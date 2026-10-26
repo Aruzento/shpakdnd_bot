@@ -248,7 +248,7 @@ class PipeInputTests(Fixture):
 
     def test_read_descriptor_error_cannot_accept_or_start(self):
         deploy=self.h.root/"bad-read";deploy.mkdir()
-        for name in ("deploy-shpakdnd.sh","deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py"):
+        for name in ("deploy-shpakdnd.sh","deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py","release_preflight.py","release_content.py","release_guard.py","release_schema.json"):
             content=(shell.ROOT/"deploy"/name).read_bytes()
             if name=="deploy-shpakdnd.sh":
                 text=content.decode("utf-8")
@@ -268,9 +268,12 @@ class PipeInputTests(Fixture):
         def function(text,name):
             lines=text.split(name+"() {",1)[1].splitlines()
             return lines[:lines.index("}")]
-        for name in ("rollback","rollback_preflight","start_stack","stop_stack","checks","checkout_head","on_exit"):
+        for name in ("start_stack","stop_stack","checkout_head"):
             self.assertEqual(function(original,name),function(current,name),name)
-        for name in ("deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py","install-deploy-shpakdnd.sh"):
+        self.assertIn("BLOCKED_V15_ROLLBACK",current)
+        self.assertNotIn("run_tests", "\n".join(function(current,"checks")))
+        self.assertIn("offline_preflight",current)
+        for name in ("deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py"):
             before=subprocess.check_output(["git","show",BASE+":deploy/"+name],cwd=shell.ROOT).decode()
             self.assertEqual(before,(shell.ROOT/"deploy"/name).read_text(encoding="utf-8"),name)
 
@@ -428,7 +431,7 @@ class FailureChoicePipeTests(Fixture):
 
     def test_read_error_does_not_authorize_rollback(self):
         deploy=self.h.root/"bad-choice-read";deploy.mkdir()
-        for name in ("deploy-shpakdnd.sh","deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py"):
+        for name in ("deploy-shpakdnd.sh","deploy_helpers.py","sqlite-deploy.py","telegram-deploy-notice.py","pvp_ops.py","release_preflight.py","release_content.py","release_guard.py","release_schema.json"):
             content=(shell.ROOT/"deploy"/name).read_bytes()
             if name=="deploy-shpakdnd.sh":
                 text=content.decode("utf-8")
@@ -453,7 +456,7 @@ class FailureChoicePipeTests(Fixture):
         before=database.read_bytes()
         result,trace=self.run_choice("2\r\n")
         self.assertEqual(result.returncode,1,result.stdout+result.stderr)
-        self.assertIn("pause_new_required",result.stdout)
+        self.assertIn("Rollback заблокирован",result.stdout)
         self.assertIn("Rollback не завершён",result.stdout)
         self.assertEqual(trace.count("pvp_ops.py"),1,trace)
         self.assertEqual((self.h.state/"head").read_text().strip(),shell.TARGET)

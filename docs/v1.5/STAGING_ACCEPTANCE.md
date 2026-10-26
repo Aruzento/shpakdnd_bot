@@ -1,5 +1,16 @@
 # Будущая приёмка после авторского контента — NOT RUN
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Статус «В разработке». Этот документ не разрешает deployment. В данной итерации staging/production/systemd/polling/рабочаяSQLite не затрагивались. Сначала полный45PNG/8Mythic/4Boss/Storyкомплект и strict0, полныйтестнановомSHA+Linux3.11/3.13. До остановки любого рабочего бота выполнить изолированныеpreflight. Раздельные .env/token/SQLite/STORIES_DIR, productioncopy только явно предоставленная владельцем.
 
 Протокол:2игрока A/B, админC. Для каждого сценария записать exactSHA,chat/thread,userIDs,messageIDs,DBbackuphash,таблицыдо/после,логи безсекретов.

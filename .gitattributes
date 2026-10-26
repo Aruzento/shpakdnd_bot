@@ -15,3 +15,6 @@ app/mini/mythic/raid/bosses.json -text
 
 # Unpublished owner Story package: preserve source bytes for audit.
 content/stories/unpublished/tayna_propavshey_ovtsy/* -text whitespace=-blank-at-eol,cr-at-eol
+
+# Exact hashed frozen release schema stays LF on Windows and Linux.
+deploy/release_schema.json text eol=lf

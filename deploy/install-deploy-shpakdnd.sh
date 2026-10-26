@@ -6,7 +6,7 @@ DEST="/usr/local/lib/shpakdnd-deploy"
 exec 9>/run/lock/shpakdnd-deploy.lock
 flock -n 9 || { echo 'Deployment уже выполняется.'; exit 1; }
 install -d -o root -g root -m 755 "$DEST"
-for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py; do
+for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py release_preflight.py release_content.py release_guard.py release_schema.json; do
     install -o root -g root -m 644 "$SOURCE/$helper" "$DEST/$helper"
 done
 install -o root -g root -m 755 "$SOURCE/deploy-shpakdnd.sh" "$DEST/deploy-shpakdnd.sh"

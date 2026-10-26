@@ -1,5 +1,16 @@
 # D&D Mini V1.5 — утверждённые O01–O10
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Статус: **В разработке** до авторского контента и живой приёмки. Все механические решения O01–O10 утверждены; повторного согласования не требуется. Приоритетный источник: [O01_O10_APPROVED_TZ.md](O01_O10_APPROVED_TZ.md), предоставленный как123.md. R01–R20 сохраняются за исключением явных новых решений.
 
 Ветка codex/v1.5, тот же draft PR#8. Начальный проверенный HEAD dfe7df7311d9789469063c783d65f8390b281bcb; PR base/origin/main d077dd2a2c29ad420b138bf07af23c77f4674d0b. Оригинальное пользовательское дерево Z: и рабочая SQLite сохранены; merge/deployment/systemd/polling не выполнялись.

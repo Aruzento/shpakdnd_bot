@@ -16,6 +16,7 @@ RUNTIME_DIR="${SHPAKDND_RUNTIME_DIR:-/run}"
 START_WAIT="${SHPAKDND_START_WAIT:-5}"
 SOURCE_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
 TOOLS="" OLD_HEAD="unknown" TARGET_HEAD="unknown" BACKUP="не создан" LOG=""
+PREFLIGHT_DIR="" TARGET_STORIES_DIR="" PREFLIGHT_ONLY=0
 MAINTENANCE=0 DRY_RUN=0 FAILED_STEP="" TEST_COUNT="unknown"
 DEPLOY_INPUT_FD=""
 
@@ -34,6 +35,16 @@ on_exit() {
     if (( code != 0 && MAINTENANCE )); then
         printf '\nDeployment не завершён. Автоматический запуск не выполняется.\n'
         summary
+    fi
+    if [[ -n "$PREFLIGHT_DIR" && "$PREFLIGHT_DIR" == "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}"/shpakdnd-preflight.* && ! -L "$PREFLIGHT_DIR" ]]; then
+        # Persist receipts/logs before deleting only this mktemp-owned workspace.
+        if [[ -n "$LOG" ]]; then
+            as_bot "$PYTHON" "$TOOLS/release_preflight.py" export --project "$PROJECT" --workspace "$PREFLIGHT_DIR" || printf 'WARNING: evidence export incomplete.\n'
+            for report in receipt.json preflight.log evidence.zip; do
+                [[ ! -f "$PREFLIGHT_DIR/$report" ]] || install -m 600 "$PREFLIGHT_DIR/$report" "${LOG}.${report}"
+            done
+        fi
+        rm -rf -- "$PREFLIGHT_DIR"
     fi
     # This directory was created by mktemp for this process, contains only helper copies.
     if [[ -n "$TOOLS" && "$TOOLS" == "$RUNTIME_DIR"/shpakdnd-deploy.* ]]; then rm -rf -- "$TOOLS"; fi
@@ -101,6 +112,8 @@ preflight() {
     [[ "$(systemctl show -p Triggers --value "$WATCHER")" == "$UPDATE_SERVICE" ]] || { printf '❌ Watcher вызывает неожиданный service.\n'; return 1; }
     [[ "$START_WAIT" =~ ^[0-9]+$ ]] || return 1
     require_clean || return 1
+    [[ "$(git_bot symbolic-ref --short HEAD)" == main ]] || { printf 'BLOCKED_LIVE_BRANCH_NOT_MAIN\n'; return 1; }
+    [[ "$(git_bot rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')" == origin/main ]] || { printf 'BLOCKED_LIVE_UPSTREAM\n'; return 1; }
 }
 stop_stack() {
     systemctl stop "$WATCHER" || return 1
@@ -143,27 +156,34 @@ validators() {
     as_bot "$PYTHON" -m app.mini.tower.validate || return 1
     # Other content/schema validators are part of the existing check_bot path.
 }
-run_tests() {
-    local result
-    if as_bot "$PYTHON" -m unittest discover -s tests -q 2>&1 | tee "$TOOLS/tests.log"; then
-        result="$(sed -n 's/^Ran \([0-9][0-9]*\) tests\{0,1\} in .*$/\1/p' "$TOOLS/tests.log" | tail -n 1)"
-        TEST_COUNT="${result:-unknown}"
-        return 0
-    fi
-    return 1
+offline_preflight() {
+    TARGET_STORIES_DIR="$(as_bot "$PYTHON" "$TOOLS/release_preflight.py" configuration --project "$PROJECT" --workspace "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}" --stories-directory "${SHPAKDND_STORIES_DIR:-}")" || return 1
+    PREFLIGHT_DIR="$(as_bot mktemp -d "${SHPAKDND_PREFLIGHT_ROOT:-/tmp}/shpakdnd-preflight.XXXXXXXX")" || return 1
+    check_step offline_preflight as_bot "$PYTHON" "$TOOLS/release_preflight.py" prepare --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" --stories-directory "$TARGET_STORIES_DIR" || return 1
+    TEST_COUNT="see exact-SHA preflight receipt"
+}
+recheck_target() {
+    # Fetch again after the operator has had time to inspect the report/prompt.
+    git_bot fetch origin || return 1
+    [[ "$(git_bot rev-parse --verify 'origin/main^{commit}')" == "$TARGET_HEAD" ]] || { printf 'BLOCKED_TARGET_MOVED\n'; return 1; }
+    verify_head "$OLD_HEAD" && require_clean || return 1
+    as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
 }
 checks() {
     local expected="$1" range_start="$2"
+    # Full tests/validators/migration copies ran on the exact candidate while
+    # the working service was still active. Only short critical cutover gates.
     check_step compileall as_bot "$PYTHON" -m compileall -q bot.py app || return 1
     check_step runtime_DB as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
-    # Existing startup/init path owns migrations. No shell migration engine.
     check_step check_bot as_bot "$PYTHON" check_bot.py || return 1
     check_step validators validators || return 1
-    check_step tests run_tests || return 1
     check_step database as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" check --db "$DB" || return 1
     check_step 'git diff' git_bot diff --check "$range_start" "$expected" || return 1
     check_step HEAD verify_head "$expected" || return 1
     check_step worktree require_clean || return 1
+    if [[ "$expected" == "$TARGET_HEAD" ]]; then
+        check_step receipt as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD" || return 1
+    fi
 }
 start_stack() {
     local started pid restarts journal
@@ -199,17 +219,24 @@ rollback_preflight() {
         summary
         return 1
     fi
-    if ! as_bot "$PYTHON" "$TOOLS/pvp_ops.py" --db "$DB" rollback-check; then
+    touch "$TOOLS/pvp-rollback-private.json"; chmod 600 "$TOOLS/pvp-rollback-private.json"
+    if ! as_bot "$PYTHON" "$TOOLS/pvp_ops.py" --db "$DB" rollback-check > "$TOOLS/pvp-rollback-private.json"; then
         printf '❌ Rollback заблокирован: PvP escrow/публикация не разрешены либо БД недоступна. Переход/запуск остановлен; текущий HEAD указан ниже.\n'
         printf 'Сохраните текущий код, выполните штатный pause-new/drain либо оставьте стек остановленным для ручного восстановления. Обхода защиты нет.\n'
+        summary
+        return 1
+    fi
+    if ! as_bot "$PYTHON" "$TOOLS/release_guard.py" --project "$PROJECT" --db "$DB" --target "$OLD_HEAD" --current "$(head_now)"; then
+        printf 'BLOCKED_V15_ROLLBACK: несовместимый/непроверенный target или неразрешённые состояния.\n'
+        printf 'Сохраните текущий SHA и backup; нужен отдельный согласованный drain/совместимый код. Обхода --force нет.\n'
         summary
         return 1
     fi
 }
 rollback() {
     printf 'Code rollback: %s. DB НЕ восстанавливается из backup.\n' "$OLD_HEAD"
-    stop_stack || return 1
     rollback_preflight || return 1
+    stop_stack || return 1
     protected_target "$OLD_HEAD" || return 1
     # Recheck after all preparations, immediately before switching away from PvP.
     rollback_preflight || return 1
@@ -238,13 +265,14 @@ main() {
     case "${1:-}" in
         '') ;;
         --dry-run) DRY_RUN=1 ;;
-        --help) printf 'sudo deploy-shpakdnd [--dry-run]\n'; return 0 ;;
+        --preflight-only) PREFLIGHT_ONLY=1 ;;
+        --help) printf 'sudo deploy-shpakdnd [--dry-run|--preflight-only]\n'; return 0 ;;
         *) printf 'Неизвестный аргумент. Используй --dry-run или --help.\n'; return 2 ;;
     esac
     [[ "$#" -le 1 ]] || return 2
     select_input || return 1
     [[ "$(id -u)" == 0 ]] || { printf 'Запусти через sudo deploy-shpakdnd.\n'; return 1; }
-    for command in git flock runuser systemctl journalctl install mktemp tee; do command -v "$command" >/dev/null || return 1; done
+    for command in git flock runuser systemctl journalctl install mktemp tee sha256sum; do command -v "$command" >/dev/null || return 1; done
     exec 9>"$LOCK"
     if ! flock -n 9; then printf 'Deployment уже выполняется.\n'; return 1; fi
     preflight || return 1
@@ -252,7 +280,7 @@ main() {
     # Freeze the small helper bundle: it also survives a rollback to older code.
     TOOLS="$(mktemp -d "$RUNTIME_DIR/shpakdnd-deploy.XXXXXXXX")"
     chmod 755 "$TOOLS"
-    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py; do
+    for helper in deploy_helpers.py telegram-deploy-notice.py sqlite-deploy.py pvp_ops.py release_preflight.py release_content.py release_guard.py release_schema.json; do
         install -m 644 "$SOURCE_DIR/$helper" "$TOOLS/$helper"
     done
     as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" config --project "$PROJECT" --db "$DB" || return 1
@@ -276,7 +304,9 @@ main() {
     protected_target "$OLD_HEAD" || return 1
     protected_target "$TARGET_HEAD" || return 1
     printf '\nТекущий HEAD: %s\norigin/main: %s\nBot: %s; watcher: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$(state "$SERVICE")" "$(state "$WATCHER")"
-    if (( DRY_RUN )); then printf 'Dry run: OK. Notice/stop/checkout/migrations/tests/restart не выполнялись.\n'; return 0; fi
+    if (( DRY_RUN )); then printf 'Dry run: OK. План: exact-SHA isolated full preflight + target strict-content → confirmation → recheck → stop → final backup+hash → checkout → short smoke → confirmation → start. Notice/stop/checkout/migrations/tests/restart не выполнялись.\n'; return 0; fi
+    if ! offline_preflight; then printf 'BLOCKED_PREFLIGHT: bot/watcher не останавливались, live HEAD не менялся.\n'; return 1; fi
+    if (( PREFLIGHT_ONLY )); then printf 'Preflight-only: PASS. Stop/notice/checkout/start не выполнялись.\n'; return 0; fi
     if [[ "$OLD_HEAD" == "$TARGET_HEAD" ]]; then
         printf 'Production уже находится на актуальном origin/main.\n'
         confirm 'Всё равно выполнить проверки/restart?' || return 0
@@ -285,11 +315,13 @@ main() {
         printf 'WARNING: Не удалось отправить сообщение в Telegram.\n'
         confirm 'Продолжить deployment?' || return 0
     fi
+    recheck_target || return 1
     MAINTENANCE=1
     stop_stack || return 1
     install -d -o root -g "$BOT_USER" -m 770 "$BACKUP_DIR"
     BACKUP="$BACKUP_DIR/shpakdnd_$(date '+%Y%m%d_%H%M%S').db"
     if ! check_step backup as_bot "$PYTHON" "$TOOLS/sqlite-deploy.py" backup --db "$DB" --destination "$BACKUP"; then failure_choice || true; return 1; fi
+    printf 'Final backup SHA-256: '; sha256sum "$BACKUP" || return 1
     printf '\nCurrent: %s\nTarget: %s\nBackup: %s\n' "$OLD_HEAD" "$TARGET_HEAD" "$BACKUP"
     if ! confirm "Установить версию ${TARGET_HEAD:0:7} из origin/main?"; then
         printf 'Код не изменён.\n'
@@ -301,11 +333,15 @@ main() {
         fi
         printf 'Бот и watcher оставлены остановленными по выбору пользователя.\n'; summary; return 2
     fi
+    if ! recheck_target; then FAILED_STEP=target_recheck; failure_choice || true; return 1; fi
     if ! checkout_head "$TARGET_HEAD"; then FAILED_STEP=checkout; failure_choice || true; return 1; fi
     if ! checks "$TARGET_HEAD" "$OLD_HEAD"; then failure_choice || true; return 1; fi
     printf '\n✅ Все проверки пройдены.\nHEAD: %s\nTests: %s tests, OK\nDB: OK\n' "$TARGET_HEAD" "$TEST_COUNT"
     if ! confirm 'Запустить новую версию?' Y; then
         printf 'Проверенный код установлен; bot и watcher остаются остановленными.\n'; summary; return 2
+    fi
+    if ! as_bot "$PYTHON" "$TOOLS/release_preflight.py" verify --installed --project "$PROJECT" --workspace "$PREFLIGHT_DIR" --sha "$TARGET_HEAD" --old-sha "$OLD_HEAD"; then
+        FAILED_STEP=receipt_before_start; failure_choice || true; return 1
     fi
     if ! start_stack; then failed_start; failure_choice || true; return 1; fi
     finished_notice

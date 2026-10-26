@@ -1,5 +1,16 @@
 # V1.5 — будущий выпуск и откат
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Текущим запросом запрещены merge/push main, staging/production deployment, изменение рабочей SQLite и перезапуск systemd/watcher. Ни один такой шаг не выполнен. Этот документ — инструкция для отдельного последующего решения владельца, не разрешение на выпуск.
 
 ## Перед отдельным решением о TEST/релизе

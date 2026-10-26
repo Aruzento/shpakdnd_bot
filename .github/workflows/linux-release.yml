@@ -189,6 +189,9 @@ jobs:
       - name: Unpublished authored Story v2 and isolated strict-content
         run: python tools/validate_story_candidate.py
 
+      - name: Release hardening real content gates (PASS0 missing2 invalid1)
+        run: python tools/validate_release_hardening.py
+
       - name: V1.5 populated migration replay and old-code startup
         if: always()
         run: python tools/validate_v15_migration.py

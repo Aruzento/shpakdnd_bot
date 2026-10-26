@@ -1,5 +1,16 @@
 # Проверки утверждённых O01–O10
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Все app checks через `python scripts/run_isolated_checks.py --label NAME -- <args>`: временные DB/legacy/STORIES_DIR, фиктивныйtoken, безpolling. Telegram tests запрещают неожиданныйHTTP, transport mocked, сервисы/SQLite реальные.
 
 | Команда / набор | Доказательство |

@@ -1,5 +1,16 @@
 # O01–O10: актуальная техническая трассировка
 
+> Актуальный срез 26.10.2026: [RELEASE_HARDENING.md](RELEASE_HARDENING.md).
+> REAL_CONTENT_IN_REPO=PASS (79 heroes/4Raid/45PNG и Story53/113/7),
+> STORY_EXTERNAL_TARGET=NOT_PUBLISHED, STRICT_SANDBOX=PASS на independently audited
+> cef77cc87f6a2286284f5cf8fdb851c775b04dd1; новый final SHA/CI — в отчёте PR #8.
+> STRICT_PRODUCTION=NOT_CHECKED/BLOCKED, PROD_DB_COPY=NOT_RUN, STAGING=NOT_RUN.
+> **В разработке / Релиз заблокирован.** Упоминания отсутствующего контента ниже —
+> исторические срезы до импорта, не текущий статус O03/O09.
+
+## Исторические сведения (срезы до текущего hardening)
+
+
 Правила окончательно утверждены в O01_O10_APPROVED_TZ.md. Исторический аудит R01–R20 на dfe7df7 сохранён отдельно: [COMPLETION_AUDIT_DFE7DF7.md](COMPLETION_AUDIT_DFE7DF7.md); его прежние ограничения правил заменены текущей матрицей. Ветка/PR прежние, base d077dd2a, начальный HEAD dfe7df7. Перед редактированием100V1.5тестов PASS16.690s; прежний полный baseline на этом SHA2001тест/19Windows skips уже проверен. Оригинальные пользовательские изменения не затирались.
 
 ## O → обработчик → сервис → SQLite → UI → tests

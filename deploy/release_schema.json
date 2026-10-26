@@ -1,0 +1,184 @@
+{
+  "mini_combat_arise": [
+    "mode",
+    "battle_id",
+    "player_id",
+    "result_json"
+  ],
+  "mini_mythic_ledger": [
+    "id",
+    "player_id",
+    "operation_key",
+    "amount",
+    "balance_after",
+    "source",
+    "payload"
+  ],
+  "mini_mythic_operations": [
+    "player_id",
+    "operation_key",
+    "payload",
+    "result_json"
+  ],
+  "mini_mythic_pet_days": [
+    "player_id",
+    "game_day",
+    "consumed",
+    "claimed"
+  ],
+  "mini_mythic_pets": [
+    "id",
+    "player_id",
+    "element",
+    "stage",
+    "location",
+    "mood",
+    "active_seconds",
+    "stage_seconds",
+    "next_decay",
+    "protect_until",
+    "cooldowns_json",
+    "settled_at",
+    "hero_id",
+    "evolution_pending"
+  ],
+  "mini_mythic_raid_attacks": [
+    "id",
+    "raid_id",
+    "player_id",
+    "hero_id",
+    "game_day",
+    "operation_key",
+    "payload",
+    "hero_json",
+    "events_json",
+    "result_json",
+    "created_at"
+  ],
+  "mini_mythic_raid_audit": [
+    "id",
+    "raid_id",
+    "actor_id",
+    "operation_key",
+    "action",
+    "payload",
+    "created_at"
+  ],
+  "mini_mythic_raid_cancel_requests": [
+    "token",
+    "raid_id",
+    "world_id",
+    "actor_id",
+    "with_reward",
+    "revision",
+    "reason",
+    "input_chat_id",
+    "input_thread_id",
+    "prompt_message_id",
+    "created_at"
+  ],
+  "mini_mythic_raid_damage": [
+    "raid_id",
+    "player_id",
+    "damage"
+  ],
+  "mini_mythic_raid_publications": [
+    "raid_id",
+    "status",
+    "message_id",
+    "media_type"
+  ],
+  "mini_mythic_raid_rewards": [
+    "raid_id",
+    "player_id",
+    "rank",
+    "damage",
+    "amount",
+    "result_json"
+  ],
+  "mini_mythic_raids": [
+    "id",
+    "world_id",
+    "template_code",
+    "snapshot_json",
+    "state_json",
+    "status",
+    "original_max_hp",
+    "max_hp",
+    "current_hp",
+    "created_by",
+    "created_at",
+    "ended_at",
+    "result_json",
+    "revision"
+  ],
+  "mini_star_rewards": [
+    "mode",
+    "battle_id",
+    "player_id",
+    "chance",
+    "success",
+    "amount",
+    "source_stars",
+    "result_json"
+  ],
+  "mini_tower_lunar_choices": [
+    "player_id",
+    "floor",
+    "arcana_json"
+  ],
+  "story_enrollment": [
+    "chat_id",
+    "thread_id",
+    "user_id",
+    "session_id",
+    "mode",
+    "stage",
+    "data_json"
+  ],
+  "story_operations": [
+    "operation_key",
+    "payload",
+    "result_json"
+  ],
+  "story_participants": [
+    "session_id",
+    "user_id",
+    "mode",
+    "entity_json",
+    "active"
+  ],
+  "story_publications": [
+    "session_id",
+    "step",
+    "status",
+    "message_id"
+  ],
+  "story_sessions": [
+    "id",
+    "chat_id",
+    "thread_id",
+    "code",
+    "status",
+    "snapshot_json",
+    "node_id",
+    "step",
+    "creator_id",
+    "created_at",
+    "result_json"
+  ],
+  "story_steps": [
+    "session_id",
+    "step",
+    "node_id",
+    "choice_id",
+    "next_node",
+    "result_json"
+  ],
+  "story_votes": [
+    "session_id",
+    "step",
+    "user_id",
+    "choice_id"
+  ]
+}
