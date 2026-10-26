@@ -162,6 +162,10 @@ class AtomicBundle(unittest.TestCase):
 
     def test_wrong_link_and_parent_symlink_fail_closed(self):
         if POSIX:
+            self.legacy.chmod(0o666)
+            with self.assertRaisesRegex(ValueError, 'PERMISSIONS'):
+                self.install()
+            self.legacy.chmod(0o644)
             self.entry.unlink()
             self.entry.symlink_to(self.root / 'unknown')
             with self.assertRaisesRegex(ValueError, 'LINK'):

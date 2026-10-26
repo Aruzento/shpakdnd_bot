@@ -114,8 +114,9 @@ def write_file(path, raw, mode):
     with path.open('xb') as stream:
         stream.write(raw)
         stream.flush()
+        path.chmod(mode)
+        # Persist content AND final mode before the directory can be published.
         os.fsync(stream.fileno())
-    path.chmod(mode)
 
 
 def validate(directory, snapshot, sha, uid):
@@ -170,6 +171,10 @@ def previous_entry(entry, dest):
     if not target.is_file() or target.is_symlink():
         raise ValueError('BLOCKED_ENTRYPOINT_TARGET')
     secure_path(target.parent, os.getuid() if os.name == 'posix' else None)
+    if os.name == 'posix':
+        s = target.stat()
+        if s.st_uid != os.getuid() or s.st_mode & 0o022 or s.st_nlink != 1:
+            raise ValueError('BLOCKED_ENTRYPOINT_PERMISSIONS')
     return target
 
 
