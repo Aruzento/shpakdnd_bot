@@ -492,5 +492,134 @@ class AssetMatrix(unittest.TestCase):
             with self.assertRaises(ValueError):
                 png(p)
 
+    @staticmethod
+    def background_png(color, pixels, *, palette=b"", transparency=b""):
+        """Four independently specified corner pixels, with valid PNG framing."""
+
+        def chunk(kind, data):
+            return (
+                struct.pack(">I", len(data))
+                + kind
+                + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+            )
+
+        rows = b"".join(
+            b"\0" + bytes(pixels[y * 2]) + bytes(pixels[y * 2 + 1]) for y in range(2)
+        )
+        return (
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 2, 8, color, 0, 0, 0))
+            + (chunk(b"PLTE", palette) if palette else b"")
+            + (chunk(b"tRNS", transparency) if transparency else b"")
+            + chunk(b"IDAT", zlib.compress(rows))
+            + chunk(b"IEND", b"")
+        )
+
+    def test_white_background_accepts_each_channel_252_through_255(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "white.png"
+            for value in range(252, 256):
+                with self.subTest(value=value):
+                    pixels = [
+                        (value, 255, 255),
+                        (255, value, 255),
+                        (255, 255, value),
+                        (value, value, value),
+                    ]
+                    path.write_bytes(self.background_png(2, pixels))
+                    self.assertEqual(
+                        png(path, background=255),
+                        {"width": 2, "height": 2, "background": 255},
+                    )
+
+    def test_white_background_rejects_251_in_every_corner_and_channel(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "white.png"
+            for corner in range(4):
+                for channel in range(3):
+                    with self.subTest(corner=corner, channel=channel):
+                        pixels = [[255, 255, 255] for _ in range(4)]
+                        pixels[corner][channel] = 251
+                        path.write_bytes(self.background_png(2, pixels))
+                        with self.assertRaises(ValueError):
+                            png(path, background=255)
+
+    def test_white_tolerance_in_all_decoded_formats_and_exact_opacity(self):
+        formats = {
+            0: (252,),
+            2: (252, 253, 254),
+            3: (0,),
+            4: (252, 255),
+            6: (252, 253, 254, 255),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "white.png"
+            for color, pixel in formats.items():
+                with self.subTest(color=color):
+                    options = (
+                        {"palette": bytes((252, 253, 254)), "transparency": b"\xff"}
+                        if color == 3
+                        else {}
+                    )
+                    path.write_bytes(self.background_png(color, [pixel] * 4, **options))
+                    png(path, background=255)
+                    invalid = (251,) if color == 0 else (251,) + pixel[1:]
+                    if color == 3:
+                        options["palette"] = bytes((252, 251, 254))
+                        invalid = pixel
+                    path.write_bytes(
+                        self.background_png(color, [invalid] * 4, **options)
+                    )
+                    with self.assertRaises(ValueError):
+                        png(path, background=255)
+            for color in (3, 4, 6):
+                for corner in range(4):
+                    with self.subTest(color=color, corner=corner, alpha=254):
+                        pixels = [formats[color]] * 4
+                        options = {}
+                        if color == 3:
+                            pixels[corner] = (1,)
+                            options = {
+                                "palette": bytes((252, 253, 254)) * 2,
+                                "transparency": b"\xff\xfe",
+                            }
+                        else:
+                            pixels[corner] = pixels[corner][:-1] + (254,)
+                        path.write_bytes(self.background_png(color, pixels, **options))
+                        with self.assertRaises(ValueError):
+                            png(path, background=255)
+
+    def test_black_background_still_requires_exact_zero_in_all_formats(self):
+        formats = {0: (0,), 2: (0, 0, 0), 3: (0,), 4: (0, 255), 6: (0, 0, 0, 255)}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "black.png"
+            for color, pixel in formats.items():
+                with self.subTest(color=color):
+                    options = {"palette": bytes((0, 0, 0))} if color == 3 else {}
+                    path.write_bytes(self.background_png(color, [pixel] * 4, **options))
+                    png(path, background=0)
+                    for value in (1, 3):
+                        if color == 3:
+                            options["palette"] = bytes((0, value, 0))
+                            invalid = pixel
+                        else:
+                            invalid = (value,) + pixel[1:]
+                        path.write_bytes(
+                            self.background_png(color, [invalid] * 4, **options)
+                        )
+                        with self.assertRaises(ValueError):
+                            png(path, background=0)
+
+    def test_background_validation_still_rejects_missing_palette_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "palette.png"
+            path.write_bytes(
+                self.background_png(3, [(1,)] * 4, palette=bytes((255, 255, 255)))
+            )
+            for background in (0, 255):
+                with self.subTest(background=background), self.assertRaises(ValueError):
+                    png(path, background=background)
+
     def test_empty_mythic_catalog_reports_blocker(self):
         self.assertEqual(len(validate_mythics([])), 1)

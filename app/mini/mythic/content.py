@@ -20,6 +20,7 @@ BASE_ATTACK = {
     "sun": 1,
 }
 STAGES = ("egg", "young", "adult")
+WHITE_BACKGROUND_TOLERANCE = 3
 
 
 def png(path, *, background=None):
@@ -109,11 +110,16 @@ def png(path, *, background=None):
                     alpha = pixel[3] if color == 6 else 255
                 corners.append((rgb, alpha))
         previous = row
-    target = (background,) * 3
-    if any(alpha != 255 or rgb != target for rgb, alpha in corners):
+    tolerance = WHITE_BACKGROUND_TOLERANCE if background == 255 else 0
+    if any(
+        alpha != 255
+        or len(rgb) != 3
+        or any(abs(channel - background) > tolerance for channel in rgb)
+        for rgb, alpha in corners
+    ):
         raise ValueError(
             "PNG corners must be opaque "
-            + ("black" if background == 0 else "white")
+            + ("black" if background == 0 else "white (RGB 252..255)")
             + ": "
             + str(path)
         )
