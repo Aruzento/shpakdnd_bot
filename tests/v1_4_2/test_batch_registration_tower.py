@@ -57,8 +57,13 @@ class BatchTests(MiniCase):
         self.assertEqual(self.sql('SELECT * FROM mini_gacha_pulls'),[])
     def test_replay_restart_and_parallel_requests(self):
         before=get_balance(self.pid,self.db)
-        with ThreadPoolExecutor(2) as pool:
-            result=list(pool.map(lambda _:self.batch(),range(2)))
+        from app.mini import gacha
+        original = gacha._choose_hero_code
+        # Shared module patches must outlive all workers; nested per-worker
+        # patches can restore a sibling MagicMock instead of the real function.
+        with patch('app.mini.gacha._choose_hero_code',return_value='Villager'), ThreadPoolExecutor(2) as pool:
+            result=list(pool.map(lambda _:perform_gacha_batch(self.pid,self.db,operation_key='test'),range(2)))
+        self.assertIs(gacha._choose_hero_code, original)
         self.assertEqual(result[0]['batch_id'],result[1]['batch_id'])
         self.assertEqual(len(self.sql('SELECT * FROM mini_gacha_pulls')),10)
         init_mini_db(self.db);again=self.batch();self.assertTrue(again['repeated'])
