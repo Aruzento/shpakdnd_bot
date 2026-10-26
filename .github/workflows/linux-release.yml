@@ -186,6 +186,9 @@ jobs:
       - name: V1.5 content diagnostics (missing resources remain explicit blockers)
         run: python -m app.mini.mythic.content
 
+      - name: Unpublished authored Story v2 and isolated strict-content
+        run: python tools/validate_story_candidate.py
+
       - name: V1.5 populated migration replay and old-code startup
         if: always()
         run: python tools/validate_v15_migration.py

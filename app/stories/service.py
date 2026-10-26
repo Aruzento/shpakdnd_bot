@@ -1,11 +1,15 @@
 """Persistent shared registration/voting, immutable scenarios and admin kick."""
 
 import json
+import logging
 import secrets
 from datetime import datetime, timezone
 from app.config import DB_PATH
 from app.stories.repository import transaction
-from app.stories.catalog import discover, validate
+from app.stories.catalog import discover
+from app.stories.routing import available_choices
+
+logger = logging.getLogger(__name__)
 
 
 def _admin(chat, thread, user_id, username):
@@ -196,6 +200,39 @@ def start(
         )
 
 
+def visited_nodes(conn, session):
+    """Committed group route only; read in the caller's SQLite transaction."""
+    visited = {session["node_id"]} if session["node_id"] else set()
+    for row in conn.execute(
+        "SELECT node_id,next_node FROM story_steps WHERE session_id=? ORDER BY step",
+        (session["id"],),
+    ):
+        visited.update(node for node in row if node is not None)
+    return visited
+
+
+def _choices(conn, session):
+    story = json.loads(session["snapshot_json"])
+    visited = visited_nodes(conn, session)
+    node = story["nodes"].get(session["node_id"])
+    choices = available_choices(story, session["node_id"], visited) if node else []
+    if node is None or (
+        session["status"] == "active"
+        and story["schema_version"] == 2
+        and not node.get("end")
+        and not choices
+    ):
+        logger.error(
+            "Story route invariant failed session=%s step=%s node=%s visited=%s",
+            session["id"], session["step"], session["node_id"], sorted(visited),
+        )
+        raise ValueError(
+            "Нет безопасного продолжения истории. Состояние сохранено; "
+            "администратор может выполнить /story cancel."
+        )
+    return choices
+
+
 def _tally(conn, session):
     votes = [
         dict(r)
@@ -208,10 +245,12 @@ def _tally(conn, session):
         "SELECT COUNT(*) FROM story_participants WHERE session_id=? AND active=1",
         (session["id"],),
     ).fetchone()[0]
-    story = json.loads(session["snapshot_json"])
-    node = story["nodes"].get(session["node_id"], {})
-    counts = {c["id"]: 0 for c in node.get("choices", [])}
+    counts = {c["id"]: 0 for _, c in _choices(conn, session)}
     for vote in votes:
+        if vote["choice_id"] not in counts:
+            logger.error("Unsafe persisted story vote session=%s step=%s",
+                         session["id"], session["step"])
+            raise ValueError("Недопустимый сохранённый голос. Администратор: /story cancel.")
         counts[vote["choice_id"]] += 1
     total = len(votes)
     percent = {c: 100 * n // total if total else 0 for c, n in counts.items()}
@@ -233,8 +272,7 @@ def _advance(conn, session, chooser=None):
     if choice not in leaders:
         raise ValueError("Invalid tie choice")
     story = json.loads(session["snapshot_json"])
-    node = story["nodes"][session["node_id"]]
-    nxt = next(c["next"] for c in node["choices"] if c["id"] == choice)
+    nxt = next(c["next"] for _, c in _choices(conn, session) if c["id"] == choice)
     ending = bool(story["nodes"][nxt].get("end"))
     result = {
         "advanced": True,
@@ -281,10 +319,7 @@ def vote(
             (sid, user_id),
         ).fetchone():
             raise ValueError("Ты не записан в эту историю.")
-        story = json.loads(session["snapshot_json"])
-        if choice not in {
-            c["id"] for c in story["nodes"][session["node_id"]]["choices"]
-        }:
+        if choice not in {c["id"] for _, c in _choices(conn, session)}:
             raise ValueError("Нет такого варианта.")
         oldvote = conn.execute(
             "SELECT choice_id FROM story_votes WHERE session_id=? AND step=? AND user_id=?",
@@ -372,5 +407,12 @@ def status(chat, thread, db_path=DB_PATH, *, session_id=None):
             )
         ]
         if session["node_id"]:
-            session["tally"] = _tally(conn, session)
+            session["visited"] = sorted(visited_nodes(conn, session))
+            try:
+                session["choices"] = _choices(conn, session)
+                session["tally"] = _tally(conn, session)
+            except ValueError as error:
+                # Preserve corrupt state, keep status/cancel usable, publish no buttons.
+                session["route_error"] = str(error)
+                session["choices"] = []
         return session

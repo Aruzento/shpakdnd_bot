@@ -1,24 +1,30 @@
-"""Non-executable DAG story catalog, discovered at list/start without restart."""
+"""Non-executable versioned story catalog, discovered at list/start without restart."""
 
 import json
 import os
 import re
 from pathlib import Path
+from app.stories.routing import ending_reachable_nodes
 
 
 def validate(data):
     if not isinstance(data, dict) or (
-        type(data.get("schema_version")) is not int or data["schema_version"] != 1
+        type(data.get("schema_version")) is not int or data["schema_version"] not in (1, 2)
     ):
-        raise ValueError("schema_version must be 1")
-    if set(data) - {
+        raise ValueError("schema_version must be 1 or 2")
+    fields = {
         "schema_version",
         "code",
         "title",
         "description",
         "start_node",
         "nodes",
-    }:
+    }
+    if data["schema_version"] == 2:
+        fields.add("visit_policy")
+        if data.get("visit_policy") != "once":
+            raise ValueError("schema_version 2 requires visit_policy once")
+    if set(data) - fields:
         raise ValueError("Unknown story fields")
     if not isinstance(data.get("code"), str) or not re.fullmatch(
         r"[a-zA-Z0-9_-]{1,48}", data["code"]
@@ -58,7 +64,7 @@ def validate(data):
         ):
             raise ValueError("Invalid node text")
         if node.get("end") is True:
-            if node.get("choices"):
+            if "choices" in node and node["choices"] != []:
                 raise ValueError("Ending cannot have choices")
             edges[nid] = []
             continue
@@ -110,9 +116,25 @@ def validate(data):
             incoming[target] -= 1
             if incoming[target] == 0:
                 queue.append(target)
-    if visited != len(nodes):
+    if data["schema_version"] == 1 and visited != len(nodes):
         raise ValueError("Story cycles are forbidden")
+    if ending_reachable_nodes(data) != set(nodes):
+        raise ValueError("Every node must reach an ending")
     return data
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
+def loads(raw):
+    """Reject duplicate IDs/keys before Python dict construction loses evidence."""
+    return validate(json.loads(raw, object_pairs_hook=_unique_object))
 
 
 def directory(path=None):
@@ -140,7 +162,7 @@ def discover(path=None):
         try:
             if file.is_symlink() or file.stat().st_size > 2000000:
                 raise ValueError("Story file must be local and <=2MB")
-            story = validate(json.loads(file.read_text(encoding="utf-8")))
+            story = loads(file.read_text(encoding="utf-8"))
             code = story["code"]
             if code in stories or code in duplicates:
                 stories.pop(code, None)

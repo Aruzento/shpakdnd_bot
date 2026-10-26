@@ -1,0 +1,109 @@
+{
+  "source_title": "Тайна пропавшей овцы",
+  "scenes": 46,
+  "endings": 7,
+  "transitions": 113,
+  "start_node": "scene_1",
+  "all_targets_exist": true,
+  "all_nodes_reachable": true,
+  "original_graph_contains_cycles": true,
+  "example_original_cycle": [
+    "scene_39",
+    "scene_40",
+    "scene_39"
+  ],
+  "shortest_naive_filter_deadend_path": [
+    "scene_1",
+    "scene_2",
+    "scene_6",
+    "scene_13",
+    "scene_24",
+    "scene_25",
+    "scene_26",
+    "scene_16",
+    "scene_10",
+    "scene_11",
+    "scene_21",
+    "scene_14"
+  ],
+  "endings_shortest_routes": {
+    "ending_k1": [
+      "scene_1",
+      "scene_2",
+      "scene_6",
+      "scene_14",
+      "scene_26",
+      "ending_k1"
+    ],
+    "ending_k2": [
+      "scene_1",
+      "scene_3",
+      "scene_8",
+      "scene_17",
+      "ending_k2"
+    ],
+    "ending_k3": [
+      "scene_1",
+      "scene_2",
+      "scene_5",
+      "scene_12",
+      "scene_22",
+      "scene_35",
+      "scene_39",
+      "scene_41",
+      "ending_k3"
+    ],
+    "ending_k4": [
+      "scene_1",
+      "scene_2",
+      "scene_5",
+      "scene_12",
+      "scene_22",
+      "scene_35",
+      "scene_40",
+      "ending_k4"
+    ],
+    "ending_k5": [
+      "scene_1",
+      "scene_2",
+      "scene_5",
+      "scene_12",
+      "scene_22",
+      "scene_35",
+      "scene_40",
+      "scene_42",
+      "scene_43",
+      "scene_44",
+      "scene_46",
+      "ending_k5"
+    ],
+    "ending_k6": [
+      "scene_1",
+      "scene_2",
+      "scene_6",
+      "scene_14",
+      "scene_25",
+      "ending_k6"
+    ],
+    "ending_k7": [
+      "scene_1",
+      "scene_3",
+      "scene_10",
+      "scene_18",
+      "scene_31",
+      "ending_k7"
+    ]
+  },
+  "random_no_revisit_safe_routes_tested": 10000,
+  "random_reached_endings": {
+    "ending_k4": 4079,
+    "ending_k6": 660,
+    "ending_k3": 2412,
+    "ending_k7": 693,
+    "ending_k1": 1344,
+    "ending_k5": 269,
+    "ending_k2": 543
+  },
+  "random_max_path_nodes": 27,
+  "status": "candidate for new schema_version=2 only; rejected by current v1 engine"
+}

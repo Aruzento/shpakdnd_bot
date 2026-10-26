@@ -17,6 +17,8 @@ def render(session):
             [Button(text="Выйти", callback_data=f"story:leave:{sid}")],
             [Button(text="Начать историю (админ)", callback_data=f"story:start:{sid}")],
         ]
+    elif session.get("route_error"):
+        text = "📖 " + session["route_error"]
     elif not session.get("node_id"):
         text = f"📖 {session['code']}\nИстория отменена до начала."
     else:
@@ -26,7 +28,7 @@ def render(session):
         if session["status"] == "active":
             tally = session["tally"]
             text += f"\n\nГолосов: {tally['voted']}/{tally['active']}"
-            for index, choice in enumerate(node.get("choices", [])):
+            for index, choice in session["choices"]:
                 rows.append(
                     [
                         Button(

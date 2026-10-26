@@ -52,10 +52,10 @@ def scoped_callback(callback, sid, *, personal=False):
 
 async def publish(bot, session):
     step = session["step"]
+    text, markup = render(session)
     claim = publication.claim(session["id"], step)
     if claim is None:
         return
-    text, markup = render(session)
     try:
         message = await bot.send_message(
             chat_id=session["chat_id"],

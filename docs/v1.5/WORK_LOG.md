@@ -121,3 +121,16 @@ fixture, две фикстуры Mythic из Villager, имя поля в diagno
 Legacy defaults проверяются на прежних71, modern malformed отдельно отвергается;
 валидные ownership/gacha fixtures берутся из настоящего Mythic, raw/catalog
 сравниваются с сохранением явных mode полей. Тесты/проверки не удалены/не skipped.
+
+
+### 26.10.2026: авторская История и once-маршруты
+
+Подготовлен неопубликованный пакет «Тайна пропавшей овцы»: 46 сцен, 7 концовок,
+113 неизменных выборов, schema_version2/visit_policy once. Общее групповое visited
+восстанавливается из story_steps без миграции; фильтрация исключает повторы и тупики.
+Авторский source/JSON/audit сохранены с MANIFEST; тесты сравнивают тексты и маршруты.
+Изолированная проверка настоящего JSON может дать strict-content PASS0; рабочий пустой
+STORIES_DIR остаётся BLOCKED_BY_INPUT/exit2. Публикация не разрешена и не выполнена.
+Технические гарантии/пределы и команды: STORY_ONCE_VERIFICATION.md, STORIES_IMPORT_GUIDE.md.
+Нужны независимое ревью, production DB copy и реальный Telegram staging.
+Статус: В разработке / Релиз заблокирован. Точный проверенный SHA и CI — в отчёте PR #8.
