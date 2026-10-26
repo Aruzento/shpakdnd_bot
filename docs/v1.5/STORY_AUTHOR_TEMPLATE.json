@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "code": "template_not_production",
+  "title": "Шаблон Истории — НЕ ДЛЯ PRODUCTION",
+  "description": "TEMPLATE / NOT PRODUCTION. Демонстрация формата, требуется заменить авторским сценарием.",
+  "start_node": "start",
+  "nodes": {
+    "start": {
+      "text": "Демонстрационный узел шаблона. Выберите один из двух переходов.",
+      "choices": [
+        {
+          "id": "continue",
+          "text": "Первый переход",
+          "next": "end_a"
+        },
+        {
+          "id": "leave",
+          "text": "Второй переход",
+          "next": "end_b"
+        }
+      ]
+    },
+    "end_a": {
+      "text": "Первое демонстрационное завершение шаблона.",
+      "end": true
+    },
+    "end_b": {
+      "text": "Второе демонстрационное завершение шаблона.",
+      "end": true
+    }
+  }
+}

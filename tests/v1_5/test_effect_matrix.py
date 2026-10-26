@@ -590,7 +590,7 @@ class AssetMatrix(unittest.TestCase):
                         with self.assertRaises(ValueError):
                             png(path, background=255)
 
-    def test_black_background_still_requires_exact_zero_in_all_formats(self):
+    def test_black_background_approved_0_through_4_in_all_formats(self):
         formats = {0: (0,), 2: (0, 0, 0), 3: (0,), 4: (0, 255), 6: (0, 0, 0, 255)}
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "black.png"
@@ -599,7 +599,7 @@ class AssetMatrix(unittest.TestCase):
                     options = {"palette": bytes((0, 0, 0))} if color == 3 else {}
                     path.write_bytes(self.background_png(color, [pixel] * 4, **options))
                     png(path, background=0)
-                    for value in (1, 3):
+                    for value in range(1, 6):
                         if color == 3:
                             options["palette"] = bytes((0, value, 0))
                             invalid = pixel
@@ -608,8 +608,11 @@ class AssetMatrix(unittest.TestCase):
                         path.write_bytes(
                             self.background_png(color, [invalid] * 4, **options)
                         )
-                        with self.assertRaises(ValueError):
+                        if value <= 4:
                             png(path, background=0)
+                        else:
+                            with self.assertRaises(ValueError):
+                                png(path, background=0)
 
     def test_background_validation_still_rejects_missing_palette_entry(self):
         with tempfile.TemporaryDirectory() as tmp:

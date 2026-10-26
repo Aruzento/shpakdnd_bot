@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import hashlib
+from copy import deepcopy
 import struct
 import zlib
 from collections import Counter
@@ -21,9 +23,10 @@ BASE_ATTACK = {
 }
 STAGES = ("egg", "young", "adult")
 WHITE_BACKGROUND_TOLERANCE = 3
+BLACK_BACKGROUND_TOLERANCE = 4
 
 
-def png(path, *, background=None):
+def png(path, *, background=None, include_corners=False):
     """Validate CRCs, square dimensions, decode noninterlaced 8-bit PNG corners."""
     try:
         data = Path(path).read_bytes()
@@ -54,17 +57,30 @@ def png(path, *, background=None):
             break
     if b"IHDR" not in chunks or b"IEND" not in chunks or not packed:
         raise ValueError("Incomplete PNG")
+    if len(chunks[b"IHDR"]) != 13:
+        raise ValueError("Invalid PNG IHDR")
     width, height, depth, color, compression, filter_method, interlace = struct.unpack(
         ">IIBBBBB", chunks[b"IHDR"]
     )
     if width != height or width < 1 or width > 8192:
         raise ValueError("PNG must be square, 1..8192 pixels")
-    if background is None:
+    if background is None and not include_corners:
         return {"width": width, "height": height}
     channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(color)
     if depth != 8 or not channels or interlace or compression or filter_method:
         raise ValueError("Background validation requires noninterlaced 8-bit PNG")
-    raw = zlib.decompress(b"".join(packed))
+    try:
+        raw = zlib.decompress(b"".join(packed))
+    except zlib.error as error:
+        raise ValueError("Invalid PNG compressed scanlines") from error
+    transparency = chunks.get(b"tRNS")
+    if transparency is not None and (
+        (color == 0 and len(transparency) != 2)
+        or (color == 2 and len(transparency) != 6)
+        or color in (4, 6)
+        or (color == 3 and len(transparency) > len(chunks.get(b"PLTE", b"")) // 3)
+    ):
+        raise ValueError("Invalid PNG transparency")
     stride = width * channels
     if len(raw) != (stride + 1) * height:
         raise ValueError("Invalid PNG scanlines")
@@ -108,22 +124,49 @@ def png(path, *, background=None):
                 else:
                     rgb = tuple(pixel[:3])
                     alpha = pixel[3] if color == 6 else 255
+                if transparency is not None and color in (0, 2):
+                    transparent = struct.unpack(
+                        ">H" if color == 0 else ">HHH", transparency
+                    )
+                    if rgb == ((transparent[0],) * 3 if color == 0 else transparent):
+                        alpha = 0
                 corners.append((rgb, alpha))
         previous = row
-    tolerance = WHITE_BACKGROUND_TOLERANCE if background == 255 else 0
+    # Applied only by callers that explicitly request an approved background.
+    tolerance = {255: WHITE_BACKGROUND_TOLERANCE, 0: BLACK_BACKGROUND_TOLERANCE}.get(
+        background, 0
+    )
     if any(
         alpha != 255
         or len(rgb) != 3
-        or any(abs(channel - background) > tolerance for channel in rgb)
+        or (
+            background is not None
+            and any(abs(channel - background) > tolerance for channel in rgb)
+        )
         for rgb, alpha in corners
     ):
         raise ValueError(
             "PNG corners must be opaque "
-            + ("black" if background == 0 else "white (RGB 252..255)")
+            + ("black (RGB 0..4)" if background == 0 else "white (RGB 252..255)")
             + ": "
             + str(path)
         )
-    return {"width": width, "height": height, "background": background}
+    result = {"width": width, "height": height}
+    if background is not None:
+        result["background"] = background
+    if include_corners:
+        result.update(
+            bit_depth=depth,
+            color_type=color,
+            corners=[
+                {"x": x, "y": y, "rgba": [*rgb, alpha]}
+                for (x, y), (rgb, alpha) in zip(
+                    ((0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)),
+                    corners,
+                )
+            ],
+        )
+    return result
 
 
 def pet_image(element, stage, images=HERO_IMAGES_DIR):
@@ -168,70 +211,103 @@ def validate_mythics(heroes, *, images=HERO_IMAGES_DIR):
     return missing
 
 
-def s5(source, images):
-    data = json.loads(Path(source).read_text(encoding="utf-8-sig"))
-    heroes = data.get("heroes")
-    if not isinstance(heroes, list) or Counter(
-        h.get("rarity") for h in heroes
-    ) != Counter(common=5, uncommon=6, rare=4, legendary=2):
+def _s5_records(heroes, existing):
+    """Validate both fresh and identical imported records without replacing any code."""
+    if (
+        not isinstance(heroes, list)
+        or any(not isinstance(h, dict) for h in heroes)
+        or Counter(h.get("rarity") for h in heroes)
+        != Counter(common=5, uncommon=6, rare=4, legendary=2)
+    ):
         raise ValueError("S5 needs exactly 5/6/4/2 heroes")
     codes = [h.get("code") for h in heroes]
-    if len(set(codes)) != 17:
-        raise ValueError("S5 duplicate code")
-    existing = load_hero_catalog()
-    if set(codes) & {h["code"] for h in existing["heroes"]}:
-        raise ValueError("S5 must not replace existing codes")
+    if (
+        any(not isinstance(c, str) or not c.strip() for c in codes)
+        or len(set(codes)) != 17
+    ):
+        raise ValueError("S5 invalid/duplicate code")
     for hero in heroes:
         image = hero.get("image", "")
-        if not image or Path(image).name != image or not image.endswith(".png"):
-            raise ValueError("Invalid S5 PNG")
-        png(Path(images) / image, background=255)
-    # Reuse the real full-catalog validator without modifying the checkout.
+        if (
+            not isinstance(image, str)
+            or not image.endswith(".png")
+            or "/" in image
+            or "\\" in image
+            or Path(image).name != image
+        ):
+            raise ValueError("Invalid S5 PNG basename")
+    present = {h["code"]: h for h in existing["heroes"] if h["code"] in codes}
+    if present and len(present) != 17:
+        raise ValueError("Partial S5 catalog: refusing changes")
     from unittest.mock import patch
     from app.mini.catalog import load_hero_catalog as validate
 
-    with patch(
-        "app.mini.catalog._read_hero_catalog",
-        return_value={**existing, "heroes": existing["heroes"] + heroes},
-    ):
-        validate()
+    candidate = {
+        **existing,
+        "heroes": [h for h in existing["heroes"] if h["code"] not in codes]
+        + deepcopy(heroes),
+    }
+    with patch("app.mini.catalog._read_hero_catalog", return_value=candidate):
+        expected = {h["code"]: h for h in validate()["heroes"] if h["code"] in codes}
+    if present and present != expected:
+        raise ValueError("Conflicting S5 catalog: refusing changes")
+    return bool(present)
+
+
+def s5(source, images):
+    data = json.loads(Path(source).read_text(encoding="utf-8-sig"))
+    heroes = data.get("heroes") if isinstance(data, dict) else None
+    _s5_records(heroes, load_hero_catalog())
+    root = Path(images).resolve()
+    for hero in heroes:
+        path = root / hero["image"]
+        if path.is_symlink() or path.resolve().parent != root:
+            raise ValueError("S5 PNG must be local to the selected input directory")
+        png(path, background=255)
     return heroes
 
 
 def report():
-    from app.mini.mythic.raid.catalog import load
+    from app.mini.mythic.raid.catalog import load, IMAGES as RAID_IMAGES
     from app.stories.catalog import discover
 
     heroes = load_hero_catalog()["heroes"]
     blocked = validate_mythics(heroes, images=HERO_IMAGES_DIR)
-    missing_inputs = []
-    for element in sorted(ELEMENTS):
-        for stage in STAGES:
-            path = HERO_IMAGES_DIR / f"{element}_{stage}.png"
-            if not path.is_file():
-                missing_inputs.append(
-                    {"path": str(path), "reason": "missing real Mythic PNG"}
-                )
+    missing_inputs, assets = [], []
     manifest = Path(__file__).resolve().parents[3] / "docs/v1.5/S5_IMPORT_MANIFEST.json"
-    if manifest.exists():
-        s5_heroes = json.loads(manifest.read_text(encoding="utf-8"))["heroes"]
-        for hero in s5_heroes:
-            path = HERO_IMAGES_DIR / hero["image"]
-            if not path.is_file():
-                missing_inputs.append(
-                    {"path": str(path), "reason": "missing real S5 PNG"}
-                )
-                blocked.append("Missing S5 PNG: " + str(path))
-            else:
-                png(path, background=255)
-        missing = [
-            h["code"] for h in s5_heroes if h["code"] not in {e["code"] for e in heroes}
-        ]
-        if missing:
-            blocked.append("S5 not imported: " + ", ".join(missing))
+    s5_heroes = json.loads(manifest.read_text(encoding="utf-8"))["heroes"]
+    imported = _s5_records(
+        s5_heroes, {"heroes": heroes, "settings": load_hero_catalog()["settings"]}
+    )
+    expected = [
+        ("mythic", HERO_IMAGES_DIR / f"{element}_{stage}.png", 0)
+        for element in sorted(ELEMENTS)
+        for stage in STAGES
+    ]
+    expected += [("s5", HERO_IMAGES_DIR / h["image"], 255) for h in s5_heroes]
+    expected += [
+        ("raid", RAID_IMAGES / f"raid_boss_{index}.png", 0) for index in range(1, 5)
+    ]
+    for kind, path, background in expected:
+        if not path.is_file():
+            reason = "Missing " + kind + " PNG: " + str(path)
+            blocked.append(reason)
+            missing_inputs.append({"path": str(path), "reason": reason})
+            continue
+        if path.is_symlink():
+            raise ValueError("PNG must be a local file: " + str(path))
+        info = png(path, background=background, include_corners=True)
+        assets.append(
+            {
+                "kind": kind,
+                "path": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                **info,
+            }
+        )
+    if not imported:
+        blocked.append("S5 not imported: " + ", ".join(h["code"] for h in s5_heroes))
     bosses = load(require_images=False)
-    from app.mini.mythic.raid.catalog import IMAGES as RAID_IMAGES
-
     for boss in bosses:
         path = RAID_IMAGES / boss["image"]
         if not path.is_file():
@@ -240,7 +316,7 @@ def report():
                 {"path": str(path), "reason": "missing real raid PNG"}
             )
         else:
-            png(path)
+            png(path, background=0)
     if not bosses:
         blocked.append(
             "Missing four real raid boss records: app/mini/mythic/raid/bosses.json; supplied images do not create records"
@@ -255,6 +331,19 @@ def report():
         "hero_count": len(heroes),
         "raid_bosses": len(bosses),
         "stories": len(stories),
+        "components": {
+            "PNG_PASS": "PASS" if len(assets) == 45 else "BLOCKED_BY_INPUT",
+            "S5_IMPORTED": "PASS" if imported else "BLOCKED_BY_INPUT",
+            "MYTHIC_RECORDS_READY": (
+                "PASS"
+                if len([h for h in heroes if h["rarity"] == "mythic"]) == 8
+                else "BLOCKED_BY_INPUT"
+            ),
+            "RAID_RECORDS_READY": "PASS" if len(bosses) == 4 else "BLOCKED_BY_INPUT",
+            "STORIES_READY": "PASS" if stories else "BLOCKED_BY_INPUT",
+            "STRICT_CONTENT_PASS": "PASS" if not blocked else "BLOCKED_BY_INPUT",
+        },
+        "assets": assets,
         "blockers": blocked,
         "missing_inputs": missing_inputs,
     }

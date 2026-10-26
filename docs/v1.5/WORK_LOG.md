@@ -52,3 +52,20 @@ Baseline138 имел2photo-mock failures после предыдущей пос�
 Добавлены пять граничных тестов (включая palette/opacity), обновлён текущий checklist.
 Проверка S5 только read-only: изображения и авторские JSON не изменяются/не импортируются.
 Итоговый SHA и результаты полных проверок фиксируются в том же draft PR #8 и отчёте.
+
+## 26.10.2026 — финализация доступного контента
+
+Новое полное CONTENT_FINALIZATION_APPROVED_TZ.md прочитано. Initial HEAD и origin совпали
+с 9ef98aaa8b8c3732fc631d5a3dc9687113b3a750. Сняты фактические RGBA и SHA-256 45 PNG;
+24 Mythic + 4 Raid укладываются в одобренные black0..4, S5 сохраняет white252..255.
+Реализованы black Raid/independent45 diagnostic, source/destination reuse и atomic-file
+S5 import с staged/backup/rollback/lock/guards/no-op. Реальные 17 записей импортированы;
+повторный apply подтвердил no-op. PNG и S5 manifest не изменены.
+Новые интеграции показывают все 17 S5 через Telegram/SQLite, дубликаты, shards, ranks,
+конкуренцию, Raid, equipment. Первые тестовые ожидания не учитывали штатный repeated=True
+и snapshot_json; исправлены только новые fixtures, продуктовые replay не менялись.
+Обнаружен отдельный дефект Story choice: limit120 считался в code points, исправлен на
+UTF-16; regression с 61 emoji. Добавлен read-only внешний Story validator CLI.
+Новые author records/сюжеты в ветке/вложениях/Downloads не найдены; подготовлены точные
+Mythic/Raid шаблоны и Story example только в docs, никакой фиктивной поставки в игре.
+Полные проверки запускаются на окончательном SHA; main/production DB/серверы не затронуты.

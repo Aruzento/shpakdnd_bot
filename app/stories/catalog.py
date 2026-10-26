@@ -82,7 +82,7 @@ def validate(data):
             if (
                 not isinstance(choice["text"], str)
                 or not choice["text"].strip()
-                or len(choice["text"]) > 120
+                or len(choice["text"].encode("utf-16-le")) // 2 > 120
             ):
                 raise ValueError("Invalid choice text")
             target = choice["next"]
@@ -115,8 +115,12 @@ def validate(data):
     return data
 
 
-def directory():
-    path = Path(os.getenv("STORIES_DIR", "/var/lib/shpakdnd/stories")).resolve()
+def directory(path=None):
+    path = Path(
+        path
+        if path is not None
+        else os.getenv("STORIES_DIR", "/var/lib/shpakdnd/stories")
+    ).resolve()
     checkout = Path(__file__).resolve().parents[2]
     if (
         path == checkout

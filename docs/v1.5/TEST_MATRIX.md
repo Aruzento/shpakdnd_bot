@@ -45,3 +45,18 @@ AssetMatrix: пять новых тестов проверяют RGB 252–255, 
 отсутствующего palette entry. Чёрный фон остаётся строго 0/0/0 (1 и 3 отклоняются).
 Read-only S5 dry-run проверяет все 17 настоящих PNG без импорта записей.
 Полные Windows/Linux проверки выполняются на итоговом SHA; результаты — в PR/отчёте.
+
+## Content finalization 26.10.2026
+
+Новый tests/v1_5/test_content_finalization.py: 26 тестов. Проверяются все реальные 45 PNG
+по исходным SHA-256, RGBA и размерам независимо от author records; black 0..4/5,
+white 252..255/251, все четыре угла, alpha, tRNS, CRC/scanlines/filter/shape/missing.
+Importer: same path/external identical/different bytes, partial/conflicting records,
+missing PNG, staged disk failure, rollback, lock, stale concurrent plan, повторный no-op.
+Реальные 17 S5: гача/SQLite/дубликаты/shards/ranks/passives/replay, pool exclusions,
+конкурентная операция, Telegram handler→service→SQLite→настоящие PNG, Raid ledger/equipment.
+Внеигровые Mythic/Raid templates проверяются на временных полных карточках, Story template
+— schema/DAG/UTF-16/external CLI и handler list/open/start→vote/restart/kick/cancel без экономики.
+Прежние black-boundary и strict-complete fixtures обновлены по новому approved ТЗ;
+тесты не удалены и не skip-нуты. Ранее белый допуск не расширен.
+Полный exact-SHA Windows/Linux, 12 validators, D&D и migration/PTY — в итоговом отчёте.

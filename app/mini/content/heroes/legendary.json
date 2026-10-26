@@ -89,6 +89,42 @@
       "class_tag": "warrior",
       "attack_range": "melee",
       "special_trait": "armored"
+    },
+    {
+      "code": "daenerys_dragonflame",
+      "name": "Дейнерис",
+      "rarity": "legendary",
+      "race": "человек, валирийка",
+      "class_name": "королева драконов",
+      "attack": 150,
+      "passive_key": "holy_smite",
+      "passive_text": "Святая кара: первая успешная атака героя дополнительно отнимает у противника 20% его исходного максимального HP. Эффект срабатывает один раз за бой и не складывается с такой же карой других участников.",
+      "description": "Повелительница драконьего пламени, которая идёт в ближний бой с освящённым валирийским клинком. Её драконья кровь объединяет звериные стаи, а огонь очищает тьму.",
+      "image": "daenerys_dragonflame.png",
+      "active": true,
+      "faction": "beasts",
+      "damage_type": "magic",
+      "class_tag": "warrior",
+      "attack_range": "melee",
+      "special_trait": "holy"
+    },
+    {
+      "code": "kaiden_void_magus",
+      "name": "Кайден",
+      "rarity": "legendary",
+      "race": "осквернённый человек",
+      "class_name": "маг расколотой звезды",
+      "attack": 150,
+      "passive_key": "mana_allegory",
+      "passive_text": "Аллегрия на ману: в этом бою обычный урон всех героев с боевым классом mage увеличен на 20%. Действует и на Кайдена, с другими бонусами сочетается, несколько таких эффектов не складываются.",
+      "description": "Когда-то Кайден был обычным придворным магом, но магия бездны изменила его природу. Теперь он поражает врагов издалека и разрушает священную регенерацию демонической энергией.",
+      "image": "kaiden_void_magus.png",
+      "active": true,
+      "faction": "monsters",
+      "damage_type": "magic",
+      "class_tag": "mage",
+      "attack_range": "ranged",
+      "special_trait": "demonic"
     }
   ]
 }

@@ -59,14 +59,17 @@ def validate(data, *, images=IMAGES, require_images=True):
             or len(set(counters)) != len(counters)
         ):
             raise ValueError("Explicit counter_elements required")
-        if Path(boss["image"]).name != boss["image"] or not boss["image"].endswith(
-            ".png"
+        if (
+            "/" in boss["image"]
+            or "\\" in boss["image"]
+            or Path(boss["image"]).name != boss["image"]
+            or not boss["image"].endswith(".png")
         ):
             raise ValueError("Raid image must be a PNG basename")
         if require_images:
             from app.mini.mythic.content import png
 
-            png(images / boss["image"])
+            png(images / boss["image"], background=0)
         regen = boss.get("regeneration_percent", 0)
         if type(regen) is not int or not 0 <= regen <= 100:
             raise ValueError("Invalid regeneration")

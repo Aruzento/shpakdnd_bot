@@ -8,13 +8,13 @@
 |---|---|---|
 | O01 | Две отмены; compensation P=floor(ceil(M/5000)*min(D,M)/M), largest remainder с player_id tie, forecast/reason/revision/audit/ledger/replay/races, cancelled без победных бонусов | IMPLEMENTED_VERIFIED |
 | O02 | Первая подтверждённая контр-атака активирует100% даже приactual0; источник сохранён; legacy positive-only snapshots не переписываются | IMPLEMENTED_VERIFIED |
-| O03 | Строгий контракт ровно4Boss, PNG/Shadow/features/counter, empty-catalog UI и temporary-fixture tests готовы | BLOCKED_BY_INPUT: реальные4records+4PNG |
+| O03 | Строгий контракт ровно4Boss, PNG/Shadow/features/counter, empty-catalog UI и temporary-fixture tests готовы | BLOCKED_BY_INPUT: четыре авторские records; четыре PNG уже PNG_PASS |
 | O04 | Раздельные normal/raid, none/not_configured без normal leak; typed effects/ссылки/поля проверяются | IMPLEMENTED_VERIFIED; авторские ordinary raid definitions добавляются позднее |
 | O05 | Eclipse10–15% original HP один раз, current/max увеличиваются, p/gain/stars frozen, фонды R09/O01 original | IMPLEMENTED_VERIFIED |
 | O06 | Независимый Star-бросок каждому eligible normal Boss; Tower player/floor once; durable journal, no admin/banish/loss/Raid/PvP | IMPLEMENTED_VERIFIED |
 | O07 | Golden/Thief/Blessing стандартной награды; независимые источники не умножаются/не дублируются, chest сохраняется; floor draw frozen с первого входа | IMPLEMENTED_VERIFIED |
-| O08 | Inventory/manual active/manual reserve,75currency/8distinct/no ninth,active-time care/growth/claim/equipment,explicit confirmation, evolution_pending | IMPLEMENTED_VERIFIED; взрослые арты/records — вход следующего этапа |
-| O09 | Import/schema/PNG/unique/references/strict0/1/2 проверены на temporary fixtures; fake production content не создаётся | BLOCKED_BY_INPUT: авторский комплект |
+| O08 | Inventory/manual active/manual reserve,75currency/8distinct/no ninth,active-time care/growth/claim/equipment,explicit confirmation, evolution_pending | IMPLEMENTED_VERIFIED; взрослые арты PNG_PASS, авторские records ещё нужны |
+| O09 | Import/schema/PNG/unique/references/strict0/1/2 проверены на temporary fixtures; fake production content не создаётся | S5_IMPORTED; BLOCKED_BY_INPUT: Mythic/Boss records и настоящие Stories |
 | O10 | Solo3обычных щита; отмена→Ice→Lunar→обычные; zero не даёт on-hit/Arise, extra без рекурсии, explicit Shadow target, restart/reward protection | IMPLEMENTED_VERIFIED |
 
 IMPLEMENTED_VERIFIED означает трассировку и изолированные автоматические проверки, а не выполненную Telegram/релизную приёмку. Финальный exact SHA, полные count/skip/exit/log и Linux3.11/3.13 фиксируются в итоговом отчёте после последнего коммита. Подробная матрица O→handler→service→SQLite→UI→test: COMPLETION_AUDIT.md.
@@ -28,3 +28,14 @@ IMPLEMENTED_VERIFIED означает трассировку и изолиров
 Четыре настоящих босса-изображения теперь лежат в raid/images/raid_boss_1.png…4.png
 по порядку вложений. Реальные Boss code/name/records и восемь Mythic records/Stories ещё нужны.
 Статус «В разработке» сохраняется; финальные проверки относятся к SHA итогового отчёта.
+
+## Контентный проход 26.10.2026 от 9ef98aa
+
+PNG_PASS: 45/45, исходные байты сохранены; black 0..4 только Mythic/Raid, white 252..255
+только S5, alpha 255. S5_IMPORTED: 17 реальных записей (5/6/4/2), общий каталог 71;
+повторный apply — no-op, конфликты/частичный набор отклоняются до записи. Добавления
+не меняют 54 прежних героев и не затрагивают SQLite. Миграция схемы не нужна.
+MYTHIC_RECORDS_READY/RAID_RECORDS_READY/STORIES_READY: BLOCKED_BY_INPUT. Точные запросы
+и Story template/guide размещены вне активных каталогов. strict-content остаётся exit 2.
+Технические тесты, final SHA и Linux CI фиксируются после последнего коммита в отчёте/PR #8.
+Вердикт: Релиз заблокирован до полного контента, independent review, DB copy и staging.

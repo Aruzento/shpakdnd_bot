@@ -1220,7 +1220,11 @@ class ApprovedContracts(unittest.TestCase):
             manifest = json.loads(
                 Path("docs/v1.5/S5_IMPORT_MANIFEST.json").read_text("utf-8")
             )["heroes"]
-            data["heroes"] += copy.deepcopy(manifest)
+            # Real S5 may already be imported; keep exactly one full set in this fixture.
+            codes = {h["code"] for h in manifest}
+            data["heroes"] = [
+                h for h in data["heroes"] if h["code"] not in codes
+            ] + copy.deepcopy(manifest)
             for h in manifest:
                 (images / h["image"]).write_bytes(png((255, 255, 255)))
             for element, attack in content.BASE_ATTACK.items():
@@ -1251,8 +1255,9 @@ class ApprovedContracts(unittest.TestCase):
                 }
                 for i in range(4)
             ]
-            for e in entries:
+            for i, e in enumerate(entries, 1):
                 (images / e["image"]).write_bytes(png((0, 0, 0)))
+                (images / f"raid_boss_{i}.png").write_bytes(png((0, 0, 0)))
             stories = images / "stories"
             stories.mkdir()
             (stories / "fixture.json").write_text(

@@ -1,0 +1,230 @@
+{
+  "baseline_sha": "9ef98aaa8b8c3732fc631d5a3dc9687113b3a750",
+  "assets": [
+    {
+      "path": "app/mini/content/hero_images/daenerys_dragonflame.png",
+      "kind": "s5",
+      "sha256": "f98b034b6ea7efac3073138fd07c846eabdc4f3767fdac69baf9509543e22f55"
+    },
+    {
+      "path": "app/mini/content/hero_images/kaiden_void_magus.png",
+      "kind": "s5",
+      "sha256": "acee321f32b2d759b2768338810b7ff39ad35a493ee513b9e0b7552f590176f0"
+    },
+    {
+      "path": "app/mini/content/hero_images/ordo_vallis_secretary.png",
+      "kind": "s5",
+      "sha256": "38cb0a488f01bf94b15781b01443dc057eae74093b369e00a490da2ae46557ab"
+    },
+    {
+      "path": "app/mini/content/hero_images/ordo_vallis_inquisitor.png",
+      "kind": "s5",
+      "sha256": "6965ed9d7f9b05e9f0ec5eeab0c9dfcdbd27faf3b8e0d08c42c294703934a306"
+    },
+    {
+      "path": "app/mini/content/hero_images/ordo_vallis_soul_lord.png",
+      "kind": "s5",
+      "sha256": "222901f2f41f6e3ae6ccad2818c5512f95b87b2ea6f21c4440ba5e3db6459552"
+    },
+    {
+      "path": "app/mini/content/hero_images/ordo_vallis_legionary.png",
+      "kind": "s5",
+      "sha256": "52d07f88d9b275d96d9b550d68f6d72523c09f20cb8b043552df4e913435aa5d"
+    },
+    {
+      "path": "app/mini/content/hero_images/ordo_vallis_commander.png",
+      "kind": "s5",
+      "sha256": "df9d00612b498388ecd797b42f377aefe064e2ec4f71ff5967e1bbcbd11fc732"
+    },
+    {
+      "path": "app/mini/content/hero_images/varzek_ash_fury.png",
+      "kind": "s5",
+      "sha256": "e20a1385cc93b4671b00f98e51f7fbef388f688cc6d52ea016c9a2400bdc60d7"
+    },
+    {
+      "path": "app/mini/content/hero_images/sairen_red_needle.png",
+      "kind": "s5",
+      "sha256": "74b94b85fbf18bc6f3eb007e6ec0b6b8f031f6e59ddd8629cb3d807118b45feb"
+    },
+    {
+      "path": "app/mini/content/hero_images/draghar_black_cleaver.png",
+      "kind": "s5",
+      "sha256": "6d1c58dc1eae0e176a90596c823c464737f1b21a67a210d2865f31d8b2530c58"
+    },
+    {
+      "path": "app/mini/content/hero_images/talvira_blackroot.png",
+      "kind": "s5",
+      "sha256": "5539ac403c0ca2704941d7f2d35cd87a588152ff9fc3222b0725051b807ffa0b"
+    },
+    {
+      "path": "app/mini/content/hero_images/azark_storm_spear.png",
+      "kind": "s5",
+      "sha256": "88517b6b6e3aca9ba393ab74cba3349630aeeae69e187b21925c00ad4ea48f05"
+    },
+    {
+      "path": "app/mini/content/hero_images/shaar_ashen_palm.png",
+      "kind": "s5",
+      "sha256": "897a8d80f8022854cc77c73649de4bbfa053a4ff954157e03c0bdd902069c2e9"
+    },
+    {
+      "path": "app/mini/content/hero_images/master_puppeteer.png",
+      "kind": "s5",
+      "sha256": "1b5719b638fac10e6dd682785dc7b8a37dfad28e41d66972234c1b265adbfcc6"
+    },
+    {
+      "path": "app/mini/content/hero_images/kaeron_shadow_reaver.png",
+      "kind": "s5",
+      "sha256": "888ec876f8e94b41b95e8e7240f468b98370ee7ba7cbd67ae2d3164d543b25bc"
+    },
+    {
+      "path": "app/mini/content/hero_images/veirissa_darkarrow.png",
+      "kind": "s5",
+      "sha256": "1b36d590e8e3d3918d8bc9e33f9c9965fb96ae3b33386735d2ab31e188255a94"
+    },
+    {
+      "path": "app/mini/content/hero_images/ezio_auditore_isekai.png",
+      "kind": "s5",
+      "sha256": "d3cce2189c4e1e573337bf05ecd639a306b959893f07b8e4a6d595ffaece5fde"
+    },
+    {
+      "path": "app/mini/content/hero_images/ice_egg.png",
+      "kind": "mythic",
+      "sha256": "4f941168d0754db567faeb228bb9612560e55dc44d7486c073157106e4d4bd63"
+    },
+    {
+      "path": "app/mini/content/hero_images/ice_young.png",
+      "kind": "mythic",
+      "sha256": "0d3843234d7fb2495bb5f866a74e015cd480190c4fe6f2746449f1e2cf51e720"
+    },
+    {
+      "path": "app/mini/content/hero_images/ice_adult.png",
+      "kind": "mythic",
+      "sha256": "64594231e143681cdca7a5dd8537743a0d180f1c6eca7b703f35248504a7550f"
+    },
+    {
+      "path": "app/mini/content/hero_images/lightning_egg.png",
+      "kind": "mythic",
+      "sha256": "88baebcef4c07687ca905b9acf08dc0b15a7f62691f9ae28eff16a6ccd1b4059"
+    },
+    {
+      "path": "app/mini/content/hero_images/lightning_young.png",
+      "kind": "mythic",
+      "sha256": "babe12f0059968c17e0394dc3fedc1323872e82aa7b8184a4bebdcfac2adfc1e"
+    },
+    {
+      "path": "app/mini/content/hero_images/lightning_adult.png",
+      "kind": "mythic",
+      "sha256": "016e0d947332ad6b519336e514094cc740fe1532296ad463b4361e3a5780406e"
+    },
+    {
+      "path": "app/mini/content/hero_images/dark_egg.png",
+      "kind": "mythic",
+      "sha256": "9fb96b27d0bc333853d9f86daf61e34ba671cf631303ddfd9f0bb07de78f1ee5"
+    },
+    {
+      "path": "app/mini/content/hero_images/dark_young.png",
+      "kind": "mythic",
+      "sha256": "451463aa6e25cda1a2b42e90a432688cbb476c5cb24685601770f316ec6189ee"
+    },
+    {
+      "path": "app/mini/content/hero_images/dark_adult.png",
+      "kind": "mythic",
+      "sha256": "d92ac735ccd3f1b584dcb6e24ac0b4a25ef63cf81dbeb90b3f5211cfb85f307f"
+    },
+    {
+      "path": "app/mini/content/hero_images/fire_egg.png",
+      "kind": "mythic",
+      "sha256": "0d3337a46bdae84ff694d324fc584f2afd0824e2f7df88d60195deb7e1b08b66"
+    },
+    {
+      "path": "app/mini/content/hero_images/fire_young.png",
+      "kind": "mythic",
+      "sha256": "fd4053d90d34ce588ff82000bf194904a1727c994c51f76e83abb4dfd49882ff"
+    },
+    {
+      "path": "app/mini/content/hero_images/fire_adult.png",
+      "kind": "mythic",
+      "sha256": "5bc557e654641a3b6fd5793217243f0d326c72429280744f763cd89cbc175ae3"
+    },
+    {
+      "path": "app/mini/content/hero_images/star_egg.png",
+      "kind": "mythic",
+      "sha256": "a882746d5dd34557e96b56962fe3e395231a29de555083579edafb8b614ffbf5"
+    },
+    {
+      "path": "app/mini/content/hero_images/star_young.png",
+      "kind": "mythic",
+      "sha256": "b4eff4dacec44e20197a1a669d1d42e42672740d2c44b8b0cd3b66974847bcf8"
+    },
+    {
+      "path": "app/mini/content/hero_images/star_adult.png",
+      "kind": "mythic",
+      "sha256": "0107eb0a930a42f906ecf1fc762ee389388103de74f7474221f21e2e62b70da5"
+    },
+    {
+      "path": "app/mini/content/hero_images/earth_egg.png",
+      "kind": "mythic",
+      "sha256": "db419257226845c6c1d1855f53defa8ac391fbb4e064619979954ae347ce5d2c"
+    },
+    {
+      "path": "app/mini/content/hero_images/earth_young.png",
+      "kind": "mythic",
+      "sha256": "0fe4c62bbd73ccea29a880bbcd5d357ce49d7dc306edefd232cdc47e86c30075"
+    },
+    {
+      "path": "app/mini/content/hero_images/earth_adult.png",
+      "kind": "mythic",
+      "sha256": "3e0eccdd486bee425356261217373f742be4c941437b0d12888b13911f5e139c"
+    },
+    {
+      "path": "app/mini/content/hero_images/moon_egg.png",
+      "kind": "mythic",
+      "sha256": "1e2e2eebdbe369c2ac3de757c629dfc6dc66082d7861caf67b54a0e2dd797a57"
+    },
+    {
+      "path": "app/mini/content/hero_images/moon_young.png",
+      "kind": "mythic",
+      "sha256": "59143b41cce24f17672cb188a11dc88e0760ffc26eaa4d2e90c343741b075b4f"
+    },
+    {
+      "path": "app/mini/content/hero_images/moon_adult.png",
+      "kind": "mythic",
+      "sha256": "63421ac3aba716df919851cb0e815b1d658830a5d1a63ee01feb7ec6703ee3a0"
+    },
+    {
+      "path": "app/mini/content/hero_images/sun_egg.png",
+      "kind": "mythic",
+      "sha256": "4c5561157c426bbbc4824c4a051edef2de822e1c82e98e65a1af07eec5e97fbc"
+    },
+    {
+      "path": "app/mini/content/hero_images/sun_young.png",
+      "kind": "mythic",
+      "sha256": "d97fe416c724c58ea0073af29fbfd6bd4d366d5e03d7c3442e5ce2c8ae9a8113"
+    },
+    {
+      "path": "app/mini/content/hero_images/sun_adult.png",
+      "kind": "mythic",
+      "sha256": "06ee45327d8e1ffea8eb20a9f951fcfefd19bb28f036d2897eb830ee302506c9"
+    },
+    {
+      "path": "app/mini/mythic/raid/images/raid_boss_1.png",
+      "kind": "raid",
+      "sha256": "4ce593839e0dd35138ebb6fdab5ecce0873fec077f20e4427c0509195a934480"
+    },
+    {
+      "path": "app/mini/mythic/raid/images/raid_boss_2.png",
+      "kind": "raid",
+      "sha256": "149ad80c20d87333563356d518bfe3ba4643265fb2c8d58e3cfb2e353eb86201"
+    },
+    {
+      "path": "app/mini/mythic/raid/images/raid_boss_3.png",
+      "kind": "raid",
+      "sha256": "de3328d596daa834acc13f36f75c26e7ac983c7de6f29e481b84a62a884710de"
+    },
+    {
+      "path": "app/mini/mythic/raid/images/raid_boss_4.png",
+      "kind": "raid",
+      "sha256": "80d4eb3a72c3a4a205e8e7d9815d6d43ba0467228aab8aadf66f86470a8f16c8"
+    }
+  ]
+}
