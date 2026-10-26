@@ -102,9 +102,9 @@ def inspect_connection(conn, capability):
                 if not isinstance(snapshot, dict) or not isinstance(state, dict):
                     raise ValueError()
                 policy = snapshot.get("runtime_policies", {})
-                if policy.get("schema_version", 1) not in (1, 2):
+                if type(policy.get("schema_version", 1)) is not int or policy.get("schema_version", 1) not in (1, 2):
                     raise ValueError()
-                if state.get("mechanic", {}).get("version", 1) != 1:
+                if type(state.get("mechanic", {}).get("version", 1)) is not int or state.get("mechanic", {}).get("version", 1) != 1:
                     raise ValueError()
             except (ValueError, TypeError, AttributeError):
                 blockers.append("BLOCKED_UNKNOWN_RAID_POLICY")
@@ -144,7 +144,7 @@ def inspect_connection(conn, capability):
                 counts[key] = counts.get(key, 0) + 1
                 team = runtime.get("team", {})
                 policy = team.get("reward_policy", {}) if isinstance(team, dict) else None
-                if not isinstance(policy, dict) or policy.get("version", 0) not in (0, 1, 2):
+                if not isinstance(policy, dict) or type(policy.get("version", 0)) is not int or policy.get("version", 0) not in (0, 1, 2):
                     blockers.append("BLOCKED_UNKNOWN_COMBAT_POLICY:" + table)
                     policy = {}
                 rules = row[required] if required and required in cols else runtime.get("rules_version", 0)

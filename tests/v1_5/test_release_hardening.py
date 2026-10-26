@@ -253,6 +253,9 @@ class RollbackMatrix(MiniCase):
         self.sql("UPDATE mini_bosses SET rules_version=15 WHERE id=?",(boss["id"],))
         self.assertFalse(self.inspect()["rollback_ready"])
         self.assertTrue(self.inspect("v15-once-raid-pets-economy")["rollback_ready"])
+        for value in (True, 1.0, "1", None):
+            self.sql("UPDATE mini_bosses SET team_state_json=? WHERE id=?",(json.dumps({"team":{"reward_policy":{"version":value}}}),boss["id"]))
+            self.assertIn("BLOCKED_UNKNOWN_COMBAT_POLICY:mini_bosses",self.inspect("v15-once-raid-pets-economy")["blockers"])
         self.sql("UPDATE mini_bosses SET team_state_json='[]' WHERE id=?",(boss["id"],))
         self.assertIn("BLOCKED_INVALID_COMBAT_SNAPSHOT:mini_bosses",self.inspect()["blockers"])
         self.sql("UPDATE mini_bosses SET status='unrecognized' WHERE id=?",(boss["id"],))
@@ -267,6 +270,12 @@ class RollbackMatrix(MiniCase):
         self.assertTrue(self.inspect()["rollback_ready"])
         self.sql("INSERT INTO mini_mythic_raids(world_id,template_code,snapshot_json,state_json,original_max_hp,max_hp,current_hp,created_by,created_at) VALUES(?,'fixture','{}',?,100000,100000,1,1,1)",(self.world["id"],json.dumps({"mechanic":{"version":999}})))
         self.assertIn("BLOCKED_UNKNOWN_RAID_POLICY",self.inspect("v15-once-raid-pets-economy")["blockers"])
+        for value in (True, 1.0, "1", None):
+            with self.subTest(invalid_policy=value):
+                self.sql("UPDATE mini_mythic_raids SET snapshot_json='{}',state_json=?",(json.dumps({"mechanic":{"version":value}}),))
+                self.assertIn("BLOCKED_UNKNOWN_RAID_POLICY",self.inspect("v15-once-raid-pets-economy")["blockers"])
+                self.sql("UPDATE mini_mythic_raids SET snapshot_json=?,state_json='{}'",(json.dumps({"runtime_policies":{"schema_version":value}}),))
+                self.assertIn("BLOCKED_UNKNOWN_RAID_POLICY",self.inspect("v15-once-raid-pets-economy")["blockers"])
         self.sql("ALTER TABLE mini_mythic_operations ADD COLUMN unknown_migration TEXT")
         with self.assertRaisesRegex(guard.GuardError,"UNKNOWN_V15_COLUMNS"):
             self.inspect()
@@ -518,7 +527,7 @@ class DeploymentNegativePaths(unittest.TestCase):
         f.h.env.update(FAKE_CHECK_FAIL="1",FAKE_V15_GUARD_REAL="1")
         t=pty.Terminal(f.h);self.addCleanup(t.close)
         f.first_two(t)
-        t.wait_text("Выбор [1]:");t.send("2\r\n")
+        t.wait_text("Р’С‹Р±РѕСЂ [1]:");t.send("2\r\n")
         self.assertEqual(t.finish(),1,t.text)
         self.assertIn("BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED",t.text)
         self.assertNotIn("systemctl start",f.trace())
