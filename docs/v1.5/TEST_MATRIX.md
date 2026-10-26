@@ -60,3 +60,18 @@ missing PNG, staged disk failure, rollback, lock, stale concurrent plan, пов�
 Прежние black-boundary и strict-complete fixtures обновлены по новому approved ТЗ;
 тесты не удалены и не skip-нуты. Ранее белый допуск не расширен.
 Полный exact-SHA Windows/Linux, 12 validators, D&D и migration/PTY — в итоговом отчёте.
+
+Content-finalization full-suite correction: дополнительно test_release_preservation
+проверяет исторический source fixture на том же pinned old ref и отдельно новый S5
+snapshot на копии. Только active=0 для точных 17 новых кодов допускается старым каталогом;
+остальные typed columns/rows, кошельки, ownership, copies/stars проверяются прежним guard.
+Итого 27 добавленных тестов: 26 в новом V1.5 модуле + один в compatibility suite.
+Динамическая UI-матрица включает новый trait=demonic из настоящих S5.
+
+
+Диагностика 85 предшествующих gacha cases установила точную причину membership failure:
+старый Gacha142Tests.concurrent запускал self.pull(), внутри которого каждый поток
+создавал patch одного общего _choose_hero_code. При пересечении cleanup оставлял
+MagicMock в модуле после теста. Patch перенесён наружу ThreadPoolExecutor, workers
+вызывают настоящий perform_gacha_pull; добавлена проверка восстановления исходной функции.
+Исходный новый weighted-pool тест сохранён без подмены каталога/весов; проверка не ослаблена.

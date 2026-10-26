@@ -170,8 +170,13 @@ class Gacha142Tests(MiniCase):
     def test_concurrent_callback_gives_one_pull_one_update_and_replay_after_restart(self):
         self.set_counts(9,24,84)
         before=get_balance(self.pid,self.db)
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            results=list(pool.map(lambda _:self.pull(key='same'),range(2)))
+        from app.mini import gacha
+        original = gacha._choose_hero_code
+        # One shared patch surrounds the workers; thread-local patch contexts
+        # race when restoring the same module attribute and leak a MagicMock.
+        with patch('app.mini.gacha._choose_hero_code',return_value='Villager'), ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(lambda _:perform_gacha_pull(self.pid,'coins',self.db,operation_key='same'),range(2)))
+        self.assertIs(gacha._choose_hero_code, original)
         self.assertEqual(results[0]['pull_id'],results[1]['pull_id'])
         self.assertEqual(get_balance(self.pid,self.db),before-results[0]['cost_coins'])
         self.assertEqual(self.counters(),dict(uncommon=10,rare=25,legendary=0))

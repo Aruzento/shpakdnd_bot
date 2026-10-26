@@ -1612,7 +1612,7 @@
         ],
         [
           {
-            "text": "Летающий",
+            "text": "Демонический",
             "callback": "mini:select:999999:9999999999:c0.s54.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1621,7 +1621,7 @@
         ],
         [
           {
-            "text": "Святой",
+            "text": "Летающий",
             "callback": "mini:select:999999:9999999999:c0.s55.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1630,7 +1630,7 @@
         ],
         [
           {
-            "text": "Нет особого свойства",
+            "text": "Святой",
             "callback": "mini:select:999999:9999999999:c0.s56.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1639,7 +1639,7 @@
         ],
         [
           {
-            "text": "Ядовитый",
+            "text": "Нет особого свойства",
             "callback": "mini:select:999999:9999999999:c0.s57.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
@@ -1648,8 +1648,17 @@
         ],
         [
           {
-            "text": "Нежить",
+            "text": "Ядовитый",
             "callback": "mini:select:999999:9999999999:c0.s58.0.0000000",
+            "handlers": [
+              "app.mini.ui.hero_selector.selector_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Нежить",
+            "callback": "mini:select:999999:9999999999:c0.s59.0.0000000",
             "handlers": [
               "app.mini.ui.hero_selector.selector_callback"
             ]
