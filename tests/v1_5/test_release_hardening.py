@@ -424,14 +424,25 @@ class ExactSHAIsolation(unittest.TestCase):
         (self.project/".env").write_text("SECRET=sentinel")
         # Real child and actual audit hook: deny Python/SQLite access plus sockets.
         script=self.base/"negative.py"
-        script.write_text("""import os,socket,sqlite3
+        script.write_text("""import os,socket,sqlite3,asyncio
 from pathlib import Path
 root=Path(os.environ['DND_CHECK_DENY_PROJECT'])
 for op in (lambda: (root/'.env').read_bytes(),lambda: (root/'shpakdnd.db').read_bytes(),lambda:sqlite3.connect(root/'shpakdnd.db'),lambda:sqlite3.connect((root/'shpakdnd.db').as_uri()+'?mode=ro',uri=True),lambda:socket.create_connection(('127.0.0.1',1))):
  try: op()
  except PermissionError: pass
  else: raise AssertionError('live resource accessible')
-print('LIVE_DB_ENV_NETWORK_DENIED')
+# Creating a loop must work on Windows even while external connects fail.
+async def probe(): return 7
+assert asyncio.run(probe())==7
+left,right=socket.socketpair()
+try:
+ left.sendall(b'ok');assert right.recv(2)==b'ok'
+finally:
+ left.close();right.close()
+try: socket.create_connection(('127.0.0.1',1))
+except PermissionError: pass
+else: raise AssertionError('ordinary loopback allowed')
+print('LIVE_DB_ENV_NETWORK_DENIED_ASYNCIO_SOCKETPAIR_PASS')
 """,encoding="utf-8")
         env.update(PYTHONPATH=os.environ.get("PYTHONPATH",""))
         result=subprocess.run([sys.executable,"scripts/run_isolated_checks.py","--label","hardening-sentinel","--",str(script)],cwd=ROOT,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8")

@@ -116,3 +116,8 @@ incompatible/unknown app или unresolved state → сохранить SHA/back
 Тексты Moon — только [proposal](MOON_TEXT_PROPOSAL.md); uncertainty — [runbook](TELEGRAM_UNCERTAIN_RUNBOOK.md).
 Первая подтверждённая counter атака активирует эффект и при actual HP damage=0 (O02).
 Moon arcana выбирается до фактического урона и сохраняется без повторного RNG.
+
+Windows offline checks допускают только внутреннее соединение stdlib socketpair
+с собственным временным listener для asyncio; обычный localhost и внешний network
+остаются запрещены. Это Python audit/path isolation, не OS sandbox для недоверенного
+нативного кода. Regression запускает настоящий asyncio и отдельно запрещённый connect.

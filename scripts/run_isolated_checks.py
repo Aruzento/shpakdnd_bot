@@ -32,6 +32,8 @@ sys.meta_path.insert(0,ConfigFinder())
 # remains unchanged unless these explicit offline deployment settings are set.
 if os.environ.get('DND_CHECK_DENY_PROJECT'):
  forbidden=Path(os.environ['DND_CHECK_DENY_PROJECT']).resolve()
+ import socket
+ socketpair_code=socket._fallback_socketpair.__code__
  def offline_audit(event,args):
   if event in ('open','sqlite3.connect') and args and isinstance(args[0],(str,bytes,os.PathLike)):
    raw=os.fsdecode(args[0])
@@ -44,6 +46,17 @@ if os.environ.get('DND_CHECK_DENY_PROJECT'):
    if path==forbidden/'.env' or (path.parent==forbidden and path.name.startswith(('shpakdnd.db','timers.db'))):
     raise PermissionError('Offline preflight cannot open live config/SQLite')
   if event=='socket.connect' and os.environ.get('DND_CHECK_OFFLINE')=='1':
+   # Windows asyncio's self-pipe uses stdlib socketpair's own temporary
+   # listener. Permit only that exact code/object/destination, never ordinary
+   # localhost connections (which may reach a live service).
+   frame=sys._getframe(1)
+   if os.name=='nt' and frame.f_code is socketpair_code:
+    local=frame.f_locals
+    listener=local.get('lsock')
+    if (local.get('csock') is args[0] and listener is not None
+        and tuple(args[1])==listener.getsockname()[:2]
+        and args[1][0] in ('127.0.0.1','::1')):
+     return
    raise PermissionError('Offline preflight cannot connect to a network')
  sys.addaudithook(offline_audit)
 """
