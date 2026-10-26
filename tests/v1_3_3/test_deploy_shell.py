@@ -97,6 +97,7 @@ journalctl)
     echo 'fake startup journal' ;;
 python)
     if [[ "$*" == *release_guard.py* ]]; then
+        if [[ "$*" == *--pvp-report* && -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@";fi
         if [[ "${FAKE_V15_GUARD_REAL:-0}" == 1 ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
         if [[ "${FAKE_V15_GUARD_FAIL:-0}" == 1 ]]; then echo BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED; exit 2; fi
         exit 0

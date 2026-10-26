@@ -571,6 +571,23 @@ class MoonNoMechanicChange(MiniCase):
 
 
 class ProtectedHardeningBundle(unittest.TestCase):
+    def test_public_pvp_reasons_hide_private_session_data_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/"private.json"
+            path.write_text(json.dumps({"blockers":["pause_new_required","session:123:active_escrow","PRIVATE_TOKEN",{"bad":"SECRET"}],"sessions":[{"player_id":987,"secret":"PRIVATE_TOKEN"}]}))
+            public=guard.public_pvp_report(path)
+            self.assertEqual(public,{"blockers":["pause_new_required","pvp_session_review_required"]})
+            result=subprocess.run([sys.executable,str(ROOT/"deploy/release_guard.py"),"--pvp-report",str(path)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(json.loads(result.stdout),public)
+            via_stdin=subprocess.run([sys.executable,str(ROOT/"deploy/release_guard.py"),"--pvp-report","-"],input=path.read_text(encoding="utf-8"),capture_output=True,text=True)
+            self.assertEqual(via_stdin.returncode,0,via_stdin.stderr)
+            self.assertEqual(json.loads(via_stdin.stdout),public)
+            for private in ("123","987","PRIVATE_TOKEN","SECRET","player_id"):
+                self.assertNotIn(private,result.stdout+result.stderr)
+            path.write_text("malformed")
+            self.assertEqual(guard.public_pvp_report(path),{"blockers":["pvp_report_unavailable"]})
+
     def test_exact_manifest_immutable_helpers_and_negative_corruption(self):
         from tools import validate_deploy_bundle as bundle
         bundle.validate()

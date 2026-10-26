@@ -121,3 +121,8 @@ Windows offline checks допускают только внутреннее со
 с собственным временным listener для asyncio; обычный localhost и внешний network
 остаются запрещены. Это Python audit/path isolation, не OS sandbox для недоверенного
 нативного кода. Regression запускает настоящий asyncio и отдельно запрещённый connect.
+PvP rollback сохраняет подробный raw report только в private chmod600 JSON. Публичный
+вывод сохраняет pause_new_required/maintenance_control_missing и агрегированный
+pvp_session_review_required, без session/player ID и свободного текста. Неполный report
+даёт pvp_report_unavailable, не разрешение rollback. Старый frozen-helper regression
+получает полный современный bundle; все его исходные защитные assertions сохранены.

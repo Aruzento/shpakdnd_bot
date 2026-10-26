@@ -15,7 +15,7 @@ HARDENED = {
     "tools/release_preflight_checks.py", "tools/validate_release_content.py",
     "tools/validate_deploy_bundle.py", "tools/validate_release_hardening.py",
     "tests/v1_3_3/test_deploy_shell.py", "tests/v1_4_3_1/test_deploy_confirm.py",
-    "tests/v1_5/test_release_hardening.py",
+    "tests/v1_5/test_release_hardening.py", "tests/v1_4_3/test_pvp_rollback_shell.py",
 }
 IMMUTABLE = ("deploy/deploy_helpers.py", "deploy/sqlite-deploy.py",
              "deploy/telegram-deploy-notice.py", "deploy/pvp_ops.py")
@@ -60,6 +60,10 @@ def validate(root=ROOT):
     for path in ("tests/v1_3_3/test_deploy_shell.py", "tests/v1_4_3_1/test_deploy_confirm.py"):
         if not test_names(original(path)) <= test_names((root / path).read_text(encoding="utf-8")):
             raise AssertionError("Protected regression removed: " + path)
+    path = "tests/v1_4_3/test_pvp_rollback_shell.py"
+    audited = subprocess.check_output(["git", "show", "cef77cc87f6a2286284f5cf8fdb851c775b04dd1:" + path], cwd=ROOT).decode("utf-8")
+    if not test_names(audited) <= test_names((root / path).read_text(encoding="utf-8")):
+        raise AssertionError("Protected PvP rollback regression removed")
     if "-m unittest" in function(current, "checks"):
         raise AssertionError("Long tests cannot run after stop")
     return True

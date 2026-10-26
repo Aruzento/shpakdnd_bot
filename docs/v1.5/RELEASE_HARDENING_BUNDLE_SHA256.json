@@ -1,16 +1,17 @@
 {
-  "deploy/deploy-shpakdnd.sh": "d34590c3d54781fcafd11c616a0ace2c165b18407e8edf460ce785d0926ba63c",
+  "deploy/deploy-shpakdnd.sh": "1fe6d2c5b8c5cc7355d6a0d868a5dfb5bda112c512471a2fced9200c97a09670",
   "deploy/install-deploy-shpakdnd.sh": "9a9892f63d0739fb5fc669c29fff1d17ab275c8649396782f85608759055239d",
   "deploy/release_content.py": "95376ddf957a3ce95e2b97329cd07befaff4a2825a2c2d98e74862e6cbc1b178",
-  "deploy/release_guard.py": "d17eea04b0779cd7baf5e4007fe834adb639a0b3f6828e51147120cac9e35e0f",
+  "deploy/release_guard.py": "ea8cf619b858951f15ab8df15e9946d3e4ec4e263ad329e5b89099576c7f38d9",
   "deploy/release_preflight.py": "7745dec788bc776c7428f460c8160ecbd03b68b8a9266d877a1fcce24ba830c7",
   "deploy/release_schema.json": "b805fe956dee88bc741bb2cc594a20a5325d6ca90ee33493599209e6435f32fd",
   "scripts/run_isolated_checks.py": "7434db0b59e9dfe24656cd93d7aea721571ef5b3297675b5006a9fa6c8ab871e",
-  "tests/v1_3_3/test_deploy_shell.py": "0cd057ebfda6e4ed298fd57048653568abff8415d4dabfb75143f3984a6ff30c",
+  "tests/v1_3_3/test_deploy_shell.py": "b55f525719f82b08d8e4b5de78f499a69736669979e3b890c4d77c5860769f1c",
   "tests/v1_4_3_1/test_deploy_confirm.py": "91f895187b029447c1035ae7140d94c1baf343033b6f5beaed04d9e15c3358e8",
-  "tests/v1_5/test_release_hardening.py": "000eceb6dcbd82322b6090ddeaba77851845309154f5b5ab9c5bc54e85925fe8",
+  "tests/v1_5/test_release_hardening.py": "c09f64194d40c006e35bf10b8a19f9c7fc0db1bf96f5065e602ec009f0772802",
   "tools/release_preflight_checks.py": "bad33fc3b15fc8a24c3489e47442a186a5ed0ac9606226cc625716ac0b559296",
-  "tools/validate_deploy_bundle.py": "5b5672b2d2b9da91766d406053cba7257918485556e6a5f3fbbbea4c8db9fc60",
+  "tools/validate_deploy_bundle.py": "cab87aa087442d994c1eedba1f7f9c21e4ba5b95f1fd233dc68bdb872a634a24",
   "tools/validate_release_content.py": "01128f53b707e2d92a87471262b3783a7a77da15c5d7320fe141ec4aac2749a8",
-  "tools/validate_release_hardening.py": "7178ea7edd196fc2dc2c5d3c54a68e8d99f7fca08d893b2fba67a0b1cbefeabe"
+  "tools/validate_release_hardening.py": "7178ea7edd196fc2dc2c5d3c54a68e8d99f7fca08d893b2fba67a0b1cbefeabe",
+  "tests/v1_4_3/test_pvp_rollback_shell.py": "d7837d4397d3bf98d8dafcd1848a5c9f5ef173ee5fae35eac1e6744e01dcca0f"
 }

@@ -190,13 +190,33 @@ def inspect(project, database, target, current):
     return result
 
 
+def public_pvp_report(path):
+    # Raw reports contain session IDs: publish fixed aggregate codes only.
+    try:
+        raw = json.load(sys.stdin) if path == "-" else json.loads(Path(path).read_text(encoding="utf-8"))
+        codes = raw.get("blockers", [])
+        if not isinstance(codes, list) or not codes:
+            raise ValueError()
+        allowed = {"pause_new_required", "maintenance_control_missing"}
+        return {"blockers": sorted({code if isinstance(code, str) and code in allowed
+                                  else "pvp_session_review_required" for code in codes})}
+    except (OSError, ValueError, AttributeError, TypeError):
+        return {"blockers": ["pvp_report_unavailable"]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True)
-    parser.add_argument("--db", required=True)
-    parser.add_argument("--target", required=True)
-    parser.add_argument("--current", required=True)
+    parser.add_argument("--project")
+    parser.add_argument("--db")
+    parser.add_argument("--target")
+    parser.add_argument("--current")
+    parser.add_argument("--pvp-report")
     args = parser.parse_args()
+    if args.pvp_report:
+        print(json.dumps(public_pvp_report(args.pvp_report), sort_keys=True))
+        return 0
+    if not all((args.project, args.db, args.target, args.current)):
+        parser.error("project, db, target and current required")
     try:
         report = inspect(args.project, args.db, args.target, args.current)
     except (GuardError, sqlite3.Error, OSError, ValueError) as error:

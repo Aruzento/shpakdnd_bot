@@ -222,6 +222,7 @@ rollback_preflight() {
     fi
     touch "$TOOLS/pvp-rollback-private.json"; chmod 600 "$TOOLS/pvp-rollback-private.json"
     if ! as_bot "$PYTHON" "$TOOLS/pvp_ops.py" --db "$DB" rollback-check > "$TOOLS/pvp-rollback-private.json"; then
+        as_bot "$PYTHON" "$TOOLS/release_guard.py" --pvp-report - < "$TOOLS/pvp-rollback-private.json" || true
         printf '❌ Rollback заблокирован: PvP escrow/публикация не разрешены либо БД недоступна. Переход/запуск остановлен; текущий HEAD указан ниже.\n'
         printf 'Сохраните текущий код, выполните штатный pause-new/drain либо оставьте стек остановленным для ручного восстановления. Обхода защиты нет.\n'
         summary
