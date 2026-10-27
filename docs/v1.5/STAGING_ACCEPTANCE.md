@@ -21,8 +21,8 @@ Production, main и production rollback исключены. PR #8 остаётс
 
 ## Сведения владельца и обязательная свежая проверка
 
-VM-338333, 88.214.54.194, root SSH с паролем. Автоматический ключ ранее отклонён;
-это не подтверждает доступ к содержимому сервера. Пароль не запрашивать/не записывать,
+VM-338333, 88.214.54.194, root SSH с паролем. 27.10.2026 владелец установил временный restrict public key; SSH root/hostname
+VM-338333 проверены. Ключ после завершения работ удалить точечно. Пароль не запрашивать/не записывать,
 пользователей и ключи не подбирать. Однократная установка публичного ключа выполняется
 владельцем вручную; после работ временный доступ удалить отдельно.
 
@@ -31,7 +31,12 @@ VM-338333, 88.214.54.194, root SSH с паролем. Автоматически
 изменён `app/topics.py`. SQLite `.../shpakdnd.db` — **symlink** на
 `/opt/shpakdnd-bot/shpakdnd.db`. В `/opt/shpakdnd-bot` есть другие локальные изменения.
 Сохранённый конфиг `/etc/shpakdnd-staging/topics.py`, watcher disabled/inactive.
-Эти сведения сверить заново: несовпадение означает STOP до выяснения назначения.
+Свежая проверка подтвердила SHA/процесс/пути/Python 3.11.2; выявлено отличие:
+активный topics.py содержит только Mini scope, saved topics.py дополнительно содержит
+утверждённый D&D scope. Mini settings идентичны, обе группы и членство существующего
+@shpakdnd_test_bot (ID 8830916110) подтверждены read-only Bot API. Webhook пуст.
+Collector сохраняет actual existing_scopes отдельно от saved_scopes/saved_scope_additions;
+не выдаёт saved D&D за уже активную настройку. Любое иное отличие/production scope — STOP.
 
 ### Шаг 1 — read-only, до изменения сервера
 
@@ -56,8 +61,10 @@ done
 ```
 
 Из проверенного TOOLING_SHA извлечь `deploy/staging_inventory.py` во временный
-root-only каталог; сверить байты с Git и SHA-256. Запустить через существующий TEST
-Python с python-dotenv, сохранить stdout в private JSON. Сборщик проверяет hostname,
+root-only каталог; сверить байты с Git и SHA-256. Запустить от имени фактического User TEST unit (`runuser -u shpakbot --
+/opt/shpakdnd-bot/.venv/bin/python ...`), сохранить stdout в private root JSON.
+Это сохраняет Git ownership guard без global safe.directory; root проверяет остальные
+процессы/cgroup/контейнеры отдельно. Не менять global Git trust settings. Сборщик проверяет hostname,
 unit/EnvironmentFiles без вывода секретов, единственный polling, точные scopes,
 локальные/saved topics и известный legacy symlink. **SQLite не открывает**.
 Любая ошибка — exit 2, не «условный PASS».
@@ -180,7 +187,8 @@ bot.py и многократным check_bot.py на синтетическом 
 Root-only просмотр старого topics через AST literal_eval (не exec) →
 `STAGE/config/topic-settings.json` 440 root:shpak-stage. JSON содержит исходные TEST
 chat/thread, admin/characters, mini и дополнительные известные поля; сохраняет имена.
-Точная allowlist исключает production. Сохранённый `/etc/.../topics.py` должен совпасть.
+Точная allowlist исключает production. Сохранённый `/etc/.../topics.py` должен совпадать по каждому активному Mini scope;
+единственное допустимое расширение — уже утверждённый D&D scope -5320347021/0.
 
 Root policy `STAGE/config/policy.json` 440 содержит **ровно**:
 

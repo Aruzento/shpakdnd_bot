@@ -42,6 +42,7 @@ class StagingAcceptance(unittest.TestCase):
         self.write_json('topic-settings.json', SETTINGS)
         self.observed = dict(schema_version=1, hostname='VM-338333', observed_at=int(time.time()),
                              existing_bot_id=OLD_BOT, existing_scopes=[[-1003883723333, 2], [-5320347021, 0]],
+                             saved_scopes=[[-1003883723333, 2], [-5320347021, 0]],
                              service=dict(ActiveState='active', MainPID='303'), process_ids=[303],
                              polling_inventory_complete=True, unknown_bot_processes=0)
         self.write_json('test-inventory.json', self.observed)
@@ -362,6 +363,36 @@ print('BOT_IMPORT_SCOPES_PASS_NO_POLLING')
             with self.assertRaisesRegex(ValueError, 'DB_LINK'):
                 inventory.inventory(hostname='VM-338333', project=project, proc=proc, run=stopped,
                                     saved_topics=saved, legacy_db=self.root / 'different.db')
+
+    def test_inventory_accepts_only_verified_saved_dnd_addition(self):
+        project, saved, proc, run = self.inventory_fixture()
+        full = inventory.literal_topics(saved)
+        mini_only = {-1003883723333: full[-1003883723333]}
+        (project / 'app/topics.py').write_text('TOPIC_SETTINGS = ' + repr(mini_only), encoding='utf-8')
+        resolve = Path.resolve
+        with patch.object(Path, 'resolve', lambda p, *a, **k: project if p.name == 'cwd' else resolve(p, *a, **k)):
+            result = inventory.inventory(hostname='VM-338333', project=project, proc=proc, run=run, saved_topics=saved)
+            self.assertEqual(result['existing_scopes'], [[-1003883723333, 2]])
+            self.assertEqual(result['saved_scope_additions'], [[-5320347021, 0]])
+            self.assertFalse(result['active_topics_match_saved'])
+            self.assertFalse(result['sqlite_opened'])
+            changed = {-1003883723333: {2: dict(full[-1003883723333][2], admin='@other_admin')}, -5320347021: full[-5320347021]}
+            saved.write_text('TOPIC_SETTINGS = ' + repr(changed), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'SAVED_TOPICS_DIFFER'):
+                inventory.inventory(hostname='VM-338333', project=project, proc=proc, run=run, saved_topics=saved)
+            saved.write_text('TOPIC_SETTINGS = ' + repr(mini_only), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'SAVED_SCOPES_CHANGED'):
+                inventory.inventory(hostname='VM-338333', project=project, proc=proc, run=run, saved_topics=saved)
+
+    def test_launcher_distinguishes_active_mini_from_approved_saved_dnd(self):
+        self.write_json('test-inventory.json', dict(self.observed, existing_scopes=[[-1003883723333, 2]]))
+        self.assertEqual(set(self.validate()['settings']), {-1003883723333, -5320347021})
+        for update in (dict(saved_scopes=[]), dict(saved_scopes=[[-1003376315265, 3]]),
+                       dict(existing_scopes=[[-5320347021, 0]]), dict(existing_scopes=[]),
+                       dict(existing_scopes=[[-1003883723333, 2], [-1003883723333, 2]]),
+                       dict(saved_scopes=[[-1003883723333, True], [-5320347021, 0]])):
+            self.write_json('test-inventory.json', dict(self.observed, **update))
+            self.reject('TEST_SCOPE_MISMATCH')
 
     def test_documented_clone_into_precreated_directory_and_bash_syntax(self):
         parent = self.root / 'prepared'

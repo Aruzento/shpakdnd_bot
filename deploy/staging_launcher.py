@@ -149,7 +149,13 @@ def validate(policy_file, *, stage_root=STAGE, trusted_uid=0, hostname=None, now
     require(isinstance(allowed, list) and all(isinstance(pair, list) and len(pair) == 2 and all(type(x) is int for x in pair) for pair in allowed), 'BLOCKED_ALLOWED_SCOPES')
     allow_set = {tuple(pair) for pair in allowed}
     require(len(allow_set) == len(allowed) and not ({chat for chat, _ in allow_set} & PRODUCTION_CHATS), 'BLOCKED_PRODUCTION_SCOPE')
-    require(allow_set == TEST_SCOPES and {tuple(pair) for pair in observed.get('existing_scopes', [])} == TEST_SCOPES, 'BLOCKED_TEST_SCOPE_MISMATCH')
+    existing = observed.get('existing_scopes')
+    saved = observed.get('saved_scopes')
+    for entries in (existing, saved):
+        require(isinstance(entries, list) and all(isinstance(pair, list) and len(pair) == 2 and all(type(x) is int for x in pair) for pair in entries), 'BLOCKED_TEST_SCOPE_MISMATCH')
+        require(len(entries) == len({tuple(pair) for pair in entries}), 'BLOCKED_TEST_SCOPE_MISMATCH')
+    require(allow_set == TEST_SCOPES and {tuple(pair) for pair in saved} == TEST_SCOPES and
+            {tuple(pair) for pair in existing} in (TEST_SCOPES, {(-1003883723333, 2)}), 'BLOCKED_TEST_SCOPE_MISMATCH')
     topics_file = trusted(root / 'config/topic-settings.json', trusted_uid)
     require(sha(topics_file) == policy['topics_sha256'], 'BLOCKED_TOPICS_CHANGED')
     settings = topics(read_json(topics_file), allow_set)

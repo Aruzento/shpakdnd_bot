@@ -58,7 +58,7 @@ def inventory(*, hostname=None, project=PROJECT, run=command, proc=Path('/proc')
     if not all(type(chat) is int and isinstance(entries, dict) and all(type(thread) is int for thread in entries) for chat, entries in settings.items()):
         raise ValueError('BLOCKED_TEST_SCOPE_TYPES')
     scopes = {(chat, thread) for chat, topics in settings.items() for thread in topics}
-    if scopes != TEST_SCOPES or set(settings) & PRODUCTION_CHATS:
+    if scopes not in (TEST_SCOPES, {(-1003883723333, 2)}) or set(settings) & PRODUCTION_CHATS:
         raise ValueError('BLOCKED_TEST_SCOPES_CHANGED')
     service = {}
     for key in ('ActiveState', 'SubState', 'MainPID', 'NRestarts', 'User', 'WorkingDirectory', 'FragmentPath'):
@@ -103,7 +103,14 @@ def inventory(*, hostname=None, project=PROJECT, run=command, proc=Path('/proc')
     saved = saved_topics if saved_topics is not None else Path('/etc/shpakdnd-staging/topics.py')
     saved_hash = None
     if saved.is_file() and not saved.is_symlink():
-        if literal_topics(saved) != settings:
+        saved_settings = literal_topics(saved)
+        if not all(type(chat) is int and isinstance(entries, dict) and all(type(thread) is int for thread in entries) for chat, entries in saved_settings.items()):
+            raise ValueError('BLOCKED_SAVED_SCOPE_TYPES')
+        saved_scopes = {(chat, thread) for chat, entries in saved_settings.items() for thread in entries}
+        if saved_scopes != TEST_SCOPES:
+            raise ValueError('BLOCKED_SAVED_SCOPES_CHANGED')
+        if any(chat not in saved_settings or thread not in saved_settings[chat] or value != saved_settings[chat][thread]
+               for chat, entries in settings.items() for thread, value in entries.items()):
             raise ValueError('BLOCKED_SAVED_TOPICS_DIFFER')
         saved_hash = hashlib.sha256(saved.read_bytes()).hexdigest()
     else:
@@ -112,6 +119,9 @@ def inventory(*, hostname=None, project=PROJECT, run=command, proc=Path('/proc')
         return run('git', '--no-optional-locks', '-C', str(project), *args)
     return dict(schema_version=1, hostname=HOST, observed_at=int(time.time() if now is None else now),
                 existing_bot_id=bot, existing_scopes=[list(s) for s in sorted(scopes)],
+                saved_scopes=[list(s) for s in sorted(saved_scopes)],
+                saved_scope_additions=[list(s) for s in sorted(saved_scopes - scopes)],
+                active_topics_match_saved=settings == saved_settings,
                 service=service, process_ids=processes, polling_inventory_complete=True,
                 unknown_bot_processes=0, git_sha=git('rev-parse', 'HEAD'),
                 git_status=git('status', '--porcelain', '--untracked-files=no'),
