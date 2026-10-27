@@ -192,6 +192,9 @@ def start(
         conn.execute(
             "INSERT INTO story_publications(session_id,step) VALUES(?,1)", (sid,)
         )
+        if ending:
+            from app.stories.feedback import record_ending
+            record_ending(conn, session, node)
         return _save(
             conn,
             key,
@@ -300,6 +303,9 @@ def _advance(conn, session, chooser=None):
         "INSERT INTO story_publications(session_id,step) VALUES(?,?)",
         (session["id"], session["step"] + 1),
     )
+    if ending:
+        from app.stories.feedback import record_ending
+        record_ending(conn, session, nxt)
     return result
 
 

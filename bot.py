@@ -53,7 +53,10 @@ async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
     from app.mini.ui.timing import CallbackTiming, TelegramTiming
+    from app.mini.ui.windows import WindowGuard, WindowDelivery
     dp.update.outer_middleware(CallbackTiming())
+    dp.update.outer_middleware(WindowGuard())
+    bot.session.middleware(WindowDelivery())
     bot.session.middleware(TelegramTiming())
     from app.mini.editorial.middleware import EditorialMiddleware
     dp.update.outer_middleware(EditorialMiddleware())

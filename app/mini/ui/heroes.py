@@ -84,10 +84,10 @@ def _gacha_menu(
     def b(label,action,tail=None):
         data=_personal_callback(action,world_id,user_id)+(':'+tail if tail is not None else '')
         return InlineKeyboardButton(text=label,callback_data=data)
-    rows=[[b(editorial_text('heroes.gacha_menu.line_01', pull_price=f"{state['pull_price']}"),'gachapull','coins.'+token),
+    rows=[[b(f"Призвать за монеты · {state['pull_price']}",'gachapull','coins.'+token),
            b(editorial_text('heroes.gacha_menu.line_02'),'gachabatch',token)]]
     second=[]
-    if int(state.get('tickets',0))>0:second.append(b(editorial_text('heroes.gacha_menu.line_03', tickets=f"{state['tickets']}"),'gachapull','ticket.'+token))
+    if int(state.get('tickets',0))>0:second.append(b(f"Призвать за билет ({state['tickets']})",'gachapull','ticket.'+token))
     if state.get('coupons'):second.append(b(editorial_text('heroes.gacha_menu.line_04'),'gachacoupon'))
     if second:rows.append(second)
     rows.append([b(editorial_text('navigation.home'),'home'),b(editorial_text('navigation.collection'),'collection'),b(editorial_text('navigation.back'),'home')])
@@ -110,6 +110,7 @@ def _format_gacha(world: dict, state: dict) -> str:
     return (
         editorial_text('heroes.format_gacha.line_02', pull_price=f"{state['pull_price']}", tickets=f"{state['tickets']}", coins=f"{state['coins']}", shards=f"{state['shards']}", luck_line=f'{luck_line}', value_6=f"{chances.get('common', 0):g}", value_7=f"{chances.get('uncommon', 0):g}", value_8=f"{chances.get('rare', 0):g}", value_9=f"{chances.get('legendary', 0):g}", owned=f"{state['owned']}", total=f"{state['total']}")
         + format_progress(state.get("pity", {}))
+        + "\nБилеты находятся в инвентаре. Источники: стартовая регистрация, магазин и недельные сундуки. Билетов: " + str(state.get("tickets", 0))
     )
 
 

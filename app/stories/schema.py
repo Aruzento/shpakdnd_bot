@@ -33,3 +33,18 @@ def apply(conn):
     ]
     for statement in statements:
         conn.execute(statement)
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS story_publication_parts (
+        session_id INTEGER NOT NULL, step INTEGER NOT NULL, part INTEGER NOT NULL,
+        message_id INTEGER NOT NULL, PRIMARY KEY(session_id,step,part),
+        FOREIGN KEY(session_id,step) REFERENCES story_publications(session_id,step))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS story_reminders (
+        session_id INTEGER NOT NULL REFERENCES story_sessions(id), step INTEGER NOT NULL,
+        operation_key TEXT NOT NULL UNIQUE, claimed_at INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('sending','sent','uncertain')),
+        recipients_json TEXT NOT NULL, message_id INTEGER,
+        PRIMARY KEY(session_id,step,claimed_at))""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS story_achievements (
+        user_id INTEGER NOT NULL, story_code TEXT NOT NULL, ending_id TEXT NOT NULL,
+        session_id INTEGER NOT NULL REFERENCES story_sessions(id), earned_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id,story_code,ending_id))""")

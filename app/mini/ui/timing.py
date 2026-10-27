@@ -38,11 +38,11 @@ class CallbackTiming(BaseMiddleware):
     async def __call__(self, handler, event, data):
         cb = getattr(event, "callback_query", None)
         payload = (getattr(cb, "data", None) or "")
-        prefixes = ("mini:myth:", "mini:mythic:", "mini:raid:", "mini:raids:", "mini:raidopen:")
+        prefixes = ("mini:myth:", "mini:mythic:", "mini:raid:", "mini:raids:", "mini:raidopen:", "mini:launch:", "mini:home:", "mini:gacha:")
         if not payload.startswith(prefixes):
             return await handler(event, data)
         received = time.perf_counter()
-        metric = {"screen": "raid" if payload.startswith(("mini:raid:", "mini:raids:", "mini:raidopen:")) else "pet"}
+        metric = {"screen": "raid" if payload.startswith(("mini:raid:", "mini:raids:", "mini:raidopen:")) else ("pet" if payload.startswith(("mini:myth:", "mini:mythic:")) else "mini_open")}
         token = _current.set(metric)
         stop = asyncio.Event()
         async def lag():

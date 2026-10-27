@@ -37,3 +37,5 @@ def recover(db_path=DB_PATH):
         conn.execute(
             "UPDATE story_publications SET status='uncertain' WHERE status='sending'"
         )
+
+        conn.execute("UPDATE story_reminders SET status='uncertain' WHERE status='sending'")

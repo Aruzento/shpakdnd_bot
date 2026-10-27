@@ -294,7 +294,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
         }
         self.callback = SimpleNamespace(
             id="callback", data="mini:home:1:101", from_user=SimpleNamespace(id=101, username="user"),
-            answer=AsyncMock(), bot=SimpleNamespace(
+            answer=AsyncMock(), bot=SimpleNamespace(id=123456,delete_ephemeral_message=AsyncMock(),
                 send_photo=AsyncMock(return_value=SimpleNamespace(message_id=1)),
                 send_message=AsyncMock(return_value=SimpleNamespace(message_id=2)),
             ),
@@ -308,7 +308,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
         sent = self.callback.bot.send_photo.call_args.kwargs
         self.assertIn("Battle hero", sent["caption"])
         self.assertEqual(sent["ephemeral_message_parameters"].receiver_user_id, 101)
-        self.callback.message.delete_ephemeral.assert_awaited_once()
+        self.callback.bot.delete_ephemeral_message.assert_awaited_once()
 
     async def test_launcher_stays_public_and_home_is_ephemeral_photo(self):
         self.callback.data = "mini:launch:1"
@@ -316,7 +316,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.mini.handlers.callback_location_allowed",return_value=True), patch("app.mini.handlers.get_mini_world_by_id", return_value=self.world), patch("app.mini.handlers.get_mini_player", return_value=self.player), patch("app.mini.handlers.touch_mini_player"), patch("app.mini.handlers.get_active_hero", return_value=self.hero):
             await launch_callback(self.callback)
         self.callback.bot.send_photo.assert_awaited_once()
-        self.callback.message.delete_ephemeral.assert_not_awaited()
+        self.callback.bot.delete_ephemeral_message.assert_not_awaited()
 
     async def test_launcher_rejects_a_different_topic_without_personal_state(self):
         self.callback.data='mini:launch:1';self.callback.message.message_thread_id=43
@@ -345,7 +345,7 @@ class HomeMediaTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(TelegramAPIError):
                 await _send_home_from_callback(self.callback, self.world, self.player)
         self.callback.bot.send_message.assert_not_awaited()
-        self.callback.message.delete_ephemeral.assert_not_awaited()
+        self.callback.bot.delete_ephemeral_message.assert_not_awaited()
 
 
 class NoticeDeliveryTests(unittest.IsolatedAsyncioTestCase):
@@ -368,7 +368,7 @@ class NoticeDeliveryTests(unittest.IsolatedAsyncioTestCase):
         boss = {"id": 7, "world_id": 1, "status": "fighting", "current_round": 1, "current_turn_position": 1}
         callback = SimpleNamespace(
             data="miniboss:hit:1:7:1:1", from_user=SimpleNamespace(id=101, username="attacker"),
-            answer=AsyncMock(), bot=SimpleNamespace(), message=None,
+            answer=AsyncMock(), bot=SimpleNamespace(id=123456,delete_ephemeral_message=AsyncMock(),), message=None,
         )
         player = {"id": 10, "username": "@attacker", "character_name": "Hero"}
         result = {
@@ -393,7 +393,7 @@ class NoticeDeliveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("+2 осколка", notice)
 
     async def test_start_callback_publishes_start_ability_event(self):
-        callback = SimpleNamespace(bot=SimpleNamespace(), answer=AsyncMock(), message=None)
+        callback = SimpleNamespace(bot=SimpleNamespace(id=123456,delete_ephemeral_message=AsyncMock(),), answer=AsyncMock(), message=None)
         world = {"id": 1}
         boss = {"id": 7}
         state = {

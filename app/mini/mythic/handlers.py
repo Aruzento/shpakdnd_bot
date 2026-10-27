@@ -95,6 +95,7 @@ def screen(pid, wid, uid, *, view="home", pet_id=None, state=None):
         if pet["location"] != "reserve":
             rows.append([b("Убрать в резерв", f"reserve.{pet_id}.{token}")])
         rows.append([b(editorial_text("navigation.back"), "home")])
+    rows.append([Button(text="В деревню", callback_data=personal_callback("village", wid, uid))])
     rows.append(
         [
             Button(

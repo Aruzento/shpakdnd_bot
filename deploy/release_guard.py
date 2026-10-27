@@ -18,12 +18,21 @@ STATES = {
     "mini_mythic_raids": ("status", {"active", "rewarded", "cancelled"}),
     "story_sessions": ("status", {"registration", "active", "finished", "cancelled"}),
     "story_publications": ("status", {"pending", "sending", "sent", "uncertain"}),
+    "story_reminders": ("status", {"sending", "sent", "uncertain"}),
     "mini_mythic_raid_publications": ("status", {"pending", "sending", "sent", "uncertain"}),
     "mini_mythic_pets": ("location", {"inventory", "active", "reserve"}),
 }
 # Complete schema is compared to an immutable audited schema inventory. Absence
 # is valid only for a genuinely pre-v15 schema, never as a zero count on a partial DB.
 SCHEMA_FILE = "release_schema.json"
+# Additive feedback journals are optional on older V1.5 databases. Never treat
+# their absence as a partial legacy schema, or silently authorize an old target.
+FEEDBACK_SCHEMA = {
+    "mini_private_windows": {"bot_id","world_id","user_id","generation","chat_id","message_id","ephemeral_id"},
+    "story_publication_parts": {"session_id","step","part","message_id"},
+    "story_reminders": {"session_id","step","operation_key","claimed_at","status","recipients_json","message_id"},
+    "story_achievements": {"user_id","story_code","ending_id","session_id","earned_at"},
+}
 
 
 class GuardError(ValueError):
@@ -59,11 +68,24 @@ def inspect_connection(conn, capability):
     for table, columns in inventory.items():
         if table in tables and set(columns) != {r[1] for r in conn.execute('PRAGMA table_info("' + table + '")')}:
             raise GuardError("BLOCKED_UNKNOWN_V15_COLUMNS")
-    unknown = {t for t in tables if t.startswith(("story_", "mini_mythic_", "mini_star_"))} - set(inventory) - {"mini_mythic_fragments", "mini_mythic_grants"}
+    feedback_present = set(FEEDBACK_SCHEMA) & tables
+    if feedback_present and feedback_present != set(FEEDBACK_SCHEMA):
+        raise GuardError("BLOCKED_PARTIAL_FEEDBACK_SCHEMA")
+    for table, columns in FEEDBACK_SCHEMA.items():
+        if table in tables and columns != {r[1] for r in conn.execute('PRAGMA table_info("' + table + '")')}:
+            raise GuardError("BLOCKED_UNKNOWN_FEEDBACK_COLUMNS")
+    unknown = {t for t in tables if t.startswith(("story_", "mini_mythic_", "mini_star_"))} - set(inventory) - set(FEEDBACK_SCHEMA) - {"mini_mythic_fragments", "mini_mythic_grants"}
     if unknown:
         raise GuardError("BLOCKED_UNKNOWN_V15_SCHEMA")
     counts = {}
     blockers = []
+    for table in sorted(set(FEEDBACK_SCHEMA) & tables):
+        counts[table] = conn.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
+    if any(counts.get(t,0) for t in FEEDBACK_SCHEMA) and capability != "v15-feedback-ui-stories":
+        blockers.append("BLOCKED_FEEDBACK_STATE_UNSUPPORTED")
+    if "story_reminders" in tables:
+        if conn.execute("SELECT 1 FROM story_reminders WHERE status IN ('sending','uncertain') LIMIT 1").fetchone():
+            blockers.append("BLOCKED_MANUAL_DELIVERY_REVIEW:story_reminders")
     for table in sorted(present):
         counts[table] = conn.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0]
     for table, (column, allowed) in STATES.items():
@@ -167,7 +189,7 @@ def inspect_connection(conn, capability):
         blockers.append("BLOCKED_PVP_SCHEMA_OR_ECONOMY")
     persistent_v15 = any(counts[t] for t in present) or any(counts.get(key, 0) for key in (
         "universal_balances", "mythic_ownership", "mini_bosses:v15_unfinished", "mini_tower_attempts:v15_unfinished"))
-    if capability != "v15-once-raid-pets-economy" and persistent_v15:
+    if capability not in ("v15-once-raid-pets-economy","v15-feedback-ui-stories") and persistent_v15:
         # Includes committed ledger/operations/Star history, owned Mythics and
         # reserve pets: draining only active raids cannot make a downgrade safe.
         blockers.append("BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED")

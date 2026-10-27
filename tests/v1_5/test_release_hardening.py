@@ -573,7 +573,7 @@ class DeploymentNegativePaths(unittest.TestCase):
 
     def test_game_tree_and_author_payloads_are_unchanged(self):
         tree=subprocess.check_output(["git","rev-parse","HEAD:app"],cwd=ROOT,text=True).strip()
-        self.assertEqual(tree,"2af3268eee47b8908e2e3013331d1e20f4feb122")
+        self.assertEqual(tree,"285568c49c2218cdbfc9a516abced0c9a50334eb")
         self.assertEqual(hashlib.sha256(AUTHOR.read_bytes()).hexdigest(),content.APPROVED_STORY_SHA256)
         for item in json.loads((ROOT/"docs/v1.5/CONTENT_ASSET_SHA256.json").read_text(encoding="utf-8"))["assets"]:
             self.assertEqual(hashlib.sha256((ROOT/item["path"]).read_bytes()).hexdigest(),item["sha256"])

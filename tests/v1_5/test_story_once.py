@@ -379,12 +379,12 @@ class StoryOnceTelegram(MiniCase, unittest.IsolatedAsyncioTestCase):
                 state = service.status(chat, thread, self.db)
                 self.assertEqual(state["snapshot_json"], snapshot)
                 text, markup = render(state)
-                self.assertIn(json.loads(snapshot)["nodes"][state["node_id"]]["text"], text)
+                self.assertIn(re.sub(r"^\s*Сцена\s+\d+[.:]?\s*", "", json.loads(snapshot)["nodes"][state["node_id"]]["text"],count=1), text)
                 source = next((i, c) for i, c in state["choices"] if c["next"] == target)
                 index, choice = source
-                button = next(row[0] for row in markup.inline_keyboard if row[0].callback_data.endswith(f":{index}"))
+                button = next(b for row in markup.inline_keyboard for b in row if b.callback_data.endswith(f":{index}"))
                 if state["node_id"] == "scene_40" and "scene_39" in state["visited"]:
-                    self.assertEqual([int(row[0].callback_data.rsplit(":", 1)[1]) for row in markup.inline_keyboard], [0, 1])
+                    self.assertEqual([int(b.callback_data.rsplit(":", 1)[1]) for row in markup.inline_keyboard for b in row], [0, 1])
                     forged = self.callback(f"story:vote:{sid}:{state['step']}:2", chat=chat)
                     forged = forged.model_copy(update={"id": f"forged:{sid}"})
                     await handlers.callback_action(forged)
@@ -449,7 +449,7 @@ class StoryOnceTelegram(MiniCase, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.sent.call_count, sent)
         self.assertEqual(self.sql("SELECT status FROM story_publications WHERE session_id=? AND step=1", (sid,))[0]["status"], "uncertain")
         _, markup = render(state)
-        self.assertEqual([row[0].callback_data for row in markup.inline_keyboard],
+        self.assertEqual([b.callback_data for row in markup.inline_keyboard for b in row],
                          [f"story:vote:{sid}:1:1", f"story:vote:{sid}:1:2"])
         forged = self.callback(f"story:vote:{sid}:1:0", chat=chat)
         await handlers.callback_action(forged)

@@ -65,7 +65,10 @@ Read-only снимок VM-338333: pending duels=0, duel locks=0, active PvP memb
 
 ## Данные
 
-Схема SQLite не меняется. Используются прежние raid attacks, Story sessions/steps, pet operations и ledger.
+Первая волна использует прежние raid attacks, Story sessions/steps, pet operations и ledger.
+Вторая волна добавляет только журналы UI/Story; см. PLAYER_FEEDBACK_WAVE2.md. Игровые таблицы и исторические строки не преобразуются.
 79 героев, четыре босса, 45 PNG, способности, вероятности, валюты и авторский Story JSON не изменены.
 Единственное изменение лимитов — утверждённое 10 → 5.
 Старые сохранённые 4-часовые ходы обычных боссов и новые 15-минутные ходы не меняются.
+
+Вторая волна: [доработки и приёмка](PLAYER_FEEDBACK_WAVE2.md), [неутверждённые награды](STORY_ENDING_REWARD_PROPOSAL.md).

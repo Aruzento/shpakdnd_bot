@@ -45,12 +45,19 @@ async def delete_current_ephemeral(callback: CallbackQuery) -> bool:
     if message is None or message.ephemeral_message_id is None:
         return False
 
+    from app.mini.ui.windows import retired_ephemeral
+    if retired_ephemeral.get() == (getattr(callback.bot,"id",None), message.chat.id,
+                                    message.ephemeral_message_id, callback.from_user.id):
+        return True
     try:
-        await message.delete_ephemeral()
+        await callback.bot.delete_ephemeral_message(
+            chat_id=message.chat.id, receiver_user_id=callback.from_user.id,
+            ephemeral_message_id=message.ephemeral_message_id,
+        )
     except TelegramAPIError as error:
         print(
             "Не удалось удалить предыдущее ephemeral-сообщение: "
-            f"error={type(error).__name__}: {error}"
+            f"error={type(error).__name__}"
         )
         return False
 

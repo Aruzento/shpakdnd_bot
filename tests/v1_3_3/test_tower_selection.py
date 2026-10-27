@@ -101,7 +101,7 @@ class TowerSelectionUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
 
     async def invoke(self,tail=''):
         cb=SimpleNamespace(id='tower',from_user=SimpleNamespace(id=900123),answer=AsyncMock(),
-            bot=SimpleNamespace(send_message=AsyncMock()),message=SimpleNamespace(ephemeral_message_id='old',delete_ephemeral=AsyncMock()))
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock()),message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id='old',delete_ephemeral=AsyncMock()))
         with patch('app.mini.tower.handlers.shop_context',return_value=(self.world,self.player,tail)), \
              patch('app.mini.tower.handlers.get_state',side_effect=partial(get_state,db_path=self.db)), \
              patch('app.mini.tower.handlers.list_heroes',side_effect=partial(list_heroes,db_path=self.db)), \
@@ -121,7 +121,7 @@ class TowerSelectionUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
         selected=await self.invoke(f'pick.1.{self.hero_id}')
         self.assertEqual(get_state(self.pid,self.db)['selected_hero']['id'],self.hero_id)
         self.assertIn('Текущий герой:',selected.bot.send_message.call_args.kwargs['text'])
-        selected.message.delete_ephemeral.assert_awaited_once()
+        selected.bot.delete_ephemeral_message.assert_awaited_once()
 
     async def test_next_floor_offers_start_and_change_without_selector(self):
         select_hero(self.pid,self.hero_id,self.db)

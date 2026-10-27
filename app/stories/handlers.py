@@ -10,7 +10,7 @@ from aiogram.types import InlineKeyboardButton as Button, InlineKeyboardMarkup
 from app.stories import service, enrollment, publication
 from app.stories.repository import transaction
 from app.stories.catalog import discover
-from app.stories.presentation import render
+from app.stories.presentation import render, chunks
 from app.mini.ui.transport import send_private_text_from_callback
 
 router = Router(name="stories")
@@ -50,6 +50,20 @@ def scoped_callback(callback, sid, *, personal=False):
         return session
 
 
+async def send_reminder(bot, sid, chat, thread, uid, user, step, key):
+    from app.mini.ui.timing import run_sync
+    from app.stories.feedback import claim_reminder, finish_reminder, reminder_text
+    recipients = await run_sync("story_reminder",claim_reminder,sid,chat,thread,uid,user,step,key)
+    try:
+        sent = await bot.send_message(chat_id=chat,message_thread_id=thread or None,
+            text=reminder_text(recipients),parse_mode="HTML")
+    except BaseException:
+        await run_sync("story_reminder",finish_reminder,key)
+        raise
+    else:
+        await run_sync("story_reminder",finish_reminder,key,sent.message_id)
+
+
 async def publish(bot, session):
     step = session["step"]
     text, markup = render(session)
@@ -57,18 +71,22 @@ async def publish(bot, session):
     if claim is None:
         return
     try:
-        message = await bot.send_message(
-            chat_id=session["chat_id"],
-            message_thread_id=session["thread_id"] or None,
-            text=text,
-            reply_markup=markup,
-            parse_mode=None,
-        )
+        messages = []
+        parts = chunks(text)
+        for index, part in enumerate(parts):
+            message = await bot.send_message(
+                chat_id=session["chat_id"], message_thread_id=session["thread_id"] or None,
+                text=part, reply_markup=markup if index == len(parts)-1 else None, parse_mode=None)
+            messages.append(message.message_id)
+            with transaction() as conn:
+                conn.execute("INSERT INTO story_publication_parts VALUES(?,?,?,?)",
+                             (session["id"],step,index,message.message_id))
     except BaseException:
         publication.finish(session["id"], step)
         raise
     else:
-        publication.finish(session["id"], step, message.message_id)
+        publication.finish(session["id"], step, messages[-1])
+
 
 
 async def refresh(bot, session, old_step=None):
@@ -92,16 +110,24 @@ async def refresh(bot, session, old_step=None):
         ).fetchone()
     if row and row["message_id"]:
         text, markup = render(session)
+        parts = chunks(text)
+        with transaction() as conn:
+            ids = [r[0] for r in conn.execute(
+                "SELECT message_id FROM story_publication_parts WHERE session_id=? AND step=? ORDER BY part",
+                (session["id"],session["step"]))]
+        ids = ids or [row["message_id"]]
+        # Votes may make the text cross a chunk boundary; retain old text chunks and
+        # update the last part without silently dropping author text.
+        if len(parts) != len(ids):
+            logger.warning("Story refresh requires explicit republish review session=%s", session["id"])
+            return
         try:
-            await bot.edit_message_text(
-                chat_id=session["chat_id"],
-                message_id=row["message_id"],
-                text=text,
-                reply_markup=markup,
-                parse_mode=None,
-            )
+            for index, (part, mid) in enumerate(zip(parts,ids)):
+                await bot.edit_message_text(chat_id=session["chat_id"],message_id=mid,text=part,
+                    reply_markup=markup if index==len(parts)-1 else None,parse_mode=None)
         except Exception:
             logger.exception("Cannot refresh story %s", session["id"])
+
     else:
         await publish(bot, session)
 
@@ -157,7 +183,20 @@ async def command(message):
                     "Нет истории. /story list; /story CODE; /story start/status/cancel; /story kick USER_ID"
                 )
             text, markup = render(session)
-            await message.answer(text, reply_markup=markup, parse_mode=None)
+            for index, part in enumerate(chunks(text)):
+                await message.answer(part, reply_markup=markup if index==len(chunks(text))-1 else None, parse_mode=None)
+            if session["status"] == "active":
+                try:
+                    service._admin(chat,thread,uid,user)
+                except ValueError:
+                    pass
+                else:
+                    import secrets
+                    from aiogram.types import EphemeralMessageParameters
+                    await message.answer("Управление текущей историей",reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[Button(text="Напомнить непроголосовавшим",
+                            callback_data=f"story:remind:{session['id']}:{session['step']}:{secrets.token_hex(3)}")]]),
+                        ephemeral_message_parameters=EphemeralMessageParameters(receiver_user_id=uid))
             return
         if len(parts) != 2:
             raise ValueError(
@@ -263,6 +302,11 @@ async def callback_action(callback):
         user = username(callback.from_user)
         key = "story-callback:" + callback.id
         old_step = session["step"]
+        if action == "remind":
+            await send_reminder(callback.bot,sid,chat,thread,uid,user,int(parts[3]),
+                f"story-reminder:{sid}:{parts[3]}:{parts[4]}")
+            await callback.answer("Напоминание отправлено.")
+            return
         if action == "join":
             if session["status"] != "registration":
                 raise ValueError("Регистрация закрыта.")
@@ -450,12 +494,14 @@ def menu(world, user, *, page=0):
     text = "📖 Истории"
     b = lambda label, payload: menu_button(world["id"], uid, label, payload)
     if current:
-        body, _ = render(current)
-        text += "\n\n" + body
+        story = json.loads(current["snapshot_json"]) if current["snapshot_json"] != "{}" else stories.get(current["code"], {})
+        text += f"\n\n{story.get('title', current['code'])}\nСтатус: {current['status']}. Сцена и голосование — в теме истории."
         if current["status"] == "registration":
             rows.append([b("Присоединиться", f"j.{current['id']}")])
             if admin:
                 rows.append([b("Начать приключение", f"s.{current['id']}.{secrets.token_hex(3)}")])
+        if admin and current["status"] == "active":
+            rows.append([b("Напомнить непроголосовавшим", f"r.{current['id']}.{current['step']}.{secrets.token_hex(3)}")])
         if admin and current["status"] in ("registration","active"):
             rows.append([b("Отменить историю", f"x.{current['id']}.{secrets.token_hex(3)}")])
     if admin and (not current or current["status"] not in ("registration","active")):
@@ -514,6 +560,9 @@ async def story_menu(callback):
                 return
             created = await run_sync("story_create",service.create,chat,thread,uid,username(callback.from_user),code,key)
             await publish(callback.bot,service.status(chat,thread,session_id=created["session_id"]))
+        elif op == "r":
+            await send_reminder(callback.bot,int(parts[1]),chat,thread,uid,
+                username(callback.from_user),int(parts[2]),key)
         elif op in ("j","s","x"):
             sid = int(parts[1])
             current = service.status(chat,thread)

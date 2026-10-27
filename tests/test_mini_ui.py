@@ -11,8 +11,8 @@ from app.mini.ui.transport import send_private_text_from_callback, delete_curren
 class SharedUIContractTests(unittest.IsolatedAsyncioTestCase):
     def callback(self):
         return SimpleNamespace(id='cb', data='mini:home:2:7', from_user=SimpleNamespace(id=7),
-            bot=SimpleNamespace(send_message=AsyncMock()),
-            message=SimpleNamespace(ephemeral_message_id=9, delete_ephemeral=AsyncMock()))
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock()),
+            message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id=9, delete_ephemeral=AsyncMock()))
 
     async def test_callback_round_trip_and_extra_payload(self):
         cb=self.callback()
@@ -27,8 +27,8 @@ class SharedUIContractTests(unittest.IsolatedAsyncioTestCase):
     async def test_send_finishes_before_delete(self):
         cb=self.callback(); order=[]
         async def send(**kwargs): order.append('send'); return 'sent'
-        async def delete(): order.append('delete')
-        cb.bot.send_message.side_effect=send; cb.message.delete_ephemeral.side_effect=delete
+        async def delete(**kwargs): order.append('delete')
+        cb.bot.send_message.side_effect=send; cb.bot.delete_ephemeral_message.side_effect=delete
         self.assertEqual(await send_private_text_from_callback(cb, {'chat_id':1,'thread_id':0}, 'text', None), 'sent')
         self.assertEqual(order, ['send', 'delete'])
         params=cb.bot.send_message.call_args.kwargs['ephemeral_message_parameters']
@@ -39,15 +39,15 @@ class SharedUIContractTests(unittest.IsolatedAsyncioTestCase):
         cb.bot.send_message.side_effect=TelegramAPIError(method=SendMessage(chat_id=1,text='x'),message='timeout')
         with self.assertRaises(TelegramAPIError):
             await send_private_text_from_callback(cb, {'chat_id':1,'thread_id':0}, 'text', None)
-        cb.message.delete_ephemeral.assert_not_awaited()
+        cb.bot.delete_ephemeral_message.assert_not_awaited()
 
     async def test_public_message_is_never_deleted(self):
         cb=self.callback(); cb.message.ephemeral_message_id=None
         self.assertFalse(await delete_current_ephemeral(cb))
-        cb.message.delete_ephemeral.assert_not_awaited()
+        cb.bot.delete_ephemeral_message.assert_not_awaited()
 
     async def test_delete_failure_does_not_send_duplicate(self):
         cb=self.callback()
-        cb.message.delete_ephemeral.side_effect=TelegramAPIError(method=SendMessage(chat_id=1,text='x'),message='timeout')
+        cb.bot.delete_ephemeral_message.side_effect=TelegramAPIError(method=SendMessage(chat_id=1,text='x'),message='timeout')
         await send_private_text_from_callback(cb, {'chat_id':1,'thread_id':0}, 'text', None)
         cb.bot.send_message.assert_awaited_once()

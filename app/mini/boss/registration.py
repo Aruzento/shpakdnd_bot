@@ -80,7 +80,7 @@ async def boss_create_callback(callback: CallbackQuery):
         await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
         return None
     if world is None or _load_player(world_id,callback) is None:
-        await callback.answer("Только администратор темы может создать босса.", show_alert=True)
+        await callback.answer("Для создания босса зарегистрируйтесь в D&D Mini.", show_alert=True)
         return
     if get_active_boss(world_id) is not None:
         await callback.answer("Сначала заверши текущего босса.", show_alert=True)

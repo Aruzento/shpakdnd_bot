@@ -34,7 +34,7 @@ def buttons(markup):
 def callback(world, tail='', action='tower', uid=900123):
     return SimpleNamespace(id='query', data=f"mini:{action}:{world['id']}:{uid}"+(':'+tail if tail else ''),
         from_user=SimpleNamespace(id=uid, username='tester'), answer=AsyncMock(),
-        bot=SimpleNamespace(send_message=AsyncMock(),send_photo=AsyncMock(),get_me=AsyncMock(return_value=SimpleNamespace(username='test_bot'))),
+        bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock(),send_photo=AsyncMock(),get_me=AsyncMock(return_value=SimpleNamespace(username='test_bot'))),
         message=SimpleNamespace(chat=SimpleNamespace(id=world['chat_id'],type='supergroup'),
             message_thread_id=world['thread_id'],ephemeral_message_id=17,delete_ephemeral=AsyncMock()))
 

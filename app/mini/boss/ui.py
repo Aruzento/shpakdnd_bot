@@ -99,7 +99,8 @@ async def show_boss_home(
     await _send_private(
         callback,
         world,
-        format_private_boss(boss, participants, joined=joined)+quota_text,
+        format_private_boss(boss, participants, joined=joined)+quota_text
+        + ("\nБой уже начался: отмена регистрации недоступна. Принудительное завершение доступно администратору темы." if boss["status"]=="fighting" else "\nДо начала боя регистрацией управляют создатель и администратор темы."),
         boss_private_menu(
             world["id"],
             callback.from_user.id,

@@ -252,7 +252,7 @@ class TelegramFixes(MiniCase,unittest.IsolatedAsyncioTestCase):
 
     async def test_story_menu_hides_admin_actions_and_keeps_join(self):
         from app.stories import handlers
-        session={"id":1,"status":"registration"}
+        session={"id":1,"status":"registration","snapshot_json":"{}","code":"real"}
         with patch.object(handlers,"discover",return_value=({"real":{"title":"Author"}},{})),patch.object(handlers.service,"status",return_value=session),patch.object(handlers.service,"_admin",side_effect=ValueError),patch.object(handlers,"render",return_value=("Story",None)):
             text,markup=handlers.menu(self.world,NS(id=900123,username="tester"))
         self.assertTrue(any(":j.1" in b.callback_data for b in buttons(markup)))

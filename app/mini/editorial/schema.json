@@ -6224,5 +6224,15 @@
     "kind": "text",
     "parameters": [],
     "limit": 4096
+  },
+  "rules.mythic.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.mythic.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
   }
 }

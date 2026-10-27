@@ -99,7 +99,7 @@ class SelectorViewTests(unittest.TestCase):
 
     def test_submenu_entries_and_back_no_old_upgrades(self):
         expected={'adventures':['Обычные боссы','Башня испытаний','Ежедневные активности','Мифический рейд'],
-            'heroarea':['👤 Профиль','🎒 Инвентарь','🛡 Экипировка','📚 Коллекция'],
+            'heroarea':['👤 Профиль','📚 Коллекция','✨ Призвать героя','🎒 Инвентарь'],
             'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить','✨ Мифические герои','Истории']}
         for action,labels in expected.items():
             _,markup=submenu(action,1,42)
@@ -117,8 +117,8 @@ class CardAndFavoriteUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
     def callback(self,action,tail):
         return SimpleNamespace(id='ui-new',data=f"mini:{action}:{self.world['id']}:900123:{tail}",
             from_user=SimpleNamespace(id=900123,username='tester'),answer=AsyncMock(),
-            message=SimpleNamespace(ephemeral_message_id='old',delete_ephemeral=AsyncMock()),
-            bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=1)),send_photo=AsyncMock()))
+            message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id='old',delete_ephemeral=AsyncMock()),
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock(return_value=SimpleNamespace(message_id=1)),send_photo=AsyncMock()))
 
     def services(self):
         stack=ExitStack()
@@ -142,7 +142,7 @@ class CardAndFavoriteUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(sent['reply_markup'].inline_keyboard),4)
         self.assertIn(f'replace.{self.ids[3]}.{self.ids[1]}',sent['reply_markup'].inline_keyboard[1][0].callback_data)
         self.assertEqual(favorites.get_favorites(self.pid,self.db),self.ids[:3])
-        callback.message.delete_ephemeral.assert_awaited_once()
+        callback.bot.delete_ephemeral_message.assert_awaited_once()
         self.assertEqual(sent['ephemeral_message_parameters'].receiver_user_id,900123)
         replacement=self.callback('favorite',f'replace.{self.ids[3]}.{self.ids[1]}')
         with self.services():
@@ -173,7 +173,7 @@ class CardAndFavoriteUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any('Улучшить' in label for label in labels))
         self.assertIn('⭐ Сделать избранным',labels)
         self.assertFalse(any('Ещё призыв' in label for label in labels))
-        callback.message.delete_ephemeral.assert_awaited_once()
+        callback.bot.delete_ephemeral_message.assert_awaited_once()
 
     def test_full_caption_keeps_progress_and_tags_with_long_description(self):
         hero=get_player_hero(self.pid,self.ids[0],self.db)
@@ -203,7 +203,7 @@ class CardAndFavoriteUITests(MiniCase,unittest.IsolatedAsyncioTestCase):
 class SelectorCallbackTests(unittest.IsolatedAsyncioTestCase):
     def callback(self,tail,owner=42):
         return SimpleNamespace(id='select',data=f'mini:select:1:{owner}:{tail}',from_user=SimpleNamespace(id=42),answer=AsyncMock(),
-            bot=SimpleNamespace(send_message=AsyncMock()),message=SimpleNamespace(ephemeral_message_id='old',delete_ephemeral=AsyncMock()))
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock()),message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id='old',delete_ephemeral=AsyncMock()))
 
     async def test_foreign_owner_rejected_before_database_or_rendering(self):
         c=self.callback('c0.all.0.0000000',owner=99)
@@ -232,7 +232,7 @@ class SelectorCallbackTests(unittest.IsolatedAsyncioTestCase):
                  patch('app.mini.ui.hero_selector.get_favorites',return_value=[]), \
                  patch('app.mini.ui.state.remember',return_value='test-nav'):
                 await selector_callback(c)
-            c.bot.send_message.assert_awaited_once();c.message.delete_ephemeral.assert_awaited_once()
+            c.bot.send_message.assert_awaited_once();c.bot.delete_ephemeral_message.assert_awaited_once()
             if '.s2' in tail:self.assertIn('Класс: Страж',[b.text for b in buttons(c.bot.send_message.call_args.kwargs['reply_markup'])])
             if '.reset.' in tail:self.assertIn('⬆️ Можно улучшить: нет',[b.text for b in buttons(c.bot.send_message.call_args.kwargs['reply_markup'])])
 
@@ -241,4 +241,4 @@ class SelectorCallbackTests(unittest.IsolatedAsyncioTestCase):
         with patch('app.mini.handlers._load_personal_context',return_value=({'id':1,'chat_id':-1,'thread_id':1},{'id':2})):
             await submenu_callback(c)
         self.assertEqual(c.bot.send_message.call_args.kwargs['text'],'🧙 Герой')
-        c.message.delete_ephemeral.assert_awaited_once()
+        c.bot.delete_ephemeral_message.assert_awaited_once()
