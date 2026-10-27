@@ -237,7 +237,7 @@ class MapContractTests(unittest.TestCase):
 
     def test_changed_layout_rows_and_collection_four_vs_boss_six(self):
         expected={'home':[2,1,2],'adventures':[2,2,1],'heroarea':[2,2,1],'fair':[1,1,1,1],
-            'more':[1,1,1,1],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3],
+            'more':[1,1,1,1,1],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3],
             'gacha_batch_result':[1,3,1,3],'gacha_result':[2,2,3],'collection':[1,2,2],
             'collection_favorites':[2,1,2,2],'collection_all':[2,2,3,2],
             'collection_filter':[3,3,1,2,2],'collection_results':[2,2,3,2],

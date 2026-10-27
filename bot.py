@@ -24,6 +24,8 @@ async def main():
     from app.mini.editorial.registry import get_registry
     get_registry()
     load_boss_catalog()
+    from app.mini.mythic.raid.catalog import load as load_raid_catalog
+    await asyncio.to_thread(load_raid_catalog)
     init_db()
     init_mini_db()
     init_boss_db()
@@ -50,6 +52,9 @@ async def main():
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
+    from app.mini.ui.timing import CallbackTiming, TelegramTiming
+    dp.update.outer_middleware(CallbackTiming())
+    bot.session.middleware(TelegramTiming())
     from app.mini.editorial.middleware import EditorialMiddleware
     dp.update.outer_middleware(EditorialMiddleware())
 

@@ -1,3 +1,4 @@
+from app.mini.ui.timing import run_sync
 """Personal Mythic inventory/care UI; actions always revalidate in services."""
 
 from app.mini.editorial import text as editorial_text, screen as editorial_screen
@@ -32,8 +33,8 @@ def button(world, user, label, payload):
 
 
 @editorial_screen
-def screen(pid, wid, uid, *, view="home", pet_id=None):
-    state = pets.state(pid)
+def screen(pid, wid, uid, *, view="home", pet_id=None, state=None):
+    state = pets.state(pid) if state is None else state
     rows = []
     token = secrets.token_hex(3)
     b = lambda label, payload: button(wid, uid, label, payload)
@@ -53,11 +54,6 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
             text += (
                 "\nПервое бесплатное яйцо — за первый успешный удар в мифическом рейде."
             )
-        if 0 < len(state["pets"]) < 8:
-            rows.append([b("Купить случайное новое яйцо — 75", f"buyask.{token}")])
-        rows.append(
-            [Button(text="👹 Мифический рейд", callback_data=f"mini:raids:{wid}:{uid}")]
-        )
     else:
         pet = next((p for p in state["pets"] if p["id"] == pet_id), None)
         if not pet:
@@ -69,17 +65,17 @@ def screen(pid, wid, uid, *, view="home", pet_id=None):
             rows.append([b("Сделать активным", f"activate.{pet_id}.{token}")])
         else:
             cds = json.loads(pet["cooldowns_json"])
+            care_rows = []
             for action, label in CARE_NAMES.items():
                 left = max(0, cds.get(action, 0) - pet["active_seconds"])
-                rows.append(
-                    [
+                care_rows.append(
                         b(
                             label
                             + (f" · {left//3600}ч {left%3600//60}м" if left else ""),
                             f"care.{pet_id}.{action}.{token}",
                         )
-                    ]
                 )
+            rows.extend(care_rows[i:i+2] for i in range(0, len(care_rows), 2))
             if pet["stage"] == "wonder":
                 rows.append(
                     [b("Поглотить ненадетую экипировку", f"equipment.{pet_id}")]
@@ -117,7 +113,7 @@ async def home(callback):
         return
     world, player = context
     await callback.answer()
-    text, markup = screen(player["id"], world["id"], callback.from_user.id)
+    text, markup = await run_sync("pet_render", screen, player["id"], world["id"], callback.from_user.id)
     await send_private_text_from_callback(callback, world, text, markup)
 
 
@@ -134,13 +130,16 @@ async def action(callback):
     uid = callback.from_user.id
     key = f"myth:{wid}:{uid}:{payload}"
     b = lambda label, value: button(wid, uid, label, value)
+    navigation = op in ("home", "pet", "equipment", "buyask", "eatask")
+    if navigation:
+        await callback.answer()
     try:
         if op == "buyask":
             text = "Потратить 75 мифических осколков на случайную ещё не полученную стихию? Яйцо попадёт в инвентарь."
             markup = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [b("Подтвердить", "buy." + parts[1])],
-                    [b("Отмена", "home")],
+                    [Button(text="Отмена", callback_data=personal_callback("shop", wid, uid))],
                 ]
             )
         elif op == "equipment":
@@ -184,21 +183,21 @@ async def action(callback):
             pet_id = None
             view = "home"
             if op == "buy":
-                pets.buy(pid, key)
+                await run_sync("pet_operation", pets.buy, pid, key)
             elif op == "activate":
                 pet_id = int(parts[1])
-                pets.activate(pid, pet_id, key)
+                await run_sync("pet_operation", pets.activate, pid, pet_id, key)
                 view = "pet"
             elif op == "reserve":
                 pet_id = int(parts[1])
-                pets.reserve(pid, pet_id, key)
+                await run_sync("pet_operation", pets.reserve, pid, pet_id, key)
                 view = "pet"
             elif op == "care":
                 pet_id = int(parts[1])
-                pets.care(pid, pet_id, parts[2], key)
+                await run_sync("pet_operation", pets.care, pid, pet_id, parts[2], key)
                 view = "pet"
             elif op == "claim":
-                pets.claim(pid, key)
+                await run_sync("pet_operation", pets.claim, pid, key)
             elif op == "eat":
                 pet_id = int(parts[1])
                 with transaction() as conn:
@@ -208,17 +207,19 @@ async def action(callback):
                     ).fetchone()
                 if not row:
                     raise ValueError("Вещь не найдена.")
-                pets.consume(pid, pet_id, row["code"], key, confirmed=True)
+                await run_sync("pet_operation", pets.consume, pid, pet_id, row["code"], key, confirmed=True)
                 view = "pet"
             elif op == "pet":
                 pet_id = int(parts[1])
                 view = "pet"
             elif op != "home":
                 raise ValueError("Неизвестное действие Mythic.")
-            text, markup = screen(pid, wid, uid, view=view, pet_id=pet_id)
-        await callback.answer()
+            state = await run_sync("pet_state", pets.state, pid)
+            text, markup = await run_sync("pet_render", screen, pid, wid, uid, view=view, pet_id=pet_id, state=state)
+        if not navigation:
+            await callback.answer()
         if op in ("pet", "care", "activate", "eat", "reserve"):
-            await send_pet(callback, world, pid, int(parts[1]), text, markup)
+            await send_pet(callback, world, pid, int(parts[1]), text, markup, state=state)
         else:
             await send_private_text_from_callback(callback, world, text, markup)
     except (ValueError, IndexError) as error:
@@ -230,10 +231,10 @@ from app.mini.mythic.raid.handlers import router as raid_router
 router.include_router(raid_router)
 
 
-async def send_pet(callback, world, pid, pet_id, text, markup):
+async def send_pet(callback, world, pid, pet_id, text, markup, *, state=None):
     from app.mini.mythic.content import pet_image
 
-    state = pets.state(pid)
+    state = await run_sync("pet_state", pets.state, pid) if state is None else state
     pet = next((p for p in state["pets"] if p["id"] == pet_id), None)
     image = pet_image(pet["element"], pet["stage"]) if pet else None
     if image:
@@ -245,5 +246,6 @@ async def send_pet(callback, world, pid, pet_id, text, markup):
             {"name": NAMES[pet["element"]], "image_path": image.name},
             text,
             markup,
+            cache_image=True,
         )
     return await send_private_text_from_callback(callback, world, text, markup)

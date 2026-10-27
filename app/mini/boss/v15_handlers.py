@@ -121,3 +121,28 @@ async def skip(callback):
             )
     except ValueError as error:
         await callback.answer(str(error), show_alert=True)
+
+
+@router.callback_query(F.data.startswith("mini:close:"))
+async def close_history(callback):
+    from app.mini.ui.context import load_personal_context
+    from app.mini.ui.transport import delete_current_ephemeral
+    from aiogram.exceptions import TelegramBadRequest
+    context = await load_personal_context(callback)
+    if context is None:
+        return
+    message = callback.message
+    if message is None:
+        await callback.answer("Экран уже закрыт.")
+        return
+    if getattr(message, "ephemeral_message_id", None) is not None:
+        await delete_current_ephemeral(callback)
+    elif message.chat.type == "private" and message.chat.id == callback.from_user.id:
+        try:
+            await message.delete()
+        except TelegramBadRequest:
+            pass
+    else:
+        await callback.answer("Можно закрыть только личный экран.", show_alert=True)
+        return
+    await callback.answer()

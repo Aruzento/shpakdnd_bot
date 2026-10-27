@@ -140,7 +140,9 @@ for i,kind in enumerate(('open','choosing','win','draw','refund','uncertain','ed
             with closing(sqlite3.connect(copy)) as conn:
                 players=conn.execute("SELECT id,world_id FROM mini_players ORDER BY id").fetchall()
             # Seed a new active escrow, copy it, then run the prior check_bot.
-            sid=pvp.create(players[3][0],players[3][1],"migration-pvp",copy)["id"]
+            from unittest.mock import patch
+            with patch.dict(os.environ, {"MINI_PVP_ENABLED":"1"}):
+                sid=pvp.create(players[3][0],players[3][1],"migration-pvp",copy)["id"]
             rollback=base/(ref+"-rollback.db");shutil.copy2(copy,rollback)
             rollback_before=snapshot(rollback)
             run(code,rollback,"import check_bot;check_bot.main()")

@@ -288,8 +288,8 @@
     "icon_key": "icon.resource.equipment_chest"
   },
   "section.adventures": {
-    "full": "Приключения",
-    "short": "Приключения",
+    "full": "Бой",
+    "short": "Бой",
     "emoji": "⚔️",
     "icon_key": "icon.section.adventures"
   },

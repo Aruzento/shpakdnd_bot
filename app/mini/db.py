@@ -4,6 +4,16 @@ from pathlib import Path
 from typing import Iterator
 
 from app.config import DB_PATH
+from app.mini.ui.timing import span
+
+class TimedConnection(sqlite3.Connection):
+    def execute(self, *args, **kwargs):
+        with span("sqlite"):
+            return super().execute(*args, **kwargs)
+
+    def executemany(self, *args, **kwargs):
+        with span("sqlite"):
+            return super().executemany(*args, **kwargs)
 
 
 @contextmanager
@@ -17,7 +27,8 @@ def connect_mini_db(
     (especially Python 3.13) until garbage collection. This wrapper keeps the
     same commit/rollback behavior and guarantees close().
     """
-    conn = sqlite3.connect(db_path)
+    with span("sqlite_connect"):
+        conn = sqlite3.connect(db_path, factory=TimedConnection)
     try:
         with conn:
             yield conn

@@ -61,7 +61,7 @@
       "buttons": [
         [
           {
-            "text": "⚔️ Приключения",
+            "text": "⚔️ Бой",
             "callback": "mini:adventures:999999:9999999999",
             "handlers": [
               "app.mini.handlers.submenu_callback"
@@ -119,14 +119,14 @@
       "buttons": [
         [
           {
-            "text": "🔥 Босс",
+            "text": "Обычные боссы",
             "callback": "mini:boss:999999:9999999999",
             "handlers": [
               "app.mini.boss.registration.boss_home_callback"
             ]
           },
           {
-            "text": "🏰 Испытания",
+            "text": "Башня испытаний",
             "callback": "mini:tower:999999:9999999999",
             "handlers": [
               "app.mini.tower.handlers.tower_callback"
@@ -135,17 +135,17 @@
         ],
         [
           {
-            "text": "⚔️ Ежедневный бой",
+            "text": "Ежедневные активности",
             "callback": "mini:daily:999999:9999999999",
             "handlers": [
               "app.mini.ui.activities.daily_callback"
             ]
           },
           {
-            "text": "⚔️ Дуэли",
-            "callback": "mini:duels:999999:9999999999",
+            "text": "Мифический рейд",
+            "callback": "mini:raids:999999:9999999999",
             "handlers": [
-              "app.mini.duels.handlers.home"
+              "app.mini.mythic.raid.handlers.home"
             ]
           }
         ],
@@ -308,6 +308,15 @@
             "callback": "mini:mythic:999999:9999999999",
             "handlers": [
               "app.mini.mythic.handlers.home"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Истории",
+            "callback": "mini:stories:999999:9999999999",
+            "handlers": [
+              "app.stories.handlers.story_menu"
             ]
           }
         ],
@@ -1904,15 +1913,6 @@
       "buttons": [
         [
           {
-            "text": "👹 Мифический рейд",
-            "callback": "mini:raids:999999:9999999999",
-            "handlers": [
-              "app.mini.mythic.raid.handlers.home"
-            ]
-          }
-        ],
-        [
-          {
             "text": "🏠 Главная",
             "callback": "mini:home:999999:9999999999",
             "handlers": [
@@ -2227,6 +2227,15 @@
             "callback": "mini:shopcat:999999:9999999999:fun",
             "handlers": [
               "app.mini.ui.shop.shop_category_callback"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Мифическое яйцо · 75 мифических осколков",
+            "callback": "mini:myth:999999:9999999999:buyask.11223344",
+            "handlers": [
+              "app.mini.mythic.handlers.action"
             ]
           }
         ],
@@ -4528,15 +4537,6 @@
             "callback": "mini:ev:999999:9999999999:bets",
             "handlers": [
               "app.mini.events.handlers.event_game_callback"
-            ]
-          }
-        ],
-        [
-          {
-            "text": "Против игрока",
-            "callback": "mini:pvp:999999:9999999999:home",
-            "handlers": [
-              "app.mini.events.pvp_handlers.action"
             ]
           }
         ],

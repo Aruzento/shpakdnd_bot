@@ -12,6 +12,9 @@ from app.mini.mythic.raid.rewards import allocate
 from app.mini.combat.modes import freeze_hero
 
 
+DAILY_ATTACK_LIMIT = 5
+
+
 def _raid(conn, raid_id, world_id=None):
     row = conn.execute(
         "SELECT * FROM mini_mythic_raids WHERE id=?", (raid_id,)
@@ -228,8 +231,8 @@ def attack(
             "SELECT COUNT(*) FROM mini_mythic_raid_attacks WHERE player_id=? AND game_day=?",
             (player_id, date),
         ).fetchone()[0]
-        if count >= 10:
-            raise ValueError("Лимит десяти атак за московские сутки исчерпан.")
+        if count >= DAILY_ATTACK_LIMIT:
+            raise ValueError("Лимит пяти атак за московские сутки исчерпан.")
         if conn.execute(
             "SELECT 1 FROM mini_mythic_raid_attacks WHERE raid_id=? AND player_id=? AND hero_id=? AND game_day=?",
             (raid_id, player_id, hero_id, date),
@@ -303,7 +306,7 @@ def attack(
             if result["actual_hp_damage"] > 0
             else None
         )
-        result.update(raid_id=raid_id, hero_id=hero_id, attempts_left=9 - count)
+        result.update(raid_id=raid_id, hero_id=hero_id, attempts_left=DAILY_ATTACK_LIMIT - 1 - count)
         conn.execute(
             "UPDATE mini_mythic_raids SET state_json=?,current_hp=?,max_hp=?,revision=revision+1 WHERE id=?",
             (
@@ -648,3 +651,26 @@ def history(world_id, page=0, db_path=DB_PATH):
                 (world_id, max(0, page) * 10),
             )
         ]
+
+
+def selection(player_id, raid_id, db_path=DB_PATH, *, now=None):
+    """One database snapshot for daily budget, ownership, residency and used heroes."""
+    from app.mini.db import connect_mini_db
+    date = day(timestamp(now))
+    with connect_mini_db(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("BEGIN")
+        player = conn.execute("SELECT world_id FROM mini_players WHERE id=?", (player_id,)).fetchone()
+        if player is None:
+            raise ValueError("Сначала зарегистрируйся в Mini.")
+        raid = _raid(conn, raid_id, player["world_id"])
+        if raid["status"] != "active":
+            raise ValueError("Рейд завершён.")
+        count = conn.execute("SELECT COUNT(*) FROM mini_mythic_raid_attacks WHERE player_id=? AND game_day=?", (player_id,date)).fetchone()[0]
+        rows = conn.execute("""SELECT h.*,ph.stars,ph.copies FROM mini_player_heroes ph
+            JOIN mini_heroes h ON h.id=ph.hero_id WHERE ph.player_id=?
+            AND NOT EXISTS (SELECT 1 FROM mini_village_residents v WHERE v.player_id=ph.player_id AND v.hero_id=ph.hero_id)
+            AND NOT EXISTS (SELECT 1 FROM mini_mythic_raid_attacks a
+                WHERE a.player_id=ph.player_id AND a.hero_id=ph.hero_id AND a.raid_id=? AND a.game_day=?)
+            ORDER BY h.rarity,h.name,h.id""", (player_id,raid_id,date)).fetchall()
+        return {"heroes": [dict(row) for row in rows], "attempts_left": max(0, DAILY_ATTACK_LIMIT-count), "game_day": date}

@@ -33,6 +33,8 @@ def _begin(conn):
 
 @contextmanager
 def _entry_connection(db_path,player_id,world_id,action):
+    from app.mini.features import require_enabled
+    require_enabled("pvp")
     blocked=False
     with _connection(db_path) as conn:
         _begin(conn)

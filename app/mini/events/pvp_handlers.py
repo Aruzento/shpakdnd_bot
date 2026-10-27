@@ -87,6 +87,10 @@ async def _show(callback,world,player,session=None):
 @router.callback_query(F.data.startswith("mini:pvp:"))
 @screen
 async def action(callback):
+    from app.mini.features import enabled, UNAVAILABLE
+    if not enabled('pvp'):
+        await callback.answer(UNAVAILABLE, show_alert=True)
+        return
     # Public invitations intentionally have no predetermined owner.
     parts=(callback.data or "").split(":",4)
     try:

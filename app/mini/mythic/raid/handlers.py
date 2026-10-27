@@ -1,3 +1,4 @@
+from app.mini.ui.timing import run_sync
 from app.mini.editorial import text as editorial_text, screen as editorial_screen
 
 """Raid catalog, personal hero selection, public HP/ranking and admin cancel."""
@@ -187,6 +188,7 @@ def screen(
     rank_page=None,
     history_page=None,
     raid_id=None,
+    rarity=None,
 ):
     wid = world["id"]
     uid = user
@@ -232,36 +234,45 @@ def screen(
     if raid:
         rows.append([b("Рейтинг / награды", "rank.0")])
     if raid and raid["status"] == "active":
-        with transaction() as conn:
-            from app.mini.mythic.pets import day, timestamp
-
-            used = conn.execute(
-                "SELECT COUNT(*) FROM mini_mythic_raid_attacks WHERE player_id=? AND game_day=?",
-                (pid, day(timestamp())),
-            ).fetchone()[0]
-        text = public_text(raid) + f"\nОсталось атак сегодня: {max(0,10-used)}/10"
-        if pick:
-            heroes = get_player_heroes(pid)
-            size = 8
-            page = max(0, min(page, max(0, (len(heroes) - 1) // size)))
-            for hero in heroes[page * size : (page + 1) * size]:
-                rows.append(
-                    [
-                        b(
-                            hero["name"],
-                            f'hitask.{raid["id"]}.{hero["id"]}.{secrets.token_hex(3)}',
-                        )
-                    ]
-                )
-            if page:
-                rows.append([b("⬅️", f"pick.{page-1}")])
-            if (page + 1) * size < len(heroes):
-                rows.append([b("➡️", f"pick.{page+1}")])
-            text += (
-                "\nНеописанное raid-свойство не срабатывает; базовая атака разрешена."
-            )
+        choice = service.selection(pid, raid["id"])
+        text = public_text(raid) + f"\nОсталось атак сегодня: {choice['attempts_left']}/{service.DAILY_ATTACK_LIMIT}"
+        heroes = choice["heroes"]
+        rid = raid["id"]
+        if choice["attempts_left"] == 0:
+            text += "\nСуточный лимит исчерпан. Новые атаки — после московской полуночи."
+        elif not heroes:
+            text += "\nНет доступных героев: все уже атаковали этот рейд сегодня или находятся в деревне."
+        elif pick:
+            from app.mini.heroes import RARITY_ORDER
+            from app.mini.presentation import rarity_emoji
+            rarities = sorted({h["rarity"] for h in heroes}, key=lambda r: (RARITY_ORDER.get(r,99),r))
+            if rarity is None:
+                page = max(0,min(page,(len(rarities)-1)//4))
+                buttons = [b(rarity_emoji(r)+" "+r.title(), f"rheroes.{rid}.{short_code(r)}.0")
+                           for r in rarities[page*4:(page+1)*4]]
+                rows.extend(buttons[i:i+2] for i in range(0,len(buttons),2))
+                nav = []
+                if page: nav.append(b("Назад",f"rpick.{rid}.{page-1}"))
+                if (page+1)*4 < len(rarities): nav.append(b("Далее",f"rpick.{rid}.{page+1}"))
+                if nav: rows.append(nav)
+                text += "\nВыбери редкость героя."
+            else:
+                matches = [r for r in rarities if short_code(r)==rarity]
+                if len(matches)!=1:
+                    raise ValueError("Категория больше недоступна. Обнови выбор героев.")
+                heroes = [h for h in heroes if h["rarity"]==matches[0]]
+                size = 8
+                page = max(0,min(page,(len(heroes)-1)//size))
+                rows.extend([b(h["name"],f"hitask.{rid}.{h['id']}.{secrets.token_hex(3)}")]
+                            for h in heroes[page*size:(page+1)*size])
+                nav = []
+                if page: nav.append(b("Назад",f"rheroes.{rid}.{rarity}.{page-1}"))
+                if (page+1)*size<len(heroes): nav.append(b("Далее",f"rheroes.{rid}.{rarity}.{page+1}"))
+                if nav: rows.append(nav)
+                rows.append([b("К редкостям",f"rpick.{rid}.0")])
+            text += "\nНеописанное raid-свойство не срабатывает; базовая атака разрешена."
         else:
-            rows.append([b("Выбрать своего героя", "pick.0")])
+            rows.append([b("Атаковать", f"rpick.{rid}.0")])
         if admin:
             rows.append(
                 [
@@ -303,7 +314,7 @@ def screen(
             text += "\n\n" + public_text(raid)
     rows.append([b("История рейдов", "history.0")])
     rows.append(
-        [Button(text="Мифическая эра", callback_data=f"mini:mythic:{wid}:{uid}")]
+        [Button(text="Бой", callback_data=f"mini:adventures:{wid}:{uid}")]
     )
     return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -315,10 +326,10 @@ async def home(callback):
         return
     world, player = context
     try:
-        text, markup = screen(
+        await callback.answer()
+        text, markup = await run_sync("raid_render", screen,
             world, player, callback.from_user.id, admin=is_admin(callback, world)
         )
-        await callback.answer()
         await send_private_text_from_callback(callback, world, text, markup)
     except ValueError as error:
         await callback.answer(str(error), show_alert=True)
@@ -333,14 +344,15 @@ async def public_open(callback):
         player = load_player(wid, callback)
         if not world or not player:
             raise ValueError("Сначала зарегистрируйся в Mini этой темы.")
-        requested = service.state(wid, raid_id=rid)
+        requested = await run_sync("raid_state", service.state, wid, raid_id=rid)
         if requested["status"] != "active":
             raise ValueError("Этот рейд завершён. Открой актуальное меню.")
-        text, markup = screen(
+        text, markup = await run_sync("raid_render", screen,
             world,
             player,
             callback.from_user.id,
-            pick=True,
+            pick=False,
+            raid_id=rid,
             admin=is_admin(callback, world),
         )
         await callback.answer()
@@ -361,14 +373,22 @@ async def action(callback):
     b = lambda label, payload: button(world["id"], uid, label, payload)
     key = f"raid-ui:{world['id']}:{uid}:{payload}"
     receipt = ""
+    answered = op in ("home","rpick","rheroes","rank","history","past")
+    if answered:
+        await callback.answer()
     try:
         if op == "hitask":
             rid, hid = int(parts[1]), int(parts[2])
-            text = "Подтвердить рейдовую атаку выбранным героем? Расходуется одна из 10 суточных попыток."
+            available = await run_sync("raid_selection", service.selection, player["id"], rid)
+            if not available["attempts_left"]:
+                raise ValueError("Лимит пяти атак за московские сутки исчерпан.")
+            if hid not in {h["id"] for h in available["heroes"]}:
+                raise ValueError("Герой больше недоступен. Обнови выбор героев.")
+            text = f"Подтвердить рейдовую атаку выбранным героем? Расходуется одна из {service.DAILY_ATTACK_LIMIT} суточных попыток."
             markup = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [b("Атаковать", "hit." + ".".join(parts[1:]))],
-                    [b("Отмена", "pick.0")],
+                    [b("Отмена", f"rpick.{rid}.0")],
                 ]
             )
         elif op == "cancelask":
@@ -420,15 +440,15 @@ async def action(callback):
 
         else:
             if op == "start":
-                matches = [x for x in load() if short_code(x["code"]) == parts[1]]
+                matches = [x for x in await run_sync("catalog", load) if short_code(x["code"]) == parts[1]]
                 if len(matches) != 1:
                     raise ValueError("Каталог изменился, обнови меню.")
-                service.start(player["id"], matches[0]["code"], key)
+                await run_sync("raid_start", service.start, player["id"], matches[0]["code"], key)
             elif op == "hit":
-                outcome = service.attack(
+                outcome = await run_sync("raid_attack", service.attack,
                     player["id"], int(parts[1]), int(parts[2]), key
                 )
-                receipt = f"Снято HP: {outcome['actual_hp_damage']}. Осталось атак: {outcome['attempts_left']}/10."
+                receipt = f"Снято HP: {outcome['actual_hp_damage']}. Осталось атак: {outcome['attempts_left']}/{service.DAILY_ATTACK_LIMIT}."
                 from app.mini.mythic.raid.mechanics import event_lines
 
                 details = event_lines(outcome.get("audit", []))
@@ -460,17 +480,25 @@ async def action(callback):
                 receipt = "Рейд отменён. Это не победа; Arise нет."
                 if result["cancel_mode"] == "with_reward":
                     receipt += f" Выплачено {result['P']} мифических осколков."
-            elif op not in ("home", "pick", "rank", "history", "past"):
+            elif op not in ("home", "rpick", "rheroes", "rank", "history", "past"):
                 raise ValueError("Неизвестное действие рейда.")
-            current = service.state(world["id"])
+            if op in ("rpick","rheroes"):
+                selected = await run_sync("raid_state",service.state,world["id"],raid_id=int(parts[1]))
+                if not selected or selected["status"]!="active":
+                    raise ValueError("Этот рейд завершён. Открой актуальное меню.")
+            current = await run_sync("raid_state", service.state, world["id"])
+            if not answered:
+                await callback.answer()
+                answered = True
             if current and op in ("start", "hit", "cancelconfirm"):
                 await publish(callback.bot, world, current)
-            text, markup = screen(
+            text, markup = await run_sync("raid_render", screen,
                 world,
                 player,
                 uid,
-                pick=op == "pick",
-                page=int(parts[1]) if op == "pick" else 0,
+                pick=op in ("rpick","rheroes"),
+                rarity=parts[2] if op=="rheroes" else None,
+                page=int(parts[3] if op=="rheroes" else parts[2]) if op in ("rpick","rheroes") else 0,
                 admin=is_admin(callback, world),
                 rank_page=(
                     int(parts[1])
@@ -478,12 +506,13 @@ async def action(callback):
                     else (int(parts[2]) if op == "past" else None)
                 ),
                 history_page=max(0, int(parts[1])) if op == "history" else None,
-                raid_id=int(parts[1]) if op == "past" else None,
+                raid_id=int(parts[1]) if op in ("past","rpick","rheroes") else None,
             )
         if receipt:
             text = receipt + "\n\n" + text
         text = telegram_clip(text, 4000)
-        await callback.answer()
+        if not answered:
+            await callback.answer()
         await send_private_text_from_callback(callback, world, text, markup)
     except (ValueError, IndexError) as error:
         await callback.answer(str(error), show_alert=True)

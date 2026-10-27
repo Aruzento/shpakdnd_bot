@@ -94,6 +94,10 @@ def screen(world,player,user_id,view='home',value=0,page=0):
 @router.callback_query(F.data.startswith('mini:duels:'))
 @editorial_screen
 async def home(callback):
+    from app.mini.features import enabled, UNAVAILABLE
+    if not enabled('duels'):
+        await callback.answer(UNAVAILABLE, show_alert=True)
+        return
     context=await load_personal_context(callback)
     if not context:return
     world,player=context;text,markup=screen(world,player,callback.from_user.id)
@@ -103,6 +107,10 @@ async def home(callback):
 @router.callback_query(F.data.startswith('mini:duel:'))
 @editorial_screen
 async def action(callback):
+    from app.mini.features import enabled, UNAVAILABLE
+    if not enabled('duels'):
+        await callback.answer(UNAVAILABLE, show_alert=True)
+        return
     context=await load_extended_context(callback,'duel')
     if not context:return
     world,player,payload=context

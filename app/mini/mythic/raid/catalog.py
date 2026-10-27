@@ -1,6 +1,9 @@
 """Strict raid content. Empty catalog is supported; partial entries are not."""
 
 import json
+import hashlib
+from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from app.mini.combat.modes import ELEMENTS
 
@@ -126,12 +129,28 @@ def _unique_fields(pairs):
     return result
 
 
-def load(path=None, *, require_images=True, images=None):
+@lru_cache(maxsize=8)
+def _validated(text, image_root, require_images, fingerprints):
+    return validate(json.loads(text, object_pairs_hook=_unique_fields),
+                    images=Path(image_root), require_images=require_images)
+
+
+def _load(path=None, *, require_images=True, images=None):
     path = Path(path) if path is not None else CATALOG
     if not path.exists():
         return []
-    return validate(
-        json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_fields),
-        images=IMAGES if images is None else images,
-        require_images=require_images,
-    )
+    image_root = Path(IMAGES if images is None else images)
+    text = path.read_text(encoding="utf-8")
+    # Parse/validate JSON even for cache hits; image file replacement invalidates
+    # the expensive decoder by content, not timestamps. Return no shared mutable data.
+    data = json.loads(text, object_pairs_hook=_unique_fields)
+    validate(data, images=image_root, require_images=False)
+    fingerprints = tuple((b["image"], hashlib.sha256((image_root/b["image"]).read_bytes()).digest())
+                         for b in data["bosses"]) if require_images else ()
+    return deepcopy(_validated(text, str(image_root.resolve()), require_images, fingerprints))
+
+
+def load(path=None, *, require_images=True, images=None):
+    from app.mini.ui.timing import span
+    with span("catalog"):
+        return _load(path, require_images=require_images, images=images)

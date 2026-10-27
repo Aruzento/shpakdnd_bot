@@ -4,6 +4,10 @@ from app.mini.editorial.registry import LiveMapping
 from app.mini.editorial import glossary
 from app.mini.ui.callbacks import number
 import secrets
+import hashlib
+from collections import OrderedDict
+from app.mini.ui.timing import run_sync
+_pet_photo_ids = OrderedDict()
 
 from app.mini.ui.transport import (
     replacement_ephemeral_kwargs as _replacement_ephemeral_kwargs,
@@ -172,18 +176,41 @@ async def send_hero_card(
     hero: dict,
     caption: str,
     reply_markup: InlineKeyboardMarkup,
+    *, cache_image=False,
 ):
     image = get_hero_image(hero)
     long_caption=len(caption.encode("utf-16-le"))//2>1024
     if image is not None:
         try:
-            sent = await callback.bot.send_photo(
+            cache_key = None
+            cached = None
+            if cache_image:
+                digest = await run_sync("image_prepare", lambda: hashlib.sha256(image.read_bytes()).digest())
+                cache_key = (callback.bot.id, str(image.resolve()), digest)
+                cached = _pet_photo_ids.get(cache_key)
+            async def deliver(photo):
+                return await callback.bot.send_photo(
                 **callback_delivery(callback,world),
-                photo=FSInputFile(image),
+                photo=photo,
                 caption=(hero_heading(hero)[:200] if long_caption else caption),
                 reply_markup=None if long_caption else reply_markup,
                 **_replacement_ephemeral_kwargs(callback),
-            )
+                )
+            try:
+                sent = await deliver(cached or FSInputFile(image))
+            except TelegramBadRequest:
+                if cached is None:
+                    raise
+                _pet_photo_ids.pop(cache_key, None)
+                sent = await deliver(FSInputFile(image))
+            photos = getattr(sent, "photo", None)
+            if cache_key is not None and isinstance(photos, list) and photos:
+                file_id = photos[-1].file_id
+                if isinstance(file_id,str) and file_id:
+                    _pet_photo_ids[cache_key] = file_id
+                    _pet_photo_ids.move_to_end(cache_key)
+                    while len(_pet_photo_ids)>24:
+                        _pet_photo_ids.popitem(last=False)
             if long_caption:
                 return await _send_card_text(callback,world,caption,reply_markup)
             await _delete_current_ephemeral(callback)

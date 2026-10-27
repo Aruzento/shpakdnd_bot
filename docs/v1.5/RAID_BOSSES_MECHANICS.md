@@ -1,5 +1,7 @@
 # Четыре механики Mythic Raid — реализация и контракт
 
+Изменения после ручного TEST: [TEST_STAND_FIXES.md](TEST_STAND_FIXES.md). Лимит рейдов теперь 5 за московские сутки; дуэли/PvP временно выключены. План обновления с сохранением прогресса: [TEST_CANDIDATE_SWITCH.md](TEST_CANDIDATE_SWITCH.md).
+
 Исходный HEAD проверен перед изменениями: f0b9c1cd1f789e6b0268b756780108bf3e5663a1.
 Ветка codex/v1.5, тот же draft PR #8; base/origin/main d077dd2a2c29ad420b138bf07af23c77f4674d0b.
 Утверждённый источник полностью сохранён в RAID_BOSSES_MECHANICS_APPROVED_TZ.md.

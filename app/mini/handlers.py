@@ -61,14 +61,14 @@ def _launcher_menu(world_id: int) -> InlineKeyboardMarkup:
 
 
 
-SUBMENUS={'adventures': ['boss', 'tower', 'daily', 'duels'], 'heroarea': ['character', 'inventory', 'equipment', 'collection'], 'fair': ['shop', 'events', 'village'], 'more': ['rules', 'home', 'mythic']}
+SUBMENUS={'adventures': ['boss', 'tower', 'daily', 'raids'], 'heroarea': ['character', 'inventory', 'equipment', 'collection'], 'fair': ['shop', 'events', 'village'], 'more': ['rules', 'home', 'mythic', 'stories']}
 
 
 @editorial_screen
 def submenu(action,world,user):
     entries=SUBMENUS[action]
     title=glossary("section."+action, decorated=True)
-    rows=[[InlineKeyboardButton(text=Text(glossary("section."+target, decorated=True), icon_key="icon.section."+target),callback_data=_personal_callback(target,world,user))] for target in entries]
+    rows=[[InlineKeyboardButton(text=({"boss": "Обычные боссы", "tower": "Башня испытаний", "daily": "Ежедневные активности", "raids": "Мифический рейд", "stories": "Истории"}.get(target) or Text(glossary("section."+target, decorated=True), icon_key="icon.section."+target)),callback_data=_personal_callback(target,world,user))] for target in entries]
     if action in ('adventures','heroarea'):
         rows=[rows[0]+rows[1],rows[2]+rows[3]]
     rows.append([InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=_personal_callback('home',world,user))])

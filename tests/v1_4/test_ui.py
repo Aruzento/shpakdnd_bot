@@ -88,6 +88,8 @@ class NewCallbackTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_all_new_screens_use_personal_ephemeral_transport(self):
         world={'id':1};player={'id':1}
+        import os
+        self.enterContext(patch.dict(os.environ, {"MINI_DUELS_ENABLED":"1"}))
         for module in (village,duels,mythic):
             cb=self.callback('unused')
             with patch.object(module,'load_personal_context',AsyncMock(return_value=(world,player))),patch.object(module,'screen',return_value=('Экран',None)),patch.object(module,'send_private_text_from_callback',AsyncMock()) as send:

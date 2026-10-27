@@ -30,7 +30,7 @@ class RaidBoundaries(MiniCase):
         self.addCleanup(mocked.stop)
         self.raid = raids.start(self.pid, "fixture", "start", self.db, now=100)
 
-    def test_daily_limit_ten_attempts_then_new_moscow_day(self):
+    def test_daily_limit_five_attempts_then_new_moscow_day(self):
         heroes = self.sql(
             "SELECT id FROM mini_heroes WHERE rarity IN ('common','uncommon','rare','legendary') ORDER BY id LIMIT 11"
         )
@@ -39,17 +39,17 @@ class RaidBoundaries(MiniCase):
                 "INSERT INTO mini_player_heroes(player_id,hero_id) VALUES(?,?)",
                 (self.pid, h["id"]),
             )
-        for index, h in enumerate(heroes[:10]):
+        for index, h in enumerate(heroes[:5]):
             result = raids.attack(
                 self.pid, self.raid["id"], h["id"], str(index), self.db, now=100
             )
-            self.assertEqual(result["attempts_left"], 9 - index)
-        with self.assertRaisesRegex(ValueError, "десяти"):
+            self.assertEqual(result["attempts_left"], 4 - index)
+        with self.assertRaisesRegex(ValueError, "пяти"):
             raids.attack(
                 self.pid,
                 self.raid["id"],
-                heroes[10]["id"],
-                "eleventh",
+                heroes[5]["id"],
+                "sixth",
                 self.db,
                 now=100,
             )
@@ -62,7 +62,7 @@ class RaidBoundaries(MiniCase):
                 self.db,
                 now=86500,
             )["attempts_left"],
-            9,
+            4,
         )
 
     def test_admin_cancel_revision_rechecked_under_write_lock(self):
@@ -232,6 +232,8 @@ class StoryIntegration(MiniCase):
 
 class PvpBoundary(MiniCase):
     def test_mythic_service_bypass_rejected_before_escrow(self):
+        import os
+        self.enterContext(patch.dict(os.environ, {"MINI_DUELS_ENABLED":"1"}))
         from app.mini.players import create_mini_player
         from app.mini.duels.service import challenge
 

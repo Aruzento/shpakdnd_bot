@@ -41,6 +41,8 @@ def expire(db_path=DB_PATH,*,now=None):
 
 
 def challenge(challenger_id,defender_id,hero_id,operation_key,db_path=DB_PATH,*,now=None):
+    from app.mini.features import require_enabled
+    require_enabled('duels')
     if challenger_id==defender_id: raise ValueError(editorial_text('errors.duels.service.challenge.01'))
     if not operation_key: raise ValueError(editorial_text('errors.duels.service.challenge.02'))
     now=timestamp(now)
@@ -74,6 +76,9 @@ def get_state(player_id,db_path=DB_PATH,*,now=None):
 
 
 def act(duel_id,actor_id,action,db_path=DB_PATH,*,hero_id=None,expected_hero_id=None,now=None):
+    from app.mini.features import require_enabled
+    if action in ('select','accept'):
+        require_enabled('duels')
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')

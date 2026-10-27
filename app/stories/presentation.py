@@ -15,7 +15,6 @@ def render(session):
         rows = [
             [Button(text="Участвовать", callback_data=f"story:join:{sid}")],
             [Button(text="Выйти", callback_data=f"story:leave:{sid}")],
-            [Button(text="Начать историю (админ)", callback_data=f"story:start:{sid}")],
         ]
     elif session.get("route_error"):
         text = "📖 " + session["route_error"]

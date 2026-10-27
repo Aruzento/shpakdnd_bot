@@ -747,6 +747,8 @@ class TelegramAudit(MiniCase, unittest.IsolatedAsyncioTestCase):
         ):
             self.enterContext(patch.object(Bot, name, new_callable=AsyncMock))
         self.tx = transaction
+        original_selection = raids.selection
+        self.enterContext(patch.object(raids,"selection",side_effect=lambda *a,**k: original_selection(*a,**dict(k,db_path=self.db))))
         for name in (
             "app.stories.handlers",
             "app.stories.enrollment",

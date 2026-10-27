@@ -36,6 +36,7 @@ def handler(data):
         'equipment':('equipment.handlers','equipment_callback'),'tower':('tower.handlers','tower_callback'),'village':('village.handlers','home'),'vlg':('village.handlers','action'),
         'mythic':('mythic.handlers','home'),'myth':('mythic.handlers','action'),'duels':('duels.handlers','home'),'duel':('duels.handlers','action'),'events':('events.handlers','events_callback'),'ev':('events.handlers','event_game_callback'),'boss':('boss.registration','boss_home_callback')}
     if action in ('adventures','heroarea','fair','more'):return 'app.mini.handlers:submenu_callback'
+    if action=='stories':return 'app.stories.handlers:story_menu'
     module,function=names[action];return 'app.mini.'+module+':'+function
 
 
@@ -75,7 +76,7 @@ class ScreenCoverageTests(unittest.TestCase):
                     self.assertTrue(callable(getattr(importlib.import_module(module),function)),target)
                     callbacks.append({'text':button.text,'callback':button.callback_data,'handler':target})
         self.snapshots[sid]={'renderer':binding,'rows':[[b.text for b in row] for row in markup.inline_keyboard],'transitions':callbacks}
-        expected={'home':[2,1,2],'adventures':[2,2,1],'heroarea':[2,2,1],'more':[1,1,1,1],'collection':[1,2,2],'collection_all':[2,2,3,2],'collection_results':[2,2,3,2],'collection_filter':[3,3,1,2,2],'inventory':[2,3],'village':[2,3,1,2],'village_resident':[1,1,1],'village_mine':[1,2,1],'village_market':[1,2,1],'village_hunt':[1,2,1],'tower_ready':[2,1,2],'tower_active':[1,1,2],'tower_lost':[2,1,2],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3]}
+        expected={'home':[2,1,2],'adventures':[2,2,1],'heroarea':[2,2,1],'more':[1,1,1,1,1],'collection':[1,2,2],'collection_all':[2,2,3,2],'collection_results':[2,2,3,2],'collection_filter':[3,3,1,2,2],'inventory':[2,3],'village':[2,3,1,2],'village_resident':[1,1,1],'village_mine':[1,2,1],'village_market':[1,2,1],'village_hunt':[1,2,1],'tower_ready':[2,1,2],'tower_active':[1,1,2],'tower_lost':[2,1,2],'character':[1,2],'character_no_hero':[2],'gacha':[2,2,3]}
         if sid in expected:self.assertEqual([len(r) for r in markup.inline_keyboard],expected[sid])
         if sid in ('collection_all','collection_results'):
             self.assertEqual(sum(':hero:' in b.callback_data for row in markup.inline_keyboard for b in row),4)

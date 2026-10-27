@@ -424,3 +424,115 @@ async def recover_pending(bot):
             )
         except Exception:
             logger.exception("Story pending publication recovery failed: %s", row["id"])
+
+
+def menu_button(world_id, user_id, label, payload):
+    data = f"mini:stui:{world_id}:{user_id}:{payload}"
+    if len(data.encode()) > 64:
+        raise ValueError("Story callback exceeds 64 bytes")
+    return Button(text=label, callback_data=data)
+
+
+def menu(world, user, *, page=0):
+    """Presentation only. All authorizations are repeated by the services."""
+    import hashlib
+    import secrets
+    chat, thread = world["chat_id"], world["thread_id"]
+    uid = user.id
+    admin = True
+    try:
+        service._admin(chat, thread, uid, username(user))
+    except ValueError:
+        admin = False
+    stories, errors = discover()
+    current = service.status(chat, thread)
+    rows = []
+    text = "📖 Истории"
+    b = lambda label, payload: menu_button(world["id"], uid, label, payload)
+    if current:
+        body, _ = render(current)
+        text += "\n\n" + body
+        if current["status"] == "registration":
+            rows.append([b("Присоединиться", f"j.{current['id']}")])
+            if admin:
+                rows.append([b("Начать приключение", f"s.{current['id']}.{secrets.token_hex(3)}")])
+        if admin and current["status"] in ("registration","active"):
+            rows.append([b("Отменить историю", f"x.{current['id']}.{secrets.token_hex(3)}")])
+    if admin and (not current or current["status"] not in ("registration","active")):
+        entries = sorted(stories.items())
+        page = max(0,min(page,max(0,(len(entries)-1)//6)))
+        for code, story in entries[page*6:(page+1)*6]:
+            key = hashlib.sha256(code.encode()).hexdigest()[:8]
+            rows.append([b(story["title"],f"o.{key}")])
+        if page:
+            rows.append([b("Назад",f"p.{page-1}")])
+        if (page+1)*6 < len(entries):
+            rows.append([b("Далее",f"p.{page+1}")])
+        if not entries:
+            text += "\nНет доступных сценариев. Проверьте внешний STORIES_DIR."
+        if errors:
+            text += "\nЧасть сценариев отклонена валидатором."
+    elif not current:
+        text += "\nАдминистратор темы пока не открыл регистрацию."
+    rows.append([Button(text="Главное меню",callback_data=f"mini:home:{world['id']}:{uid}")])
+    return text[:3900], InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data.startswith("mini:stories:") | F.data.startswith("mini:stui:"))
+async def story_menu(callback):
+    import hashlib
+    import secrets
+    from app.mini.ui.context import load_personal_context, load_extended_context
+    from app.mini.ui.timing import run_sync
+    is_home = callback.data.startswith("mini:stories:")
+    context = await (load_personal_context(callback) if is_home else load_extended_context(callback,"stui"))
+    if not context:
+        return
+    world, player = context[:2]
+    payload = "home" if is_home else context[2]
+    parts = payload.split(".")
+    op = parts[0]
+    uid = callback.from_user.id
+    chat, thread = world["chat_id"], world["thread_id"]
+    key = f"story-menu:{world['id']}:{uid}:{payload}"
+    try:
+        if op in ("o","c"):
+            service._admin(chat,thread,uid,username(callback.from_user))
+            stories, _ = await run_sync("story_catalog", discover)
+            matches = [(code,s) for code,s in stories.items() if hashlib.sha256(code.encode()).hexdigest()[:8]==parts[1]]
+            if len(matches)!=1:
+                raise ValueError("Список сценариев изменился. Открой Истории заново.")
+            code, story = matches[0]
+            if op == "o":
+                text = f"📖 {story['title']}\n{story['description']}\nОткрыть регистрацию в этой теме?"
+                b = lambda label,p: menu_button(world["id"],uid,label,p)
+                markup = InlineKeyboardMarkup(inline_keyboard=[
+                    [b("Открыть регистрацию",f"c.{parts[1]}.{secrets.token_hex(3)}")],
+                    [b("Назад","home")]])
+                await callback.answer()
+                await send_private_text_from_callback(callback,world,text,markup)
+                return
+            created = await run_sync("story_create",service.create,chat,thread,uid,username(callback.from_user),code,key)
+            await publish(callback.bot,service.status(chat,thread,session_id=created["session_id"]))
+        elif op in ("j","s","x"):
+            sid = int(parts[1])
+            current = service.status(chat,thread)
+            if not current or current["id"]!=sid or current["status"] not in ("registration","active"):
+                raise ValueError("Кнопка истории устарела.")
+            if op == "j":
+                if current["status"]!="registration":
+                    raise ValueError("Регистрация закрыта.")
+                await callback.answer()
+                await enrollment_menu(callback,current)
+                return
+            old_step = current["step"]
+            fn = service.start if op=="s" else service.cancel
+            await run_sync("story_operation",fn,sid,chat,thread,uid,username(callback.from_user),key)
+            await refresh(callback.bot,service.status(chat,thread,session_id=sid),old_step)
+        elif op not in ("home","p"):
+            raise ValueError("Неизвестная кнопка истории.")
+        text, markup = await run_sync("story_menu",menu,world,callback.from_user,page=int(parts[1]) if op=="p" else 0)
+        await callback.answer()
+        await send_private_text_from_callback(callback,world,text,markup)
+    except (ValueError,IndexError) as error:
+        await callback.answer(str(error),show_alert=True)
