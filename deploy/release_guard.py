@@ -28,7 +28,7 @@ SCHEMA_FILE = "release_schema.json"
 # Additive feedback journals are optional on older V1.5 databases. Never treat
 # their absence as a partial legacy schema, or silently authorize an old target.
 FEEDBACK_SCHEMA = {
-    "mini_private_windows": {"bot_id","world_id","user_id","generation","chat_id","message_id","ephemeral_id"},
+    "mini_private_windows": {"bot_id","world_id","user_id","generation","chat_id","message_id","ephemeral_id","callbacks_json"},
     "story_publication_parts": {"session_id","step","part","message_id"},
     "story_reminders": {"session_id","step","operation_key","claimed_at","status","recipients_json","message_id"},
     "story_achievements": {"user_id","story_code","ending_id","session_id","earned_at"},

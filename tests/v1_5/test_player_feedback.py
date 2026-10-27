@@ -57,7 +57,7 @@ class Windows(MiniCase):
             cb=NS(data=f"mini:home:{self.wid}:900123",from_user=NS(id=900124),
                 message=NS(chat=NS(id=-1001),ephemeral_message_id=20),bot=NS(id=1),answer=AsyncMock())
             guard=windows.WindowGuard()
-            with patch.object(windows,"window",side_effect=lambda *a:real(*a,self.db)):
+            with patch.object(windows,"window",side_effect=lambda *a,**k:real(*a,db_path=self.db,**k)):
                 await guard(handler,NS(callback_query=cb),{})
                 cb.from_user.id=900123;cb.message.ephemeral_message_id=19
                 await guard(handler,NS(callback_query=cb),{})
@@ -85,7 +85,7 @@ class Windows(MiniCase):
             method=SendMessage(chat_id=-1001,text="Private",reply_markup=markup,
                 ephemeral_message_parameters=EphemeralMessageParameters(receiver_user_id=900123))
             real=windows.reserve
-            with patch.object(windows,"reserve",side_effect=lambda *a:real(*a,self.db)):
+            with patch.object(windows,"reserve",side_effect=lambda *a,**k:real(*a,db_path=self.db,**k)):
                 with self.assertRaises(RuntimeError):
                     await windows.WindowDelivery()(AsyncMock(side_effect=RuntimeError("uncertain")),NS(id=1),method)
             self.assertIsNone(self.current()["chat_id"])
@@ -98,7 +98,7 @@ class Windows(MiniCase):
                 ephemeral_message_parameters=EphemeralMessageParameters(receiver_user_id=900123))
             bot=NS(id=1,delete_ephemeral_message=AsyncMock(side_effect=RuntimeError("delete unavailable")))
             reserve,activate=windows.reserve,windows.activate
-            with patch.object(windows,"reserve",side_effect=lambda *a:reserve(*a,self.db)),patch.object(windows,"activate",side_effect=lambda *a:activate(*a,self.db)):
+            with patch.object(windows,"reserve",side_effect=lambda *a,**k:reserve(*a,db_path=self.db,**k)),patch.object(windows,"activate",side_effect=lambda *a:activate(*a,self.db)):
                 await windows.WindowDelivery()(AsyncMock(return_value=NS(message_id=11,ephemeral_message_id=21)),bot,method)
             self.assertEqual(self.current()["ephemeral_id"],21)
             self.assertFalse(windows.matches(self.current(),NS(chat=NS(id=-1001),ephemeral_message_id=20)))
@@ -390,3 +390,137 @@ class MigrationFeedbackContract(unittest.TestCase):
             new_shop_tables({}, {'story_achievements':(columns+['wallet'],[])})
         with self.assertRaisesRegex(AssertionError,'Unexpected new shop data'):
             new_shop_tables({}, {'story_achievements':(columns,[(1,'s','e',1,1)])})
+
+
+class WindowGenerations(MiniCase):
+    def setUp(self):
+        super().setUp()
+        self.wid=self.world["id"];self.uid=900123
+    def message(self,eid=20,chat=-1001):
+        return NS(chat=NS(id=chat,type="private" if chat==self.uid else "group"),
+                  message_id=0,ephemeral_message_id=eid)
+    async def deliver(self,*,eid=20,chat=-1001,fail=False):
+        markup=InlineKeyboardMarkup(inline_keyboard=[
+            [Button(text="Home",callback_data=f"mini:home:{self.wid}:{self.uid}")],
+            [Button(text="History",callback_data=f"miniboss:history:{self.wid}:77:0")]])
+        method=SendMessage(chat_id=chat,text="Private",reply_markup=markup,
+            ephemeral_message_parameters=EphemeralMessageParameters(receiver_user_id=self.uid) if chat<0 else None)
+        bot=NS(id=1,delete_ephemeral_message=AsyncMock(),delete_message=AsyncMock())
+        request=AsyncMock(side_effect=RuntimeError("uncertain")) if fail else AsyncMock(return_value=NS(message_id=0,ephemeral_message_id=eid))
+        reserve,activate=windows.reserve,windows.activate
+        with patch.object(windows,"reserve",side_effect=lambda *a,**k:reserve(*a,db_path=self.db,**k)),patch.object(windows,"activate",side_effect=lambda *a:activate(*a,self.db)):
+            await windows.WindowDelivery()(request,bot,method)
+        return request.call_args.args[1].reply_markup,bot
+    async def guard(self,value,*,actor=None,message=None):
+        cb=NS(data=value,from_user=NS(id=self.uid if actor is None else actor),
+              message=message or self.message(),bot=NS(id=1),answer=AsyncMock())
+        handler=AsyncMock();resolve,window=windows.resolve,windows.window
+        with patch.object(windows,"resolve",side_effect=lambda *a:resolve(*a,db_path=self.db)),patch.object(windows,"window",side_effect=lambda *a:window(*a[:3],db_path=self.db)):
+            await windows.WindowGuard()(handler,NS(callback_query=cb),{})
+        return handler,cb
+    def test_wrapped_actions_decode_before_router_filters_and_keep_source_map(self):
+        async def run():
+            markup,_=await self.deliver()
+            value=markup.inline_keyboard[1][0].callback_data
+            self.assertTrue(value.startswith("mini:win:"))
+            handler,_=await self.guard(value)
+            original=handler.call_args.args[0].callback_query.data
+            self.assertEqual(original,f"miniboss:history:{self.wid}:77:0")
+            from app.mini.boss import v15_handlers
+            callbacks=[]
+            for entry in v15_handlers.router.callback_query.handlers:
+                if (await entry.check(handler.call_args.args[0].callback_query))[0]:
+                    callbacks.append(entry.callback)
+            self.assertIn(v15_handlers.history,callbacks)
+        asyncio.run(run())
+    def test_same_ephemeral_id_zero_message_id_never_revives_old_generation(self):
+        async def run():
+            old,_=await self.deliver(eid=20)
+            new,_=await self.deliver(eid=20)
+            old_handler,_=await self.guard(old.inline_keyboard[0][0].callback_data)
+            old_handler.assert_not_awaited()
+            current,_=await self.guard(new.inline_keyboard[0][0].callback_data)
+            current.assert_awaited_once()
+        asyncio.run(run())
+    def test_reused_id_never_deletes_new_window_in_transport_or_retirement(self):
+        from app.mini.ui.transport import delete_current_ephemeral
+        async def run():
+            await self.deliver(eid=20)
+            _,bot=await self.deliver(eid=20)
+            cb=NS(bot=bot,message=self.message(),from_user=NS(id=self.uid))
+            self.assertTrue(await delete_current_ephemeral(cb))
+            bot.delete_ephemeral_message.assert_not_awaited()
+        asyncio.run(run())
+    def test_current_raw_action_cannot_bypass_generation_even_with_matching_ids(self):
+        async def run():
+            await self.deliver()
+            handler,_=await self.guard(f"mini:home:{self.wid}:{self.uid}")
+            handler.assert_not_awaited()
+        asyncio.run(run())
+    def test_foreign_user_location_invalid_index_and_malformed_wrapper_denied(self):
+        async def run():
+            markup,_=await self.deliver();value=markup.inline_keyboard[0][0].callback_data
+            for actor,message,code in ((self.uid+1,self.message(),value),(self.uid,self.message(chat=99),value),
+                (self.uid,self.message(),windows.packed(self.wid,self.uid,1,999)),
+                (self.uid,self.message(),"mini:win:bad")):
+                handler,_=await self.guard(code,actor=actor,message=message)
+                handler.assert_not_awaited()
+        asyncio.run(run())
+    def test_restart_keeps_action_map_and_rejects_old_callback(self):
+        async def run():
+            old,_=await self.deliver();new,_=await self.deliver()
+            from app.mini.schema import init_mini_db
+            init_mini_db(self.db)
+            handler,_=await self.guard(old.inline_keyboard[0][0].callback_data)
+            handler.assert_not_awaited()
+            handler,_=await self.guard(new.inline_keyboard[0][0].callback_data)
+            handler.assert_awaited_once()
+        asyncio.run(run())
+    def test_uncertain_delivery_keeps_old_and_new_actions_inactive(self):
+        async def run():
+            old,_=await self.deliver()
+            with self.assertRaises(RuntimeError):await self.deliver(fail=True)
+            handler,_=await self.guard(old.inline_keyboard[0][0].callback_data)
+            handler.assert_not_awaited()
+            row=windows.window(1,self.wid,self.uid,self.db)
+            self.assertIsNone(windows.resolve(1,self.wid,self.uid,row["generation"],0,self.message(),self.db))
+        asyncio.run(run())
+    def test_callback_budget_full_sqlite_integer_range(self):
+        value=windows.packed(2**63-1,2**63-1,2**63-1,2**63-1)
+        self.assertLessEqual(len(value.encode()),64)
+        self.assertEqual(windows.unpacked(value),(2**63-1,)*4)
+        for value in ("mini:win:1.1.1.-1","mini:win:1.1.0.0","mini:win:1.1.1.z"*20,"1.1.1.1"):
+            with self.assertRaises(ValueError):windows.unpacked(value)
+    def test_real_aiogram_models_preserve_bot_context_after_unwrap(self):
+        from aiogram import Bot
+        from aiogram.types import Update,CallbackQuery,Message,User
+        from datetime import datetime,timezone
+        async def run():
+            bot=Bot("123456:offline-window")
+            try:
+                generation,_=windows.reserve(bot.id,self.wid,self.uid,self.db,actions=[f"mini:home:{self.wid}:{self.uid}"])
+                windows.activate(bot.id,self.wid,self.uid,generation,-1001,0,20,self.db)
+                cb=CallbackQuery(id="fixture",from_user=User(id=self.uid,is_bot=False,first_name="Fixture"),
+                    chat_instance="fixture",data=windows.packed(self.wid,self.uid,generation,0),
+                    message=Message(message_id=0,date=datetime.now(timezone.utc),
+                        chat={"id":-1001,"type":"group"},ephemeral_message_id=20)).as_(bot)
+                event=Update(update_id=1,callback_query=cb).as_(bot)
+                handler=AsyncMock();resolve=windows.resolve
+                with patch.object(windows,"resolve",side_effect=lambda *a:resolve(*a,db_path=self.db)):
+                    await windows.WindowGuard()(handler,event,{})
+                decoded=handler.call_args.args[0].callback_query
+                self.assertIs(decoded.bot,bot)
+                self.assertEqual(decoded.data,f"mini:home:{self.wid}:{self.uid}")
+                self.assertEqual(decoded.message.ephemeral_message_id,20)
+            finally:
+                await bot.session.close()
+        asyncio.run(run())
+
+    def test_old_journal_column_upgrade_is_additive_and_repeatable(self):
+        path=__import__("pathlib").Path(self.tmp.name)/"old-window.db"
+        from app.mini.db import connect_mini_db
+        with connect_mini_db(path) as conn:
+            conn.execute("CREATE TABLE mini_private_windows (bot_id INTEGER,world_id INTEGER,user_id INTEGER,generation INTEGER,chat_id INTEGER,message_id INTEGER,ephemeral_id INTEGER,PRIMARY KEY(bot_id,world_id,user_id))")
+            conn.execute("INSERT INTO mini_private_windows VALUES(1,1,1,7,-1001,0,20)")
+            for _ in range(3):windows.schema(conn)
+            self.assertEqual(tuple(conn.execute("SELECT * FROM mini_private_windows").fetchone()),(1,1,1,7,-1001,0,20,"[]"))

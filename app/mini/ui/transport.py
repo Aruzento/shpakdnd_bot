@@ -45,9 +45,9 @@ async def delete_current_ephemeral(callback: CallbackQuery) -> bool:
     if message is None or message.ephemeral_message_id is None:
         return False
 
-    from app.mini.ui.windows import retired_ephemeral
-    if retired_ephemeral.get() == (getattr(callback.bot,"id",None), message.chat.id,
-                                    message.ephemeral_message_id, callback.from_user.id):
+    from app.mini.ui.windows import retired_ephemeral, emitted_ephemerals
+    address=(getattr(callback.bot,"id",None),message.chat.id,message.ephemeral_message_id,callback.from_user.id)
+    if address in emitted_ephemerals.get() or retired_ephemeral.get()==address:
         return True
     try:
         await callback.bot.delete_ephemeral_message(
