@@ -53,8 +53,8 @@ readlink -- /opt/shpakdnd-v144-stage/shpakdnd.db
 readlink -f -- /opt/shpakdnd-v144-stage/shpakdnd.db
 for d in /opt/shpakdnd-v144-stage /opt/shpakdnd-bot; do
   test -d "$d" && test ! -L "$d" || exit 1
-  git --no-optional-locks -C "$d" rev-parse HEAD
-  git --no-optional-locks -C "$d" status --short --untracked-files=no
+  /usr/sbin/runuser -u shpakbot -- git --no-optional-locks -C "$d" rev-parse HEAD
+  /usr/sbin/runuser -u shpakbot -- git --no-optional-locks -C "$d" status --short --untracked-files=no
 done
 # Просматривать unit, env и полный список файлов приватно: возможны секреты.
 # Не применять git reset/clean и не выполнять deploy-shpakdnd.
@@ -173,6 +173,19 @@ DND_SHOP_OFFERS_PATH=/srv/shpakdnd-v15-staging/runtime/shop_offers.csv
 Нельзя перенести outbox/таймеры/пользователей старой DB или production copy в gameplay TEST.
 CSV при необходимости копировать из проверенного TEST, проверять scopes через тот же
 внешний adapter, не выполнять publish из canonical production app.topics.
+
+Свежая SQLite не содержит конфигурации обычного D&D-магазина. На проверенном TEST
+существующий CSV использует `pricing_mode=m`, `factor=1/10000`, settings_version=2
+и 15 зарегистрированных денежных номиналов. Сохранить эти существующие метаданные
+из консистентного TEST backup, включая явное `shop_currency_units.master`; не
+придумывать номиналы и не переписывать CSV для обхода проверки. Регистрировать
+валюты штатным `register_in_transaction`, сохраняя их business code и номинал,
+а новые item_id и currency_signature получать через `pricing.preflight` и
+`control.persist_state`. Балансы, инвентари игроков, историю, outbox и старые ID
+не импортировать. Затем штатные `app.dnd_shop.cli validate/publish` через adapter
+должны пройти на новой SQLite, с неизменными SHA-256 четырёх CSV. Отказ проверки
+не является разрешением сбросить цены/номиналы: текущий TEST продолжает работать,
+пока совместимость не подтверждена.
 
 ### Внешний launcher и preflight без polling
 
