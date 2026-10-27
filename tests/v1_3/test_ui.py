@@ -59,7 +59,7 @@ class UIContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_launcher_has_tower_and_equipment(self):
         buttons=[b for action in ('adventures','heroarea') for row in submenu(action,1,20)[1].inline_keyboard for b in row]
-        self.assertIn('🏰 Испытания',[b.text for b in buttons])
+        self.assertIn('Башня испытаний',[b.text for b in buttons])
         self.assertIn('🛡 Экипировка',[b.text for b in buttons])
 
 

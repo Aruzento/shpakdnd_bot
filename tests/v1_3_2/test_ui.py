@@ -92,15 +92,15 @@ class SelectorViewTests(unittest.TestCase):
     def test_main_exact_five_buttons_and_supported_green_style(self):
         menu=_player_menu(1,42)
         self.assertEqual([len(row) for row in menu.inline_keyboard],[2,1,2])
-        self.assertEqual([b.text for b in buttons(menu)],['⚔️ Приключения','🧙 Герой','✨ Призвать героя','🎪 Ярмарка','📖 Ещё'])
+        self.assertEqual([b.text for b in buttons(menu)],['⚔️ Бой','🧙 Герой','✨ Призвать героя','🎪 Ярмарка','📖 Ещё'])
         summon=menu.inline_keyboard[1][0]
         self.assertEqual(summon.style,'success')
         self.assertEqual(summon.callback_data,'mini:gacha:1:42')
 
     def test_submenu_entries_and_back_no_old_upgrades(self):
-        expected={'adventures':['🔥 Босс','🏰 Испытания','⚔️ Ежедневный бой','⚔️ Дуэли'],
+        expected={'adventures':['Обычные боссы','Башня испытаний','Ежедневные активности','Мифический рейд'],
             'heroarea':['👤 Профиль','🎒 Инвентарь','🛡 Экипировка','📚 Коллекция'],
-            'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить','✨ Мифические герои']}
+            'fair':['🛒 Магазин','🎪 События','🏘 Моя деревня'],'more':['📖 Правила','🔄 Обновить','✨ Мифические герои','Истории']}
         for action,labels in expected.items():
             _,markup=submenu(action,1,42)
             self.assertEqual([b.text for b in buttons(markup)],labels+['⬅️ Назад'])

@@ -218,6 +218,7 @@ class RollbackMatrix(MiniCase):
         self.assertGreater(self.inspect()["counts"]["mythic_ownership"], 0)
         self.assertTrue(self.inspect("v15-once-raid-pets-economy")["rollback_ready"])
 
+    @patch.dict(os.environ, {"MINI_PVP_ENABLED":"1"})
     def test_pvp_escrow_unknown_schema_status_and_corrupt_db_block(self):
         self.sql("UPDATE mini_event_pvp_control SET paused=0")
         self.assertIn("BLOCKED_PVP_UNRESOLVED", self.inspect()["blockers"])
@@ -572,7 +573,7 @@ class DeploymentNegativePaths(unittest.TestCase):
 
     def test_game_tree_and_author_payloads_are_unchanged(self):
         tree=subprocess.check_output(["git","rev-parse","HEAD:app"],cwd=ROOT,text=True).strip()
-        self.assertEqual(tree,"64823c903daa7e3cea5d12613f364da67f630a54")
+        self.assertEqual(tree,"2af3268eee47b8908e2e3013331d1e20f4feb122")
         self.assertEqual(hashlib.sha256(AUTHOR.read_bytes()).hexdigest(),content.APPROVED_STORY_SHA256)
         for item in json.loads((ROOT/"docs/v1.5/CONTENT_ASSET_SHA256.json").read_text(encoding="utf-8"))["assets"]:
             self.assertEqual(hashlib.sha256((ROOT/item["path"]).read_bytes()).hexdigest(),item["sha256"])

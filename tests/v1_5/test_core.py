@@ -359,7 +359,7 @@ class RaidTests(MiniCase):
                 self.db,
                 now=101,
             )
-        self.assertEqual(result["attempts_left"], 9)
+        self.assertEqual(result["attempts_left"], 4)
         self.assertIsNotNone(result["egg"])
 
     def test_one_active_and_parallel_same_attack(self):

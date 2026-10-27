@@ -25,6 +25,7 @@ class MiniMigrationTests(unittest.TestCase):
         with connect_mini_db(self.db) as conn:
             return {table:conn.execute(f'SELECT * FROM {table} ORDER BY rowid').fetchall() for table in (*MINI_TABLES,*BOSS_TABLES)}
 
+    @patch.dict(os.environ, {"MINI_PVP_ENABLED":"1","MINI_DUELS_ENABLED":"1"})
     def seed(self):
         init_mini_db(self.db); init_boss_db(self.db)
         world=sync_configured_mini_worlds(self.db)[0]['id']

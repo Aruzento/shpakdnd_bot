@@ -432,7 +432,7 @@ print('BOT_IMPORT_SCOPES_PASS_NO_POLLING')
         head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
         subprocess.run(['git', '-C', str(tooling), 'checkout', '--detach', head], check=True, capture_output=True)
         self.assertEqual(subprocess.check_output(['git', '-C', str(tooling), 'rev-parse', 'HEAD:app'], text=True).strip(),
-                         self.git('rev-parse', 'HEAD:app'))
+                         subprocess.check_output(['git','rev-parse','HEAD:app'], cwd=ROOT, text=True).strip())
         live_db = self.code / 'shpakdnd.db'
         live_db.write_bytes(b'LIVE_APP_DATABASE_MUST_NOT_BE_OPENED')
         before = {f: (self.code / f).read_bytes() for f in ('.env', 'shpakdnd.db')}

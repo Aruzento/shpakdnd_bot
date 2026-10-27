@@ -696,7 +696,7 @@ class RaidMechanicIntegration(RaidFixture, MiniCase):
         self.assertEqual(first["actual_hp_damage"], 0)
         self.assertTrue(first["state"]["counter_active"])
         self.assertIsNone(first["egg"])
-        self.assertEqual(first["attempts_left"], 9)
+        self.assertEqual(first["attempts_left"], 4)
         self.assertEqual(self.hit(raid["id"], "zero"), first)
         with self.assertRaisesRegex(ValueError, "сегодня"):
             self.hit(raid["id"], "another")
@@ -717,7 +717,7 @@ class RaidMechanicIntegration(RaidFixture, MiniCase):
             1,
         )
 
-    def test_ten_zero_attempts_limit_and_new_day_no_phase_reset(self):
+    def test_five_daily_zero_attempts_across_days_no_phase_reset(self):
         raid = self.start_raid(1)
         heroes = self.sql(
             "SELECT * FROM mini_heroes WHERE rarity IN ('common','uncommon','rare','legendary') ORDER BY id LIMIT 11"
@@ -732,14 +732,14 @@ class RaidMechanicIntegration(RaidFixture, MiniCase):
                 (h["id"],),
             )
         for i, h in enumerate(heroes[:10]):
-            result = self.hit(raid["id"], f"zero-{i}", hero=h)
+            result = self.hit(raid["id"], f"zero-{i}", hero=h, now=100 if i<5 else 86500)
             self.assertEqual(result["actual_hp_damage"], 0)
-        with self.assertRaisesRegex(ValueError, "десяти"):
-            self.hit(raid["id"], "eleven", hero=heroes[10])
-        result = self.hit(raid["id"], "tomorrow", hero=heroes[0], now=86500)
+        with self.assertRaisesRegex(ValueError, "пяти"):
+            self.hit(raid["id"], "eleven", hero=heroes[10], now=86500)
+        result = self.hit(raid["id"], "tomorrow", hero=heroes[0], now=172900)
         self.assertEqual(result["mechanic"]["attack_number"], 11)
         self.assertEqual(result["mechanic"]["features_used"], ["flying"])
-        self.assertEqual(result["attempts_left"], 9)
+        self.assertEqual(result["attempts_left"], 4)
 
     def test_heal_325_is_not_negative_damage_and_repeat_never_heals_twice(self):
         raid = self.start_raid(2)
