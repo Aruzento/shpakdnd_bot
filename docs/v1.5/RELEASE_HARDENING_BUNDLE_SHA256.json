@@ -15,6 +15,5 @@
   "tools/release_preflight_checks.py": "bad33fc3b15fc8a24c3489e47442a186a5ed0ac9606226cc625716ac0b559296",
   "tools/validate_deploy_bundle.py": "5425ca1fd038462409eeeb965a58fec255f67963a1326f4be14690b443e347f7",
   "tools/validate_release_content.py": "01128f53b707e2d92a87471262b3783a7a77da15c5d7320fe141ec4aac2749a8",
-  "tools/validate_release_hardening.py": "7178ea7edd196fc2dc2c5d3c54a68e8d99f7fca08d893b2fba67a0b1cbefeabe",
-  "tests/v1_5/test_staging_acceptance.py": "da969e74ab36302fd1a7fd40576a5b6e328c9f4053be8b8afd389dd8e141208e"
+  "tools/validate_release_hardening.py": "7178ea7edd196fc2dc2c5d3c54a68e8d99f7fca08d893b2fba67a0b1cbefeabe"
 }

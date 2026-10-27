@@ -377,3 +377,16 @@ class TelegramWave2(MiniCase, unittest.IsolatedAsyncioTestCase):
             read.assert_called_once_with(self.pid)
             photo.assert_awaited_once()
             self.assertTrue(photo.call_args.kwargs["cache_image"])
+
+
+class MigrationFeedbackContract(unittest.TestCase):
+    def test_only_exact_empty_feedback_tables_are_permitted(self):
+        from tools.validate_dnd_shop_release import new_shop_tables
+        columns=['user_id','story_code','ending_id','session_id','earned_at']
+        self.assertIn('story_achievements',new_shop_tables({}, {'story_achievements':(columns,[])}))
+        with self.assertRaisesRegex(AssertionError,'Unexpected new tables'):
+            new_shop_tables({}, {'story_unknown':([],[])})
+        with self.assertRaisesRegex(AssertionError,'Unexpected feedback columns'):
+            new_shop_tables({}, {'story_achievements':(columns+['wallet'],[])})
+        with self.assertRaisesRegex(AssertionError,'Unexpected new shop data'):
+            new_shop_tables({}, {'story_achievements':(columns,[(1,'s','e',1,1)])})

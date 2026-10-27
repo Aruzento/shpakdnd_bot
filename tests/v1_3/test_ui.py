@@ -60,7 +60,11 @@ class UIContractTests(unittest.IsolatedAsyncioTestCase):
     def test_launcher_has_tower_and_equipment(self):
         buttons=[b for action in ('adventures','heroarea') for row in submenu(action,1,20)[1].inline_keyboard for b in row]
         self.assertIn('Башня испытаний',[b.text for b in buttons])
-        self.assertIn('🛡 Экипировка',[b.text for b in buttons])
+        self.assertIn('🎒 Инвентарь',[b.text for b in buttons])
+        from app.mini.ui.inventory import _inventory_menu
+        inventory=_inventory_menu(1,20,dict(inventory=[],certificates=[]))
+        equipment=next(b for row in inventory.inline_keyboard for b in row if b.text=='🛡 Экипировка в инвентаре')
+        self.assertTrue(equipment.callback_data.startswith('mini:equipment:1:20:'))
 
 
 class UIScreenTests(MiniCase):
