@@ -425,6 +425,31 @@ class ExactSHAIsolation(unittest.TestCase):
         (self.project/".env").write_bytes(original)
         preflight.verify(self.args)
 
+    def test_offline_hook_without_private_socketpair_still_denies_live_resources(self):
+        # Python 3.11.2 on Debian lacks this private socket attribute. Reproduce
+        # the absence on every runner rather than relying on its Python patch.
+        from scripts.run_isolated_checks import HOOK
+        (self.project/"shpakdnd.db").write_bytes(b"sentinel DB")
+        (self.project/".env").write_text("SECRET=sentinel")
+        code = """import os,socket,sqlite3
+from pathlib import Path
+if hasattr(socket,'_fallback_socketpair'): del socket._fallback_socketpair
+exec(HOOK)
+root=Path(os.environ['DND_CHECK_DENY_PROJECT'])
+for op in (lambda:(root/'.env').read_bytes(),lambda:(root/'shpakdnd.db').read_bytes(),lambda:sqlite3.connect(root/'shpakdnd.db'),lambda:socket.create_connection(('127.0.0.1',1))):
+ try: op()
+ except PermissionError: pass
+ else: raise AssertionError('live resource accessible without private fallback')
+print('ABSENT_PRIVATE_SOCKETPAIR_BOUNDARY_PASS')
+"""
+        env=preflight.safe_environment(self.project,self.stories)
+        result=subprocess.run([sys.executable,"-c","HOOK="+repr(HOOK)+"\n"+code],
+                              cwd=ROOT,env=env,stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT,text=True,encoding="utf-8")
+        self.assertEqual(result.returncode,0,result.stdout)
+        self.assertIn("ABSENT_PRIVATE_SOCKETPAIR_BOUNDARY_PASS",result.stdout)
+        self.assertEqual((self.project/"shpakdnd.db").read_bytes(),b"sentinel DB")
+
     def test_workspace_environment_denies_tokens_live_sqlite_and_network(self):
         with patch.dict(os.environ,BOT_TOKEN="REAL_TOKEN",OTHER_SECRET="REAL_SECRET"):
             env=preflight.safe_environment(self.project,self.stories)

@@ -33,7 +33,10 @@ sys.meta_path.insert(0,ConfigFinder())
 if os.environ.get('DND_CHECK_DENY_PROJECT'):
  forbidden=Path(os.environ['DND_CHECK_DENY_PROJECT']).resolve()
  import socket
- socketpair_code=socket._fallback_socketpair.__code__
+ # Older Linux Python has no private Windows socketpair fallback. Resolve it
+ # only on Windows; its absence must never abort installation of the hook.
+ socketpair_impl=getattr(socket,'_fallback_socketpair',socket.socketpair) if os.name=='nt' else None
+ socketpair_code=getattr(socketpair_impl,'__code__',None)
  def offline_audit(event,args):
   if event in ('open','sqlite3.connect') and args and isinstance(args[0],(str,bytes,os.PathLike)):
    raw=os.fsdecode(args[0])
