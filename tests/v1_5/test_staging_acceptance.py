@@ -422,6 +422,22 @@ print('BOT_IMPORT_SCOPES_PASS_NO_POLLING')
         self.assertIn('--label staging-story --', current)
         external = self.root / 'empty-external-stories'
         external.mkdir()
-        proc = subprocess.run([sys.executable, 'scripts/run_isolated_checks.py', '--label', 'staging-negative-story', '--', 'tools/validate_release_content.py', '--directory', str(external)], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', timeout=25)
+        # The deployed APP_SHA retains the older launcher. Follow the documented
+        # final TOOLING checkout, with APP resources denied, on every platform.
+        self.assertEqual(current.count('"$TOOLS/scripts/run_isolated_checks.py"'), 3)
+        self.assertNotIn('.venv/bin/python scripts/run_isolated_checks.py', current)
+        self.assertIn('DND_CHECK_DENY_PROJECT="$CODE" DND_CHECK_OFFLINE=1', current)
+        tooling = self.root / 'reviewed-tooling'
+        subprocess.run(['git', 'clone', '--shared', '--no-checkout', str(ROOT), str(tooling)], check=True, capture_output=True)
+        head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        subprocess.run(['git', '-C', str(tooling), 'checkout', '--detach', head], check=True, capture_output=True)
+        self.assertEqual(subprocess.check_output(['git', '-C', str(tooling), 'rev-parse', 'HEAD:app'], text=True).strip(),
+                         self.git('rev-parse', 'HEAD:app'))
+        live_db = self.code / 'shpakdnd.db'
+        live_db.write_bytes(b'LIVE_APP_DATABASE_MUST_NOT_BE_OPENED')
+        before = {f: (self.code / f).read_bytes() for f in ('.env', 'shpakdnd.db')}
+        env = dict(os.environ, DND_CHECK_DENY_PROJECT=str(self.code), DND_CHECK_OFFLINE='1')
+        proc = subprocess.run([sys.executable, str(tooling / 'scripts/run_isolated_checks.py'), '--label', 'staging-negative-story', '--', 'tools/validate_release_content.py', '--directory', str(external)], cwd=self.code, env=env, capture_output=True, text=True, encoding='utf-8', timeout=25)
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         self.assertIn('BLOCKED', proc.stdout)
+        self.assertEqual(before, {f: (self.code / f).read_bytes() for f in before})

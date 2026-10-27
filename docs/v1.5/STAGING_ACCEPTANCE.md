@@ -227,15 +227,56 @@ Root свежий collector output → config/test-inventory.json 440; непо�
 Инструменты устанавливаются отдельно, candidate checkout остаётся чистым APP_SHA.
 
 ```bash
-# Из CODE, от shpak-stage, с чистым окружением и HOME под STAGE; .env читается адаптером.
-.venv/bin/python /srv/shpakdnd-v15-staging/config/staging-launch.py --verify
-.venv/bin/python scripts/run_isolated_checks.py --label staging-story -- \
-  tools/validate_release_content.py --directory /srv/shpakdnd-v15-staging/stories
-.venv/bin/python scripts/run_isolated_checks.py --label staging-offline -- tools/check_v15.py
-.venv/bin/python scripts/run_isolated_checks.py --label staging-tests -- -m unittest discover -s tests -q
-.venv/bin/python /srv/shpakdnd-v15-staging/config/staging-launch.py --check
+set -euo pipefail
+# Root, после инвентаризации. TOOLING_SHA взять из окончательного отчёта, не из HEAD ветки.
+: "${TOOLING_SHA:?Set the reviewed final tooling SHA}"
+[ "${#TOOLING_SHA}" -eq 40 ] || exit 1
+case "$TOOLING_SHA" in *[!0-9a-f]*) exit 1 ;; esac
+STAGE=/srv/shpakdnd-v15-staging
+CODE="$STAGE/code"
+TOOLS="$STAGE/tooling"
+# Не менять checkout, пока в нём работает preflight. Существующую копию сначала проверить.
+[ ! -L "$TOOLS" ] || exit 1
+if [ ! -e "$TOOLS" ]; then
+  install -d -o shpak-stage -g shpak-stage -m 750 "$TOOLS"
+  runuser -u shpak-stage -- git clone --no-checkout https://github.com/Aruzento/shpakdnd_bot.git "$TOOLS"
+fi
+[ -d "$TOOLS/.git" ] || exit 1
+# Tooling checkout не должен содержать рабочую конфигурацию или SQLite.
+for name in .env shpakdnd.db timers.db; do
+  [ ! -e "$TOOLS/$name" ] && [ ! -L "$TOOLS/$name" ] || exit 1
+done
+[ -z "$(runuser -u shpak-stage -- git --no-optional-locks -C "$TOOLS" status --porcelain)" ] || exit 1
+runuser -u shpak-stage -- git -C "$TOOLS" fetch origin "$TOOLING_SHA"
+runuser -u shpak-stage -- git -C "$TOOLS" checkout --detach "$TOOLING_SHA"
+test "$(runuser -u shpak-stage -- git -C "$TOOLS" rev-parse HEAD)" = "$TOOLING_SHA"
+test "$(runuser -u shpak-stage -- git -C "$TOOLS" rev-parse HEAD:app)" = \
+  "$(runuser -u shpak-stage -- git -C "$CODE" rev-parse HEAD:app)"
+cd "$CODE"
+runuser -u shpak-stage -- env -i PATH=/usr/bin:/bin HOME="$STAGE" \
+  "$CODE/.venv/bin/python" "$STAGE/config/staging-launch.py" --verify
+# OFFLINE_TOOLING_CHECKS: абсолютный путь launcher выбирает TOOLING, его child cwd тоже TOOLING.
+runuser -u shpak-stage -- env -i PATH=/usr/bin:/bin HOME="$STAGE" \
+  DND_CHECK_DENY_PROJECT="$CODE" DND_CHECK_OFFLINE=1 \
+  "$CODE/.venv/bin/python" "$TOOLS/scripts/run_isolated_checks.py" --label staging-story -- \
+  tools/validate_release_content.py --directory "$STAGE/stories"
+runuser -u shpak-stage -- env -i PATH=/usr/bin:/bin HOME="$STAGE" \
+  DND_CHECK_DENY_PROJECT="$CODE" DND_CHECK_OFFLINE=1 \
+  "$CODE/.venv/bin/python" "$TOOLS/scripts/run_isolated_checks.py" --label staging-offline -- tools/check_v15.py
+runuser -u shpak-stage -- env -i PATH=/usr/bin:/bin HOME="$STAGE" \
+  DND_CHECK_DENY_PROJECT="$CODE" DND_CHECK_OFFLINE=1 \
+  "$CODE/.venv/bin/python" "$TOOLS/scripts/run_isolated_checks.py" --label staging-tests -- -m unittest discover -s tests -q
+runuser -u shpak-stage -- env -i PATH=/usr/bin:/bin HOME="$STAGE" \
+  "$CODE/.venv/bin/python" "$STAGE/config/staging-launch.py" --check
 # Свежий inventory обновлять между долгими проверками; --check повторить ещё дважды.
 ```
+
+Офлайн-команды запускают **финальный TOOLING_SHA**, не старый launcher/tests из APP_SHA.
+Это существенно на Python 3.11.2: старый audit hook обращался к отсутствующему приватному
+Windows API socket; исправление находится в TOOLING_SHA. APP_SHA не патчить, его .env/SQLite
+для offline-процессов запрещены, сеть отключена. Только adapter --check открывает новую
+TEST SQLite. Деревья app у двух checkout должны совпадать; source TOOLING не содержит .env.
+
 
 Story PASS0 / missing BLOCKED2 / invalid FAIL1. Никакой публикации на сервер production.
 После --check проверить только новую DB: integrity=ok, FK=[], 79 total/78 active,
