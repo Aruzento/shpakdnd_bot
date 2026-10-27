@@ -1,128 +1,290 @@
-# D&D Mini V1.5 — отдельная приёмка Telegram staging
+# D&D Mini V1.5 — приёмка существующего TEST VM-338333
 
-**ПЛАН, НЕ ВЫПОЛНЕНО. В разработке.** Требуется отдельное разрешение владельца.
-Кандидат: полный SHA из финального отчёта Draft PR #8; записать его в `candidate.txt`
-и протокол каждого прогона. Команда ниже проверяет именно это значение, а не branch tip.
-Проверки Windows/Linux не означают, что живой стенд пройден. Main/production не менять.
+**В разработке. План и инструменты подготовки; игровые кейсы ниже ещё не пройдены.**
+Владелец 27.10.2026 разрешил замену TEST, остановку прежнего тестового бота и удаление
+только доказанно устаревших TEST-копий после успешного запуска новой версии.
+Production, main и production rollback исключены. PR #8 остаётся Draft.
 
-## Предварительные блокеры и изоляция
+## Два точных SHA и границы работ
 
-- Независимое повторное ревью P2-01/P2-02 и всех изменений PR, зелёные обе Linux jobs
-  именно SHA кандидата. Пакет доказательств: логи, exit codes/skips, timing, manifest.
-- Владелец отдельно предоставляет staging token нового bot, два тестовых аккаунта,
-  admin username, ID **новой частной группы** и её Mini/D&D тем. Bot не добавлять в
-  production группы. Ввод token приватный, не в shell history/Git/PR/логи.
-- Отдельная VM/пользователь `shpak-stage`, без доступа к production host, SSH keys,
-  SQLite, каталогам, токену и systemd units. Желательно отдельный хост, а не соседняя VM
-  с общими mount. Исходящие Telegram разрешать только после проверки token/getMe.
-- `/srv/shpakdnd-v15-staging/code`, собственные `.venv`, `.env`, `shpakdnd.db`,
-  `timers.db`, logs и backup. В приложении DB_PATH вычисляется относительно checkout,
-  поэтому отдельный checkout обязателен: одного env DB_PATH недостаточно.
-- Внешний `/srv/shpakdnd-v15-staging/stories`, вне Git. Обязательный
-  `tayna_propavshey_ovtsy.json`, SHA-256
-  `f185595d8c89fc1644e331a4ff1ae34c6df61920b4a69c9948654cd60903cce2`.
-  Только копия утверждённого unpublished JSON, не шаблон и не production STORIES_DIR.
-- Shop/loot/code-map/offers CSV, editorial runtime и каждый иной writable path — только
-  staging paths. Проверить все default `/var/lib/shpakdnd` и Telegram scopes перед start.
-- Production SQLite copy владельца — только отдельный offline migration sandbox,
-  **никогда не база polling-стенда**: таймеры/публикации копии могут содержать реальные
-  chat IDs и outbox. На живом стенде только синтетические тестовые игроки/балансы.
-- В этой итерации не меняются Moon text, контрпик actual=0, экономика и вероятности.
+- **Приложение TEST:** `d795df06207d3f6927dee3378be7cf02fc25b93e` (APP_SHA).
+- **Инструменты/инструкции:** TOOLING_SHA из окончательного отчёта этой итерации.
+  Не подменять APP_SHA непроверенным HEAD. В APP_SHA нет нового launcher: извлекать
+  его отдельно из TOOLING_SHA, сверять Git blob/SHA-256 и хранить root-owned вне checkout.
+- Игровой `app` tree: `64823c903daa7e3cea5d12613f364da67f630a54`.
+  Каталоги/экономика/PNG/авторские JSON не изменяются.
+- 79 героев **всего**, 78 `active=1`: `panic_dungeon_engineer` из прежнего каталога
+  намеренно `active=0`. Не исправлять данные ради ожидания «79 active».
+- Подтверждено владельцем: legacy бои используют frozen 14400 секунд; новые V1.5 —
+  900 секунд. Условные замечания об ожидании 4 часов в сохранённых сценариях B2 ниже
+  закрыты этим решением; механика не меняется.
 
-## Команды подготовки — выполнять позже, после разрешения
+## Сведения владельца и обязательная свежая проверка
+
+VM-338333, 88.214.54.194, root SSH с паролем. Автоматический ключ ранее отклонён;
+это не подтверждает доступ к содержимому сервера. Пароль не запрашивать/не записывать,
+пользователей и ключи не подбирать. Однократная установка публичного ключа выполняется
+владельцем вручную; после работ временный доступ удалить отдельно.
+
+Владелец сообщил: активен `shpakdnd-bot.service`, WorkingDirectory
+`/opt/shpakdnd-v144-stage`, detached SHA `94669086821fcb41c8349748a30724e24f88d893`,
+изменён `app/topics.py`. SQLite `.../shpakdnd.db` — **symlink** на
+`/opt/shpakdnd-bot/shpakdnd.db`. В `/opt/shpakdnd-bot` есть другие локальные изменения.
+Сохранённый конфиг `/etc/shpakdnd-staging/topics.py`, watcher disabled/inactive.
+Эти сведения сверить заново: несовпадение означает STOP до выяснения назначения.
+
+### Шаг 1 — read-only, до изменения сервера
+
+В root-сессии, без вывода env/token/unit Environment/ExecStart в общий лог:
 
 ```bash
-# В отдельной VM. CANDIDATE переписать из финального отчёта, проверить все 40 hex.
-CANDIDATE='<FINAL_SHA_FROM_REVIEWED_REPORT>'
+set -euo pipefail
+[ "$(hostname)" = VM-338333 ] && [ "$(id -u)" = 0 ] || exit 1
+systemctl show shpakdnd-bot.service -p ActiveState -p SubState -p MainPID \
+  -p User -p WorkingDirectory -p FragmentPath -p Triggers -p PartOf -p Requires
+systemctl list-units --all --no-pager 'shpakdnd*'
+systemctl list-unit-files --no-pager 'shpakdnd*'
+readlink -- /opt/shpakdnd-v144-stage/shpakdnd.db
+readlink -f -- /opt/shpakdnd-v144-stage/shpakdnd.db
+for d in /opt/shpakdnd-v144-stage /opt/shpakdnd-bot; do
+  test -d "$d" && test ! -L "$d" || exit 1
+  git --no-optional-locks -C "$d" rev-parse HEAD
+  git --no-optional-locks -C "$d" status --short --untracked-files=no
+done
+# Просматривать unit, env и полный список файлов приватно: возможны секреты.
+# Не применять git reset/clean и не выполнять deploy-shpakdnd.
+```
+
+Из проверенного TOOLING_SHA извлечь `deploy/staging_inventory.py` во временный
+root-only каталог; сверить байты с Git и SHA-256. Запустить через существующий TEST
+Python с python-dotenv, сохранить stdout в private JSON. Сборщик проверяет hostname,
+unit/EnvironmentFiles без вывода секретов, единственный polling, точные scopes,
+локальные/saved topics и известный legacy symlink. **SQLite не открывает**.
+Любая ошибка — exit 2, не «условный PASS».
+
+Дополнительно приватно проверить все процессы Python, unit/drop-in и контейнеры,
+планировщики, watcher; сборщик распознаёт именованные bot.py/staging-launch.py,
+но не доказывает отсутствие произвольного `python -c`, контейнера или remote polling.
+Нельзя запускать новый бот до сверки getMe именно существующего TEST-токена,
+отсутствия production bot ID и участия этого бота только в тестовых группах.
+getUpdates для проверки не вызывать: он конкурирует с polling. Проверить webhook
+через getWebhookInfo без изменения состояния. Не печатать URL API с token.
+
+Подтверждаемые TEST scopes: Mini `-1003883723333/2`, D&D `-5320347021/0`.
+Запрещены production chats `-1003376315265`, `694384548` и любые неизвестные scopes.
+Сохранить приватно текущие .env, unit/drop-ins, локальный topics.py, saved topics.py,
+CSV/editorial настройки и git diff; права 600/700, hashes в публичный отчёт без секретов.
+Наличие файла в /opt само по себе не доказывает принадлежность TEST.
+
+### Шаг 2 — один консистентный backup TEST SQLite
+
+После проверки, что разрешённый источник — именно TEST DB, сделать **один** SQLite
+online backup до остановки бота. Не `cp` файла при работающем WAL и не копировать
+только symlink. В root-only каталоге backup сохранить snapshot, SHA-256, время начала
+и конца, resolved source, integrity=ok и FK=[]. Никогда не затрагивать production.
+Пример после проверки путей и свободного места:
+
+```bash
+BACKUP=/var/backups/shpakdnd-test-v15
+[ "$(readlink -f /var/backups)" = /var/backups ] && [ ! -L "$BACKUP" ] || exit 1
+install -d -m 700 -o root -g root "$BACKUP"
+# Переменная TEST_BACKUP — новый уникальный путь, не существующий файл.
+export TEST_BACKUP="$BACKUP/test-before-v15-$(date -u +%Y%m%dT%H%M%SZ).db"
+python3 - <<'PY'
+import os, sqlite3
+from contextlib import closing
+from pathlib import Path
+source = Path('/opt/shpakdnd-v144-stage/shpakdnd.db')
+expected = Path('/opt/shpakdnd-bot/shpakdnd.db')
+if source.resolve(strict=True) != expected or expected.is_symlink():
+    raise SystemExit('BLOCKED_DB_SOURCE')
+target = Path(os.environ['TEST_BACKUP'])
+if target.parent != Path('/var/backups/shpakdnd-test-v15') or target.exists() or target.is_symlink():
+    raise SystemExit('BLOCKED_BACKUP_PATH')
+fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600); os.close(fd)
+try:
+    with closing(sqlite3.connect(expected.as_uri() + '?mode=ro', uri=True)) as src:
+        with closing(sqlite3.connect(target)) as dst:
+            src.backup(dst, pages=256, sleep=0.05)
+            if dst.execute('PRAGMA integrity_check').fetchall() != [('ok',)] or dst.execute('PRAGMA foreign_key_check').fetchall():
+                raise RuntimeError('BLOCKED_BACKUP_INTEGRITY')
+except Exception:
+    print('BACKUP_FAILED_KEEP_FOR_DIAGNOSIS')
+    raise
+print('BACKUP_INTEGRITY_OK_FK_EMPTY')
+PY
+sha256sum -- "$TEST_BACKUP"
+```
+
+Старый бот может сделать тестовые ходы после snapshot и до stop: зафиксировать cutoff,
+последующие изменения остаются в **нетронутой старой DB**, не переносить их в новую.
+При ошибке backup не останавливать текущий TEST. Это не backup production copy.
+
+## Подготовка чистого checkout до остановки старого TEST
+
+Команды root после проверки hostname. Не использовать глобальный production installer.
+Не продолжать при уже существующем STAGE: сначала инвентаризация, а не rm -rf.
+Пользователь shpak-stage должен быть отдельным системным пользователем без доступа
+к старым секретам/DB; если уже существует, сверить uid/groups/home/shell, не менять слепо.
+
+```bash
+APP_SHA=d795df06207d3f6927dee3378be7cf02fc25b93e
 STAGE=/srv/shpakdnd-v15-staging
 CODE="$STAGE/code"
-git clone --no-checkout https://github.com/Aruzento/shpakdnd_bot.git "$CODE"
-git -C "$CODE" checkout --detach "$CANDIDATE"
-test "$(git -C "$CODE" rev-parse HEAD)" = "$CANDIDATE"
-test -z "$(git -C "$CODE" status --porcelain)"
-printf '%s\n' "$CANDIDATE" > "$STAGE/candidate.txt"
-python3 -m venv "$CODE/.venv"
-"$CODE/.venv/bin/python" -m pip install -r "$CODE/requirements.txt"
-mkdir -p "$STAGE/stories" "$STAGE/logs" "$STAGE/backups" "$STAGE/runtime"
-install -m 444 "$CODE/content/stories/unpublished/tayna_propavshey_ovtsy/tayna_propavshey_ovtsy.json" "$STAGE/stories/tayna_propavshey_ovtsy.json"
+[ "$(hostname)" = VM-338333 ] && [ "$(id -u)" = 0 ] || exit 1
+# Если отсутствует: useradd --system --home-dir "$STAGE" --shell /usr/sbin/nologin shpak-stage
+id shpak-stage
+[ "$(readlink -f /srv)" = /srv ] || exit 1
+[ ! -e "$STAGE" ] && [ ! -L "$STAGE" ] || exit 1
+install -d -o root -g shpak-stage -m 750 "$STAGE"
+install -d -o root -g shpak-stage -m 750 "$STAGE/config" "$STAGE/locks"
+install -d -o shpak-stage -g shpak-stage -m 750 "$CODE" "$STAGE/logs" "$STAGE/runtime" "$STAGE/runtime/editorial"
+install -d -o root -g shpak-stage -m 750 "$STAGE/stories"
+# Каталоги существуют ДО clone; code пуст и доступен непривилегированному пользователю.
+runuser -u shpak-stage -- git clone --no-checkout https://github.com/Aruzento/shpakdnd_bot.git "$CODE"
+runuser -u shpak-stage -- git -C "$CODE" checkout --detach "$APP_SHA"
+test "$(git -c safe.directory="$CODE" -C "$CODE" rev-parse HEAD)" = "$APP_SHA"
+runuser -u shpak-stage -- python3 -m venv "$CODE/.venv"
+runuser -u shpak-stage -- "$CODE/.venv/bin/python" -m pip install -r "$CODE/requirements.txt"
+install -o root -g shpak-stage -m 440 "$CODE/content/stories/unpublished/tayna_propavshey_ovtsy/tayna_propavshey_ovtsy.json" "$STAGE/stories/tayna_propavshey_ovtsy.json"
 printf '%s  %s\n' f185595d8c89fc1644e331a4ff1ae34c6df61920b4a69c9948654cd60903cce2 "$STAGE/stories/tayna_propavshey_ovtsy.json" | sha256sum -c -
-# Через приватный редактор создать CODE/.env, chmod 600. Не копировать production env.
-# BOT_TOKEN=<STAGING_ONLY>; STORIES_DIR=/srv/shpakdnd-v15-staging/stories
-# DND_SHOP_CSV_PATH, DND_LOOT_CSV_PATH, DND_SHOP_CODE_MAP_PATH,
-# DND_SHOP_OFFERS_PATH — абсолютные отдельные пути внутри STAGE/runtime.
-cd "$CODE"
-.venv/bin/python scripts/run_isolated_checks.py --label staging-offline -- tools/check_v15.py
-.venv/bin/python scripts/run_isolated_checks.py --label staging-tests -- -m unittest discover -s tests -q
-.venv/bin/python tools/validate_release_content.py --directory "$STAGE/stories"
 ```
 
-Последняя команда должна PASS0; отсутствующий сценарий — BLOCKED2; неверный hash,
-невалидный/лишний JSON — FAIL1. Реальные Stories не публикуются этими offline checks.
-Сверить 45 PNG по `docs/v1.5/CONTENT_ASSET_SHA256.json`; 79 кодов (71+8), 4 raid,
-egg/young/adult связи, отсутствие дублей; сравнить manifest и каталоги с audited SHA.
+Скопировать **только проверенные TEST** настройки в новый приватный `.env` 600,
+owner shpak-stage. Тот же TEST BOT_TOKEN, BOT_TIMEZONE и ровно отдельные пути:
 
-### Telegram scopes — обязательный отдельный конфиг стенда
-
-`app/topics.py` содержит реальные scopes, env override для них отсутствует. Нельзя
-просто запустить bot.py с новым token и заявить изоляцию. До polling требуется отдельно
-просмотренный **внешний staging launcher**, заменяющий `app.topics.TOPIC_SETTINGS`
-до импорта handlers/worlds и запуска bot.py. Он не меняет tracked game files.
-Формат private `STAGE/runtime/topic-settings.json`: mapping новых chat IDs к новым
-thread IDs с `admin`, `characters` двух тестовых аккаунтов; Mini theme `mini=true`.
-Проверить совпадение нормализованных usernames с тестовыми Telegram аккаунтами.
-
-Подготовленный алгоритм внешнего launcher (пути подтвердить отдельно):
-
-```python
-# STAGE/runtime/staging-launch.py, root-reviewed, not writable by bot.
-import json, os, runpy, sys
-from pathlib import Path
-code = Path('/srv/shpakdnd-v15-staging/code').resolve(strict=True)
-assert Path.cwd().resolve() == code
-sys.path.insert(0, str(code))
-import app.topics as topics
-production_ids = set(topics.TOPIC_SETTINGS)
-path = Path('/srv/shpakdnd-v15-staging/runtime/topic-settings.json')
-raw = json.loads(path.read_text(encoding='utf-8'))
-settings = {int(chat): {int(thread): value for thread, value in entries.items()}
-            for chat, entries in raw.items()}
-assert settings and not (set(settings) & production_ids)
-assert all(value.get('admin') for entries in settings.values() for value in entries.values())
-topics.TOPIC_SETTINGS = settings
-# Тот же launcher использовать для check_bot.py и bot.py, не только для polling.
-runpy.run_path(str(code / ('check_bot.py' if '--check' in sys.argv else 'bot.py')),
-               run_name='__main__')
+```dotenv
+STORIES_DIR=/srv/shpakdnd-v15-staging/stories
+MINI_EDITORIAL_DIR=/srv/shpakdnd-v15-staging/runtime/editorial
+DND_SHOP_CSV_PATH=/srv/shpakdnd-v15-staging/runtime/shop.csv
+DND_LOOT_CSV_PATH=/srv/shpakdnd-v15-staging/runtime/loot.csv
+DND_SHOP_CODE_MAP_PATH=/srv/shpakdnd-v15-staging/runtime/loot_code_map.csv
+DND_SHOP_OFFERS_PATH=/srv/shpakdnd-v15-staging/runtime/shop_offers.csv
 ```
 
-Перед первым start: отдельно проверить private scope JSON, его hash, отсутствие bot
-в production-группах, token/getMe, все writable paths и settings без production IDs.
-Данный adapter требует review как часть конфигурации стенда; создание/запуск на VM
-в текущем задании не выполняется. Если изоляция scopes не доказана — STOP/BLOCKED.
+Никаких DB symlink/copy: `shpakdnd.db` и `timers.db` создаются непосредственно в CODE.
+Нельзя перенести outbox/таймеры/пользователей старой DB или production copy в gameplay TEST.
+CSV при необходимости копировать из проверенного TEST, проверять scopes через тот же
+внешний adapter, не выполнять publish из canonical production app.topics.
 
-### systemd и миграции стенда
+### Внешний launcher и preflight без polling
 
-Отдельный `shpakdnd-v15-staging.service`: User=shpak-stage,
-WorkingDirectory=STAGE/code, ExecStart=STAGE/code/.venv/bin/python
-STAGE/runtime/staging-launch.py; собственный EnvironmentFile=CODE/.env,
-Restart=on-failure, UMask=0077, NoNewPrivileges=true, ProtectSystem=strict,
-ReadWritePaths только STAGE/code (SQLite), STAGE/logs/backups/runtime.
-STORIES_DIR read-only. Защитить `.env` и runtime config; не использовать production
-watch.path/update.service и не устанавливать глобальный deploy bundle на стенде.
+Root извлекает из **проверенного TOOLING_SHA** `deploy/staging_launcher.py` и
+`deploy/staging_inventory.py`, сравнивает Git blob bytes/hash, устанавливает первый
+в `STAGE/config/staging-launch.py` 440 root:shpak-stage. Родители config/locks root-owned,
+не writable для бота; .env writable владельцу бота, но его SHA-256 привязан к root policy.
+Не заменять source `app/topics.py`. Launcher очищает/обновляет **тот же объект**
+TOPIC_SETTINGS до imports app.context/worlds/handlers; это проверено реальными imports
+bot.py и многократным check_bot.py на синтетическом checkout APP_SHA.
 
-До запуска polling выполнить внешний launcher `--check`, сохранить init/migration log,
-затем повторить дважды. На staging SQLite проверить integrity=ok, FK=[], отсутствие
-потери существующих synthetic rows, 79 active heroes, прежние balances/ownership.
-Отдельно на переданной **offline-копии**:
+Root-only просмотр старого topics через AST literal_eval (не exec) →
+`STAGE/config/topic-settings.json` 440 root:shpak-stage. JSON содержит исходные TEST
+chat/thread, admin/characters, mini и дополнительные известные поля; сохраняет имена.
+Точная allowlist исключает production. Сохранённый `/etc/.../topics.py` должен совпасть.
+
+Root policy `STAGE/config/policy.json` 440 содержит **ровно**:
+
+```json
+{
+  "schema_version": 1,
+  "mode": "replace_existing_test",
+  "candidate_sha": "d795df06207d3f6927dee3378be7cf02fc25b93e",
+  "tooling_sha": "<40_HEX_FROM_FINAL_REPORT>",
+  "env_sha256": "<SHA256_NEW_PRIVATE_ENV>",
+  "topics_sha256": "<SHA256_PRIVATE_TOPIC_JSON>",
+  "launcher_sha256": "<SHA256_REVIEWED_EXTERNAL_LAUNCHER>",
+  "expected_bot_id": 0,
+  "allowed_scopes": [[-1003883723333, 2], [-5320347021, 0]]
+}
+```
+
+`expected_bot_id` заменить числовым ID реального TEST getMe, сверить с префиксом
+токена/инвентаризацией. Не использовать 0 и не записывать token в policy.
+Root свежий collector output → config/test-inventory.json 440; неполный/старше 300s
+протокол блокирует --verify/--check. Ошибка helper/hash/непроверенный SHA/грязный code,
+неверный hostname/path/token/scope/симлинк → exit2 до SQLite/Telegram.
+Инструменты устанавливаются отдельно, candidate checkout остаётся чистым APP_SHA.
 
 ```bash
-.venv/bin/python scripts/run_isolated_checks.py --label provided-copy -- tools/validate_v15_migration.py --source '<OWNER_OFFLINE_COPY>' --output '<PRIVATE_REPORT>'
-# sha256sum source до/после одинаков; source не становится DB_PATH стенда.
+# Из CODE, от shpak-stage, с чистым окружением и HOME под STAGE; .env читается адаптером.
+.venv/bin/python /srv/shpakdnd-v15-staging/config/staging-launch.py --verify
+.venv/bin/python scripts/run_isolated_checks.py --label staging-story -- \
+  tools/validate_release_content.py --directory /srv/shpakdnd-v15-staging/stories
+.venv/bin/python scripts/run_isolated_checks.py --label staging-offline -- tools/check_v15.py
+.venv/bin/python scripts/run_isolated_checks.py --label staging-tests -- -m unittest discover -s tests -q
+.venv/bin/python /srv/shpakdnd-v15-staging/config/staging-launch.py --check
+# Свежий inventory обновлять между долгими проверками; --check повторить ещё дважды.
 ```
 
-Проверить start/stop только staging unit, PID/restart-count, startup exceptions,
-`journalctl -u shpakdnd-v15-staging.service`, отсутствие restart loop и production units
-в `systemctl show ... Triggers/PartOf/Requires`. Polling не запускать дважды одним token.
-Отдельный manual start — только после разрешения, PASS offline и проверки private config.
+Story PASS0 / missing BLOCKED2 / invalid FAIL1. Никакой публикации на сервер production.
+После --check проверить только новую DB: integrity=ok, FK=[], 79 total/78 active,
+четыре raid каталога и Mini world только -1003883723333/2, синтетические игроки ещё пусты.
+Сверить все 45 PNG с CONTENT_ASSET_SHA256.json; app tree и авторский Story hash неизменны.
+Полные проверки финального TOOLING_SHA отдельно, на своих одноразовых SQLite, обе Linux
+3.11/3.13 jobs; baseline результаты не считаются результатом нового SHA.
+
+## Переключение TEST и единственность polling
+
+После PASS preflight и backup сохранить текущий unit/drop-ins приватно. Подготовить
+**отдельный** `shpakdnd-v15-staging.service` disabled, не запускать параллельно старому.
+User/Group=shpak-stage, WorkingDirectory=STAGE/code,
+ExecStart=STAGE/code/.venv/bin/python STAGE/config/staging-launch.py --poll,
+EnvironmentFile отсутствует (adapter читает hash-bound .env), UMask=0077,
+Restart=no на период приёмки, KillMode=control-group, NoNewPrivileges=true,
+ProtectSystem=strict, ProtectHome=true, ReadWritePaths только CODE/logs/runtime/locks.
+Config/Stories read-only. locks root-owned 750; заранее создать файл
+`locks/polling-<TEST_BOT_ID>.lock` root:shpak-stage 660, не symlink/hardlink.
+Проверить systemd-analyze verify и Triggers/Requires/PartOf: без production units,
+без watcher и автоперезапуска прежнего TEST. Не устанавливать deploy bundle.
+
+1. Остановить **только** старый `shpakdnd-bot.service`. Проверить inactive/MainPID=0,
+   все его cgroup-процессы завершены, watcher inactive, containers/cron не poll тот же token.
+2. Свежий root inventory старого TEST (теперь inactive/0/no processes) →
+   config/test-inventory.json 440. Старые DB/topics/env оставлять на месте для отката.
+3. Из внешнего launcher validate вычислить fingerprint policy/env/topics/inventory;
+   root записывает start-approval.json 440 с ровно approved_at (UTC epoch int),
+   candidate_sha, fingerprint, polling_approved=true, bot_id. Срок approval 60 секунд;
+   fingerprint брать из реально проверенных файлов, не из примера.
+   Пример формирования approval: запустить из CODE от shpak-stage
+   `env -i PATH=/usr/bin:/bin HOME="$STAGE" "$CODE/.venv/bin/python" "$STAGE/config/staging-launch.py" --describe`,
+   сохранить stdout приватно. Root парсит JSON, требует stopped=true, добавляет
+   approved_at=int(time.time()), polling_approved=true, удаляет поле stopped;
+   пишет новый временный root:shpak-stage 440 файл в config и os.replace на
+   start-approval.json. Не использовать shell eval и не публиковать конфиг.
+4. В пределах 60s start **только** shpakdnd-v15-staging.service. --poll дополнительно
+   проверяет stopped inventory, живой /proc и эксклюзивный per-bot flock. Неизвестный
+   процесс/permission denied/второй запуск блокирует start. --verify/--check не запускают poll.
+5. Проверить active/substate/MainPID/NRestarts и private journal: нет 409/Conflict,
+   startup exception, production scopes, повторной доставки uncertain. Проверить Mini/D&D
+   меню из двух TEST scopes, регистрацию/админа, scopes в новой SQLite и restart persistence.
+6. Для restart остановить НОВЫЙ unit, повторить stopped legacy inventory/approval и
+   start; прежняя новая DB остаётся физическим файлом, не пересоздаётся.
+
+60-секундное разрешение и Restart=no намеренно требуют свежей root-проверки после crash;
+это ограничение приёмочного стенда, не обещание unattended restart. Не ослаблять guard,
+не выдавать долгоживущий approval ради systemd restart loop.
+
+### Точный план очистки и возврата старого TEST
+
+До успешного нового start **ничего не удалять**. `/opt/shpakdnd-v144-stage` сохранить
+как выключенный старый checkout с локальным topics и symlink; `/opt/shpakdnd-bot`
+сохранить полностью: это target старой DB и каталог с неклассифицированными изменениями.
+Сохранить `/etc/shpakdnd-staging`, старый unit/drop-ins и один проверенный DB backup.
+После успешного запуска составить список **конкретных** лишних TEST-копий с realpath,
+назначением, владельцем, SHA, localdiff, service/process references и наличием нужных
+настроек в backup. Удалять только утверждённые доказанно лишние пути; при сомнении оставить.
+Этот план пока содержит **ноль путей к удалению**: свежая серверная инвентаризация нужна
+для доказательства, запрещена автоматическая очистка /opt по маске.
+
+Если новая версия не стартовала: stop новый unit, сохранить логи/новую DB, убедиться,
+что новый polling завершён, проверить неизменность/совместимость старой DB и unit,
+затем стартовать прежний TEST на **его нетронутой DB**. Не подавать V15 SQLite старому коду,
+не восстанавливать backup поверх продолжающегося нового сеанса. После новых тестовых
+ходов возврат — отдельный checkpoint и frozen compatibility guard на копии.
+Временный SSH ключ удалить после работ; полный authorized_keys не заменять.
+
+Реальные B/M/R/T/S/E отмечать NOT RUN до UI+SQLite evidence. Восстановление R0 ниже
+относится только к новой TEST SQLite; прежние symlink DB и production copy исключены.
 
 ## Правила протокола и SQL-доказательств
 
