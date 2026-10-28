@@ -1,5 +1,9 @@
 # V1.5: атомарная установка bundle и стабилизация Linux CI
 
+Актуальный capability/guard пакет PR #9 и порядок установки/возврата комплекта:
+[ROLLBACK_COMPATIBILITY_FEEDBACK.md](ROLLBACK_COMPATIBILITY_FEEDBACK.md).
+Далее сохранено историческое свидетельство предыдущей installer/CI итерации.
+
 Статус: **В разработке; кандидат на независимое ревью перед отдельным стендом**.
 Реальный installer, deployment, rollback, systemd и Telegram не запускались.
 Исходный аудит: `fc1c65a6bd7a9dd7a9bbd9f23ae71ad0849bc1fd`.

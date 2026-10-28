@@ -1,4 +1,16 @@
-# V1.5 release hardening — 26.10.2026
+# V1.5 release hardening
+
+Текущая задача PR #9: [capability feedback / безопасный rollback](ROLLBACK_COMPATIBILITY_FEEDBACK.md).
+Игровой кандидат 046f7dc / app tree cb678fe9f0978bb115a12e27c56a7160d0c94e4c;
+capability v15-feedback-ui-stories. Финальный tooling SHA/CI — в отчёте PR #9.
+Main, production, SQLite, Stories и сервисы этой задачей не меняются.
+Результат требует независимого ревью; production deployment не разрешён.
+
+## Историческое свидетельство — 26.10.2026
+
+Следующий раздел сохранён как свидетельство прежнего аудита cef77cc/PR #8.
+Его NOT_RUN/NOT_PUBLISHED и указатели не обозначают текущее состояние приёмки владельцем.
+Актуальные ограничения и матрица приведены в документе PR #9 выше.
 
 Статус: **В разработке / Релиз заблокирован**. Основа — независимый аудит
 [cef77cc87f6a2286284f5cf8fdb851c775b04dd1](INDEPENDENT_AUDIT_CEF77CC.md),

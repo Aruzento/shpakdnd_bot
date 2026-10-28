@@ -22,7 +22,8 @@ from tests.v1_4_3_1 import test_deploy_confirm as pty
 from tests.v1_3.support import MiniCase
 
 ROOT = Path(__file__).resolve().parents[2]
-SHA = "cef77cc87f6a2286284f5cf8fdb851c775b04dd1"
+SHA = "046f7dc1baee9e08207af72650fb4636b7da2d52"
+PREVIOUS_V15 = "cef77cc87f6a2286284f5cf8fdb851c775b04dd1"
 LEGACY = "d077dd2a2c29ad420b138bf07af23c77f4674d0b"
 PACKAGE = ROOT / "content/stories/unpublished/tayna_propavshey_ovtsy"
 AUTHOR = PACKAGE / "tayna_propavshey_ovtsy.json"
@@ -160,12 +161,15 @@ class RollbackMatrix(MiniCase):
     def test_clean_capable_and_legacy_ro_but_unknown_targets_are_never_safe(self):
         self.assertTrue(self.inspect()["rollback_ready"])
         self.assertTrue(self.inspect("v15-once-raid-pets-economy")["rollback_ready"])
-        self.assertEqual(guard.target_capability(ROOT, SHA), "v15-once-raid-pets-economy")
+        self.assertEqual(guard.target_capability(ROOT, SHA), "v15-feedback-ui-stories")
+        self.assertEqual(guard.target_capability(ROOT, PREVIOUS_V15), "v15-once-raid-pets-economy")
+        head=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip()
+        self.assertEqual(guard.target_capability(ROOT, head), "v15-feedback-ui-stories")
         self.assertEqual(guard.target_capability(ROOT, LEGACY), "legacy-pre-v15")
         for target in ("bad", "f"*40):
             with self.assertRaises(guard.GuardError):
                 guard.target_capability(ROOT, target)
-        with patch.object(guard.subprocess, "check_output", side_effect=[SHA+"\n", "f"*40+"\n"]), self.assertRaisesRegex(guard.GuardError, "UNREVIEWED"):
+        with patch.object(guard.subprocess, "check_output", side_effect=["",SHA+"\n", "f"*40+"\n","tree"]), self.assertRaisesRegex(guard.GuardError, "UNREVIEWED"):
             guard.target_capability(ROOT, SHA)
 
     def test_active_and_completed_raid_need_capable_code_even_after_drain(self):
@@ -287,7 +291,7 @@ class RollbackMatrix(MiniCase):
         database=project/"shpakdnd.db"
         shutil.copyfile(self.db,database)
         before=database.read_bytes()
-        with patch.object(guard,"target_capability",return_value="v15-once-raid-pets-economy"):
+        with patch.object(guard,"target_capability",return_value="v15-once-raid-pets-economy"), patch.object(guard,"_git",return_value=SHA):
             self.assertTrue(guard.inspect(project,database,SHA,SHA)["read_only"])
             with self.assertRaises(guard.GuardError):
                 guard.inspect(project,self.db,SHA,SHA)

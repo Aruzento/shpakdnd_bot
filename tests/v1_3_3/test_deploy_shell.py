@@ -38,6 +38,7 @@ install)
     done
     if ((directory)); then mkdir -p -- "${args[@]}"; else cp -- "${args[@]}"; fi ;;
 git)
+    [[ "$1" != --no-replace-objects ]] || shift
     shift 2
     case "$1" in
         status) [[ "${FAKE_DIRTY:-0}" != 1 ]] || printf ' M app/local.py\n' ;;
@@ -45,12 +46,14 @@ git)
             count=0; [[ ! -f "$FAKE_STATE/fetches" ]] || count="$(cat "$FAKE_STATE/fetches")"
             echo "$((count+1))" > "$FAKE_STATE/fetches" ;;
         symbolic-ref) echo main ;;
+        for-each-ref) : ;;
+        cat-file) [[ "$2" == -t ]] && echo tree ;;
         rev-parse)
             if [[ "$*" == *'@{upstream}'* ]]; then echo origin/main
             elif [[ "$*" == *':app'* ]]; then echo "${FAKE_APP_TREE:-908868852fc3b1e132a65e325ca546025b4034de}"
             elif [[ "$*" == *--show-toplevel* ]]; then printf '%s\n' "$SHPAKDND_PROJECT"
             elif [[ "$*" == *origin/main* ]]; then cat "$FAKE_STATE/target"
-            elif [[ "${@: -1}" == *'^{commit}' ]]; then value="${@: -1}";echo "${value%\^\{commit\}}"
+            elif [[ "${@: -1}" == *'^{commit}' ]]; then value="${@: -1}";value="${value%\^\{commit\}}";if [[ "$value" == HEAD ]]; then cat "$FAKE_STATE/head";else echo "$value";fi
             else cat "$FAKE_STATE/head"; fi ;;
         ls-tree) printf 'bot.py\napp/config.py\n.env.example\n' ;;
         switch)
