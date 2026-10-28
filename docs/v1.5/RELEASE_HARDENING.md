@@ -1,5 +1,7 @@
 # V1.5 release hardening
 
+Актуальное дополнение PR #9: [Исторические SQLite contracts](HISTORICAL_SQLITE_CONTRACTS.md). Поддержаны только переданные владельцем DDL и проверенные migration descendants; отсутствие исторических CHECK компенсируется read-only диагностикой. Production-copy Codex не проверял. Найденный runtime integer-overflow blocker описан отдельно; app не изменён.
+
 Текущая задача PR #9: [capability feedback / безопасный rollback](ROLLBACK_COMPATIBILITY_FEEDBACK.md).
 Игровой кандидат 046f7dc / app tree cb678fe9f0978bb115a12e27c56a7160d0c94e4c;
 capability v15-feedback-ui-stories. Финальный tooling SHA/CI — в отчёте PR #9.

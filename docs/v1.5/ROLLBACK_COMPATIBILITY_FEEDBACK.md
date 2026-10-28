@@ -1,5 +1,7 @@
 # Release/rollback compatibility — кандидат PR #9, 28.10.2026
 
+Актуальное дополнение PR #9: [Исторические SQLite contracts](HISTORICAL_SQLITE_CONTRACTS.md). Поддержаны только переданные владельцем DDL и проверенные migration descendants; отсутствие исторических CHECK компенсируется read-only диагностикой. Production-copy Codex не проверял. Найденный runtime integer-overflow blocker описан отдельно; app не изменён.
+
 Статус: исправление для независимого ревью ChatGPT; production deployment не разрешён.
 Исходный commit: 046f7dc1baee9e08207af72650fb4636b7da2d52.
 Финальный tooling commit и CI указываются в отчёте PR #9 после фиксации и проверок.

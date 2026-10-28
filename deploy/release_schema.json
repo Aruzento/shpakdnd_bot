@@ -1596,11 +1596,14 @@
         "d3d921f3de39583d1a87f8d7af6db37ce125d7e526a719fd18453469dfd4bbf4"
       ],
       "mini_boss_participants": [
-        "248f953b27cd23bf8760b2092c914eab16f2d7934760792142afcdf3fa73b8d6"
+        "248f953b27cd23bf8760b2092c914eab16f2d7934760792142afcdf3fa73b8d6",
+        "5ecafb6bcb23a6d858a1cd885a1a0f6764ca16c5cd39aed8ad3422946d289615"
       ],
       "mini_bosses": [
+        "307e8d10ff6b94e964d20d99eba7d61ac153fc135e415cbc7f1f41f7234f1dcd",
+        "8330b7fba780154f0acf34e7ebd49de8e223ff3524b03e4011da187011bf1fb0",
         "a7088957e8d2b6bb0115ea05ef0ac4923a13b45161e6696b614e3cd1a1e77ef5",
-        "307e8d10ff6b94e964d20d99eba7d61ac153fc135e415cbc7f1f41f7234f1dcd"
+        "c1313148cf9d5b81f9a91a590186d960d99e44de990e7c5bc5e4144010a0c761"
       ],
       "mini_daily_chests": [
         "d75db073bc81fcd5c2da4a54895d95de290a342a46b0ee3ef25092bdd3f3dbfa"
@@ -1642,6 +1645,7 @@
         "7e4ccd836fd8264674dbb18ea18feaa92f82574175d3609b7bc8e271b514cc51"
       ],
       "mini_event_sessions": [
+        "24c02462e5dbdef69c8e25fcfc24d270323eae5996d5883a1a588e628ef7abda",
         "4f654a09b722303828756c20fb192af6619776af503c52de21a7b87226933ec9"
       ],
       "mini_gacha_batch_pulls": [
@@ -1664,13 +1668,16 @@
       ],
       "mini_heroes": [
         "522e7f381f2eac03c5c177d30530e5deea7c3d10573e64a360d27de48f2d8532",
+        "953a88027201879e1727515ab439b10124fdc1760d4880fdabf5cda74209f761",
+        "da0808302f1118bf7c3799353cb6556753134f37e667254e10d0deb39435057c",
         "e8452f52986e377eff136bc0758c5cda6ccd061ed6486be3c42f2c8b8d13b038"
       ],
       "mini_inventory": [
         "0924c5e84640962515e6fcac550835ac72e899ba1502bb480e78bb31d7ed3437"
       ],
       "mini_item_uses": [
-        "a4ecf0789947041ce0c41c410dfe9dfc791b4f1d9e2c1f83e18e407a9f5cd991"
+        "a4ecf0789947041ce0c41c410dfe9dfc791b4f1d9e2c1f83e18e407a9f5cd991",
+        "ebdfcab52cac2912e32d70bd491369c157f6034b347c57f5ebdbc8346e4af793"
       ],
       "mini_items": [
         "086bf944bba686dde19377e383cd1f04862c61a1420faa03f2de4f6e29ba0ab1"
@@ -1688,11 +1695,14 @@
         "23d88cb8f907505acc98a5f9ac259d84bc17d360b2b171c4638ef86e08626ef2"
       ],
       "mini_player_heroes": [
-        "5f0be881e3f43c4cdc3ab9078307eba5537011b4a853caea9b685a2171e7d655"
+        "5f0be881e3f43c4cdc3ab9078307eba5537011b4a853caea9b685a2171e7d655",
+        "73ddf9b659f38048624f7e9637917f9a0f56ee1dfbe7120c57489e06cb322514"
       ],
       "mini_players": [
-        "c005cad572e9e03ed2919746e798fcc1240268fb8168e1bfa3fa6c019d811839",
-        "a37ed85099f2d75d6d7bec22a3d057c5e81252a1652fb96d240bec4ca35aa166"
+        "38a6df4637255f5ab57d0c180def12fd27c65f561d9ccbf563a878ed17cd4a1c",
+        "89c906760d217354e16f6cb633460ee4f75b60470d27c8e3792ae5e8f609841a",
+        "a37ed85099f2d75d6d7bec22a3d057c5e81252a1652fb96d240bec4ca35aa166",
+        "c005cad572e9e03ed2919746e798fcc1240268fb8168e1bfa3fa6c019d811839"
       ],
       "mini_public_notifications": [
         "f510217114550e27731e620f0faf1cb1138dfb7901353d8cfa583bb78e6b48b1"
@@ -1731,8 +1741,8 @@
         "15d3889aab77a311c1c6caf9b474903597d5b8f7e9fd0751cd9c05d5b18aa4de"
       ],
       "mini_tower_rewards": [
-        "6e2209aa86d56a13c4332e797b0ac84cd9b01fbfe680731eee7de7409066f677",
-        "6cf46a30eba654ae09bc3dd5086d38746fc13b51ccc78f0d605ac196cbf85568"
+        "6cf46a30eba654ae09bc3dd5086d38746fc13b51ccc78f0d605ac196cbf85568",
+        "6e2209aa86d56a13c4332e797b0ac84cd9b01fbfe680731eee7de7409066f677"
       ],
       "mini_tower_selections": [
         "87e20d9d81f148dedbda6b02bebe808deba1a2128d2bf7c8a10168b52bc4cf28"
@@ -1756,10 +1766,12 @@
         "caffccb4c916fcf9e44ec5cda4722a297ecc3396abe4d52a1203444a7e166bcf"
       ],
       "mini_wallet_transactions": [
-        "4b7185ae002ae5e6e3224a222853ba09e20968167ee827c97c8afe1b723d2e0a"
+        "4b7185ae002ae5e6e3224a222853ba09e20968167ee827c97c8afe1b723d2e0a",
+        "f23b899961d3b5ced80ff1a42c003cbc7ec79add876def0b9e15df71359b9fa0"
       ],
       "mini_worlds": [
-        "bd81a86cad1286b5296c73eba845af756fc1e4fffefdaf3c68e886f00d0f00d1"
+        "bd81a86cad1286b5296c73eba845af756fc1e4fffefdaf3c68e886f00d0f00d1",
+        "e39b8ec996d4f8995a6ce0fa9648faac90acc03798ad49099fdbf8cad1e1dc91"
       ],
       "timers": [
         "af302f4df78eb38ed7daafe8a45af6b44091ffa5bf576550352dbf609f081e24"
@@ -1984,6 +1996,61 @@
         "winged_rune_fox",
         "witcher_isekai"
       ]
+    },
+    "exact_table_contracts": {
+      "mini_boss_participants": [
+        "583241fc14446fc1778a6a5581adb9fb82b1dd449e580213acbd85522aa2d558",
+        "d1f6404c033a76a8355ceaa8421aca55642980186889b82cd90082b69a458bd8"
+      ],
+      "mini_bosses": [
+        "5f3b960c91605c54017baa639028c032a80194cb28cc03b211b84595a588f925",
+        "ab29b936152fc7b2d650c5922f6ba3ff653e5ea8af74a33725d799ea5b1baf96",
+        "d83c00951c2cf749586c85a989c9aa87bf44523e21b58d3e9d9f4a20e8005ee6",
+        "e38ddedf011c85fb4db907ecf0661a9c2058d930c437a52e6effbcaa9e9d08cc"
+      ],
+      "mini_event_sessions": [
+        "6b597f22a53ee919ef4ee96ed439c0960109d91ad1632febdede9a5932de8c1a",
+        "716ecbe8ae12af214ea55ec8d038a4cca877bdda97c174a1c1f82725f4411f46"
+      ],
+      "mini_heroes": [
+        "0ca1edf2ae3843baafc55777166cf96b09af516044d8bd91f0ebcd41ce251ac3",
+        "1c64babf54ec9175395772a055bc2168e28d248e53d767ee1ce4f1182803a1fb",
+        "26877da4fba6c9d4eb3fc7265aef053cf5982fd237b2ee06082023486cb3bb14",
+        "ed270e79e0254baf22464b628a9689b257adeb930c7f2885abd98e1ad0c73d3f"
+      ],
+      "mini_item_uses": [
+        "2bfc324f82c9e64b942c8d376c9312185ebbf8fa74c2119aefaac711c6e7d349",
+        "e54741a14afbf5d718cbb93b28b6da16d68022a1906968e271b21aca52d98b35"
+      ],
+      "mini_player_heroes": [
+        "40c503ba96a6550df9d83bc9e9796cc6462551c70e55e37d2a195a8d4bbb82da",
+        "4304202ff0aeba143f3a79c883b9f43ddf2a449193d9ff027651facd0ba8c188"
+      ],
+      "mini_players": [
+        "15807e3268f3e3bdd086dae3041cf53dd4f8fcfe8737e1e76adb60e60c5683a1",
+        "a33a206fe49589042f1e6d74b9c0b8868ce9d69671c0674f987dc55b910307bc",
+        "eef8643270408944e0d3cfba629ac31ebaf6f70b28b5980e7c777fe15576e498",
+        "fbbd98dfb8550c5d660814a96cd30e0f03ecc94862fe2094a83a9fdb184222b4"
+      ],
+      "mini_wallet_transactions": [
+        "333faa43455a9a442e93630c4fc38970b2fce1b69bc7d87b5f944a850fd92321",
+        "fa0c102d916547d05a74bfcf998ff352817935c722f9486fb8576fa95ed15917"
+      ],
+      "mini_worlds": [
+        "60819a57b48a2d471a0ecc90a9cc13fc02746517ab185819904723ec76971512",
+        "7ae55a2f1359f04efaaeadef072fb90c037998e6a328e1ad4acbb842f3b76b59"
+      ]
+    },
+    "historical_contract_provenance": {
+      "source": "Owner-supplied DDL, not direct production-backup access",
+      "backup_sha256": "acb2620a631f790cce82e4d4f1339a2a601c2e30dd5756cd1d2d31cfc8977b51",
+      "fixture": "tests/v1_5/fixtures/historical_v14_nine_tables.json",
+      "migration_sources": [
+        "d077dd2a2c29ad420b138bf07af23c77f4674d0b",
+        "cef77cc87f6a2286284f5cf8fdb851c775b04dd1",
+        "046f7dc1baee9e08207af72650fb4636b7da2d52"
+      ],
+      "approval": "Exact historical variants plus read-only NULL/noninteger/negative shards/stars checks; no runtime/database edits"
     }
   }
 }
