@@ -102,7 +102,7 @@ def inspect_connection(conn, capability):
         raise GuardError("BLOCKED_EMPTY_DATABASE")
     inventory = json.loads(Path(__file__).with_name(SCHEMA_FILE).read_text(encoding="utf-8"))
     baseline = inventory.pop("_baseline", None)
-    if not isinstance(baseline, dict) or not {"columns", "required_mini", "boss_tables", "legacy_columns", "v15_columns", "objects", "required_dnd", "v15_boss_tables", "table_signatures"} <= set(baseline):
+    if not isinstance(baseline, dict) or not {"columns", "required_mini", "boss_tables", "legacy_columns", "v15_columns", "objects", "required_dnd", "v15_boss_tables", "table_signatures", "hero_codes"} <= set(baseline):
         raise GuardError("BLOCKED_SCHEMA_INVENTORY")
     def table_columns(table):
         # table_xinfo also exposes generated/hidden columns.
@@ -248,6 +248,19 @@ def inspect_connection(conn, capability):
         counts["legacy_fragment_balances"] = conn.execute("SELECT COUNT(*) FROM mini_mythic_fragments WHERE amount>0").fetchone()[0]
     if {"mini_player_heroes", "mini_heroes"} <= tables:
         counts["mythic_ownership"] = conn.execute("SELECT COUNT(*) FROM mini_player_heroes p JOIN mini_heroes h ON h.id=p.hero_id WHERE h.rarity='mythic'").fetchone()[0]
+    if {"mini_player_heroes", "mini_heroes", "mini_players"} <= tables:
+        # Registry/image support is part of functional ownership compatibility.
+        # An empty Raid/Story journal cannot authorize an S5 downgrade to V1.4.
+        supported = baseline["hero_codes"]["legacy" if capability == "legacy-pre-v15" else "v15"]
+        placeholders = ",".join("?" for _ in supported)
+        counts["target_unsupported_hero_ownership"] = conn.execute(
+            "SELECT COUNT(*) FROM mini_player_heroes p JOIN mini_heroes h ON h.id=p.hero_id "
+            "WHERE h.code NOT IN (" + placeholders + ")", supported).fetchone()[0]
+        counts["target_unsupported_active_hero"] = conn.execute(
+            "SELECT COUNT(*) FROM mini_players p JOIN mini_heroes h ON h.id=p.active_hero_id "
+            "WHERE h.code NOT IN (" + placeholders + ")", supported).fetchone()[0]
+        if counts["target_unsupported_hero_ownership"] or counts["target_unsupported_active_hero"]:
+            blockers.append("BLOCKED_TARGET_HERO_OWNERSHIP_UNSUPPORTED")
     for table, col, required in (("mini_bosses", "team_state_json", "rules_version"),
                                  ("mini_tower_attempts", "runtime_json", None)):
         if table not in tables:
@@ -299,7 +312,7 @@ def inspect_connection(conn, capability):
     except (ValueError, sqlite3.Error):
         blockers.append("BLOCKED_PVP_SCHEMA_OR_ECONOMY")
     persistent_v15 = any(counts[t] for t in present) or any(counts.get(key, 0) for key in (
-        "universal_balances", "mythic_ownership", "mini_bosses:v15_unfinished", "mini_tower_attempts:v15_unfinished"))
+        "universal_balances", "mythic_ownership", "target_unsupported_hero_ownership", "target_unsupported_active_hero", "mini_bosses:v15_unfinished", "mini_tower_attempts:v15_unfinished"))
     if capability not in ("v15-once-raid-pets-economy","v15-feedback-ui-stories") and persistent_v15:
         # Includes committed ledger/operations/Star history, owned Mythics and
         # reserve pets: draining only active raids cannot make a downgrade safe.

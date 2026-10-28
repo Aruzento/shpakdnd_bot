@@ -200,6 +200,33 @@ class TargetIdentity(unittest.TestCase):
         with patch.dict(os.environ, GIT_DIR="/nonexistent/foreign", GIT_WORK_TREE="/foreign"):
             self.assertEqual(guard.target_capability(ROOT,CANDIDATE),CAP)
 
+    def test_owned_s5_without_raid_story_or_feedback_blocks_legacy_and_unknown_codes_block_all(self):
+        case=MiniCase();case.setUp();self.addCleanup(case.doCleanups);self.addCleanup(case.tearDown)
+        case.sql("UPDATE mini_event_pvp_control SET paused=1")
+        def inspect(cap):
+            before=case.db.read_bytes()
+            with closing(sqlite3.connect(case.db.as_uri()+"?mode=ro",uri=True)) as conn:
+                report=guard.inspect_connection(conn,cap)
+            self.assertEqual(case.db.read_bytes(),before)
+            return report
+        case.hero("Villager")
+        self.assertTrue(inspect("legacy-pre-v15")["rollback_ready"])
+        inventory=json.loads((ROOT/"deploy/release_schema.json").read_text(encoding="utf-8"))["_baseline"]["hero_codes"]
+        newer=next(h for h in case.sql("SELECT * FROM mini_heroes ORDER BY id")
+                   if h["code"] not in inventory["legacy"] and h["rarity"]!="mythic")
+        case.hero(newer["code"])
+        report=inspect("legacy-pre-v15")
+        self.assertIn("BLOCKED_TARGET_HERO_OWNERSHIP_UNSUPPORTED",report["blockers"])
+        self.assertIn("BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED",report["blockers"])
+        self.assertEqual(report["counts"]["mini_mythic_raids"],0)
+        self.assertEqual(report["counts"]["story_sessions"],0)
+        self.assertTrue(all(report["counts"][t]==0 for t in guard.FEEDBACK_SCHEMA))
+        for cap in ("v15-once-raid-pets-economy",CAP):
+            self.assertTrue(inspect(cap)["rollback_ready"])
+        case.sql("UPDATE mini_heroes SET code='unreviewed_fixture_code' WHERE id=?", (newer["id"],))
+        for cap in set(guard.CAPABILITIES.values()):
+            self.assertIn("BLOCKED_TARGET_HERO_OWNERSHIP_UNSUPPORTED",inspect(cap)["blockers"])
+
     def test_commit_mismatch_unknown_tree_and_non_tree_are_blocked(self):
         for actual, tree, kind in (("f"*40,"cb678fe9f0978bb115a12e27c56a7160d0c94e4c","tree"),
                                    (CANDIDATE,"f"*40,"tree"),

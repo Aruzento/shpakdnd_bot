@@ -69,6 +69,20 @@ team_state_json/rules_version. Теперь это допускается тол
 Boss/Tower проверяются по сохранённым rules_version/reward_policy/status; неизвестные
 версии и незавершённые V1.5 snapshots блокируют старый target.
 
+## Ownership: дополнительный подтверждённый блокер
+
+Проверка без Raid/Story/feedback выявила ложный ALLOW для V1.4 при владении
+новым common S5 ordo_vallis_secretary. Данный code отсутствует в54 героях d077.
+Теперь frozen inventory содержит точные54 legacy /79 V1.5 code из настоящих
+загрузчиков трёх immutable версий. Владение либо active_hero_id вне реестра target
+даёт BLOCKED_TARGET_HERO_OWNERSHIP_UNSUPPORTED. Неизвестный code блокируется и для
+новой V1.5; rarity/отсутствие активных сессий не заменяют функциональную совместимость.
+
+Каталоги предметов27, экипировки300 и эффектов13 проверены: во всех трёх версиях
+они совпадают. Имена/коды/характеристики production каталогов не менялись.
+Промежуточный8aa12cf и его CI40768776086 остановлены после воспроизведения этого
+ownership-блокера; они не выдаются за финальное доказательство.
+
 ## Frozen schema inventory
 
 release_schema.json — опись для read-only helper, НЕ игровая схема/миграция.
@@ -99,8 +113,8 @@ query_only=ON и единую read transaction. WAL-aware: immutable=1 не ис
 |---|---|---|---|
 | Аудированная legacy БД без V1.5 прогресса | ALLOW | ALLOW | ALLOW |
 | V1.5 schema, пустые новые journals, без V1.5 persistent rows | ALLOW | ALLOW | ALLOW |
-| Raid/Story history, ledger/operations, ownership/баланс/Star/Pet | BLOCKED | ALLOW | ALLOW |
-| Любой заполненный feedback journal, включая terminal achievement | BLOCKED | BLOCKED | ALLOW |
+| Raid/Story history, ledger/operations, Mythic ownership/баланс/Star/Pet | BLOCKED | ALLOW | ALLOW |
+| S5 ownership при пустых Raid/Story/feedback journals | BLOCKED | ALLOW | ALLOW |\n| Hero code вне собственного проверенного реестра target | BLOCKED | BLOCKED | BLOCKED |\n| Любой заполненный feedback journal, включая terminal achievement | BLOCKED | BLOCKED | ALLOW |
 | Все четыре feedback tables отсутствуют на старой БД | по persistent matrix | по persistent matrix | ALLOW |
 | Не все четыре feedback tables или неизвестные columns/objects/status | BLOCKED | BLOCKED | BLOCKED |
 | Publication/reminder sending/uncertain, partial delivery | BLOCKED | BLOCKED | BLOCKED |
