@@ -1,5 +1,7 @@
 # V1.5 release hardening
 
+Актуальный guard-only этап: [Complete SQLite contracts](COMPLETE_SCHEMA_GUARD.md) — все known tables/indexes и required triggers. Исторические результаты ниже сохранены; новый exact-SHA отчёт и CI не подменяются прежними.
+
 Актуальное дополнение PR #9: [Исторические SQLite contracts](HISTORICAL_SQLITE_CONTRACTS.md). Поддержаны только переданные владельцем DDL и проверенные migration descendants; отсутствие исторических CHECK компенсируется read-only диагностикой. Production-copy Codex не проверял. Найденный runtime integer-overflow blocker описан отдельно; app не изменён.
 
 Текущая задача PR #9: [capability feedback / безопасный rollback](ROLLBACK_COMPATIBILITY_FEEDBACK.md).

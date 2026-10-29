@@ -1998,47 +1998,344 @@
       ]
     },
     "exact_table_contracts": {
+      "character_profiles": [
+        "3639ee285aace7f421e77ce9f0075392107cc28ceed1ab154f89049ddb2fdeb6"
+      ],
+      "characters": [
+        "d00d35e6c341b38ce962dad3ff92e3faed2676b25dbf1a1c9d40130a2e38e673"
+      ],
+      "dnd_coin_migrations": [
+        "6852ca98b3940c15e04f081b310dddc5bbefb9fe9f1806e0b3847b776b525bbf"
+      ],
+      "dnd_currencies": [
+        "20e3d606dcb438479d0aee73536fab7cf8e8c6d6d4033d932d7ef56d0d6751f1"
+      ],
+      "dnd_items": [
+        "94f244edc29e9d5808085bf7048ceca27e723a9fe5c5f1cbb1fe8e26f60989c1"
+      ],
+      "dnd_shop_catalog_entries": [
+        "639a6440986f81fda9f63d63501a998971b9e9de47d322302b0a7145497fd8a6"
+      ],
+      "dnd_shop_catalog_versions": [
+        "3e079573942b7de3dc986663ef8df77f6b02f38a85e51f39de2ec730971c92a9"
+      ],
+      "dnd_shop_credit": [
+        "8aaab660e7d9596c714e5b3e99a227b65c0ec02e408b77ae860dc1ba8e677f3d"
+      ],
+      "dnd_shop_credit_coins": [
+        "c68836e2e825db2c4492512a981d0d6dd3cc087b18f3ca4abad0bca9f68281b1"
+      ],
+      "dnd_shop_credit_moves": [
+        "417634d9420fbcc77e3efc90df7586cf0215c87e23553457016f6da23f5ba6c8"
+      ],
+      "dnd_shop_credit_redemptions": [
+        "854f555e98d54d526c6c375684c461080fd6d4ce3174856d87963273076b923f"
+      ],
+      "dnd_shop_money": [
+        "559a32223514b4c78c210429d6501e3906509dd765e422f06a064ea2ad62546e"
+      ],
+      "dnd_shop_operations": [
+        "3e235b86d53d365f5e7df05e8dbe71caa9543f482363cc461e0d036cb5844e73"
+      ],
+      "dnd_shop_owners": [
+        "031e7888f38138f8a24af8969821843052f8718cbc45aa068f18ea18ccfb4071"
+      ],
+      "dnd_shop_publications": [
+        "81a8043f838165b50f355e13f593511d4441894576989be03d19a85d7e56771a"
+      ],
+      "dnd_shop_sessions": [
+        "cb808ea3c53b4632341657e224d9188ab90796f348f3221ae1977ecbfad400ba"
+      ],
+      "dnd_shop_settings": [
+        "c322490cfe22522402de463a4f9094a31b20f27887ed7ecf5f01afd49b395ef0"
+      ],
+      "dnd_shop_skus": [
+        "7f6862401858f4d392eb70695974bf8accbb06a34b27e5a2f9ed7f1b99ad066f"
+      ],
+      "dnd_shop_test_migrations": [
+        "25993198ba797bf404750a06925c6be535bc6681f428f8c26857a18c93d2693b"
+      ],
+      "dnd_shop_trades": [
+        "d21a5d1d76c731034fed0b840ba3c258561797bf3f17b44df76a70247ddf1ffd"
+      ],
+      "inventory": [
+        "fa105a164cbcbef6bfab7e9568d4b34dd4eced72889a8154c612076acbee04b0"
+      ],
+      "mini_boss_actions": [
+        "4642ddb2ea8c082aeea7b6e4d0af642006cb4be7738fa4f1a2b88f1e063c1b31"
+      ],
+      "mini_boss_admin_audit": [
+        "5d35d30910290c3d55fe0769a4e6f15a1e10f9302cc5fb81dab27c2e1a9ba523"
+      ],
+      "mini_boss_events": [
+        "a128de7628437f2b429a031b92301a9ae180924228e92079574a6efeb027d308"
+      ],
       "mini_boss_participants": [
-        "583241fc14446fc1778a6a5581adb9fb82b1dd449e580213acbd85522aa2d558",
-        "d1f6404c033a76a8355ceaa8421aca55642980186889b82cd90082b69a458bd8"
+        "37d64c027aaa3b43ed6f05abc833003d96f85b18f47de3d1aed6b8a9837ef7ed",
+        "89f0929705aea3e90541ef9caadc3bddec621b2d03dcb1bea83468f69af85438"
+      ],
+      "mini_boss_timeline": [
+        "18e0ef06ab66f341bf7bdad1894c60747fddc7617dd657b0b6dda4a6c12a25eb"
       ],
       "mini_bosses": [
-        "5f3b960c91605c54017baa639028c032a80194cb28cc03b211b84595a588f925",
-        "ab29b936152fc7b2d650c5922f6ba3ff653e5ea8af74a33725d799ea5b1baf96",
-        "d83c00951c2cf749586c85a989c9aa87bf44523e21b58d3e9d9f4a20e8005ee6",
-        "e38ddedf011c85fb4db907ecf0661a9c2058d930c437a52e6effbcaa9e9d08cc"
+        "53217e7796cd44842890bbd7cd218d38b5b4e8646b9f18e2a119cd42255188eb",
+        "828c04ceb0cbcea315876073e38bd660d56439174ac3ec071f3cb22a2a3703b7",
+        "86a7621b22c434cc28f25b7e8af363b53d6f5d66fc5ac644cb067ed022e373ae",
+        "d3e8d2a569b409f53a8d8a1979c994d032346c3709c8d4268375d31c6b6e3d8c"
+      ],
+      "mini_combat_arise": [
+        "397100de89d761ca570053ad9bde581594571969b8de6a716594322e77b93ed6"
+      ],
+      "mini_daily_chests": [
+        "8b416b1f5ae46050bcdaf6f357e4e0c3f5e61f0abdff9563450f739d1b5e28e3"
+      ],
+      "mini_daily_claims": [
+        "4b286481395c0ff772c44ae49bc545980a1eec17441932de8d4397f3cb9f76fe",
+        "ae0fcecbb0d89e37ee1548a8c5d72b3e9c04c017de14a1c286337de00d2e27cf"
+      ],
+      "mini_daily_streak": [
+        "931b363627627195fefc7cb6db8b5d8de9b8761d93e6f3bb8c8c7bba35b9f8e7"
+      ],
+      "mini_duel_locks": [
+        "43118de48d0fbfb72df6142da64e58f9352947653d64fff03de06c152fac1ddf"
+      ],
+      "mini_duels": [
+        "417689f1c9125b7bcf6abcf3d6ba8a468dce4b2ed8d2d6b40ab6ba6dc04a64d9"
+      ],
+      "mini_equipment": [
+        "770f89831e15a8270e3684a58efb6d27af7ed9a829c0513118e7c412f270b479"
+      ],
+      "mini_equipment_owned": [
+        "035fbe952750f11af9f6829bceb00156595bff22da2fb3e9ef166d80832df63f"
+      ],
+      "mini_equipment_slots": [
+        "78cc8ce9b3ebc3a4a8c6904ca35f31ab5274b746b2afdcefcf5183dac33ea429"
+      ],
+      "mini_event_pvp": [
+        "b745cdcfa19d1927cb21057ffe4470da7984dda563c2c0a06813ca28710f1414"
+      ],
+      "mini_event_pvp_control": [
+        "99cd8ceabd486a8050d2142bb146582f5f286172245a0d94a0e6d1096cddeabd"
+      ],
+      "mini_event_pvp_members": [
+        "c1b0396959d0670c4b18f62a932e33b2c72d8d266b8f14c701cd31a57ec8b899"
+      ],
+      "mini_event_pvp_shard_awards": [
+        "d581f819b9d8c64f4195663b6af1c31e54cd2367207de08b934d8c90b455df8e"
+      ],
+      "mini_event_requests": [
+        "d4372f1619ca420179ecb3445ccc3747a401f1d9db5cb8b01ab55de789070711",
+        "ec97a48163c2927f8fccbbf903c8c038b339ace5eeaa4e2c32f5510f53dae88f"
       ],
       "mini_event_sessions": [
-        "6b597f22a53ee919ef4ee96ed439c0960109d91ad1632febdede9a5932de8c1a",
-        "716ecbe8ae12af214ea55ec8d038a4cca877bdda97c174a1c1f82725f4411f46"
+        "c7834aa37dde1aebd71ef30d3ac369063dac5dc4804f57fde5c15b8b48b7960d",
+        "ed269f54c8a8b56a400cc2cd11b119712770c3aabc870c31fa499e70dbf89ce2"
+      ],
+      "mini_gacha_batch_pulls": [
+        "75e5126ec4124720d999dfc37179aba356354d5585edb6f602ad50a54a3364d0"
+      ],
+      "mini_gacha_batches": [
+        "49ca29686ec64aa86d7cc99de2333abe6243693b49c14cfecf22caf196c090de"
+      ],
+      "mini_gacha_guarantees": [
+        "f29c7a8c5ef86a8fa7439de6d998c05788e7246e42b55c0464c581ac7e800d4a"
+      ],
+      "mini_gacha_pity": [
+        "776c57cf6e050725babe33e50a435002bb19e1c4dff09d4df435c1de06fe626f"
+      ],
+      "mini_gacha_pulls": [
+        "20c081699f4a11831ccb02fd43eb7cd8149116e12f6c64945276f89013a47b33",
+        "ccee4d58ce0c4cb350e0405f40c0bf178bcea61b97bb73e3735320b0a616e979"
+      ],
+      "mini_hero_favorites": [
+        "2a9b73f04138c56365d48f54c22c30ffadcbd8f9f9676bc7486b0f8d801031df"
       ],
       "mini_heroes": [
-        "0ca1edf2ae3843baafc55777166cf96b09af516044d8bd91f0ebcd41ce251ac3",
-        "1c64babf54ec9175395772a055bc2168e28d248e53d767ee1ce4f1182803a1fb",
-        "26877da4fba6c9d4eb3fc7265aef053cf5982fd237b2ee06082023486cb3bb14",
-        "ed270e79e0254baf22464b628a9689b257adeb930c7f2885abd98e1ad0c73d3f"
+        "1bc7c4482a18c1184da8051c113b845913153793acc25b5845d9a27315da90dd",
+        "276a2cdc7585ac2694f08a1fbb40b027568a0150872eb2e9bf6b3606d493f982",
+        "449a580daf9eb7d798f5c1a4a7a07f1bc6d26177671885ed8da1e115774fb90a",
+        "7c631c04acb5122a2dc20ddaaaf8b5f89e6338511507dd8b77848d1634cc12a2"
+      ],
+      "mini_inventory": [
+        "f08c965f50c928724eb63e434cb270e54440fc5ab68e455706f8d8aea450cb87",
+        "ff84db186fd0ace023156ed8d69b826b3e4850136050f51bd2798119bf00d213"
       ],
       "mini_item_uses": [
-        "2bfc324f82c9e64b942c8d376c9312185ebbf8fa74c2119aefaac711c6e7d349",
-        "e54741a14afbf5d718cbb93b28b6da16d68022a1906968e271b21aca52d98b35"
+        "9479bbbf6580b0f1410772340e0e3052234e179d07b98e06e3ea9739a2f1ce90",
+        "b1ff411770be5a32322624b5e4b834c1441a244395838649594be2e4fa033ed5"
+      ],
+      "mini_items": [
+        "0e178e6bc6983420bb919f6e68be213e5cef3ca27ecf1c050ed6a9ac3223effa",
+        "316e2b1439157cff877c9eed6da9f64d480037735b64267e8d28f2a8a934a922"
+      ],
+      "mini_mythic_fragments": [
+        "5bc2e0db8b4ef1d3e3f378858fef4b5d9538d0d516ca456e0ff185f6cc365a1b"
+      ],
+      "mini_mythic_grants": [
+        "97fbade09255c29a817de51f4053581834aa7d0c9d5d2e2d1d175dd535509fd3"
+      ],
+      "mini_mythic_ledger": [
+        "35b5579c10c027bad33a4eaf2e6dacf1a3f00d09205c15ca51719ae3c38d25e5"
+      ],
+      "mini_mythic_operations": [
+        "fe984c435061fec256a66c36b32eaa6c1b100371223f72ccc5441683c107663e"
+      ],
+      "mini_mythic_pet_days": [
+        "3e95c3b902f45c7c9d2e93d089f3cbfb4f91547262911462ac48742c46c67539"
+      ],
+      "mini_mythic_pets": [
+        "b124df162ed71aba6402cb464b62d45f974f0ec97c7e3f86ee293d50d0f52955"
+      ],
+      "mini_mythic_raid_attacks": [
+        "9905ba88d5bf47a7c82556b2a712ec0c0ca3c8b8e3c879c11a7b3d7dc72a0a09"
+      ],
+      "mini_mythic_raid_audit": [
+        "664abaef8682cb2f800cd0ab12ec59d8e3fdbd548f098ab9e5d8304447861262"
+      ],
+      "mini_mythic_raid_cancel_requests": [
+        "05c6b5f69629cf38b44dff58456a478263b1ffc795ac411be05689e1416f1ec1"
+      ],
+      "mini_mythic_raid_damage": [
+        "3b7250da7f1c91301ef483d54573f23516920861c37194af7703b46605c567d7"
+      ],
+      "mini_mythic_raid_publications": [
+        "6ba2be0a979c0e5ff3d57772f3dc840446bc9bbca4f0eaf37e5906b12f62ce0f"
+      ],
+      "mini_mythic_raid_rewards": [
+        "1f81579219a8801d45bf1a02fe363161a39324711ad53d70cdb42f521abfdbf8"
+      ],
+      "mini_mythic_raids": [
+        "c47c3fd0dd61b67b378741c4dc29d4e25bcccaacdce58de1e873f4bd0704f1af"
+      ],
+      "mini_onboarding_claims": [
+        "d74270fda9ca90f9b6234b8bab583e1dc7da3c6841f5a9c272194f3f327f8293"
+      ],
+      "mini_player_effects": [
+        "019a97db99eadba52f9bb9cb5a60e0594f5fe24c679ea6a4bc4b87835edfe611",
+        "629eca66d1f53cd46d514cd77abfd8074d3d36e9ad1aecd8b747c80f6f16e7ed"
       ],
       "mini_player_heroes": [
-        "40c503ba96a6550df9d83bc9e9796cc6462551c70e55e37d2a195a8d4bbb82da",
-        "4304202ff0aeba143f3a79c883b9f43ddf2a449193d9ff027651facd0ba8c188"
+        "a2dedab9020777fe9de7b02b39de1686439eb20226d44b41f15887d07b5a9237",
+        "a70faefc1e6f606721f48c32c99e36c58bcfe30acee659bf06c0a58b25919995"
       ],
       "mini_players": [
-        "15807e3268f3e3bdd086dae3041cf53dd4f8fcfe8737e1e76adb60e60c5683a1",
-        "a33a206fe49589042f1e6d74b9c0b8868ce9d69671c0674f987dc55b910307bc",
-        "eef8643270408944e0d3cfba629ac31ebaf6f70b28b5980e7c777fe15576e498",
-        "fbbd98dfb8550c5d660814a96cd30e0f03ecc94862fe2094a83a9fdb184222b4"
+        "12910055566aebbad274db5aaf912fac475a4e4383daf29312507366c275c2fc",
+        "36e467e83d2814f3f119cc162331774c67eeabe4d8bda823f3c42848138aee83",
+        "5bbf35580eca6da5818cc41ea19f8acdb3cb7843758bebd4b97f8eb8b9f48dc7",
+        "853eb4459b54c61edfdf1a4e77f883a8f252e6cff26f8e7bf0a1c481b8bd6568"
+      ],
+      "mini_private_windows": [
+        "b860be25f987e0c3973b58f92cede19e0359eda1d8798c7f62b9394917bdbeb4"
+      ],
+      "mini_public_notifications": [
+        "c6ae1c3aea3dc5c017f87788145a695de9a0321ab5c0ab69ab3e5e33fd9b7770"
+      ],
+      "mini_public_shares": [
+        "1ba3c70620540830f94b2bdaedd69db0bb3c26f8c5b6f249bd9b414b78f4f0b2"
+      ],
+      "mini_purchases": [
+        "62dc42b4739cf33202514316fe2c6a9dff80bb22f124fb8d5dee6252de72d7fe",
+        "e1634eafdf5ee5e890d9ea9674e2ea581dec3203ff3d61c8dded1df18294d16e"
+      ],
+      "mini_registration_requests": [
+        "0623a4489b0a4ebf01f44cc73d05b2eed88f3fe4c2d0f4d2fa459959d42e6fea"
+      ],
+      "mini_registration_sessions": [
+        "fab16df011a3f678e4e3766375bb9fd3839c48a900c124d399f0d073e0793688"
+      ],
+      "mini_shadow_rolls": [
+        "2638c49618cf1f397df0d87dbdea4fe8c4a0c47d70a35fefa84aecb3c8cd1b4b"
+      ],
+      "mini_shop_offers": [
+        "1ecab9bafa1498957864a6cffccd8020b7f2355845f876eadacf108bbf89b4ff",
+        "b35ee5cecb462eaa1517ace028add561a7147f4fb6edd4c69e6d2baaee97af5c"
+      ],
+      "mini_star_rewards": [
+        "dc2903c111eb5d90a4aa246d57fe9824ffa55da92d937050d7a423ed559965b3"
+      ],
+      "mini_superadmin_audit": [
+        "f6263647f5ef7f4b4563b6223693c194bc30e41dadb82858ac452408a7655faf"
+      ],
+      "mini_titles": [
+        "74132123a9584843a1fca93f84d29e815b9fb4b63e60e2b46e85374677af434b"
+      ],
+      "mini_tower_attempts": [
+        "ac2f6939912feb9ac9871525ab6f63d175d2f0710fecb98562bc092646932862"
+      ],
+      "mini_tower_lunar_choices": [
+        "1df4a62f89c931234d2503c497255b7324231c0c531d4ff27af1f5305ea9904b"
+      ],
+      "mini_tower_progress": [
+        "38fd89147cb6e52ee41385c802b87b465b86f6cb8d24f860c6ba9387e969f2f1"
+      ],
+      "mini_tower_retries": [
+        "b3064ae3ed61998cf805f1b1c51f58e69bc39d0419e1d39d8e9c0186c6204403"
+      ],
+      "mini_tower_rewards": [
+        "be2b53b9fa81d656d385dfdcd9053c835914df479ae8944683383ecef6e52b54",
+        "c920ee66d33dca2bf90e906d29f1ba4c584b31caa3944d89e9ab07ebd3bef4b8"
+      ],
+      "mini_tower_selections": [
+        "9e7fe837de9f3341ad9fd70f36f3812bb419d7967e05aba0580cbd86305a3a1c"
+      ],
+      "mini_ui_navigation": [
+        "f4ef0596b78152e31c439fd92ea3dd7d0d1e8408db3167bafe1b018035774230"
+      ],
+      "mini_ui_publications": [
+        "281ac10262492d4743445f194b33446e2c5499dd2de1db5b3db3182878a30d3c"
+      ],
+      "mini_village_boosts": [
+        "54c536cdf0c400c9bb57919f3758cd31c13dbe5d003559a12104746b5a2bfb6c"
+      ],
+      "mini_village_operations": [
+        "b81483720ed1abfa95a3bca738689043547e66209ce77262c6862858e4bb6f61"
+      ],
+      "mini_village_residents": [
+        "db828cdaa0b8c5700bbd6b152bb3caf618ced4694acb5073a231dd9195b4d8b0"
+      ],
+      "mini_villages": [
+        "0d692810c7f6425e6601e03b435328df7260192386ed54ea9c61f149a6938aee"
       ],
       "mini_wallet_transactions": [
-        "333faa43455a9a442e93630c4fc38970b2fce1b69bc7d87b5f944a850fd92321",
-        "fa0c102d916547d05a74bfcf998ff352817935c722f9486fb8576fa95ed15917"
+        "d9d28f81519cf6cd7c04875892a63dc36eff1b4a045af2eaeaffc2f9cc7dfc21",
+        "e2fa260e29ffbc03b94d7ff344d8fdd99d4bb3dc838488c7e03ee84d1aedd065"
       ],
       "mini_worlds": [
-        "60819a57b48a2d471a0ecc90a9cc13fc02746517ab185819904723ec76971512",
-        "7ae55a2f1359f04efaaeadef072fb90c037998e6a328e1ad4acbb842f3b76b59"
+        "c14d3f8ff499054f82bacef67b82329f9fcfcef0f6622f479a51db210bdfa17d",
+        "c417a23a0894dbf73d5532d74e4d82e7548ba31d21bc8ff0ced66469c7aca6f4"
+      ],
+      "story_achievements": [
+        "d972115b37444a62810345899a1fdfb641ec3076fcbfc82c5b1dcb67b764dbeb"
+      ],
+      "story_enrollment": [
+        "ae5b16a34fb55f28cb9bdd64e00473bc098dab1bd4e57b382704b9ac1e910ebc"
+      ],
+      "story_operations": [
+        "7c15bd97a445bd962c00892a0996643b5a4a26453adca1c56a971cba3171033c"
+      ],
+      "story_participants": [
+        "20641fdc1d99337bb8abca0d0c74c922b5e23e6c20b395e3b97f23924d67bd02"
+      ],
+      "story_publication_parts": [
+        "02d760618f15668db13d5326f9717aec5d6add1c0bbdf4c533a8f0f1ba98678f"
+      ],
+      "story_publications": [
+        "eb11cd39e8bc279f6ef8fa2ffe830ebba6493f72778ca86b56aab6edc0e9c2c7"
+      ],
+      "story_reminders": [
+        "d53a2d14ac0461d0effbf90b959364630f105aa9bf28603aa35f7eb151654cb1"
+      ],
+      "story_sessions": [
+        "0ccd08ab86431678583d7f2fad376f9dce9abcdf35758dcc058103a72d334f6a"
+      ],
+      "story_steps": [
+        "be7816ecdfbb859458be7ead74f7d5793adb64ae1c8a9178638710d5e3e8a5eb"
+      ],
+      "story_votes": [
+        "8575d8db0b32f7fa5cbfcb8fe8044d80f4d1d7b1d8ea267014004b2886bb2bc6"
+      ],
+      "timers": [
+        "60ec90ca27de869825126680345ebfbbd75bf3b3c7c2c63ed27ed0d2cea37ded"
       ]
     },
     "historical_contract_provenance": {
@@ -2051,6 +2348,50 @@
         "046f7dc1baee9e08207af72650fb4636b7da2d52"
       ],
       "approval": "Exact historical variants plus read-only NULL/noninteger/negative shards/stars checks; no runtime/database edits"
+    },
+    "object_requirements": {
+      "trigger:dnd_currency_category_insert": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:dnd_currency_category_update": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:dnd_currency_keep_category": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:inventory_item_scope_insert": [
+        "inventory",
+        "dnd_items"
+      ],
+      "trigger:inventory_item_scope_update": [
+        "inventory",
+        "dnd_items"
+      ],
+      "trigger:mini_boss_timeline_actions": [
+        "mini_boss_timeline",
+        "mini_boss_actions",
+        "mini_bosses"
+      ],
+      "trigger:mini_boss_timeline_events": [
+        "mini_boss_timeline",
+        "mini_boss_events",
+        "mini_bosses"
+      ]
+    },
+    "complete_contract_provenance": {
+      "owner_metadata_sha256": "e95fb119b9cd6b5593b00a2e38ceed43c6559405b71102092a76b1193cc90b0f",
+      "owner_original_db_sha256": "acb2620a631f790cce82e4d4f1339a2a601c2e30dd5756cd1d2d31cfc8977b51",
+      "owner_migrated_db_sha256": "db5eccf7b8c1d7dd88b4aa63be0c493ff54acf081da09cc9bf496bde9ef953e4",
+      "fixture": "tests/v1_5/fixtures/reviewed_schema_metadata.json",
+      "clean_source_commits": [
+        "d077dd2a2c29ad420b138bf07af23c77f4674d0b",
+        "cef77cc87f6a2286284f5cf8fdb851c775b04dd1",
+        "8e89473563e42fdd30c2aa15c04bd816a1f97ced"
+      ],
+      "review": "All table/old signature and owner index_xinfo verified; exact SQL retained; only previously approved player CHECK/ALTER differences"
     }
   }
 }

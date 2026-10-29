@@ -18,3 +18,6 @@ content/stories/unpublished/tayna_propavshey_ovtsy/* -text whitespace=-blank-at-
 
 # Exact hashed frozen release schema stays LF on Windows and Linux.
 deploy/release_schema.json text eol=lf
+
+# Reviewed schema-only owner export: retain its pinned SHA-256 on every OS.
+tests/v1_5/fixtures/reviewed_schema_metadata.json -text

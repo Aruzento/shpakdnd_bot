@@ -1,5 +1,7 @@
 # Исторические SQLite contracts — PR #9
 
+Актуальный guard-only этап: [Complete SQLite contracts](COMPLETE_SCHEMA_GUARD.md) — все known tables/indexes и required triggers. Исторические результаты ниже сохранены; новый exact-SHA отчёт и CI не подменяются прежними.
+
 Исходный tooling commit: dfc1e2d031b59f8b9107fe698c779c3ad0e98369.
 Игровой app tree остаётся cb678fe9f0978bb115a12e27c56a7160d0c94e4c.
 Финальный SHA и результаты полного CI приводятся в отдельном итоговом отчёте PR.

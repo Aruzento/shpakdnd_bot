@@ -42,7 +42,7 @@ FEEDBACK_SCHEMA = {
 }
 
 
-# Only these owner-audited tables may have extra historical variants.
+# Original audited ALTER variants; every known table now has an exact contract.
 HISTORICAL_TABLES = frozenset({
     "mini_boss_participants", "mini_bosses", "mini_event_sessions",
     "mini_heroes", "mini_item_uses", "mini_player_heroes", "mini_players",
@@ -96,28 +96,29 @@ def _table_signature(conn, table):
 
 
 def _exact_table_contract(conn, table):
-    """Exact paired DDL/index contract for the nine audited historical tables.
+    """Complete reviewed DDL/index contract; never normalize CHECK or SQL.
 
-    No column reordering or SQL normalization: CHECK, AUTOINCREMENT, table
-    options, collations, key direction and predicates stay part of the hash.
-    The original signature remains required as well.
+    index_list.seq is only enumeration/creation order. Term order, column IDs,
+    sort direction, collation, uniqueness and predicates remain exact.
     """
     def quoted(name):
         return '"' + name.replace('"', '""') + '"'
     sql = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
     ).fetchone()[0]
-    unique = []
+    indexes = []
     for index in conn.execute("PRAGMA index_list(" + quoted(table) + ")"):
-        if index[2]:
-            fields = [list(row) for row in conn.execute(
-                "PRAGMA index_xinfo(" + quoted(index[1]) + ")")]
-            index_sql = conn.execute(
-                "SELECT sql FROM sqlite_master WHERE type='index' AND name=?",
-                (index[1],)).fetchone()[0]
-            unique.append([index[1], index[3], index[4], fields, index_sql])
+        info = [list(row) for row in conn.execute(
+            "PRAGMA index_info(" + quoted(index[1]) + ")")]
+        fields = [list(row) for row in conn.execute(
+            "PRAGMA index_xinfo(" + quoted(index[1]) + ")")]
+        stored = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name=?",
+            (index[1],)).fetchone()
+        indexes.append([index[1], index[2], index[3], index[4],
+                        info, fields, stored[0] if stored else None])
     payload = [_table_signature(conn, table), sql,
-               sorted(unique, key=lambda row: json.dumps(row, sort_keys=True))]
+               sorted(indexes, key=lambda row: json.dumps(row, sort_keys=True))]
     return hashlib.sha256(json.dumps(
         payload, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
 
@@ -138,12 +139,18 @@ def inspect_connection(conn, capability):
         raise GuardError("BLOCKED_EMPTY_DATABASE")
     inventory = json.loads(Path(__file__).with_name(SCHEMA_FILE).read_text(encoding="utf-8"))
     baseline = inventory.pop("_baseline", None)
-    if not isinstance(baseline, dict) or not {"columns", "required_mini", "boss_tables", "legacy_columns", "v15_columns", "objects", "required_dnd", "v15_boss_tables", "table_signatures", "hero_codes", "exact_table_contracts"} <= set(baseline):
+    if not isinstance(baseline, dict) or not {"columns", "required_mini", "boss_tables", "legacy_columns", "v15_columns", "objects", "required_dnd", "v15_boss_tables", "table_signatures", "hero_codes", "exact_table_contracts", "object_requirements"} <= set(baseline):
         raise GuardError("BLOCKED_SCHEMA_INVENTORY")
     exact_contracts = baseline["exact_table_contracts"]
-    if (not isinstance(exact_contracts, dict) or set(exact_contracts) != HISTORICAL_TABLES
+    reviewed_tables = set(baseline["columns"]) | set(inventory) | set(FEEDBACK_SCHEMA)
+    if (not isinstance(exact_contracts, dict) or set(exact_contracts) != reviewed_tables
             or any(not isinstance(values, list) or not values
                    for values in exact_contracts.values())):
+        raise GuardError("BLOCKED_SCHEMA_INVENTORY")
+    requirements = baseline["object_requirements"]
+    if (not isinstance(requirements, dict) or set(requirements) != set(baseline["objects"])
+            or any(not isinstance(group, list) or not group
+                   or not set(group) <= reviewed_tables for group in requirements.values())):
         raise GuardError("BLOCKED_SCHEMA_INVENTORY")
     def table_columns(table):
         # table_xinfo also exposes generated/hidden columns.
@@ -175,9 +182,13 @@ def inspect_connection(conn, capability):
     for table in set(shape) & tables:
         if table_columns(table) != set(shape[table]):
             raise GuardError("BLOCKED_PARTIAL_BASE_SCHEMA")
-    for kind, name, sql in conn.execute("SELECT type,name,sql FROM sqlite_master WHERE type IN ('trigger','view')"):
-        if hashlib.sha256(sql.encode()).hexdigest() not in baseline["objects"].get(kind + ":" + name, []):
+    objects = {kind + ":" + name: sql for kind, name, sql in conn.execute(
+        "SELECT type,name,sql FROM sqlite_master WHERE type IN ('trigger','view')")}
+    for key, sql in objects.items():
+        if hashlib.sha256(sql.encode()).hexdigest() not in baseline["objects"].get(key, []):
             raise GuardError("BLOCKED_UNKNOWN_DATABASE_OBJECT")
+    if any(set(group) <= tables and key not in objects for key, group in requirements.items()):
+        raise GuardError("BLOCKED_MISSING_DATABASE_OBJECT")
     core = set(baseline["required_mini"])
     if any(t.startswith("mini_") for t in tables) and not core <= tables:
         raise GuardError("BLOCKED_PARTIAL_BASE_SCHEMA")
@@ -190,8 +201,7 @@ def inspect_connection(conn, capability):
     for table in tables & known:
         if _table_signature(conn, table) not in baseline["table_signatures"].get(table, []):
             raise GuardError("BLOCKED_UNKNOWN_TABLE_CONTRACT")
-        exact = baseline["exact_table_contracts"].get(table)
-        if exact is not None and _exact_table_contract(conn, table) not in exact:
+        if _exact_table_contract(conn, table) not in exact_contracts[table]:
             raise GuardError("BLOCKED_UNKNOWN_TABLE_CONTRACT")
     # Historical ALTER ADD COLUMN did not install CHECK(shards/stars>=0).
     # Owner-approved read-only compensation applies to all known profiles,
@@ -206,6 +216,14 @@ def inspect_connection(conn, capability):
                     + ' OR "' + column + '"<0 LIMIT 1').fetchone()
                 if bad:
                     raise GuardError("BLOCKED_INVALID_SHARDS_OR_STARS:" + table + "." + column)
+    # Mini inventory/copy counts are indivisible counters. Do not apply this
+    # rule to ordinary D&D's retained historical quantity representation.
+    for table, column in (("mini_inventory", "quantity"), ("mini_player_heroes", "copies")):
+        if table in tables and conn.execute(
+                'SELECT 1 FROM "' + table + '" WHERE "' + column
+                + '" IS NULL OR typeof("' + column + '")!=\'integer\''
+                + ' OR "' + column + '"<0 LIMIT 1').fetchone():
+            raise GuardError("BLOCKED_INVALID_MINI_INVENTORY:" + table + "." + column)
     counts = {}
     blockers = []
     for table in sorted(set(FEEDBACK_SCHEMA) & tables):
