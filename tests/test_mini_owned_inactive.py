@@ -261,8 +261,8 @@ class OwnedInactiveUITests(OwnedInactiveCase, unittest.IsolatedAsyncioTestCase):
     def callback(self, action, tail):
         return SimpleNamespace(id='exclusive-ui', data=f'mini:{action}:{self.world["id"]}:900123:{tail}',
             from_user=SimpleNamespace(id=900123, username='tester'), answer=AsyncMock(),
-            message=SimpleNamespace(ephemeral_message_id='old', delete_ephemeral=AsyncMock()),
-            bot=SimpleNamespace(send_message=AsyncMock(), send_photo=AsyncMock()))
+            message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id='old', delete_ephemeral=AsyncMock()),
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock(), send_photo=AsyncMock()))
 
     def services(self):
         stack = ExitStack()

@@ -11,9 +11,10 @@ from app.mini.boss.repository import (
     save_hero_state,
     log_hero_event,
     apply_round_forms,
+    queue_boss_skips,
 )
 from app.mini.boss.rewards import finish_victory, finish_failure
-from app.mini.combat import creatures
+from app.mini.combat import creatures,classes
 from app.mini.boss.repository import active_loadouts
 import json
 import sqlite3
@@ -49,7 +50,8 @@ def apply_boss_attack_passives(
 
     events: list[dict] = []
     for row in rows:
-        resolution = resolve_boss_attack(str(battle_loadout(row["hero_snapshot_json"]).get("passive_key", "none")))
+        frozen=battle_loadout(row["hero_snapshot_json"])
+        resolution = resolve_boss_attack(str(frozen.get("passive_key", "none")),ability_definition=frozen.get("passives",{}).get("normal",{}).get("definition"))
         bonus_shards = int(resolution.get("bonus_shards", 0))
         if bonus_shards > 0:
             conn.execute(
@@ -76,6 +78,9 @@ def boss_hits_reward(
     conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime,
     *, ignore_shields: bool = False,
 ) -> dict:
+    from app.mini.boss.team import reward_guard
+    guard=reward_guard(conn,boss,when)
+    if guard is not None:return guard
     shields = int(boss["reward_shields"])
     reward_percent = int(boss["reward_percent"])
     passive_events = apply_boss_attack_passives(conn, boss)
@@ -89,7 +94,7 @@ def boss_hits_reward(
     for row in rows:
         hero = battle_loadout(row['hero_snapshot_json'])
         defense = hero_abilities.resolve_reward_defense(hero.get('passive_key','none'),
-            state=hero_abilities.hero_state(row['hero_state_json']),shields=0)
+            state=hero_abilities.hero_state(row['hero_state_json']),shields=0,ability_definition=hero.get('passives',{}).get('normal',{}).get('definition'))
         defense_states[row['player_id']] = defense['state']
         save_hero_state(conn,int(boss['id']),int(row['player_id']),defense['state'])
         decoy_blocked |= defense['blocked']
@@ -102,7 +107,7 @@ def boss_hits_reward(
     for row in rows:
         hero = battle_loadout(row['hero_snapshot_json'])
         defense = hero_abilities.resolve_reward_defense(hero.get('passive_key','none'),
-            state=defense_states[row['player_id']],shields=shields if not ignore_shields else 0)
+            state=defense_states[row['player_id']],shields=shields if not ignore_shields else 0,ability_definition=hero.get('passives',{}).get('normal',{}).get('definition'))
         save_hero_state(conn,int(boss['id']),int(row['player_id']),defense['state'])
         if defense['blocked']:
             return {'type':defense['type'],'shields':shields,'reward_percent':reward_percent,
@@ -128,8 +133,13 @@ def boss_hits_reward(
         "poisonous": poisonous, "passive_events": passive_events,
     }
     if creatures.effective_reward_percent(dict(fresh)) <= 0:
-        result["failure_rewards"] = finish_failure(conn, fresh, when)
-        result["battle_ended"] = True
+        from app.mini.boss.team import rescue
+        if rescue(conn,fresh,when):
+            result['type']='last_stand'
+            result['reward_percent']=1
+        else:
+            result["failure_rewards"] = finish_failure(conn, fresh, when)
+            result["battle_ended"] = True
     return result
 
 
@@ -145,8 +155,13 @@ def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> di
     participants = active_loadouts(conn, int(boss["id"]))
     # A miss suppresses damaging RNG/hook effects but retains turn cadence and
     # independent abilities such as paralysis/banishment.
+    ability_view=dict(fresh)
+    values=json.loads(dict(fresh).get('team_state_json') or '{}')
+    if values.get('suppressed_round')==fresh['current_round'] or values.get('blind_round')==fresh['current_round']:
+        ability_view['ability_key']='none'
+        ability_view['ability_config_json']='{}'
     resolution = boss_abilities.boss_turn(
-        dict(fresh), participants, attack_missed=attempt["miss"])
+        ability_view, participants, attack_missed=attempt["miss"])
     events.extend(apply_boss_effects(conn, fresh, resolution, when))
     attacks = []
     if not attempt["miss"]:
@@ -168,7 +183,7 @@ def boss_turn(conn: sqlite3.Connection, boss: sqlite3.Row, when: datetime) -> di
     fresh = refresh_boss(conn, int(boss["id"]))
     death_rewards = None
     if fresh["status"] == "fighting":
-        events.extend(apply_boss_effects(conn, fresh, boss_abilities.after_boss_turn(dict(fresh), transformation_candidates(conn, int(fresh["id"]))), when))
+        events.extend(apply_boss_effects(conn, fresh, boss_abilities.after_boss_turn({**dict(fresh),"ability_key":ability_view["ability_key"]}, transformation_candidates(conn, int(fresh["id"]))), when))
         fresh = refresh_boss(conn, int(boss["id"]))
         events.extend(apply_boss_effects(conn, fresh, creatures.poison_tick(dict(fresh)), when))
         fresh = refresh_boss(conn, int(boss["id"]))
@@ -270,8 +285,11 @@ def apply_turn_start(conn, boss, current, when) -> dict:
 
 def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_percent=100, primary_base=False) -> dict:
     from app.mini.boss.calculations import calculate_hit
-    calculation = calculate_hit(dict(boss), dict(participant), hero,
-        active_loadouts(conn, int(boss["id"])) if primary_base else None,
+    participant=dict(participant)
+    fresh_state=conn.execute('SELECT hero_state_json FROM mini_boss_participants WHERE boss_id=? AND player_id=?',(boss['id'],participant['player_id'])).fetchone()
+    if fresh_state:participant['hero_state_json']=fresh_state[0]
+    calculation = calculate_hit(dict(boss), participant, hero,
+        active_loadouts(conn, int(boss["id"])) if primary_base or int(dict(boss).get('rules_version',0))>=15 else None,
         extra_percent=damage_percent, extra_uses_primary_base=primary_base)
     events = apply_boss_effects(conn, boss, calculation["boss_resolution"], when, actor_id=int(participant["player_id"]))
     calculated = calculation["damage"]
@@ -279,9 +297,9 @@ def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_pe
     conn.execute("UPDATE mini_bosses SET current_hp = ? WHERE id = ?", (calculation["hp_after"], int(boss["id"])))
     conn.execute("UPDATE mini_boss_participants SET total_damage = total_damage + ? WHERE boss_id = ? AND player_id = ?",
                  (actual, int(boss["id"]), int(participant["player_id"])))
-    event = {"type": "extra_attack", "damage": actual, "calculated_damage": calculated,
+    event = {"type": "extra_attack", "damage": actual, "actual_hp_damage": actual,"hero":hero, "calculated_damage": calculated,
              "message": message.format(damage=actual)}
-    conn.execute(
+    extra_cursor=conn.execute(
         """INSERT INTO mini_boss_actions (boss_id, player_id, round_number, action_type,
            damage, boss_hp_after, created_at, event_json) VALUES (?, ?, ?, 'extra_attack', ?, ?, ?, ?)""",
         (int(boss["id"]), int(participant["player_id"]), int(boss["current_round"]), actual,
@@ -290,7 +308,34 @@ def extra_attack(conn, boss, participant, hero, when, message: str, *, damage_pe
     fresh = refresh_boss(conn, int(boss["id"]))
     events.extend(apply_boss_effects(conn, fresh, creatures.on_hit(dict(fresh), hero, successful=actual > 0),
                                    when, actor_id=int(participant["player_id"])))
-    return {"damage": actual, "event": event, "boss_events": events}
+    if int(dict(boss).get('rules_version',0))>=15:
+        after=hero_abilities.resolve_after_attack(hero.get('passive_key','none'),hit_number=int(participant['hit_count'])+1,actual_hp_damage=actual,state=calculation['attack_resolution'].get('hero_state',{}),ability_definition=hero.get('passives',{}).get('normal',{}).get('definition'))
+        extra_passives=[*calculation['passive_events'],*after['events']]
+        for raw in extra_passives:events.append(log_hero_event(conn,refresh_boss(conn,boss['id']),{**participant,'hero_name':hero.get('name','герой')},raw,when))
+        event['passive_events']=extra_passives
+        conn.execute('UPDATE mini_boss_actions SET event_json=? WHERE id=?',(json.dumps(event,ensure_ascii=False),extra_cursor.lastrowid))
+        if after['state'].pop('grave_seal',False):
+            current=refresh_boss(conn,boss['id'])
+            ability_state=json.loads(current['ability_state_json'] or '{}');ability_state['grave_seal']=True
+            events.extend(apply_boss_effects(conn,current,{'boss_changes':{'ability_state_json':json.dumps(ability_state)}},when))
+        if after.get('restore_shield'):
+            conn.execute('UPDATE mini_bosses SET reward_shields=MIN(reward_shields_max,reward_shields+1) WHERE id=?',(boss['id'],))
+        class_plan=classes.on_hit(dict(refresh_boss(conn,boss['id'])),hero,after['state'],successful=actual>0)
+        save_hero_state(conn,boss['id'],participant['player_id'],class_plan['state'])
+        events.extend(apply_boss_effects(conn,refresh_boss(conn,boss['id']),class_plan,when,actor_id=participant['player_id']))
+        if class_plan['stolen']:
+            from app.mini.wallet import change_balance_in_transaction
+            action_id=conn.execute('SELECT MAX(id) FROM mini_boss_actions WHERE boss_id=? AND player_id=?',(boss['id'],participant['player_id'])).fetchone()[0]
+            change_balance_in_transaction(conn,participant['player_id'],class_plan['stolen'],'Кража награды плутом','boss',boss['id'],f"boss:{boss['id']}:sneaky:{action_id}")
+        queue_boss_skips(conn,refresh_boss(conn,boss['id']),participant['player_id'],calculation['hp_after'],calculation.get('boss_skip_turns',0),when)
+        from app.mini.boss.team import after_hit
+        events.extend(after_hit(conn,refresh_boss(conn,boss['id']),dict(participant),hero,actual,when,is_extra=True))
+    result={"damage": actual, "event": event, "boss_events": events}
+    if int(dict(boss).get('rules_version',0))>=15 and calculation['reachable'] and calculation['attack_resolution'].get('banish_boss') and refresh_boss(conn,boss['id'])['current_hp']>0:
+        from app.mini.boss.rewards import finish_banishment
+        result['rewards']=finish_banishment(conn,refresh_boss(conn,boss['id']),when)
+        result['battle_ended']=True
+    return result
 
 
 def consume_forced_skip(
@@ -317,14 +362,39 @@ def advance_after_turn(
     forced_events = []
     hero_events = []
     round_ended = False
+    team_state=json.loads(dict(boss).get('team_state_json') or '{}')
+    solo=None  # V1.5 preserves the participant roster after Draghar's rescue.
+    if solo is not None and not conn.execute('SELECT 1 FROM mini_boss_participants WHERE boss_id=? AND player_id=? AND banished=0',(boss['id'],solo)).fetchone():
+        rewards=finish_failure(conn,boss,when)
+        return {'battle_ended':True,'rewards':rewards,'round_ended':False,'reward_events':[],'hero_events':[],'forced_skip_events':[]}
+    extra_turn=team_state.pop('lightning_extra_turn',None)
+    if extra_turn is not None:
+        original_position=team_state.pop('lightning_return_position')
+        conn.execute('UPDATE mini_bosses SET current_turn_position=? WHERE id=?',(original_position,boss['id']))
+        from app.mini.boss.team import save
+        save(conn,boss['id'],team_state)
+        boss=refresh_boss(conn,boss['id'])
     while True:
         next_row = conn.execute(
             """SELECT queue_position FROM mini_boss_participants
-               WHERE boss_id = ? AND banished = 0 AND queue_position > ?
+               WHERE boss_id = ? AND banished = 0 AND queue_position > ? AND (? IS NULL OR player_id=?)
                ORDER BY queue_position LIMIT 1""",
-            (int(boss["id"]), int(boss["current_turn_position"])),
+            (int(boss["id"]), int(boss["current_turn_position"]),solo,solo),
         ).fetchone()
         if next_row is None:
+            values=json.loads(dict(boss).get('team_state_json') or '{}')
+            credits=values.get('lightning_credits',{})
+            pending=[p for p in active_loadouts(conn,boss['id']) if credits.get(str(p['player_id']),0)>0 and (solo is None or p['player_id']==solo)]
+            if pending:
+                player=min(pending,key=lambda p:p['queue_position'])
+                values['lightning_extra_turn']=player['player_id']
+                values['lightning_return_position']=boss['current_turn_position']
+                credits.pop(str(player['player_id']),None)
+                from app.mini.boss.team import save
+                save(conn,boss['id'],values)
+                set_position=player['queue_position']
+                conn.execute('UPDATE mini_bosses SET current_turn_position=?,turn_started_at=? WHERE id=?',(set_position,db_time(when),boss['id']))
+                return {'round_ended':False,'battle_ended':False,'hero_events':[],'reward_events':[],'forced_skip_events':[]}
             round_ended = True
             reward_event = boss_turn(conn, boss, when)
             reward_events.append(reward_event)
@@ -342,8 +412,8 @@ def advance_after_turn(
                 }
             next_row = conn.execute(
                 """SELECT queue_position FROM mini_boss_participants
-                   WHERE boss_id = ? AND banished = 0 ORDER BY queue_position LIMIT 1""",
-                (int(boss["id"]),),
+                   WHERE boss_id = ? AND banished = 0 AND (? IS NULL OR player_id=?) ORDER BY queue_position LIMIT 1""",
+                (int(boss["id"]),solo,solo),
             ).fetchone()
             if next_row is None:
                 raise BossCombatError(editorial_text('errors.boss.runtime.advance_after_turn.01'))

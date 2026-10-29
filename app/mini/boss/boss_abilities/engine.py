@@ -97,6 +97,7 @@ _DAMAGE_HOOKS = {
 
 
 def modify_hero_damage(boss: dict, hero: dict, damage: int) -> dict:
+    if _suppressed(boss):return {'damage':damage,'modifier_percent':100,'events':[],'boss_changes':{}}
     state = _state(boss)
     config = _config(boss)
     hook = _DAMAGE_HOOKS.get(boss["ability_key"])
@@ -209,6 +210,7 @@ _AFTER_TURN_HOOKS = {"hydra_regeneration": _hydra_after_turn}
 
 
 def after_boss_turn(boss: dict, participants=None, *, chooser=None) -> dict:
+    if _suppressed(boss):return {'boss_changes':{},'events':[]}
     config = _config(boss)
     state = _state(boss)
     suppressed = {"events": []}
@@ -247,7 +249,7 @@ def boss_death(boss: dict) -> dict:
 
 def final_hero_damage(boss, hero, damage, *, base_attack, raw_damage=None):
     """Final HP overrides: true zero and healing never pass a min-one helper."""
-    key = boss.get("ability_key", "none")
+    key = "none" if _suppressed(boss) else boss.get("ability_key", "none")
     value = max(0, int(damage))
     raw = value if raw_damage is None else max(0, int(raw_damage))
     healed = 0
@@ -266,8 +268,8 @@ def final_hero_damage(boss, hero, damage, *, base_attack, raw_damage=None):
     elif key == "waste_of_time" and hero.get("rarity") in {"rare", "legendary", "mythic"}:
         value = 0
     elif key == "training":
-        value = 1
-    elif key == "simple":
+        value = max(1,int(boss.get("original_max_hp") or boss["max_hp"])*10//100) if int(boss.get("rules_version",0))>=15 and raw>0 and value>0 else (0 if int(boss.get("rules_version",0))>=15 else 1)
+    elif key == "simple" and int(boss.get("rules_version",0))<15:
         value = raw
     return {"damage": value, "healed_hp": healed, "boss_changes": {}, "events": events}
 
@@ -291,3 +293,9 @@ def _transformation_turn(boss, participants, state, config, roller, chooser, res
 
 
 _TURN_HOOKS.update(training=_training_turn)
+
+
+def _suppressed(boss):
+    if int(boss.get('rules_version',0))<15:return False
+    state=json.loads(boss.get('team_state_json') or '{}')
+    return any(state.get(field)==boss.get('current_round') for field in ('suppressed_round','blind_round'))

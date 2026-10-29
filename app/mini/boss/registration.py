@@ -79,8 +79,8 @@ async def boss_create_callback(callback: CallbackQuery):
     if world is None:
         await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
         return None
-    if world is None or not is_admin(callback, world):
-        await callback.answer("Только администратор темы может создать босса.", show_alert=True)
+    if world is None or _load_player(world_id,callback) is None:
+        await callback.answer("Для создания босса зарегистрируйтесь в D&D Mini.", show_alert=True)
         return
     if get_active_boss(world_id) is not None:
         await callback.answer("Сначала заверши текущего босса.", show_alert=True)
@@ -116,7 +116,7 @@ async def boss_preview_callback(callback: CallbackQuery):
         await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
         return None
     template = get_boss_template(code)
-    if world is None or not is_admin(callback, world):
+    if world is None or _load_player(world_id,callback) is None:
         await callback.answer("Нет прав администратора.", show_alert=True)
         return
     if template is None or not template.get("active", True):
@@ -157,7 +157,7 @@ async def boss_announce_callback(callback: CallbackQuery):
         await callback.answer('D&D Mini сейчас недоступен в этой теме.',show_alert=True)
         return None
     player = _load_player(world_id, callback)
-    if world is None or player is None or not is_admin(callback, world):
+    if world is None or player is None:
         await callback.answer("Нет прав администратора.", show_alert=True)
         return
 
@@ -289,7 +289,7 @@ async def boss_list_callback(callback: CallbackQuery):
     text = (
         f"👥 Участники: {boss['name']}\n\n"
         f"{format_participants(participants)}\n\n"
-        f"Всего: {len(participants)} • минимум: {boss['min_players']}"
+        f"Всего: {len(participants)}"
     )
 
     player = _load_player(world_id, callback)

@@ -154,6 +154,8 @@ class MainCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         def watched(text):
             return {line for line in text.splitlines() if line.startswith('PathModified=')}
         self.assertEqual(watched(current) - watched(baseline),
-                         {'PathModified=/opt/shpakdnd-bot/app/dnd_shop'})
+                         {'PathModified=/opt/shpakdnd-bot/app/dnd_shop',
+                          'PathModified=/opt/shpakdnd-bot/app/stories',
+                          'PathModified=/opt/shpakdnd-bot/app/mini/mythic/raid'})
         self.assertLessEqual(watched(baseline), watched(current))
         self.assertFalse(any('shop.csv' in line or '/var/lib/shpakdnd' in line for line in watched(current)))

@@ -68,7 +68,7 @@ def screen(world,player,user_id,view='home',value=0,page=0):
                 else:text+=editorial_text('duels.screen.line_06')
             rows.append([b(editorial_text('duels.screen.line_10'),'heroes.0')])
     elif view in ('heroes','pick'):
-        heroes=filter_heroes(get_player_heroes(pid,sync_catalog=False),pid)
+        heroes=[h for h in filter_heroes(get_player_heroes(pid,sync_catalog=False),pid) if h['rarity']!='mythic']
         text=editorial_text('duels.screen.line_03')
         pages=max(1,(len(heroes)+SIZE-1)//SIZE);page=max(0,min(page,pages-1))
         for h in heroes[page*SIZE:(page+1)*SIZE]:
@@ -94,6 +94,10 @@ def screen(world,player,user_id,view='home',value=0,page=0):
 @router.callback_query(F.data.startswith('mini:duels:'))
 @editorial_screen
 async def home(callback):
+    from app.mini.features import enabled, UNAVAILABLE
+    if not enabled('duels'):
+        await callback.answer(UNAVAILABLE, show_alert=True)
+        return
     context=await load_personal_context(callback)
     if not context:return
     world,player=context;text,markup=screen(world,player,callback.from_user.id)
@@ -103,6 +107,10 @@ async def home(callback):
 @router.callback_query(F.data.startswith('mini:duel:'))
 @editorial_screen
 async def action(callback):
+    from app.mini.features import enabled, UNAVAILABLE
+    if not enabled('duels'):
+        await callback.answer(UNAVAILABLE, show_alert=True)
+        return
     context=await load_extended_context(callback,'duel')
     if not context:return
     world,player,payload=context

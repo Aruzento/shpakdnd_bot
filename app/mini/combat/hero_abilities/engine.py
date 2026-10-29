@@ -37,9 +37,12 @@ def resolve_attack(
     roller: Roller | None = None,
     base_attack: int | None = None,
     state: dict | None = None,
+    additive_bonuses: bool = False,
+    ability_definition: dict | None = None,
 ) -> dict:
     """Применяет attack-эффекты пассивки и возвращает итоговый урон."""
-    ability = get_ability(passive_key)
+    ability = dict(ability_definition) if ability_definition is not None else get_ability(passive_key)
+    ordinary_bonus_bps = 0
     damage = max(1, int(base_damage))
     hit_number = max(1, int(hit_number))
     hp_before = max(0, int(boss_hp_before))
@@ -121,7 +124,8 @@ def resolve_attack(
             every = int(effect["every"])
             step = (hit_number - 1) % every
             bonus = step * int(effect["step_percent"])
-            damage = _multiply_damage(damage, 100 + bonus)
+            if additive_bonuses:ordinary_bonus_bps += bonus*100
+            else:damage = _multiply_damage(damage, 100 + bonus)
             if bonus:
                 event = _event(effect)
                 event.update(bonus_percent=bonus, message=event["message"].format(bonus_percent=bonus))
@@ -173,10 +177,10 @@ def resolve_attack(
             continue
 
         if triggered:
-            damage = _multiply_damage(
-                damage,
-                int(effect.get("multiplier_percent", 100)),
-            )
+            if additive_bonuses:
+                ordinary_bonus_bps += (int(effect.get('multiplier_percent',100))-100)*100
+            else:
+                damage = _multiply_damage(damage,int(effect.get('multiplier_percent',100)))
             events.append(_event(effect))
 
     return {
@@ -192,6 +196,7 @@ def resolve_attack(
         "extra_attacks": extra_attacks,
         "extra_attack_percent": extra_attack_percent,
         "extra_attack_message": extra_attack_message,
+        "ordinary_bonus_bps": ordinary_bonus_bps,
         "damage_mode": damage_mode,
         "hero_state": state,
         "extra_uses_primary_base": extra_uses_primary_base,
@@ -204,9 +209,10 @@ def resolve_boss_attack(
     passive_key: str,
     *,
     roller: Roller | None = None,
+    ability_definition: dict | None = None,
 ) -> dict:
     """Применяет пассивки, срабатывающие при реальной атаке босса."""
-    ability = get_ability(passive_key)
+    ability = ability_definition if ability_definition is not None else get_ability(passive_key)
     roller = roller or _roll_success
     events: list[dict] = []
     bonus_shards = 0
@@ -236,9 +242,10 @@ def resolve_kill(
     passive_key: str,
     *,
     roller: Roller | None = None,
+    ability_definition: dict | None = None,
 ) -> dict:
     """Применяет эффекты, которые срабатывают только на смертельном ударе."""
-    ability = get_ability(passive_key)
+    ability = ability_definition if ability_definition is not None else get_ability(passive_key)
     roller = roller or _roll_success
     events: list[dict] = []
     bonus_shards = 0
@@ -286,12 +293,12 @@ def hero_state(raw: str) -> dict:
     return state
 
 
-def resolve_after_attack(passive_key: str, *, hit_number: int, actual_hp_damage: int, state: dict) -> dict:
-    """Only ordinary hits create effects; counters use persisted hit_count."""
+def resolve_after_attack(passive_key: str, *, hit_number: int, actual_hp_damage: int, state: dict, ability_definition=None) -> dict:
+    """Ordinary and approved extra hits create effects; counters use persisted hit_count."""
     state = dict(state)
     events = []
     restore_shield = False
-    for effect in get_ability(passive_key)["effects"]:
+    for effect in (ability_definition if ability_definition is not None else get_ability(passive_key))["effects"]:
         if effect.get("trigger") != "after_attack" or hit_number % int(effect["every"]):
             continue
         kind = effect["type"]
@@ -325,11 +332,11 @@ def resolve_turn_start(*, state: dict) -> dict:
     return {"state": state, "damage": damage}
 
 
-def resolve_victory(passive_key: str, *, roller: Roller | None = None) -> dict:
+def resolve_victory(passive_key: str, *, roller: Roller | None = None, ability_definition=None) -> dict:
     roller = roller or _roll_success
     events = []
     shards = 0
-    for effect in get_ability(passive_key)["effects"]:
+    for effect in (ability_definition if ability_definition is not None else get_ability(passive_key))["effects"]:
         if effect.get("trigger") == "victory" and effect["type"] == "chance_shards":
             if roller(float(effect["chance_percent"])):
                 amount = int(effect["shards"])
@@ -338,19 +345,19 @@ def resolve_victory(passive_key: str, *, roller: Roller | None = None) -> dict:
     return {"bonus_shards": shards, "events": events}
 
 
-def resolve_reward_defense(passive_key, *, state, shields, roller=None):
+def resolve_reward_defense(passive_key, *, state, shields, roller=None, ability_definition=None):
     """Attempt one decoy/save; failed Last Watch attempts do not consume it."""
     state = dict(state)
     roll = roller or _roll_success
     blocked = False
     kind = None
     if state.pop("bone_decoy", False):
-        chance = next((e['chance_percent'] for e in get_ability('bone_decoy')['effects']
+        chance = next((e['chance_percent'] for e in (ability_definition if ability_definition is not None else get_ability('bone_decoy'))['effects']
                        if e['type']=='every_n_decoy'),25)
         blocked = roll(chance)
         kind = "bone_decoy"
     if not blocked and shields > 0 and not state.get("last_watch_used"):
-        for effect in get_ability(passive_key)["effects"]:
+        for effect in (ability_definition if ability_definition is not None else get_ability(passive_key))["effects"]:
             if effect["type"] == "save_shield" and roll(effect["chance_percent"]):
                 state["last_watch_used"] = True
                 blocked = True
@@ -360,7 +367,7 @@ def resolve_reward_defense(passive_key, *, state, shields, roller=None):
 
 
 def arise_chance(hero):
-    effects = get_ability(hero.get("passive_key", "none"))["effects"]
+    effects = (hero.get('passives',{}).get('normal',{}).get('definition') or get_ability(hero.get('passive_key','none')))["effects"]
     for effect in effects:
         if effect.get("trigger") == "victory" and effect["type"] == "shadow_extraction":
             return int(hero.get("arise_chance_percent", effect["chance_percent"]))
@@ -373,7 +380,7 @@ def resolve_battle_start(hero: dict, boss: dict, *, state=None, chooser=None, ro
     from app.mini.combat.tags import CREATURE_TRAITS
     hero = dict(hero)
     state = dict(state or {})
-    for effect in get_ability(hero.get("passive_key", "none"))["effects"]:
+    for effect in (hero.get('passives',{}).get('normal',{}).get('definition') or get_ability(hero.get('passive_key','none')))['effects']:
         if effect["type"] != "copy_boss_form" or effect["trigger"] != "battle_start":
             continue
         if "shadow_form" not in state:
@@ -391,7 +398,7 @@ def resolve_round_start(hero, *, state, round_number, roller=None):
     """Roll once per round; retain the effective faction and round in SQLite state."""
     hero, state = dict(hero), dict(state)
     events = []
-    for effect in get_ability(hero.get('passive_key', 'none'))['effects']:
+    for effect in (hero.get('passives',{}).get('normal',{}).get('definition') or get_ability(hero.get('passive_key','none')))['effects']:
         if effect['type'] != 'chance_shadow_faction' or effect['trigger'] != 'round_start':
             continue
         faction = state.get('shadow_faction', hero['faction'])

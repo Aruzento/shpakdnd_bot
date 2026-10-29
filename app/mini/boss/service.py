@@ -123,7 +123,7 @@ def create_boss_event(
                 str(template.get("image", "")),
                 int(template["max_hp"]),
                 int(template["max_hp"]),
-                int(template["min_players"]),
+                1,
                 int(template.get("reward_coins", 0)),
                 json.dumps(template.get("reward_items", []), ensure_ascii=False),
                 int(template.get("reward_shields", 3)),
@@ -146,6 +146,7 @@ def create_boss_event(
         )
         conn.execute("UPDATE mini_bosses SET content_version=14, shadow_extractable=?, shadow_hero_code=? WHERE id=?",
             (int(template.get("shadow_extractable", True)), template.get("shadow_hero_code"), boss_id))
+        conn.execute('UPDATE mini_bosses SET rules_version=15,turn_timeout_seconds=900,reward_snapshot_version=1,original_max_hp=max_hp,original_reward_coins=reward_coins WHERE id=?',(boss_id,))
         conn.commit()
 
     boss = get_boss(boss_id, db_path)
@@ -219,7 +220,7 @@ def list_participants(
                 h.name AS hero_name,
                 h.rarity AS hero_rarity,
                 h.image_path AS hero_image_path,
-                bp.hero_snapshot_json
+                bp.hero_snapshot_json, bp.skipped_turns
             FROM mini_boss_participants bp
             JOIN mini_players p ON p.id = bp.player_id
             JOIN mini_bosses b ON b.id = bp.boss_id
@@ -394,7 +395,7 @@ def close_registration(
             (int(boss_id),),
         ).fetchall()
         count = len(participants)
-        minimum = int(boss["min_players"])
+        minimum = 1
         if count < minimum:
             conn.rollback()
             raise BossNotEnoughPlayers(

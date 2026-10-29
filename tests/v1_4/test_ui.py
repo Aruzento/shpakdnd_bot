@@ -54,16 +54,13 @@ class NewScreensTests(unittest.TestCase):
         _,markup=village.screen(s,1,42,'hero',hero_id=1)
         text,_=village.screen(s,1,42,'hero',hero_id=1);self.assertIn('Без работы',text)
 
-    def test_mythic_empty_catalog_and_large_code_compact_craft_callback(self):
-        with patch.object(mythic.service,'list_heroes',return_value=[]):text,_=mythic.screen(1,1,42)
-        self.assertIn('пока не добавлены',text)
-        hero=dict(id=123456789,code='mythic_'+'long'*100,name='Мифический герой',fragment_cost=5,fragments=6,owned=False)
-        with patch.object(mythic.service,'list_heroes',return_value=[hero]):text,markup=mythic.screen(1,999999,9999999999)
-        self.assertIn('6/5',text);self.assertTrue(any('craft.123456789' in b.callback_data for b in buttons(markup)))
+    def test_mythic_inventory_has_no_retired_craft_callback(self):
+        with patch.object(mythic.pets,'state',return_value={'pets':[],'mythic_shards':6}):
+            text,markup=mythic.screen(1,999999,9999999999)
+        self.assertIn('Мифическая эра',text)
+        self.assertIn('6',text)
+        self.assertFalse(any('craft.' in (b.callback_data or '') for b in buttons(markup)))
         self.assertTrue(all(len(b.callback_data.encode())<=64 for b in buttons(markup)))
-        hero['owned']=True
-        with patch.object(mythic.service,'list_heroes',return_value=[hero]):_,markup=mythic.screen(1,1,42)
-        self.assertFalse(any('craft.' in b.callback_data for b in buttons(markup)))
 
     def test_duel_defender_change_accept_refuse_and_challenger_cancel(self):
         d=dict(id=1,status='pending',challenger_id=1,defender_id=2,challenger_snapshot='{"name":"Инициатор"}',defender_snapshot='{"name":"Защитник"}',defender_hero_id=3,expires_at=1120)
@@ -91,6 +88,8 @@ class NewCallbackTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_all_new_screens_use_personal_ephemeral_transport(self):
         world={'id':1};player={'id':1}
+        import os
+        self.enterContext(patch.dict(os.environ, {"MINI_DUELS_ENABLED":"1"}))
         for module in (village,duels,mythic):
             cb=self.callback('unused')
             with patch.object(module,'load_personal_context',AsyncMock(return_value=(world,player))),patch.object(module,'screen',return_value=('Экран',None)),patch.object(module,'send_private_text_from_callback',AsyncMock()) as send:

@@ -124,7 +124,7 @@ class RollbackShellTests(unittest.TestCase):
     def test_frozen_helper_survives_checkout_removing_new_source(self):
         self.paused()
         deploy=self.h.project/'deploy'; deploy.mkdir()
-        for name in ('deploy-shpakdnd.sh','deploy_helpers.py','pvp_ops.py','sqlite-deploy.py','telegram-deploy-notice.py'):
+        for name in ('deploy-shpakdnd.sh','deploy_helpers.py','pvp_ops.py','sqlite-deploy.py','telegram-deploy-notice.py','release_preflight.py','release_content.py','release_guard.py','release_schema.json'):
             shutil.copy2(ROOT/'deploy'/name,deploy/name)
         self.h.script=deploy/'deploy-shpakdnd.sh'
         (self.h.state/'old').write_text(harness.OLD)

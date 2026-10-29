@@ -1,5 +1,6 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from app.mini.duels import service as d
 from app.mini.duels.combat import resolve
 from app.mini.players import create_mini_player
@@ -11,6 +12,8 @@ from tests.v1_3.support import MiniCase
 
 class DuelTests(MiniCase):
     def setUp(self):
+        import os
+        self.enterContext(patch.dict(os.environ, {"MINI_DUELS_ENABLED":"1"}))
         super().setUp();self.other=create_mini_player(self.world['id'],991117,'@rival','Соперник',self.db)['id']
         self.hero1=self.hero('Villager');self.hero2=self.hero('olaf_taliy')
         self.sql('INSERT INTO mini_player_heroes(player_id,hero_id) VALUES(?,?)',(self.other,self.hero2['id']))

@@ -61,14 +61,14 @@ def _launcher_menu(world_id: int) -> InlineKeyboardMarkup:
 
 
 
-SUBMENUS={'adventures': ['boss', 'tower', 'daily', 'duels'], 'heroarea': ['character', 'inventory', 'equipment', 'collection'], 'fair': ['shop', 'events', 'village'], 'more': ['rules', 'home', 'mythic']}
+SUBMENUS={'adventures': ['boss', 'tower', 'daily', 'raids'], 'heroarea': ['character', 'collection', 'gacha', 'inventory'], 'fair': ['shop', 'events', 'village'], 'more': ['rules', 'home', 'mythic', 'stories']}
 
 
 @editorial_screen
 def submenu(action,world,user):
     entries=SUBMENUS[action]
     title=glossary("section."+action, decorated=True)
-    rows=[[InlineKeyboardButton(text=Text(glossary("section."+target, decorated=True), icon_key="icon.section."+target),callback_data=_personal_callback(target,world,user))] for target in entries]
+    rows=[[InlineKeyboardButton(text=({"boss": "Обычные боссы", "tower": "Башня испытаний", "daily": "Ежедневные активности", "raids": "Мифический рейд", "stories": "Истории"}.get(target) or Text(glossary("section."+target, decorated=True), icon_key="icon.section."+target)),callback_data=_personal_callback(target,world,user))] for target in entries]
     if action in ('adventures','heroarea'):
         rows=[rows[0]+rows[1],rows[2]+rows[3]]
     rows.append([InlineKeyboardButton(text=editorial_text('navigation.back'),callback_data=_personal_callback('home',world,user))])
@@ -112,11 +112,12 @@ def _format_home(world: dict, player: dict) -> str:
 
 @editorial_screen
 async def _send_home_from_callback(callback: CallbackQuery, world: dict, player: dict):
-    active = get_active_hero(player["id"])
+    from app.mini.ui.timing import run_sync
+    active = await run_sync("active_hero", get_active_hero, player["id"])
     text = _home_content(player, active)
     markup = _player_menu(world["id"], callback.from_user.id)
     if active is not None:
-        return await send_hero_card(callback, world, active, text, markup)
+        return await send_hero_card(callback, world, active, text, markup, cache_image=True)
     return await _send_private_text_from_callback(callback, world, text, markup)
 
 
@@ -267,7 +268,8 @@ async def launch_callback(callback: CallbackQuery):
         await callback.answer(editorial_text('handlers.launch_callback.line_05'), show_alert=True)
         return
 
-    world = get_mini_world_by_id(world_id)
+    from app.mini.ui.timing import run_sync
+    world = await run_sync("context", get_mini_world_by_id, world_id)
     if not world or not world["enabled"]:
         await callback.answer(
             editorial_text('handlers.launch_callback.line_03'),
@@ -282,7 +284,8 @@ async def launch_callback(callback: CallbackQuery):
         )
         return
 
-    player = get_mini_player(world_id, callback.from_user.id)
+    await callback.answer()
+    player = await run_sync("context", get_mini_player, world_id, callback.from_user.id)
 
     if player is None:
         text = (
@@ -290,14 +293,12 @@ async def launch_callback(callback: CallbackQuery):
         )
         markup = _create_menu(world_id, callback.from_user.id)
     else:
-        touch_mini_player(
+        await run_sync("context", touch_mini_player,
             world_id,
             callback.from_user.id,
             _username_from_user(callback.from_user),
         )
-        player = get_mini_player(world_id, callback.from_user.id)
-        text = _format_home(world, player)
-        markup = _player_menu(world_id, callback.from_user.id)
+        player = await run_sync("context", get_mini_player, world_id, callback.from_user.id)
 
     try:
         if player is not None:
@@ -317,7 +318,7 @@ async def launch_callback(callback: CallbackQuery):
         )
         return
 
-    await callback.answer(editorial_text('handlers.launch_callback.line_02'))
+
 
 
 @router.message(Command("mini"))

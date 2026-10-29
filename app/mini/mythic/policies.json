@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "status": "APPROVED",
+  "normal_rewards": {
+    "gold_percent": [
+      300,
+      320,
+      340,
+      360,
+      380,
+      400
+    ],
+    "thief_remaining_percent": 10,
+    "blessing_mythic_shards": 5,
+    "star_chance": [
+      20,
+      23,
+      26,
+      29,
+      32,
+      35
+    ],
+    "star_shards": 300,
+    "star_outcome": "normal_victory_only",
+    "tower_chest_preserved": true,
+    "tower_arcana": "first_player_floor_choice",
+    "version": 2,
+    "star_distribution": "individual",
+    "star_blessing": "independent"
+  },
+  "raid_eclipse": {
+    "percent": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "hp_base": "original_max_hp",
+    "fund_base": "original_max_hp"
+  }
+}

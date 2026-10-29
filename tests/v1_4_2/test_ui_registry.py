@@ -77,6 +77,8 @@ class InterfaceTests(unittest.TestCase):
 
 class RegistryIntegrationTests(MiniCase):
     def test_duel_public_defender_sent_once_across_callback_restart(self):
+        import os
+        self.enterContext(patch.dict(os.environ, {"MINI_DUELS_ENABLED":"1"}))
         import asyncio
         from app.mini.duels import handlers,service
         from app.mini.players import create_mini_player

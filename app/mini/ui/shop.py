@@ -41,6 +41,9 @@ def _shop_main_menu(world_id: int, user_id: int) -> InlineKeyboardMarkup:
             )
         ])
 
+    rows.append([InlineKeyboardButton(
+        text="Мифическое яйцо · 75 мифических осколков",
+        callback_data=f"mini:myth:{world_id}:{user_id}:buyask.{secrets.token_hex(3)}")])
     rows.append([
         InlineKeyboardButton(
             text=editorial_text('navigation.inventory'),

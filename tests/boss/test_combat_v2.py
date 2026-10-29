@@ -317,9 +317,9 @@ class CombatV2IntegrationTests(unittest.TestCase):
             conn.execute("UPDATE mini_boss_participants SET damage_bonus_percent = 10 WHERE boss_id = ? AND player_id = ?", (self.boss["id"], self.players[0]["id"]))
         result = self.hit(0)
         for field, value in {
-            "base_damage": 15, "ability_damage": 30, "faction_multiplier_percent": 200,
-            "damage_after_faction": 60, "boss_modifier_percent": 80,
-            "damage_before_external_bonus": 48, "damage_bonus_percent": 10, "damage": 53,
+            "base_damage": 15, "ability_damage": 15, "faction_multiplier_percent": 200,
+            "damage_after_faction": 30, "boss_modifier_percent": 80,
+            "damage_before_external_bonus": 24, "damage_bonus_percent": 10, "damage": 50,
         }.items():
             self.assertEqual(result[field], value, field)
 
@@ -467,7 +467,7 @@ class CombatV2IntegrationTests(unittest.TestCase):
         self.assertEqual(self.hit(1)["damage"], 0)
         init_boss_db(self.db)
         self.assertFalse(json.loads(get_boss(self.boss["id"], self.db)["ability_state_json"])["shield_active"])
-        self.assertEqual(self.hit(0)["damage"], 4)
+        self.assertEqual(self.hit(0)["damage"], 3)
 
     def test_mockery_skips_every_hook_and_boss_turn_counter(self):
         for ability in ("paralysis", "critical_strike", "banishment", "shapeshifter",
@@ -525,7 +525,7 @@ class CombatV2IntegrationTests(unittest.TestCase):
         self.assertTrue(result["changed"])
         self.assertEqual(result["skipped"], [])
         self.assertEqual(result["state"]["current"]["player_id"], self.players[1]["id"])
-        result = advance_expired_turns(self.boss["id"], now=self.now + timedelta(hours=4), db_path=self.db)
+        result = advance_expired_turns(self.boss["id"], now=self.now + timedelta(seconds=900), db_path=self.db)
         self.assertEqual(len(result["skipped"]), 1)
         self.assertEqual(result["state"]["boss"]["current_round"], 2)
 

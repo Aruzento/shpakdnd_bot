@@ -17,6 +17,7 @@ EXPIRY=120
 def _hero(conn,pid,hid):
     assert_available(conn,pid,hid)
     row=conn.execute('SELECT h.*,ph.stars FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id WHERE ph.player_id=? AND ph.hero_id=?',(pid,hid)).fetchone()
+    if row['rarity']=='mythic':raise ValueError('Мифические герои недоступны в PvP V1.5.')
     return {'id':hid,'code':row['code'],'name':row['name'],'attack':calculate_attack(row['attack'],row['stars'])}
 
 
@@ -40,6 +41,8 @@ def expire(db_path=DB_PATH,*,now=None):
 
 
 def challenge(challenger_id,defender_id,hero_id,operation_key,db_path=DB_PATH,*,now=None):
+    from app.mini.features import require_enabled
+    require_enabled('duels')
     if challenger_id==defender_id: raise ValueError(editorial_text('errors.duels.service.challenge.01'))
     if not operation_key: raise ValueError(editorial_text('errors.duels.service.challenge.02'))
     now=timestamp(now)
@@ -73,6 +76,9 @@ def get_state(player_id,db_path=DB_PATH,*,now=None):
 
 
 def act(duel_id,actor_id,action,db_path=DB_PATH,*,hero_id=None,expected_hero_id=None,now=None):
+    from app.mini.features import require_enabled
+    if action in ('select','accept'):
+        require_enabled('duels')
     with connect_mini_db(db_path) as conn:
         conn.row_factory=sqlite3.Row
         conn.execute('PRAGMA foreign_keys=ON');conn.execute('BEGIN IMMEDIATE')

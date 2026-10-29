@@ -26,7 +26,9 @@ from app.mini.migrations.v1_4_3 import apply as v1_4_3_schema
 
 from app.mini.migrations.v1_4_3_safety import apply as v1_4_3_safety_schema
 
-MIGRATIONS = (core_schema, inventory_schema, activities_schema, legacy_schema, v1_3_schema, v1_3_1_schema, v1_3_2_schema, v1_3_3_schema, v1_4_schema, v1_4_2_schema, v1_4_2_ui_schema, v1_4_3_schema, v1_4_3_safety_schema)
+from app.mini.migrations.v1_5 import apply as v1_5_schema
+
+MIGRATIONS = (core_schema, inventory_schema, activities_schema, legacy_schema, v1_3_schema, v1_3_1_schema, v1_3_2_schema, v1_3_3_schema, v1_4_schema, v1_4_2_schema, v1_4_2_ui_schema, v1_4_3_schema, v1_4_3_safety_schema, v1_5_schema)
 
 
 def migrate(conn) -> None:

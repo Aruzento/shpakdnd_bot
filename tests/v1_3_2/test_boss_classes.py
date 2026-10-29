@@ -36,30 +36,31 @@ class BossClassIntegrationTests(unittest.TestCase):
     def test_two_warriors_buff_both_initial_attacks_without_mutating_storage(self):
         self.choose('warrior','warrior')
         before=[self.participant(i)['attack'] for i in range(2)]
-        self.assertEqual(self.hit(0)['base_damage'],110)
-        self.assertEqual(self.hit(1)['base_damage'],110)
+        self.assertEqual(self.hit(0)['damage'],110)
+        self.assertEqual(self.hit(1)['damage'],110)
         self.assertEqual([self.participant(i)['attack'] for i in range(2)],before)
         self.assertEqual(before,[100,100])
 
     def test_banished_warrior_no_longer_contributes(self):
         self.choose('warrior','warrior')
         with connect_mini_db(self.db) as conn:conn.execute('UPDATE mini_boss_participants SET banished=1 WHERE boss_id=? AND player_id=?',(self.boss['id'],self.players[1]['id']))
-        self.assertEqual(self.hit(0)['base_damage'],105)
+        self.assertEqual(self.hit(0)['damage'],105)
 
     def test_warrior_input_precedes_passive_and_faction(self):
         self.choose('warrior',passive='strong_start')
         self.update_boss(faction='beasts')
         result=self.hit(0)
-        self.assertEqual(result['base_damage'],105)
-        self.assertEqual(result['ability_damage'],210)
-        self.assertEqual(result['damage_after_faction'],420)
+        self.assertEqual(result['base_damage'],100)
+        self.assertEqual(result['ability_damage'],100)
+        self.assertEqual(result['damage_after_faction'],200)
+        self.assertEqual(result['damage'],410)
 
     def test_secondary_extra_attack_does_not_repeat_class_or_input_bonus(self):
         self.choose('warrior',passive='blood_frenzy')
         for _ in range(3):self.hit(0);self.hit(1)
         result=self.hit(0)
-        self.assertEqual(result['base_damage'],105)
-        self.assertEqual(result['extra_damage'],100)
+        self.assertEqual(result['base_damage'],100)
+        self.assertEqual(result['extra_damage'],150)
 
     def test_guardian_restores_one_existing_shield(self):
         self.choose('guardian')
@@ -159,7 +160,7 @@ class BossClassIntegrationTests(unittest.TestCase):
         self.assertTrue(result['battle_ended'])
         self.assertEqual(result['rewards']['coins_each'],95)
         self.assertEqual(get_balance(self.players[0]['id'],self.db),100)
-        self.assertEqual(get_balance(self.players[1]['id'],self.db),0)
+        self.assertEqual(get_balance(self.players[1]['id'],self.db),95)
         init_mini_db(self.db);init_boss_db(self.db)
         repeated=hit_boss(self.boss['id'],self.players[0]['id'],now=self.now,expected_round=1,expected_position=1,db_path=self.db)
         self.assertFalse(repeated['applied'])
@@ -178,8 +179,8 @@ class BossClassIntegrationTests(unittest.TestCase):
         self.choose('beast',passive='blood_frenzy')
         for _ in range(3):self.hit(0);self.hit(1)
         result=self.hit(0)
-        self.assertEqual(result['extra_damage'],100)
-        self.assertEqual(json.loads(self.participant(0)['hero_state_json'])['class_successful_hits'],4)
+        self.assertEqual(result['extra_damage'],153)
+        self.assertEqual(json.loads(self.participant(0)['hero_state_json'])['class_successful_hits'],5)
 
     def test_class_reward_changes_are_in_turn_publication_state_and_text(self):
         from app.mini.boss.public import _turn_state_key,format_public_turn

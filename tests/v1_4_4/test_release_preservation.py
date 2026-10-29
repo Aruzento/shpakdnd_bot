@@ -156,8 +156,54 @@ class PublicationIntegrationTests(unittest.TestCase):
     def test_full_old_startup_gate_uses_only_disposable_copy(self):
         # Initialize the complete catalog/world startup first, then reproduce the
         # old production shares missing only their three publications.
-        release.run_old(release.ROOT, self.db, 'import check_bot;check_bot.main()')
+        # This is a historical source fixture: bootstrap from the exact old
+        # code/catalog being verified. New S5 behavior is audited separately.
+        release.run_old(self.legacy_code(), self.db, 'import check_bot;check_bot.main()')
         self.execute("DELETE FROM mini_ui_publications WHERE operation_key!='keep'")
         digest = hashlib.sha256(self.db.read_bytes()).hexdigest()
         release.verify_ref(release.BASE, self.db)
         self.assertEqual(hashlib.sha256(self.db.read_bytes()).hexdigest(), digest)
+
+
+    def legacy_code(self):
+        import subprocess, zipfile
+        root = Path(self.temp.name)
+        code = root / 'legacy-code'
+        if not code.exists():
+            archive = root / 'legacy-code.zip'
+            subprocess.run(['git','archive','--format=zip','--output='+str(archive),
+                            release.BASE,'app','check_bot.py'],cwd=release.ROOT,check=True)
+            code.mkdir()
+            with zipfile.ZipFile(archive) as source:
+                source.extractall(code)
+        return code
+
+    def test_old_startup_only_deactivates_new_s5_and_mythic_on_disposable_copy(self):
+        import json
+        release.run_old(release.ROOT,self.db,'import check_bot;check_bot.main()')
+        manifest=json.loads((release.ROOT/'docs/v1.5/S5_IMPORT_MANIFEST.json').read_text(encoding='utf-8'))['heroes']
+        codes={h['code'] for h in manifest}
+        mythics=json.loads((release.ROOT/'app/mini/content/heroes/mythic.json').read_text(encoding='utf-8'))['heroes']
+        codes.update(h['code'] for h in mythics)
+        with closing(sqlite3.connect(self.db)) as conn, conn:
+            hero=conn.execute('SELECT id FROM mini_heroes WHERE code=?',(manifest[0]['code'],)).fetchone()[0]
+            conn.execute('INSERT INTO mini_player_heroes(player_id,hero_id,copies,stars) VALUES(?,?,3,2)',(self.player,hero))
+            conn.execute('UPDATE mini_players SET coins=321,shards=123,mythic_shards=17,active_hero_id=? WHERE id=?',(hero,self.player))
+        digest=hashlib.sha256(self.db.read_bytes()).hexdigest()
+        copy=Path(self.temp.name)/'old-startup-copy.db'
+        with closing(sqlite3.connect(self.db)) as source, closing(sqlite3.connect(copy)) as target:
+            source.backup(target)
+        expected=release.snapshot(copy)
+        columns,rows=expected['mini_heroes']; code_index=columns.index('code'); active_index=columns.index('active')
+        self.assertEqual(sum(r[code_index] in codes for r in rows),25)
+        updated=[]
+        for row in rows:
+            row=list(row)
+            if row[code_index] in codes: row[active_index]=0
+            updated.append(tuple(row))
+        expected['mini_heroes']=(columns,updated)
+        release.run_old(self.legacy_code(),copy,'import check_bot;check_bot.main()')
+        # All other typed columns/rows, player money, ownership, stars and all
+        # schemas remain subject to the original strict preservation guard.
+        release.assert_preserved(copy,expected)
+        self.assertEqual(hashlib.sha256(self.db.read_bytes()).hexdigest(),digest)

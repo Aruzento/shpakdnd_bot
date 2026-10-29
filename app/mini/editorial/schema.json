@@ -6127,5 +6127,112 @@
     "parameters": [],
     "parse_mode": null,
     "limit": 1024
+  },
+  "v15.mythic.balance": {
+    "kind": "text",
+    "parameters": [
+      "balance"
+    ],
+    "limit": 4096
+  },
+  "v15.raid.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.story.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.ice": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.lightning": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.dark": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.fire": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.star": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.earth": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.moon": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.element.sun": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.stage.egg": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.stage.wonder": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.stage.adult": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.care.feed": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.care.wash": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.care.walk": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.care.play": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "v15.pet.care.sleep": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.mythic.title": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
+  },
+  "rules.mythic.body": {
+    "kind": "text",
+    "parameters": [],
+    "limit": 4096
   }
 }

@@ -10,12 +10,14 @@ from app.mini.combat.matchups import faction_multiplier_percent, modify_damage
 
 
 def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, *, extra_percent=None, extra_uses_primary_base=False) -> dict:
+    if extra_percent is not None and int(boss.get("rules_version",0))>=15:
+        participant={**participant,"attack":int(participant["attack"])*extra_percent//100}
     passive_key = str(hero.get("passive_key", "none"))
     reachable = creatures.can_reach(boss, hero) or (boss.get("ability_key") == "simple" and passive_key != "shadow_collapse")
-    if extra_percent is None:
+    if extra_percent is None or int(boss.get("rules_version",0))>=15:
         attack_resolution = resolve_attack(
             passive_key if reachable or passive_key.startswith("shadow_") else "none",
-            base_damage=classes.initial_attack(participant["attack"],participants or [],active=classes.enabled(boss) and boss.get("ability_key") != "simple"),
+            base_damage=classes.initial_attack(participant["attack"],participants or [],active=classes.enabled(boss) and boss.get("ability_key") != "simple" and int(boss.get("rules_version",0))<15),
             hit_number=int(participant["hit_count"]) + 1,
             boss_hp_before=int(boss["current_hp"]),
             boss_max_hp=int(boss["max_hp"]),
@@ -23,12 +25,14 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
             boss_state=json.loads(boss["ability_state_json"] or "{}"),
             base_attack=snapshot_base_attack(hero, participant),
             state=json.loads(participant.get("hero_state_json") or "{}"),
+            additive_bonuses=int(boss.get("rules_version",0))>=15,
+            ability_definition=hero.get("passives",{}).get("normal",{}).get("definition") if int(boss.get("rules_version",0))>=15 else None,
         )
     else:
         extra_base = max(1,int(participant["attack"])*extra_percent//100)
         if extra_uses_primary_base:
             extra_base = classes.initial_attack(extra_base, participants or [],
-                active=classes.enabled(boss) and boss.get("ability_key") != "simple")
+                active=classes.enabled(boss) and boss.get("ability_key") != "simple" and int(boss.get("rules_version",0))<15)
         attack_resolution = dict(damage=extra_base,base_damage=extra_base,
             events=[],boss_skip_turns=0,remove_magic_shield=False,extra_attacks=0)
     mode = attack_resolution.get("damage_mode", "normal")
@@ -76,7 +80,7 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
         damage = damage_before_external_bonus
         passive_events = list(attack_resolution["events"])
         boss_skip_turns = int(attack_resolution.get("boss_skip_turns", 0))
-        if damage_bonus_percent > 0 and damage > 0:
+        if damage_bonus_percent > 0 and damage > 0 and int(boss.get("rules_version",0))<15:
             damage = max(1, (damage * (100 + damage_bonus_percent) + 99) // 100)
             passive_events.append(
                 {
@@ -86,18 +90,36 @@ def calculate_hit(boss: dict, participant: dict, hero: dict, participants=None, 
             )
         hero_final_damage = damage
         damage = creatures.feature_damage(boss, hero, hero_final_damage)
-        damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and (extra_percent is None or extra_uses_primary_base))
-    if reachable:
+        damage = classes.beast_damage(damage,hero,json.loads(participant.get("hero_state_json") or "{}"),active=classes.enabled(boss) and int(boss.get("rules_version",0))<15 and (extra_percent is None or extra_uses_primary_base))
+    if reachable and int(boss.get('rules_version',0))<15:
         damage += int(attack_resolution.get('pure_bonus', 0))
+    if int(boss.get('rules_version',0))>=15:
+        from app.mini.combat import team
+        from app.mini.combat.modes import ordinary_damage
+        values=json.loads(boss.get('team_state_json') or '{}')
+        modifiers=team.modifiers(values,hero,int(participant.get('player_id',0)),int(boss['current_round']))
+        modifiers['bonus_bps'].append(int(attack_resolution.get('ordinary_bonus_bps',0)))
+        modifiers['bonus_bps'].append(damage_bonus_percent*100)
+        if damage_bonus_percent and damage>0:passive_events.append({'type':'item_damage_boost','message':f'🧪 Зелье урона: +{damage_bonus_percent}%'})
+        if classes.enabled(boss) and boss.get('ability_key')!='simple':
+            modifiers['bonus_bps'].append(500*classes.active_classes(participants or []).count('warrior'))
+            if hero.get('class_tag')=='beast':modifiers['bonus_bps'].append(200*int(json.loads(participant.get('hero_state_json') or '{}').get('class_successful_hits',0)))
+        if mode=='normal':
+            element_map=json.loads(boss.get('ability_config_json') or '{}').get('element_multipliers',{})
+            element_percents=[element_map[e] for e in set(modifiers['elements'])|set(hero.get('elements',[])) if e in element_map]
+            damage=ordinary_damage(damage,element_percents=element_percents,bonus_bps=modifiers['bonus_bps'],additive=modifiers['additive']+int(hero.get('pet_damage_delta',0)),multiplier=modifiers['multiplier'],reduction_percent=modifiers['reduction_percent'],protected_zero=damage<=0)
+    if reachable and int(boss.get('rules_version',0))>=15:
+        damage += int(attack_resolution.get('pure_bonus',0))
     # Absolute Boss rules run once after every hero-side damage mode.
     final = boss_abilities.final_hero_damage(dict(boss), hero, damage,
-        base_attack=max(1, int(participant["attack"]) * (extra_percent or 100) // 100), raw_damage=ability_damage if reachable or mode == "normal" else 0)
+        base_attack=max(1, int(participant["attack"]) * ((extra_percent or 100) if int(boss.get('rules_version',0))<15 else 100) // 100), raw_damage=ability_damage if reachable or mode == "normal" else 0)
     damage = final["damage"]
     if mode != "normal" and not reachable:
         # No physical hit: a per-hit Boss rule cannot create reachability.
         damage = 0
     boss_resolution["boss_changes"].update(final["boss_changes"])
     boss_resolution["events"].extend(final["events"])
+    if int(boss.get("rules_version",0))>=15:damage=min(max(0,damage),int(boss["current_hp"]))
     hp_after = min(int(boss["max_hp"]), max(0, int(boss["current_hp"]) + final["healed_hp"] - damage))
     return {
         "reachable": reachable,

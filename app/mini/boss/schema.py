@@ -143,6 +143,9 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
                     f"ALTER TABLE mini_bosses ADD COLUMN {name} {sql_type}"
                 )
 
+        from app.mini.boss.v15_schema import apply as apply_v15
+        apply_v15(conn)
+
         participant_columns = {
             row[1]
             for row in conn.execute(
@@ -232,6 +235,8 @@ def init_boss_db(db_path: str | Path = DB_PATH) -> None:
         from app.mini.migrations.v1_4 import boss_state as v14_boss_state
         v14_boss_state(conn)
         freeze_legacy_loadouts(conn)
+        from app.mini.boss.v15_schema import timeline
+        timeline(conn)
         conn.commit()
 
     sync_boss_reward_items(db_path)

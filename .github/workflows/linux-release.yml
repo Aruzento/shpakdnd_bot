@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.13"]
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -28,6 +28,7 @@ jobs:
       BOT_TOKEN: '123456:offline-linux-release-checks'
       PYTHONIOENCODING: utf-8
       PYTHONUNBUFFERED: '1'
+      PYTHONUTF8: '1'
       # Fixed code baselines, never a supplied production database.
       LEGACY_REF: f06c0d129fdad0fef4fde0889915faac26b94f4a
       PRE_UI_REF: 293693d87692bb9e7f4567bcca895e799e7455d2
@@ -37,8 +38,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Enable per-step timing and durable diagnostic logs
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          printf 'BASH_ENV=%s/scripts/ci_step_diagnostics.sh\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$RUNNER_TEMP/release-diagnostics/candidate-sha.txt"
+
+      - name: Verify exact candidate SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git rev-parse HEAD
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -171,45 +186,64 @@ jobs:
           path: ${{ runner.temp }}/loot-benchmark.json
           if-no-files-found: error
 
-      - name: Verify D&D Mini remains unchanged by V1.4.4
-        run: git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- app/mini
+      - name: Validate approved O01-O10 policies
+        run: python -m app.mini.mythic.policies
 
-      - name: Verify protected V1.4.3.1 deployment files match synchronized main
-        run: |
-          git diff --exit-code d9856b2038a36490f93a4f5613ba7887698ac7e8 HEAD -- \
-            deploy/deploy-shpakdnd.sh deploy/deploy_helpers.py \
-            deploy/install-deploy-shpakdnd.sh deploy/sqlite-deploy.py \
-            deploy/telegram-deploy-notice.py deploy/pvp_ops.py \
-            tests/v1_3_3/test_deploy_shell.py tests/v1_4_3_1
+      - name: V1.5 content diagnostics (missing resources remain explicit blockers)
+        run: python -m app.mini.mythic.content
+
+      - name: Unpublished authored Story v2 and isolated strict-content
+        run: python tools/validate_story_candidate.py
+
+      - name: Release hardening real content gates (PASS0 missing2 invalid1)
+        run: python tools/validate_release_hardening.py
+
+      - name: Full V1.5 launcher contract in an independent SQLite sandbox
+        if: always()
+        run: python scripts/run_isolated_checks.py --label linux-v15 -- tools/check_v15.py
+
+      - name: V1.5 populated migration replay and old-code startup
+        if: always()
+        run: python tools/validate_v15_migration.py
+
+      - name: Verify protected bundle and exact authorized logger signal fix
+        if: always()
+        run: python tools/validate_deploy_bundle.py
 
       - name: Compile Python modules
+        if: always()
         run: python -m compileall -q bot.py app
 
       - name: Validate hero abilities
+        if: always()
         run: python -m app.mini.combat.hero_abilities.validate
 
       - name: Validate boss abilities
+        if: always()
         run: python -m app.mini.boss.boss_abilities.validate
 
       - name: Validate Tower
+        if: always()
         run: python -m app.mini.tower.validate
 
       - name: Validate V1.4.2 catalogs
+        if: always()
         run: python -m app.mini.validate_v142
 
       - name: Validate editorial defaults
+        if: always()
         run: python -m app.mini.editorial.validator
 
       - name: Validate all JSON and repeated disposable SQLite startup
+        if: always()
         run: python tools/validate_editorial_release.py
 
       - name: Verify PvP migrations and old-code startup on disposable copies
+        if: always()
         run: python tools/validate_pvp_migration.py
 
-      - name: Verify unchanged gameplay and the authorized PvP integration
-        run: python tools/verify_editorial_mechanics.py
-
       - name: Create synthetic legacy SQLite fixture
+        if: always()
         run: |
           python - <<'PY'
           import os
@@ -257,12 +291,14 @@ jobs:
           PY
 
       - name: Verify repeated SQLite migration on a copy
+        if: always()
         run: |
           python deploy/verify-v142-migration.py \
             --source "$RELEASE_SANDBOX/legacy-fixture.db" \
             --copy-dir "$RELEASE_SANDBOX"
 
       - name: Verify old-code rollback compatibility on a separate copy
+        if: always()
         run: |
           python deploy/verify-v142-rollback.py \
             --source "$RELEASE_SANDBOX/legacy-fixture.db" \
@@ -271,6 +307,15 @@ jobs:
             --old-ref "$INTERMEDIATE_REF"
 
       - name: Check diff whitespace
+        if: always()
         run: |
           git diff --check
           git diff --check origin/main...HEAD
+
+      - name: Preserve exact-SHA diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-diagnostics-python-${{ matrix.python-version }}
+          path: ${{ runner.temp }}/release-diagnostics/
+          if-no-files-found: error

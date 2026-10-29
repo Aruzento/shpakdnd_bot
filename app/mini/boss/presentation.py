@@ -73,7 +73,7 @@ def boss_private_menu(
         )
     ])
 
-    if is_admin and boss["status"] == "announced":
+    if (is_admin or boss.get("created_by_user_id")==user_id) and boss["status"] == "announced":
         rows.append([
             InlineKeyboardButton(
                 text=editorial_text('boss.boss_private_menu.line_04'),
@@ -83,7 +83,7 @@ def boss_private_menu(
             )
         ])
 
-    if is_admin and boss["status"] == "ready":
+    if (is_admin or joined) and boss["status"] == "ready":
         rows.append([
             InlineKeyboardButton(
                 text=editorial_text('boss.boss_private_menu.line_05'),
@@ -92,6 +92,7 @@ def boss_private_menu(
                 ),
             )
         ])
+    if (is_admin or boss.get("created_by_user_id")==user_id) and boss["status"]=="ready":
         rows.append([
             InlineKeyboardButton(
                 text=editorial_text('boss.boss_private_menu.line_06'),
@@ -101,6 +102,9 @@ def boss_private_menu(
             )
         ])
 
+    if is_admin and boss["status"] == "fighting":
+        from app.mini.boss.operations import turn_token
+        rows.append([InlineKeyboardButton(text='⏭ Пропустить ход',callback_data=f"miniboss:skip:{world_id}:{boss['id']}:{turn_token(boss)}")])
     if is_admin and boss["status"] == "fighting":
         rows.append([
             InlineKeyboardButton(
@@ -120,6 +124,7 @@ def boss_private_menu(
                 ),
             )
         ])
+    if (is_admin or boss.get('created_by_user_id')==user_id) and boss['status'] in {'announced','ready'}:
         rows.append([
             InlineKeyboardButton(
                 text=editorial_text('boss.boss_private_menu.line_09'),

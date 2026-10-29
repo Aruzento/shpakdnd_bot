@@ -24,6 +24,8 @@ async def main():
     from app.mini.editorial.registry import get_registry
     get_registry()
     load_boss_catalog()
+    from app.mini.mythic.raid.catalog import load as load_raid_catalog
+    await asyncio.to_thread(load_raid_catalog)
     init_db()
     init_mini_db()
     init_boss_db()
@@ -50,6 +52,12 @@ async def main():
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
+    from app.mini.ui.timing import CallbackTiming, TelegramTiming
+    from app.mini.ui.windows import WindowGuard, WindowDelivery
+    dp.update.outer_middleware(WindowGuard())
+    dp.update.outer_middleware(CallbackTiming())
+    bot.session.middleware(WindowDelivery())
+    bot.session.middleware(TelegramTiming())
     from app.mini.editorial.middleware import EditorialMiddleware
     dp.update.outer_middleware(EditorialMiddleware())
 
@@ -72,6 +80,14 @@ async def main():
     pvp_watch_task = asyncio.create_task(watch_loop(bot))
     boss_watch_task = asyncio.create_task(boss_watch_loop(bot))
     mini_notice_task = asyncio.create_task(mini_notice_watch_loop(bot))
+    from app.stories.publication import recover as recover_stories
+    recover_stories()
+    from app.mini.mythic.raid.service import recover_publications
+    recover_publications()
+    from app.stories.handlers import recover_pending as recover_pending_stories
+    from app.mini.mythic.raid.handlers import recover_pending as recover_pending_raids
+    await recover_pending_stories(bot)
+    await recover_pending_raids(bot)
     print("Бот запущен.")
     try:
         await dp.start_polling(bot)

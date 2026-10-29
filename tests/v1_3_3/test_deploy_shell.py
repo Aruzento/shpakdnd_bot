@@ -38,13 +38,22 @@ install)
     done
     if ((directory)); then mkdir -p -- "${args[@]}"; else cp -- "${args[@]}"; fi ;;
 git)
+    [[ "$1" != --no-replace-objects ]] || shift
     shift 2
     case "$1" in
         status) [[ "${FAKE_DIRTY:-0}" != 1 ]] || printf ' M app/local.py\n' ;;
-        fetch) : ;;
+        fetch)
+            count=0; [[ ! -f "$FAKE_STATE/fetches" ]] || count="$(cat "$FAKE_STATE/fetches")"
+            echo "$((count+1))" > "$FAKE_STATE/fetches" ;;
+        symbolic-ref) echo main ;;
+        for-each-ref) : ;;
+        cat-file) [[ "$2" == -t ]] && echo tree ;;
         rev-parse)
-            if [[ "$*" == *--show-toplevel* ]]; then printf '%s\n' "$SHPAKDND_PROJECT"
+            if [[ "$*" == *'@{upstream}'* ]]; then echo origin/main
+            elif [[ "$*" == *':app'* ]]; then echo "${FAKE_APP_TREE:-908868852fc3b1e132a65e325ca546025b4034de}"
+            elif [[ "$*" == *--show-toplevel* ]]; then printf '%s\n' "$SHPAKDND_PROJECT"
             elif [[ "$*" == *origin/main* ]]; then cat "$FAKE_STATE/target"
+            elif [[ "${@: -1}" == *'^{commit}' ]]; then value="${@: -1}";value="${value%\^\{commit\}}";if [[ "$value" == HEAD ]]; then cat "$FAKE_STATE/head";else echo "$value";fi
             else cat "$FAKE_STATE/head"; fi ;;
         ls-tree) printf 'bot.py\napp/config.py\n.env.example\n' ;;
         switch)
@@ -90,6 +99,32 @@ journalctl)
     [[ "${FAKE_JOURNAL_FAIL:-0}" != 1 ]] || echo 'Traceback: fake startup failure'
     echo 'fake startup journal' ;;
 python)
+    if [[ "$*" == *release_guard.py* ]]; then
+        if [[ "$*" == *--pvp-report* && -n "${FAKE_REAL_PYTHON:-}" ]]; then exec "$FAKE_REAL_PYTHON" "$@";fi
+        if [[ "${FAKE_V15_GUARD_REAL:-0}" == 1 ]]; then exec "$FAKE_REAL_PYTHON" "$@"; fi
+        if [[ "${FAKE_V15_GUARD_FAIL:-0}" == 1 ]]; then echo BLOCKED_V15_PERSISTENT_STATE_UNSUPPORTED; exit 2; fi
+        exit 0
+    fi
+    if [[ "$*" == *release_preflight.py* ]]; then
+        if [[ "$*" == *' export '* ]]; then exit 0;fi
+        if [[ "$*" == *' configuration '* ]]; then echo "$SHPAKDND_STORIES_DIR";exit 0;fi
+        if [[ "$*" == *' prepare '* ]]; then
+            echo "preflight service=$(cat "$FAKE_STATE/shpakdnd-bot.service") target=$(cat "$FAKE_STATE/target")" >> "$FAKE_STATE/trace"
+            for flag in FAKE_PREFLIGHT_FAIL FAKE_PREFLIGHT_DISK_FAIL FAKE_PREFLIGHT_SQLITE_FAIL FAKE_PREFLIGHT_SHA_FAIL FAKE_PREFLIGHT_CONTENT_FAIL; do
+                if [[ "${!flag:-0}" != 0 ]]; then echo "BLOCKED_$flag";exit 1;fi
+            done
+            "$0" -m unittest discover -s tests -q
+            if [[ "${FAKE_TARGET_MOVED:-0}" == 1 ]]; then printf 'cccccccccccccccccccccccccccccccccccccccc\n' > "$FAKE_STATE/target";fi
+            if [[ "${FAKE_HEAD_MOVED:-0}" == 1 ]]; then printf 'dddddddddddddddddddddddddddddddddddddddd\n' > "$FAKE_STATE/head";fi
+            exit 0
+        fi
+        if [[ "$*" == *' verify '* ]]; then
+            if [[ "${FAKE_RECEIPT_FAIL:-0}" == 1 ]]; then echo BLOCKED_RECEIPT;exit 1;fi
+            if [[ "$*" == *--installed* && "${FAKE_POST_RECEIPT_FAIL:-0}" == 1 ]]; then echo BLOCKED_RECEIPT_POST;exit 1;fi
+            exit 0
+        fi
+        exit 9
+    fi
     if [[ "$*" == *pvp_ops.py* ]]; then
         count=0; [[ ! -f "$FAKE_STATE/guards" ]] || count="$(cat "$FAKE_STATE/guards")"
         count=$((count+1)); echo "$count" > "$FAKE_STATE/guards"
@@ -191,12 +226,13 @@ class DeployShellTests(unittest.TestCase):
         self.env=dict(os.environ,FAKE_STATE=shell_path(self.state),
             SHPAKDND_PROJECT=shell_path(self.project),SHPAKDND_PYTHON=shell_path(self.bin/'python'),
             SHPAKDND_BACKUPS=shell_path(self.root/'backups'),SHPAKDND_LOGS=shell_path(self.root/'logs'),
+            SHPAKDND_STORIES_DIR=shell_path(self.root/'external-stories'),SHPAKDND_PREFLIGHT_ROOT=shell_path(self.root),
             SHPAKDND_LOCK=shell_path(self.root/'lock'),SHPAKDND_RUNTIME_DIR=shell_path(runtime),SHPAKDND_START_WAIT='0')
 
-    def run_deploy(self,answers='',dry=False,**flags):
+    def run_deploy(self,answers='',dry=False,preflight_only=False,**flags):
         env=dict(self.env,**{k:str(v) for k,v in flags.items()})
         # Set PATH within Bash to avoid MSYS Windows PATH conversion ambiguity.
-        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(getattr(self,'script',ROOT/'deploy/deploy-shpakdnd.sh'))+'"'+(' --dry-run' if dry else '')
+        command='export PATH="'+shell_path(self.bin)+':$PATH"; exec bash "'+shell_path(getattr(self,'script',ROOT/'deploy/deploy-shpakdnd.sh'))+'"'+(' --dry-run' if dry else ' --preflight-only' if preflight_only else '')
         result=subprocess.run([BASH,'--noprofile','--norc','-c',command],env=env,input=answers.encode('utf-8'),capture_output=True,timeout=60,start_new_session=(os.name=="posix"))
         result.stdout=result.stdout.decode('utf-8');result.stderr=result.stderr.decode('utf-8')
         trace=(self.state/'trace').read_text(encoding='utf-8') if (self.state/'trace').exists() else ''
@@ -230,19 +266,21 @@ class DeployShellTests(unittest.TestCase):
     def test_success_orders_fetch_notice_stop_backup_checkout_checks_start(self):
         result,trace=self.run_deploy('y\ny\ny\n')
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        markers=[' fetch origin','telegram-deploy-notice.py','systemctl stop shpakdnd-bot-watch.path','systemctl stop shpakdnd-bot-update.service','systemctl stop shpakdnd-bot.service',' backup ',' switch ','-m compileall','check_bot.py','-m unittest',' check --db',' diff --check','systemctl start shpakdnd-bot.service','systemctl start shpakdnd-bot-watch.path']
+        markers=[' fetch origin',' prepare ','-m unittest','telegram-deploy-notice.py','systemctl stop shpakdnd-bot-watch.path','systemctl stop shpakdnd-bot-update.service','systemctl stop shpakdnd-bot.service',' backup ',' switch ','-m compileall','check_bot.py',' check --db',' diff --check','systemctl start shpakdnd-bot.service','systemctl start shpakdnd-bot-watch.path']
         positions=[trace.index(marker) for marker in markers]
         self.assertEqual(positions,sorted(positions))
         self.assertEqual((self.state/'head').read_text().strip(),TARGET)
         self.assertEqual((self.state/'notices').read_text().strip(),'2')
-        self.assertIn('Tests: 3 tests, OK',result.stdout)
+        self.assertIn('Tests: see exact-SHA preflight receipt',result.stdout)
+        self.assertNotIn('-m unittest',trace[trace.index('systemctl stop'):])
         self.assertEqual(len(list((self.root/'backups').glob('*.db'))),1)
         self.assertEqual(len(list((self.root/'logs').glob('*.log'))),1)
 
     def test_check_failure_does_not_start_and_code_rollback_requires_choice(self):
         result,trace=self.run_deploy('y\ny\n1\n',FAKE_CHECK_FAIL=1)
         self.assertNotEqual(result.returncode,0);self.assert_stopped()
-        self.assertNotIn('systemctl start',trace);self.assertNotIn('-m unittest',trace)
+        self.assertNotIn('systemctl start',trace);self.assertIn('-m unittest',trace)
+        self.assertLess(trace.index('-m unittest'),trace.index('systemctl stop'))
         self.assertIn('Проверка не пройдена: check_bot',result.stdout)
         self.assertEqual((self.state/'notices').read_text().strip(),'1')
 

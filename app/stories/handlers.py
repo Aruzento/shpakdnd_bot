@@ -1,0 +1,587 @@
+"""One shared Telegram router for D&D and Mini stories."""
+
+import logging
+
+logger = logging.getLogger(__name__)
+import json
+from aiogram import F, Router
+from aiogram.filters import Command, Filter
+from aiogram.types import InlineKeyboardButton as Button, InlineKeyboardMarkup
+from app.stories import service, enrollment, publication
+from app.stories.repository import transaction
+from app.stories.catalog import discover
+from app.stories.presentation import render, chunks
+from app.mini.ui.transport import send_private_text_from_callback
+
+router = Router(name="stories")
+
+
+def username(user):
+    return "@" + user.username.lower() if user and user.username else ""
+
+
+def scoped_callback(callback, sid, *, personal=False):
+    with transaction() as conn:
+        row = conn.execute("SELECT * FROM story_sessions WHERE id=?", (sid,)).fetchone()
+        if row is None:
+            raise ValueError("История не найдена.")
+        session = dict(row)
+        message = callback.message
+        same = (
+            message
+            and message.chat.id == session["chat_id"]
+            and (message.message_thread_id or 0) == session["thread_id"]
+        )
+        if (
+            not same
+            and personal
+            and message
+            and message.chat.type == "private"
+            and message.chat.id == callback.from_user.id
+        ):
+            same = bool(
+                conn.execute(
+                    "SELECT 1 FROM story_enrollment WHERE session_id=? AND user_id=?",
+                    (sid, callback.from_user.id),
+                ).fetchone()
+            )
+        if not same:
+            raise ValueError("Кнопка из другого чата или темы.")
+        return session
+
+
+async def send_reminder(bot, sid, chat, thread, uid, user, step, key):
+    from app.mini.ui.timing import run_sync
+    from app.stories.feedback import claim_reminder, finish_reminder, reminder_text
+    recipients = await run_sync("story_reminder",claim_reminder,sid,chat,thread,uid,user,step,key)
+    try:
+        sent = await bot.send_message(chat_id=chat,message_thread_id=thread or None,
+            text=reminder_text(recipients),parse_mode="HTML")
+    except BaseException:
+        await run_sync("story_reminder",finish_reminder,key)
+        raise
+    else:
+        await run_sync("story_reminder",finish_reminder,key,sent.message_id)
+
+
+async def publish(bot, session):
+    step = session["step"]
+    text, markup = render(session)
+    claim = publication.claim(session["id"], step)
+    if claim is None:
+        return
+    try:
+        messages = []
+        parts = chunks(text)
+        for index, part in enumerate(parts):
+            message = await bot.send_message(
+                chat_id=session["chat_id"], message_thread_id=session["thread_id"] or None,
+                text=part, reply_markup=markup if index == len(parts)-1 else None, parse_mode=None)
+            messages.append(message.message_id)
+            with transaction() as conn:
+                conn.execute("INSERT INTO story_publication_parts VALUES(?,?,?,?)",
+                             (session["id"],step,index,message.message_id))
+    except BaseException:
+        publication.finish(session["id"], step)
+        raise
+    else:
+        publication.finish(session["id"], step, messages[-1])
+
+
+
+async def refresh(bot, session, old_step=None):
+    if old_step is not None and old_step != session["step"]:
+        with transaction() as conn:
+            old = conn.execute(
+                "SELECT message_id FROM story_publications WHERE session_id=? AND step=?",
+                (session["id"], old_step),
+            ).fetchone()
+        if old and old[0]:
+            try:
+                await bot.edit_message_reply_markup(
+                    chat_id=session["chat_id"], message_id=old[0], reply_markup=None
+                )
+            except Exception:
+                logger.exception("Cannot refresh story %s", session["id"])
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM story_publications WHERE session_id=? AND step=?",
+            (session["id"], session["step"]),
+        ).fetchone()
+    if row and row["message_id"]:
+        text, markup = render(session)
+        parts = chunks(text)
+        with transaction() as conn:
+            ids = [r[0] for r in conn.execute(
+                "SELECT message_id FROM story_publication_parts WHERE session_id=? AND step=? ORDER BY part",
+                (session["id"],session["step"]))]
+        ids = ids or [row["message_id"]]
+        # Votes may make the text cross a chunk boundary; retain old text chunks and
+        # update the last part without silently dropping author text.
+        if len(parts) != len(ids):
+            logger.warning("Story refresh requires explicit republish review session=%s", session["id"])
+            return
+        try:
+            for index, (part, mid) in enumerate(zip(parts,ids)):
+                await bot.edit_message_text(chat_id=session["chat_id"],message_id=mid,text=part,
+                    reply_markup=markup if index==len(parts)-1 else None,parse_mode=None)
+        except Exception:
+            logger.exception("Cannot refresh story %s", session["id"])
+
+    else:
+        await publish(bot, session)
+
+
+@router.message(Command("story"))
+async def command(message):
+    if not message.from_user:
+        return
+    chat = message.chat.id
+    thread = message.message_thread_id or 0
+    uid = message.from_user.id
+    user = username(message.from_user)
+    parts = (message.text or "").split()
+    action = parts[1] if len(parts) > 1 else "status"
+    key = f"story-command:{chat}:{message.message_id}"
+    try:
+        if action == "list":
+            service._admin(chat, thread, uid, user)
+            stories, errors = discover()
+            text = "📖 Истории\n" + "\n".join(
+                f"{code} — {s['title']}" for code, s in stories.items()
+            )
+            if not stories:
+                text += "Нет валидных сценариев. Добавь JSON в STORIES_DIR."
+            if errors:
+                text += "\nОтклонены: " + "; ".join(
+                    f"{name}: {reason}" for name, reason in errors.items()
+                )
+            await message.answer(text[:3900], parse_mode=None)
+            return
+        session = service.status(chat, thread)
+        if action in ("start", "cancel", "kick"):
+            if not session:
+                raise ValueError("Нет открытой истории.")
+            sid = session["id"]
+            old_step = session["step"]
+            if action == "start":
+                service.start(sid, chat, thread, uid, user, key)
+            elif action == "cancel":
+                service.cancel(sid, chat, thread, uid, user, key)
+            else:
+                if len(parts) != 3 or not parts[2].isdigit():
+                    raise ValueError("/story kick TELEGRAM_USER_ID")
+                service.kick(sid, chat, thread, uid, user, int(parts[2]), key)
+            await refresh(
+                message.bot, service.status(chat, thread, session_id=sid), old_step
+            )
+            await message.answer("История обновлена.")
+            return
+        if action == "status":
+            if not session:
+                raise ValueError(
+                    "Нет истории. /story list; /story CODE; /story start/status/cancel; /story kick USER_ID"
+                )
+            text, markup = render(session)
+            for index, part in enumerate(chunks(text)):
+                await message.answer(part, reply_markup=markup if index==len(chunks(text))-1 else None, parse_mode=None)
+            if session["status"] == "active":
+                try:
+                    service._admin(chat,thread,uid,user)
+                except ValueError:
+                    pass
+                else:
+                    import secrets
+                    from aiogram.types import EphemeralMessageParameters
+                    await message.answer("Управление текущей историей",reply_markup=InlineKeyboardMarkup(
+                        inline_keyboard=[[Button(text="Напомнить непроголосовавшим",
+                            callback_data=f"story:remind:{session['id']}:{session['step']}:{secrets.token_hex(3)}")]]),
+                        ephemeral_message_parameters=EphemeralMessageParameters(receiver_user_id=uid))
+            return
+        if len(parts) != 2:
+            raise ValueError(
+                "Использование: /story CODE или /story list/start/status/cancel/kick"
+            )
+        created = service.create(chat, thread, uid, user, action, key)
+        await publish(
+            message.bot, service.status(chat, thread, session_id=created["session_id"])
+        )
+    except ValueError as error:
+        await message.answer(str(error), parse_mode=None)
+
+
+async def enrollment_menu(callback, session):
+    sid = session["id"]
+    uid = callback.from_user.id
+    user = username(callback.from_user)
+    rows = []
+    enrollment.begin(sid, session["chat_id"], session["thread_id"], uid, "choose")
+    with transaction() as conn:
+        characters = (
+            [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT thread_id,name FROM characters WHERE chat_id=? AND username=? ORDER BY thread_id",
+                    (session["chat_id"], user),
+                )
+            ]
+            if user
+            else []
+        )
+        mini = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT p.id,p.character_name FROM mini_players p JOIN mini_worlds w ON w.id=p.world_id WHERE p.telegram_user_id=? AND w.chat_id=? AND w.enabled=1",
+                (uid, session["chat_id"]),
+            )
+        ]
+        worlds = (
+            [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id,name FROM mini_worlds WHERE chat_id=? AND enabled=1",
+                    (session["chat_id"],),
+                )
+            ]
+            if not mini
+            else []
+        )
+    for c in characters:
+        rows.append(
+            [
+                Button(
+                    text="D&D: " + c["name"],
+                    callback_data=f'story:dnd:{sid}:{c["thread_id"]}',
+                )
+            ]
+        )
+    rows.append(
+        [
+            Button(
+                text="Создать D&D: имя → раса → класс", callback_data=f"story:new:{sid}"
+            )
+        ]
+    )
+    for account in mini:
+        rows.append(
+            [
+                Button(
+                    text="Mini: " + account["character_name"],
+                    callback_data=f'story:mini:{sid}:{account["id"]}',
+                )
+            ]
+        )
+    for world in worlds:
+        rows.append(
+            [
+                Button(
+                    text="Регистрация Mini: " + world["name"],
+                    callback_data=f'story:minireg:{sid}:{world["id"]}',
+                )
+            ]
+        )
+    await send_private_text_from_callback(
+        callback,
+        session,
+        "Выбери настоящего персонажа D&D или Mini-аккаунт для этой истории.",
+        InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith("story:"))
+async def callback_action(callback):
+    try:
+        parts = callback.data.split(":")
+        action = parts[1]
+        sid = int(parts[2])
+        uid = callback.from_user.id
+        personal = action in ("join", "new", "dnd", "mini", "minireg")
+        session = scoped_callback(callback, sid, personal=personal)
+        chat = session["chat_id"]
+        thread = session["thread_id"]
+        user = username(callback.from_user)
+        key = "story-callback:" + callback.id
+        old_step = session["step"]
+        if action == "remind":
+            await send_reminder(callback.bot,sid,chat,thread,uid,user,int(parts[3]),
+                f"story-reminder:{sid}:{parts[3]}:{parts[4]}")
+            await callback.answer("Напоминание отправлено.")
+            return
+        if action == "join":
+            if session["status"] != "registration":
+                raise ValueError("Регистрация закрыта.")
+            await callback.answer()
+            await enrollment_menu(callback, session)
+            return
+        if action == "new":
+            if not user:
+                raise ValueError("Добавь username Telegram для D&D или выбери Mini.")
+            enrollment.begin(
+                sid,
+                chat,
+                thread,
+                uid,
+                "dnd",
+                input_scope=(
+                    (uid, 0) if callback.message.chat.type == "private" else None
+                ),
+            )
+            await callback.answer()
+            await callback.message.answer(
+                "Быстрое создание D&D-персонажа: введи имя. Затем попрошу расу и класс."
+            )
+            return
+        if action == "minireg":
+            from app.mini.registration import begin
+
+            wid = int(parts[3])
+            with transaction() as conn:
+                world = conn.execute(
+                    "SELECT * FROM mini_worlds WHERE id=? AND chat_id=?", (wid, chat)
+                ).fetchone()
+            if world is None:
+                raise ValueError("Этот Mini-мир не принадлежит чату истории.")
+            token = begin(wid, uid)
+            bot = await callback.bot.get_me()
+            url = f"https://t.me/{bot.username}?start=mini_reg_{token}"
+            await callback.answer()
+            await send_private_text_from_callback(
+                callback,
+                session,
+                "Зарегистрируйся в Mini. После регистрации появится возврат к истории.",
+                InlineKeyboardMarkup(
+                    inline_keyboard=[[Button(text="Зарегистрироваться", url=url)]]
+                ),
+            )
+            return
+        if action == "dnd":
+            service.join(
+                sid,
+                chat,
+                thread,
+                uid,
+                "dnd",
+                {"thread_id": int(parts[3])},
+                key,
+                username=user,
+            )
+        elif action == "mini":
+            service.join(
+                sid,
+                chat,
+                thread,
+                uid,
+                "mini",
+                {"id": int(parts[3])},
+                key,
+                username=user,
+            )
+        elif action == "leave":
+            service.leave(sid, chat, thread, uid, key)
+        elif action == "start":
+            service.start(sid, chat, thread, uid, user, key)
+        elif action == "vote":
+            step, index = int(parts[3]), int(parts[4])
+            if session["status"] != "active" or step != session["step"]:
+                raise ValueError("Устаревший этап истории.")
+            story = json.loads(session["snapshot_json"])
+            choices = story["nodes"][session["node_id"]]["choices"]
+            if not 0 <= index < len(choices):
+                raise ValueError("Недопустимый вариант.")
+            service.vote(sid, chat, thread, uid, step, choices[index]["id"], key)
+        else:
+            raise ValueError("Неизвестная кнопка истории.")
+        await callback.answer("Сохранено.")
+        await refresh(
+            callback.bot, service.status(chat, thread, session_id=sid), old_step
+        )
+    except (ValueError, IndexError) as error:
+        await callback.answer(str(error), show_alert=True)
+
+
+class PendingStoryCharacter(Filter):
+    async def __call__(self, message):
+        if not message.from_user or not message.text or message.text.startswith("/"):
+            return False
+        return bool(
+            enrollment.pending(
+                message.chat.id, message.message_thread_id or 0, message.from_user.id
+            )
+        )
+
+
+@router.message(PendingStoryCharacter())
+async def quick_character(message):
+    try:
+        result = enrollment.input_text(
+            message.chat.id,
+            message.message_thread_id or 0,
+            message.from_user.id,
+            username(message.from_user),
+            message.text,
+            operation_key=f"story-text:{message.chat.id}:{message.message_id}",
+        )
+        stage = result["stage"]
+        chat, thread = result["chat_id"], result["thread_id"]
+        if stage == "done":
+            service.join(
+                result["session_id"],
+                chat,
+                thread,
+                message.from_user.id,
+                "dnd",
+                {"thread_id": thread},
+                f"story-enroll:{result['session_id']}:{message.from_user.id}",
+                username=username(message.from_user),
+            )
+            await message.answer("Настоящий D&D-персонаж создан и записан в историю.")
+            await refresh(
+                message.bot,
+                service.status(
+                    chat,
+                    thread,
+                    session_id=result["session_id"],
+                ),
+            )
+        else:
+            await message.answer(
+                "Введи расу персонажа." if stage == "race" else "Введи класс персонажа."
+            )
+    except ValueError as error:
+        await message.answer(str(error))
+
+
+async def recover_pending(bot):
+    """Only unsent current nodes are retried; sending/uncertain is never resent."""
+    with transaction() as conn:
+        targets = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT s.id,s.chat_id,s.thread_id FROM story_sessions s JOIN story_publications p ON p.session_id=s.id AND p.step=s.step WHERE p.status='pending'"
+            )
+        ]
+    for row in targets:
+        try:
+            await publish(
+                bot,
+                service.status(row["chat_id"], row["thread_id"], session_id=row["id"]),
+            )
+        except Exception:
+            logger.exception("Story pending publication recovery failed: %s", row["id"])
+
+
+def menu_button(world_id, user_id, label, payload):
+    data = f"mini:stui:{world_id}:{user_id}:{payload}"
+    if len(data.encode()) > 64:
+        raise ValueError("Story callback exceeds 64 bytes")
+    return Button(text=label, callback_data=data)
+
+
+def menu(world, user, *, page=0):
+    """Presentation only. All authorizations are repeated by the services."""
+    import hashlib
+    import secrets
+    chat, thread = world["chat_id"], world["thread_id"]
+    uid = user.id
+    admin = True
+    try:
+        service._admin(chat, thread, uid, username(user))
+    except ValueError:
+        admin = False
+    stories, errors = discover()
+    current = service.status(chat, thread)
+    rows = []
+    text = "📖 Истории"
+    b = lambda label, payload: menu_button(world["id"], uid, label, payload)
+    if current:
+        story = json.loads(current["snapshot_json"]) if current["snapshot_json"] != "{}" else stories.get(current["code"], {})
+        text += f"\n\n{story.get('title', current['code'])}\nСтатус: {current['status']}. Сцена и голосование — в теме истории."
+        if current["status"] == "registration":
+            rows.append([b("Присоединиться", f"j.{current['id']}")])
+            if admin:
+                rows.append([b("Начать приключение", f"s.{current['id']}.{secrets.token_hex(3)}")])
+        if admin and current["status"] == "active":
+            rows.append([b("Напомнить непроголосовавшим", f"r.{current['id']}.{current['step']}.{secrets.token_hex(3)}")])
+        if admin and current["status"] in ("registration","active"):
+            rows.append([b("Отменить историю", f"x.{current['id']}.{secrets.token_hex(3)}")])
+    if admin and (not current or current["status"] not in ("registration","active")):
+        entries = sorted(stories.items())
+        page = max(0,min(page,max(0,(len(entries)-1)//6)))
+        for code, story in entries[page*6:(page+1)*6]:
+            key = hashlib.sha256(code.encode()).hexdigest()[:8]
+            rows.append([b(story["title"],f"o.{key}")])
+        if page:
+            rows.append([b("Назад",f"p.{page-1}")])
+        if (page+1)*6 < len(entries):
+            rows.append([b("Далее",f"p.{page+1}")])
+        if not entries:
+            text += "\nНет доступных сценариев. Проверьте внешний STORIES_DIR."
+        if errors:
+            text += "\nЧасть сценариев отклонена валидатором."
+    elif not current:
+        text += "\nАдминистратор темы пока не открыл регистрацию."
+    rows.append([Button(text="Главное меню",callback_data=f"mini:home:{world['id']}:{uid}")])
+    return text[:3900], InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@router.callback_query(F.data.startswith("mini:stories:") | F.data.startswith("mini:stui:"))
+async def story_menu(callback):
+    import hashlib
+    import secrets
+    from app.mini.ui.context import load_personal_context, load_extended_context
+    from app.mini.ui.timing import run_sync
+    is_home = callback.data.startswith("mini:stories:")
+    context = await (load_personal_context(callback) if is_home else load_extended_context(callback,"stui"))
+    if not context:
+        return
+    world, player = context[:2]
+    payload = "home" if is_home else context[2]
+    parts = payload.split(".")
+    op = parts[0]
+    uid = callback.from_user.id
+    chat, thread = world["chat_id"], world["thread_id"]
+    key = f"story-menu:{world['id']}:{uid}:{payload}"
+    try:
+        if op in ("o","c"):
+            service._admin(chat,thread,uid,username(callback.from_user))
+            stories, _ = await run_sync("story_catalog", discover)
+            matches = [(code,s) for code,s in stories.items() if hashlib.sha256(code.encode()).hexdigest()[:8]==parts[1]]
+            if len(matches)!=1:
+                raise ValueError("Список сценариев изменился. Открой Истории заново.")
+            code, story = matches[0]
+            if op == "o":
+                text = f"📖 {story['title']}\n{story['description']}\nОткрыть регистрацию в этой теме?"
+                b = lambda label,p: menu_button(world["id"],uid,label,p)
+                markup = InlineKeyboardMarkup(inline_keyboard=[
+                    [b("Открыть регистрацию",f"c.{parts[1]}.{secrets.token_hex(3)}")],
+                    [b("Назад","home")]])
+                await callback.answer()
+                await send_private_text_from_callback(callback,world,text,markup)
+                return
+            created = await run_sync("story_create",service.create,chat,thread,uid,username(callback.from_user),code,key)
+            await publish(callback.bot,service.status(chat,thread,session_id=created["session_id"]))
+        elif op == "r":
+            await send_reminder(callback.bot,int(parts[1]),chat,thread,uid,
+                username(callback.from_user),int(parts[2]),key)
+        elif op in ("j","s","x"):
+            sid = int(parts[1])
+            current = service.status(chat,thread)
+            if not current or current["id"]!=sid or current["status"] not in ("registration","active"):
+                raise ValueError("Кнопка истории устарела.")
+            if op == "j":
+                if current["status"]!="registration":
+                    raise ValueError("Регистрация закрыта.")
+                await callback.answer()
+                await enrollment_menu(callback,current)
+                return
+            old_step = current["step"]
+            fn = service.start if op=="s" else service.cancel
+            await run_sync("story_operation",fn,sid,chat,thread,uid,username(callback.from_user),key)
+            await refresh(callback.bot,service.status(chat,thread,session_id=sid),old_step)
+        elif op not in ("home","p"):
+            raise ValueError("Неизвестная кнопка истории.")
+        text, markup = await run_sync("story_menu",menu,world,callback.from_user,page=int(parts[1]) if op=="p" else 0)
+        await callback.answer()
+        await send_private_text_from_callback(callback,world,text,markup)
+    except (ValueError,IndexError) as error:
+        await callback.answer(str(error),show_alert=True)

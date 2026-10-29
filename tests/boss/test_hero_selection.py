@@ -40,8 +40,8 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
             data="miniboss:heroes:1:101:3:0",
             from_user=SimpleNamespace(id=101),
             answer=AsyncMock(),
-            bot=SimpleNamespace(send_message=AsyncMock()),
-            message=SimpleNamespace(ephemeral_message_id=7, delete_ephemeral=AsyncMock()),
+            bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock()),
+            message=SimpleNamespace(chat=SimpleNamespace(id=-1001,type="group"),ephemeral_message_id=7, delete_ephemeral=AsyncMock()),
         )
         self.world = {"id": 1, "chat_id": -1001, "thread_id": 42}
         self.player = {"id": 10}
@@ -66,7 +66,7 @@ class HeroSelectionCallbackTests(unittest.IsolatedAsyncioTestCase):
         params = sent["ephemeral_message_parameters"]
         self.assertEqual(params.receiver_user_id, 101)
         self.assertEqual(sent["chat_id"], -1001)
-        self.callback.message.delete_ephemeral.assert_awaited_once()
+        self.callback.bot.delete_ephemeral_message.assert_awaited_once()
 
     async def test_selector_rejects_other_owner(self):
         self.callback.from_user.id = 102

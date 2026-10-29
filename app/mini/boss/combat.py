@@ -1,3 +1,4 @@
+import json
 from app.mini.editorial import text as editorial_text
 from app.mini.presentation import format_player_mention
 from app.mini.boss.repository import (
@@ -72,9 +73,12 @@ def start_battle(
             raise BossCombatError(editorial_text('errors.boss.combat.start_battle.02'))
 
         boss = hydrate_reward_snapshot(conn, boss)
+        from app.mini.boss.operations import started_count
+        if started_count(conn,boss['world_id'],now)>=10:
+            raise BossCombatError('Лимит десяти начатых боёв на мир за московские сутки исчерпан.')
         participants = start_participants(conn, boss_id)
 
-        if len(participants) < int(boss["min_players"]):
+        if not participants:
             conn.rollback()
             raise BossCombatError(editorial_text('errors.boss.combat.start_battle.03'))
 
@@ -89,7 +93,8 @@ def start_battle(
                 raise BossCombatError(
                     editorial_text('errors.boss.combat.start_battle.04')
                 )
-            attack = calculate_attack(int(row["base_attack"]), int(row["stars"]))
+            from app.mini.combat.modes import normalized_attack
+            attack = normalized_attack(dict(row))
             damage_potion = consume_effect_charge(
                 conn, int(row["player_id"]), EFFECT_BOSS_DAMAGE
             )
@@ -98,7 +103,7 @@ def start_battle(
             )
             from app.mini.shadow import eligible_shadow_target
             lantern = bool(eligible_shadow_target(conn, boss)) and consume_effect_charge(conn, int(row['player_id']), 'spirit_lantern')
-            save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, lantern)
+            save_start_loadout(conn, boss_id, row, attack, damage_potion, phantom_potion, lantern, now=now)
 
         mark_battle_started(conn, boss_id, now)
         fresh = refresh_boss(conn, int(boss_id))
@@ -110,6 +115,9 @@ def start_battle(
         # The snapshots just persisted, rather than the live catalog, drive bonuses.
         start_events.extend(apply_boss_effects(
             conn, fresh, creatures.battle_start(dict(fresh), active_loadouts(conn, boss_id)), now))
+        from app.mini.boss.team import initialize
+        fresh=refresh_boss(conn,int(boss_id))
+        start_events.extend(initialize(conn,fresh,active_loadouts(conn,boss_id),now))
         conn.commit()
 
     state = get_combat_state(boss_id, db_path=db_path)
@@ -260,7 +268,7 @@ def advance_expired_turns(
             if started is None:
                 started = now
                 set_turn_started(conn, boss_id, started)
-            deadline = started + timedelta(hours=int(boss["skip_after_hours"]))
+            deadline = started + timedelta(seconds=int(boss["turn_timeout_seconds"]))
             if now < deadline:
                 break
 
@@ -302,6 +310,7 @@ def hit_boss(
     now: datetime | None = None,
     expected_round: int | None = None,
     expected_position: int | None = None,
+    expected_token: str | None = None,
     db_path: str | Path = DB_PATH,
 ) -> dict:
     now = coerce_utc(now)
@@ -330,6 +339,10 @@ def hit_boss(
         ):
             raise BossNotYourTurn(editorial_text('errors.boss.combat.hit_boss.02'))
 
+        from app.mini.boss.operations import turn_token
+        if expected_token is not None and turn_token(boss)!=expected_token:
+            raise BossNotYourTurn('Устаревшая кнопка хода.')
+        values=json.loads(dict(boss).get('team_state_json') or '{}')
         participant = participant_for_hit(conn, boss_id, player_id)
         if participant is None:
             conn.rollback()
@@ -367,12 +380,12 @@ def hit_boss(
             passive_key if calculation["reachable"] else "none", hit_number=int(participant["hit_count"]) + 1,
             actual_hp_damage=min(damage, int(boss["current_hp"])),
             state=attack_resolution.get("hero_state", hero_abilities.hero_state(participant["hero_state_json"])),
+            ability_definition=hero.get("passives",{}).get("normal",{}).get("definition"),
         )
         if not calculation["reachable"]:
             after_attack = {"state": hero_abilities.hero_state(participant["hero_state_json"]), "events": []}
         if after_attack["state"].pop("grave_seal", False):
             fresh = refresh_boss(conn, int(boss_id))
-            import json
             seal_state = json.loads(fresh["ability_state_json"] or "{}")
             seal_state["grave_seal"] = True
             apply_boss_effects(conn, fresh, {"boss_changes": {"ability_state_json": json.dumps(seal_state)}}, now)
@@ -392,10 +405,20 @@ def hit_boss(
         boss_events.extend(apply_boss_effects(
             conn, fresh, creatures.on_hit(dict(fresh), hero, successful=damage > 0),
             now, actor_id=int(player_id)))
+        from app.mini.boss.team import after_hit
+        fresh=refresh_boss(conn,int(boss_id))
+        passive_events.extend(after_hit(conn,fresh,dict(participant),hero,min(max(0,damage),int(boss['current_hp'])),now,is_extra=json.loads(boss['team_state_json'] or '{}').get('lightning_extra_turn')==player_id))
+        hp_after=int(refresh_boss(conn,int(boss_id))['current_hp'])
         primary_killed = hp_after <= 0
         extra_damage = 0
-        if not primary_killed:
-            for _ in range(attack_resolution["extra_attacks"]):
+        extra_finish=None
+        if not primary_killed and not attack_resolution.get('banish_boss'):
+            values=json.loads(refresh_boss(conn,int(boss_id))['team_state_json'] or '{}')
+            credit=values.get('lightning_credits',{}).pop(str(player_id),0)
+            if credit:
+                from app.mini.boss.team import save
+                save(conn,boss_id,values)
+            for _ in range(attack_resolution["extra_attacks"]+int(bool(credit))):
                 extra = extra_attack(conn, refresh_boss(conn, int(boss_id)), participant, hero, now,
                                       attack_resolution["extra_attack_message"], damage_percent=attack_resolution.get("extra_attack_percent", 100),
                                       primary_base=attack_resolution.get("extra_uses_primary_base", False))
@@ -403,18 +426,23 @@ def hit_boss(
                 passive_events.append(extra["event"])
                 boss_events.extend(extra["boss_events"])
                 hp_after = int(refresh_boss(conn, int(boss_id))["current_hp"])
+                if extra.get('battle_ended'):extra_finish=extra;break
                 if hp_after <= 0:
                     break
         save_attack_events(conn, boss_id, player_id, passive_events)
+        values=json.loads(refresh_boss(conn,int(boss_id))['team_state_json'] or '{}')
+        if values.get('lightning_extra_turn')==player_id:
+            from app.mini.boss.repository import record_free_extra_turn
+            record_free_extra_turn(conn,boss_id,player_id)
         queue_boss_skips(conn, boss, player_id, hp_after, boss_skip_turns, now)
         reward_event = None
         reward_events = []
         forced_skip_events = []
-        rewards = None
+        rewards = extra_finish.get('rewards') if extra_finish else None
         hero_events = []
-        battle_ended = False
+        battle_ended = bool(extra_finish)
         bonus_shards = 0
-        if hp_after > 0 and calculation['reachable'] and attack_resolution.get('banish_boss'):
+        if not battle_ended and hp_after > 0 and calculation['reachable'] and attack_resolution.get('banish_boss'):
             from app.mini.boss.rewards import finish_banishment
             rewards=finish_banishment(conn,refresh_boss(conn,int(boss_id)),now)
             battle_ended=True
@@ -425,8 +453,8 @@ def hit_boss(
             rewards = death["rewards"]
             battle_ended = death["battle_ended"]
             hp_after = int(refresh_boss(conn, int(boss_id))["current_hp"])
-            if battle_ended and primary_killed:
-                kill_resolution = resolve_kill(passive_key)
+            if battle_ended and (primary_killed or extra_damage>0):
+                kill_resolution = resolve_kill(passive_key,ability_definition=hero.get("passives",{}).get("normal",{}).get("definition"))
                 passive_events.extend(kill_resolution["events"])
                 bonus_shards = int(kill_resolution["bonus_shards"])
                 if bonus_shards > 0:

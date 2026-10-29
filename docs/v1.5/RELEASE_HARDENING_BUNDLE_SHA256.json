@@ -1,0 +1,19 @@
+{
+  "deploy/deploy-shpakdnd.sh": "1b00435625e262e0c7fc47813e0d36f839933163f82bf414dbec9ff2dcf4831a",
+  "deploy/install-deploy-shpakdnd.sh": "723992b3b079cda0fd9bc830a8989906ccac648fdbf4a055162ced4698f96368",
+  "deploy/install_bundle.py": "5802cea15ccbffa02bc6c18365ac2eaff8631221a2cf87fae11dfcf1ba9ae46c",
+  "deploy/release_content.py": "95376ddf957a3ce95e2b97329cd07befaff4a2825a2c2d98e74862e6cbc1b178",
+  "deploy/release_guard.py": "f10a5afd7ea25b26e90e2f98a339a73362b956b742975f708cb55c6a26f7586f",
+  "deploy/release_preflight.py": "7745dec788bc776c7428f460c8160ecbd03b68b8a9266d877a1fcce24ba830c7",
+  "deploy/release_schema.json": "229c9fc6bf51adda6ee3b23254df978f296e78fb4460b8c6403a99834e2f412d",
+  "scripts/run_isolated_checks.py": "8579e9f0d9ea3123635f6239ad4227fdd535cdaa1bc4b49f6db8df323bca3fdb",
+  "tests/v1_3_3/test_deploy_shell.py": "81e9ebc68ae8a57c43dc7c334dabc826ef0f388242e2d683cb401c14eba93ddf",
+  "tests/v1_4_3/test_pvp_rollback_shell.py": "d7837d4397d3bf98d8dafcd1848a5c9f5ef173ee5fae35eac1e6744e01dcca0f",
+  "tests/v1_4_3_1/test_deploy_confirm.py": "91f895187b029447c1035ae7140d94c1baf343033b6f5beaed04d9e15c3358e8",
+  "tests/v1_5/test_atomic_bundle.py": "c352c4bedfd60f6d975030da8896f40fdc2acaaa572dd1c9032a8e981b9f4196",
+  "tests/v1_5/test_release_hardening.py": "5ea1345171ab4d3fbdc56b26858b45940e04c08ae9b2d8d09e3373ad12c73979",
+  "tools/release_preflight_checks.py": "bad33fc3b15fc8a24c3489e47442a186a5ed0ac9606226cc625716ac0b559296",
+  "tools/validate_deploy_bundle.py": "5425ca1fd038462409eeeb965a58fec255f67963a1326f4be14690b443e347f7",
+  "tools/validate_release_content.py": "01128f53b707e2d92a87471262b3783a7a77da15c5d7320fe141ec4aac2749a8",
+  "tools/validate_release_hardening.py": "7178ea7edd196fc2dc2c5d3c54a68e8d99f7fca08d893b2fba67a0b1cbefeabe"
+}

@@ -1,0 +1,53 @@
+# SQLite V1.5
+
+Миграция `app/mini/migrations/v1_5.py` выполняется последней в существующем ordered migrate. Она вызывает Mythic/Story CREATE/ALTER под транзакцией init_mini_db. Обычный Boss расширяет существующий init_boss_db. Старые колонки и данные не удаляются, три повторных запуска проверяются автоматически.
+
+Новые таблицы:
+
+- `mini_mythic_ledger`: отдельная универсальная валюта, UNIQUE(player_id,operation_key), balance_after>=0.
+- `mini_mythic_operations`: точный payload/result для повторов расходных pet/upgrade действий.
+- `mini_mythic_pets`: UNIQUE(player_id,element), partial unique один location=active; mood/stage/активные часы/защита/CD/evolution_pending.
+- `mini_mythic_pet_days`: player_id + московская game_day, consumed<=5, claimed<=1.
+- `mini_mythic_raids`: immutable snapshot и исходный HP, runtime/revision/result; partial unique active/world.
+- `mini_mythic_raid_attacks`: unique operation/player и unique raid/player/hero/day; frozen hero + HP events + сохранённый результат.
+- `mini_mythic_raid_damage`: фактический вклад player/raid, включая отдельно атрибутированный Земной урон.
+- `mini_mythic_raid_rewards`: unique raid/player, сохранённые rank/damage/amount/result.
+- `mini_mythic_raid_audit`: start/cancel actor/payload/key, UNIQUE operation_key.
+- `mini_mythic_raid_publications`: pending/sending/sent/uncertain + message_id/media_type; неизвестная доставка не повторяется автоматически.
+- `mini_tower_lunar_choices`: unique player/floor, первый Лунный выбор.
+- `mini_combat_arise`: unique mode/battle/player, независимые проверки источников до первого успеха.
+- `mini_boss_admin_audit`: scoped actor/key/payload/result для skip/change.
+- `mini_boss_timeline`: общая autoincrement-последовательность actions/events. Два AFTER INSERT trigger только для rules_version>=15; старая история не переупорядочивается догадкой.
+- `story_sessions`, `story_participants`, `story_votes`, `story_steps`, `story_publications`, `story_operations`, `story_enrollment`: независимое общее прохождение и регистрация, partial unique active chat/thread, immutable vote/session/step/user.
+
+Новые столбцы: mini_players.mythic_shards (0, nonnegative); mini_heroes.passives_json/mythic_element; mini_bosses.rules_version (legacy0), turn_timeout_seconds (старый skip_after_hours×3600, новым900), team_state_json, original_max_hp, original_reward_coins, reward_snapshot_version. При очень старой минимальной boss-схеме недостающие starts_at/skip_after_hours добавляются без изменения существующих deadlines. Номера версий normal snapshots и контрактов отделены от gameplay content_version.
+
+Основные индексы: mini_pet_one_active, mini_raid_one_active, mini_raid_daily, mini_boss_daily_started, story one-active scope и перечисленные PRIMARY/UNIQUE keys. Все экономические действия и боевой шаг используют BEGIN IMMEDIATE; HP, попытка, вклад, награда и idempotency фиксируются одной транзакцией. Telegram-сеть находится за её пределами, публикация предварительно получает persisted claim.
+
+Исторические mini_mythic_fragments/mini_mythic_grants остаются. Ни миграция, ни новое API не выдумывают курс конверсии; старый craft/grant-per-hero явно отклоняются. Обычные shards/coins/equipment имеют прежних владельцев записи.
+
+## Completion-аудит: сохранённые источники и доставка
+
+Normal team_state_json.arise_team_sources freezes owner+hero Dark и один Lunar Shadows; reward_policy freezes версию утверждённого баланса. Старый V15 без плана использует только saved participant snapshots, rules<15 legacy. Arise требует total_damage>0; счётчик попыток/условия прежних victory effects не меняются.
+Raid first positive own HP-event per owner+hero в attacks определяет Arise без повторов по дням/upgrade. Финальный shared plan в state_json; snapshot_json.runtime_policies фиксирует Eclipse. Result_json rank/reward/Arise — источник final ranking. Cancel audit хранит и refusal O01 с revision/payload, без экономики.
+Новые Tower runtime: actual_hit_count=0 и team.reward_policy; старые без поля читаются совместимо. Миграции не перезаписывают активные JSON. Story text message replay в story_operations; input_chat/input_thread в enrollment.data_json, authoritative character scope — исходная тема. Sending→uncertain; pending network retry только после durable claim, вне транзакции.
+
+## Аддитивная итерация утверждённых O01–O10
+
+- mini_star_rewards: PRIMARY KEY(mode,battle_id,player_id), modeboss/tower, chance0..100,success0/1,amount,source_stars1..6,result_json. ДляTower battle_id обозначает floor; Boss — реальный boss_id. Обычные осколки и решение фиксируются одной транзакцией. Legacy sharedStar-roll остаётся в старом team_state_json без миграции.
+- mini_mythic_raid_cancel_requests: tokenPK,raid/worldFK,actor,with_rewardCHECK,revision,reasonlength≤500,inputchat/thread/promptmessage/created_at. Это серверная привязка forecast/причины/confirm, не выплата. Изменение текста причины матчится поreply/user/privatechat; stale revision не применяется.
+- mini_tower_rewards.result_json: TEXT NOT NULL DEFAULT '{}', ALTER only ifmissing. Новые награды сохраняют весь result для точного replay; старые выданные строки не переписываются и не начисляются снова.
+
+Cancel with_reward: миниraid status остаётся cancelled, result_json хранитcancel_mode,M,D,F,P,tie_break,rewards(allpositive contributions including zero share),reason/actor/time. Только positive amounts создают mini_mythic_raid_rewards и universal ledger source raid_cancel_compensation/keyraid:ID:cancel. Без награды resultcancel_modewithout_reward/rewards[]. D0/P0 сохраняет auditcancel_reward_refused, не status/revision/money; historicalcancel_reward_blocked replay не ретроактивируется. Права и expected_revision обязательны; status/ledger/balance/reward/result/audit атомарны.
+
+New Raid snapshot.counter_policy — first_confirmed_counter_hero_attack_on_this_raid. counter_source и uniqueauditcounter:ID сохраняются один раз; старый positive-only snapshot не обновляется. Индивидуальныйdamage проверяется на int64 перед UPSERT, не допускается SQLite promotion вREAL. D=sum(D_i) и промежуточные произведения Pythonint могут быть большеint64 без потери точности; HP/wallet/individualdamage bounded передSQLite.
+
+First Tower entry arcana_json хранитindex,level(null доMoon),reward_policy; уровень фиксируется при первом Moon, index/policy не перебрасываются. Новые active snapshots policyversion2, legacy snapshots остаются version1. Изменений CHECKstatusraid не потребовалось; старые mini_mythic_fragments/ненулевыеостатки сохранены. Тройной replay проверяется как наold-code fixture, так и на непустых новых cancel/Star/ledger/request данных.
+
+## Динамика четырёх рейдовых механик
+
+Новых таблиц/колонок/миграций нет. snapshot_json.mechanic неизменяем; state_json.mechanic
+содержит version/type/confirmed_attacks/phase/effective_features/last_heal/last_transition.
+mini_mythic_raid_audit получает raid_mechanic_transition и raid_periodic_heal с уникальным
+ключом raid-mechanic:raid:attempt:event; result_json атаки хранит использованные/следующие теги.
+Atomic ledger/revision/HP/rewards и legacy snapshots не переписываются. Подробнее RAID_BOSSES_MECHANICS.md.

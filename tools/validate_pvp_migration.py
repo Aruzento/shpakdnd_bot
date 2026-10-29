@@ -109,7 +109,13 @@ for i,kind in enumerate(('open','choosing','win','draw','refund','uncertain','ed
                     assert len(after[table])==len(rows)
                     assert all(all(new[i]==old[i] for i in range(len(old)) if i not in allowed)
                                for old,new in zip(rows,after[table])),"Historical PvP economics changed"
-                else:assert after[table]==rows,"Historical data changed: "+table
+                else:
+                    with closing(sqlite3.connect(source)) as old_conn:
+                        historical_columns=[r[1] for r in old_conn.execute(f'PRAGMA table_info("{table}")')]
+                    projection=','.join('"'+c+'"' for c in historical_columns)
+                    with closing(sqlite3.connect(copy)) as migrated_conn:
+                        projected=migrated_conn.execute(f'SELECT {projection} FROM "{table}" ORDER BY rowid').fetchall()
+                    assert projected==rows,"Historical data changed: "+table
             assert "mini_event_pvp" in after and "mini_event_pvp_members" in after
             if ref!=PRE_SAFETY:assert not after["mini_event_pvp"]
             else:
@@ -134,7 +140,9 @@ for i,kind in enumerate(('open','choosing','win','draw','refund','uncertain','ed
             with closing(sqlite3.connect(copy)) as conn:
                 players=conn.execute("SELECT id,world_id FROM mini_players ORDER BY id").fetchall()
             # Seed a new active escrow, copy it, then run the prior check_bot.
-            sid=pvp.create(players[3][0],players[3][1],"migration-pvp",copy)["id"]
+            from unittest.mock import patch
+            with patch.dict(os.environ, {"MINI_PVP_ENABLED":"1"}):
+                sid=pvp.create(players[3][0],players[3][1],"migration-pvp",copy)["id"]
             rollback=base/(ref+"-rollback.db");shutil.copy2(copy,rollback)
             rollback_before=snapshot(rollback)
             run(code,rollback,"import check_bot;check_bot.main()")

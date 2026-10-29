@@ -58,6 +58,8 @@ async def show_boss_home(
 ):
     boss = get_active_boss(world["id"])
     admin = is_admin(callback, world)
+    from app.mini.boss.operations import remaining
+    quota_text=f"\nОсталось запусков сегодня: {remaining(world['id'])}/10 (общий лимит мира)"
 
     if boss is not None and boss["status"] == "fighting":
         try:
@@ -79,7 +81,7 @@ async def show_boss_home(
             callback,
             world,
             (
-                editorial_text('boss.show_boss_home.line_01')
+                editorial_text('boss.show_boss_home.line_01') + quota_text
                 + (
                     editorial_text('boss.show_boss_home.line_02')
                     if admin
@@ -87,7 +89,7 @@ async def show_boss_home(
                 )
             ),
             no_boss_menu(
-                world["id"], callback.from_user.id, is_admin=admin
+                world["id"], callback.from_user.id, is_admin=True
             ),
         )
         return
@@ -97,7 +99,8 @@ async def show_boss_home(
     await _send_private(
         callback,
         world,
-        format_private_boss(boss, participants, joined=joined),
+        format_private_boss(boss, participants, joined=joined)+quota_text
+        + ("\nБой уже начался: отмена регистрации недоступна. Принудительное завершение доступно администратору темы." if boss["status"]=="fighting" else "\nДо начала боя регистрацией управляют создатель и администратор темы."),
         boss_private_menu(
             world["id"],
             callback.from_user.id,
@@ -234,7 +237,9 @@ async def admin_action_context(
         world is None
         or boss is None
         or int(boss["world_id"]) != world_id
-        or not is_admin(callback, world)
+        or not (is_admin(callback, world)
+            or (action in {'close','reopen','cancel'} and boss.get('status') in {'announced','ready'} and boss.get('created_by_user_id')==callback.from_user.id)
+            or (action=='start' and any(p.get('telegram_user_id')==callback.from_user.id for p in list_participants(boss['id']))))
     ):
         await callback.answer(editorial_text('boss.admin_action_context.line_04'), show_alert=True)
         return None

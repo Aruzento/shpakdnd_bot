@@ -41,7 +41,7 @@ class EventMenuTests(unittest.TestCase):
 
     def test_summon_is_separate_green_row_between_new_submenus(self):
         menu = mini_ui._player_menu(1, 101)
-        self.assertEqual([b.text for b in menu.inline_keyboard[0]], ["⚔️ Приключения", "🧙 Герой"])
+        self.assertEqual([b.text for b in menu.inline_keyboard[0]], ["⚔️ Бой", "🧙 Герой"])
         self.assertEqual(len(menu.inline_keyboard[1]), 1)
         self.assertEqual(menu.inline_keyboard[1][0].text, "✨ Призвать героя")
         self.assertEqual(menu.inline_keyboard[1][0].style, "success")
@@ -112,7 +112,7 @@ class EventCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.callback = SimpleNamespace(
             id="callback-1", data=f"mini:events:{self.wid}:101",
             from_user=SimpleNamespace(id=101, username="tester"),
-            answer=AsyncMock(), bot=SimpleNamespace(send_message=AsyncMock()),
+            answer=AsyncMock(), bot=SimpleNamespace(delete_ephemeral_message=AsyncMock(),send_message=AsyncMock()),
             message=SimpleNamespace(chat=SimpleNamespace(id=self.world["chat_id"]),
                                     message_thread_id=self.world["thread_id"],
                                     ephemeral_message_id=7, delete_ephemeral=AsyncMock()),
@@ -152,7 +152,7 @@ class EventCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(params.callback_query_id, "callback-1")
         self.assertEqual(self.sent()["chat_id"], self.world["chat_id"])
         self.assertIn("20 монет", self.sent()["text"])
-        self.callback.message.delete_ephemeral.assert_awaited_once()
+        self.callback.bot.delete_ephemeral_message.assert_awaited_once()
 
     async def test_public_fallback_still_sends_only_ephemeral(self):
         self.callback.message.ephemeral_message_id = None
@@ -160,7 +160,7 @@ class EventCallbackTests(unittest.IsolatedAsyncioTestCase):
         await ui.events_callback(self.callback)
         self.assertEqual(self.sent()["ephemeral_message_parameters"].receiver_user_id, 101)
         self.callback.message.edit_text.assert_not_awaited()
-        self.callback.message.delete_ephemeral.assert_not_awaited()
+        self.callback.bot.delete_ephemeral_message.assert_not_awaited()
 
     async def test_other_owner_cannot_use_menu_or_game_button(self):
         self.callback.from_user.id = 102

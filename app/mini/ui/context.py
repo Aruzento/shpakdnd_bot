@@ -1,3 +1,4 @@
+from app.mini.ui.timing import run_sync
 from app.mini.editorial import text as editorial_text, screen as editorial_screen
 from aiogram.types import CallbackQuery
 from app.mini.players import get_mini_player, touch_mini_player
@@ -69,7 +70,7 @@ async def load_extended_context(
         await callback.answer(editorial_text('context.load_extended_context.line_02'), show_alert=True)
         return None
 
-    world = get_mini_world_by_id(world_id)
+    world = await run_sync("context", get_mini_world_by_id, world_id)
     if not world or not world["enabled"]:
         await callback.answer(editorial_text('context.load_extended_context.line_03'), show_alert=True)
         return None
@@ -77,13 +78,13 @@ async def load_extended_context(
     if not await validate_callback_location(callback,world,owner_id):
         return None
 
-    player = get_mini_player(world_id, owner_id)
+    player = await run_sync("context", get_mini_player, world_id, owner_id)
     if player is None:
         await callback.answer(editorial_text('context.load_extended_context.line_04'), show_alert=True)
         return None
 
-    touch_mini_player(world_id, owner_id, username_from_user(callback.from_user))
-    player = get_mini_player(world_id, owner_id)
+    await run_sync("context", touch_mini_player, world_id, owner_id, username_from_user(callback.from_user))
+    player = await run_sync("context", get_mini_player, world_id, owner_id)
     return world, player, extra
 
 
@@ -122,7 +123,7 @@ async def load_personal_context(
         )
         return None
 
-    world = get_mini_world_by_id(world_id)
+    world = await run_sync("context", get_mini_world_by_id, world_id)
     if not world or not world["enabled"]:
         await callback.answer(
             editorial_text('context.load_personal_context.line_03'),
@@ -133,7 +134,7 @@ async def load_personal_context(
     if not await validate_callback_location(callback,world,owner_id):
         return None
 
-    player = get_mini_player(world_id, owner_id)
+    player = await run_sync("context", get_mini_player, world_id, owner_id)
     if player is None:
         await callback.answer(
             editorial_text('context.load_personal_context.line_04'),
@@ -141,13 +142,13 @@ async def load_personal_context(
         )
         return None
 
-    touch_mini_player(
+    await run_sync("context", touch_mini_player,
         world_id,
         owner_id,
         username_from_user(callback.from_user),
     )
 
-    player = get_mini_player(world_id, owner_id)
+    player = await run_sync("context", get_mini_player, world_id, owner_id)
     return world, player
 
 
@@ -183,14 +184,14 @@ async def shop_context(
     if callback.from_user.id != owner_id:
         await callback.answer(editorial_text('context.shop_context.line_02'), show_alert=True)
         return None
-    world = get_mini_world_by_id(world_id)
+    world = await run_sync("context", get_mini_world_by_id, world_id)
     if not world or not world["enabled"]:
         await callback.answer(editorial_text('context.shop_context.line_03'), show_alert=True)
         return None
     if not await validate_callback_location(callback,world,owner_id):
         return None
 
-    player = get_mini_player(world_id, owner_id)
+    player = await run_sync("context", get_mini_player, world_id, owner_id)
     if player is None:
         await callback.answer(editorial_text('context.shop_context.line_04'), show_alert=True)
         return None

@@ -40,7 +40,7 @@ def _daily_result_menu(
     )
 
 
-@router.callback_query(F.data.startswith("mini:daily:"))
+@router.callback_query(F.data.startswith("mini:dailyclaim:"))
 @editorial_screen
 async def daily_callback(callback: CallbackQuery):
     context = await _load_personal_context(callback)
@@ -170,3 +170,40 @@ async def combat_guide_callback(callback):
         return
     await callback.answer()
     await _edit_private(callback,body,markup)
+
+
+def daily_overview(player_id, *, day=None, db_path=None):
+    from datetime import date, timedelta
+    from app.config import DB_PATH
+    from app.mini.daily import _normalize_claim_date, get_daily_claim
+    from app.mini.db import connect_mini_db
+    day = _normalize_claim_date(day)
+    path = DB_PATH if db_path is None else db_path
+    claim = get_daily_claim(player_id, day, path)
+    with connect_mini_db(path) as conn:
+        row = conn.execute("SELECT last_day,streak FROM mini_daily_streak WHERE player_id=?", (player_id,)).fetchone()
+        previous = (date.fromisoformat(day)-timedelta(days=1)).isoformat()
+        streak = (row[1] if row and row[0]==day else row[1]+1 if row and row[0]==previous else 1)
+        if not row:
+            prior = previous
+            while conn.execute("SELECT 1 FROM mini_daily_claims WHERE player_id=? AND claim_date=?", (player_id,prior)).fetchone():
+                streak += 1
+                prior = (date.fromisoformat(prior)-timedelta(days=1)).isoformat()
+    cycle = (streak-1)%7+1
+    return {"claimed": bool(claim), "streak": streak, "cycle": cycle,
+            "text": f"Ежедневные активности\nСегодня: {'награда получена' if claim else 'награда доступна'}.\nСерия: {streak} дн. · день цикла {cycle}/7.\nСундук — за седьмой день подряд. До сундука: {7-cycle} дн.\nПропуск дня начинает серию и недельный цикл заново."}
+
+@router.callback_query(F.data.startswith("mini:daily:"))
+async def daily_overview_callback(callback):
+    from app.mini.ui.timing import run_sync
+    context = await _load_personal_context(callback)
+    if context is None:
+        return
+    world, player = context
+    await callback.answer()
+    state = await run_sync("daily_overview", daily_overview, player["id"])
+    markup = _daily_result_menu(world["id"],callback.from_user.id)
+    if not state["claimed"]:
+        markup.inline_keyboard.insert(0,[InlineKeyboardButton(text="Получить ежедневную награду",
+            callback_data=_personal_callback("dailyclaim",world["id"],callback.from_user.id))])
+    await _edit_private(callback,state["text"],markup)

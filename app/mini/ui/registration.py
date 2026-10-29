@@ -73,3 +73,10 @@ async def name_message(message,registration_request):
     intro=editorial_text('registration.name_message.line_01') if player['newly_created'] else ''
     gift=starter_message()+'\n\n' if player.get('onboarding_granted') else ''
     await reply_home(message,world,player,intro+gift)
+    from app.stories.repository import transaction
+    from aiogram.types import InlineKeyboardButton,InlineKeyboardMarkup
+    with transaction() as conn:
+        exists=conn.execute("SELECT 1 FROM sqlite_master WHERE name='story_enrollment'").fetchone()
+        pending=conn.execute("SELECT e.session_id FROM story_enrollment e JOIN story_sessions s ON s.id=e.session_id WHERE e.user_id=? AND s.status='registration' ORDER BY e.session_id DESC LIMIT 1",(message.from_user.id,)).fetchone() if exists else None
+    if pending:
+        await message.answer('Mini-аккаунт готов. Вернись к выбору участия в истории.',reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Вернуться к истории',callback_data=f'story:join:{pending[0]}')]]))

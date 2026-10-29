@@ -24,6 +24,8 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
         # Freeze old fighting loadouts before changing any catalog passive/trait.
         from app.mini.boss.loadouts import freeze_legacy_loadouts
         freeze_legacy_loadouts(conn)
+        import json
+        from app.mini.combat.modes import passive_contract
         catalog_codes = []
 
         for hero in heroes:
@@ -78,6 +80,9 @@ def sync_hero_catalog(db_path: str | Path = DB_PATH) -> int:
                 ),
             )
 
+            conn.execute("UPDATE mini_heroes SET passives_json=?,mythic_element=? WHERE code=?",
+                         (json.dumps(passive_contract(hero),ensure_ascii=False),hero.get("mythic_element",""),hero["code"]))
+
         if catalog_codes:
             placeholders = ",".join("?" for _ in catalog_codes)
             conn.execute(
@@ -120,7 +125,8 @@ def _enrich_owned_hero(hero: dict) -> dict:
     base_attack = int(result.get("attack", 1))
     stars = int(result.get("stars", 0))
     result["base_attack"] = base_attack
-    result["attack"] = calculate_attack(base_attack, stars)
+    from app.mini.combat.modes import normalized_attack
+    result["attack"] = normalized_attack(result)
     result["upgrade"] = hero_upgrade_state(result)
     return result
 
@@ -164,7 +170,7 @@ def get_player_heroes(
             SELECT
                 h.*,
                 ph.copies,
-                p.shards AS shards,
+                p.shards AS shards, p.mythic_shards,
                 ph.stars,
                 ph.obtained_at,
                 CASE WHEN p.active_hero_id = h.id THEN 1 ELSE 0 END AS is_active
@@ -198,7 +204,7 @@ def get_player_hero(
             SELECT
                 h.*,
                 ph.copies,
-                p.shards AS shards,
+                p.shards AS shards, p.mythic_shards,
                 ph.stars,
                 ph.obtained_at,
                 CASE WHEN p.active_hero_id = h.id THEN 1 ELSE 0 END AS is_active

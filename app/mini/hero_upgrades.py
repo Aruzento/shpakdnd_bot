@@ -66,6 +66,8 @@ def get_upgrade_settings() -> dict:
 
 
 def _max_stars_from_settings(settings: dict, rarity: str) -> int | None:
+    if rarity == "mythic":
+        return 6
     value = settings["max_stars"].get(rarity)
     if value is None:
         return None
@@ -86,8 +88,10 @@ def _calculate_attack(base_attack: int, stars: int, growth: int) -> int:
     return attack
 
 
-def calculate_attack(base_attack: int, stars: int) -> int:
+def calculate_attack(base_attack: int, stars: int, *, rarity: str = "common") -> int:
     """Каждая звезда: +50% от ТЕКУЩЕЙ атаки, округление вниз."""
+    if rarity == "mythic":
+        return max(0, int(base_attack))
     settings = get_upgrade_settings()
     return _calculate_attack(
         base_attack,
@@ -102,6 +106,10 @@ def _upgrade_cost_from_settings(
     target_star: int,
 ) -> int:
     target_star = int(target_star)
+    if rarity == "mythic":
+        if not 2 <= target_star <= 6:
+            raise ValueError("Mythic improvement must target 2..6 stars")
+        return (20,35,55,80,110)[target_star-2]
     if target_star < 1:
         raise ValueError(editorial_text('errors.hero_upgrades.upgrade_cost_from_settings.01'))
 
@@ -121,11 +129,12 @@ def hero_upgrade_state(hero: dict) -> dict:
     settings = get_upgrade_settings()
     rarity = str(hero.get("rarity", "common"))
     base_attack = int(hero.get("base_attack", hero.get("attack", 1)))
-    stars = int(hero.get("stars", 0))
-    shards = int(hero.get("shards", 0))
+    stars = max(1,int(hero.get('stars',0))) if rarity=='mythic' else int(hero.get('stars',0))
+    shards = int(hero.get("mythic_shards", 0) if rarity == "mythic" else hero.get("shards", 0))
     maximum = _max_stars_from_settings(settings, rarity)
     growth = int(settings["attack_growth_percent"])
-    current_attack = _calculate_attack(base_attack, stars, growth)
+    from app.mini.combat.modes import normalized_attack
+    current_attack = normalized_attack(hero)
     at_max = maximum is not None and stars >= maximum
 
     if at_max:
@@ -134,7 +143,7 @@ def hero_upgrade_state(hero: dict) -> dict:
         cost = None
     else:
         next_star = stars + 1
-        next_attack = _calculate_attack(base_attack, next_star, growth)
+        next_attack = normalized_attack({**hero,"stars":next_star})
         cost = _upgrade_cost_from_settings(settings, rarity, next_star)
 
     return {
@@ -157,7 +166,13 @@ def upgrade_hero(
     db_path: str | Path = DB_PATH,
     *, expected_stars: int | None = None,
 ) -> dict:
-    """Тратит общие осколки игрока и повышает звёзды героя на 1."""
+    """Тратит соответствующие осколки и повышает звёзды героя на 1."""
+    from app.mini.combat.modes import normalized_attack
+    with connect_mini_db(db_path) as check_conn:
+        row_kind=check_conn.execute('SELECT h.rarity FROM mini_player_heroes ph JOIN mini_heroes h ON h.id=ph.hero_id WHERE ph.player_id=? AND ph.hero_id=?',(player_id,hero_id)).fetchone()
+    if row_kind and row_kind[0]=='mythic':
+        from app.mini.mythic.upgrades import upgrade
+        return upgrade(player_id,hero_id,expected_stars,db_path)
     with connect_mini_db(db_path) as conn:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
@@ -172,6 +187,8 @@ def upgrade_hero(
                 h.rarity,
                 h.attack AS base_attack,
                 ph.stars,
+                ph.copies,
+                h.passive_key,
                 p.shards
             FROM mini_player_heroes ph
             JOIN mini_heroes h ON h.id = ph.hero_id
@@ -235,8 +252,8 @@ def upgrade_hero(
         "stars": target_star,
         "shards_spent": cost,
         "shards": new_shards,
-        "old_attack": _calculate_attack(base_attack, stars, growth),
-        "attack": _calculate_attack(base_attack, target_star, growth),
+        "old_attack": normalized_attack(dict(row)),
+        "attack": normalized_attack({**dict(row),"stars":target_star}),
         "max_stars": maximum,
     }
 

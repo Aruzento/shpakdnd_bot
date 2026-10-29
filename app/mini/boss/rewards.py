@@ -11,6 +11,7 @@ from app.mini.combat import classes
 from app.mini.boss.clock import utcnow, db_time
 from app.mini.boss.repository import log_hero_event
 
+
 def reward_items(raw: str | None) -> list[dict]:
     try:
         data = json.loads(raw or "[]")
@@ -30,6 +31,8 @@ def reward_items(raw: str | None) -> list[dict]:
 
 
 def hydrate_reward_snapshot(conn: sqlite3.Connection, boss: sqlite3.Row) -> sqlite3.Row:
+    if dict(boss).get("reward_snapshot_version",0)>=1:
+        return boss
     template = get_boss_template(str(boss["template_code"]))
     if template is None:
         return boss
@@ -64,7 +67,7 @@ def hydrate_reward_snapshot(conn: sqlite3.Connection, boss: sqlite3.Row) -> sqli
 
 
 def reward_eligible(row: sqlite3.Row) -> bool:
-    return int(row["hit_count"] or 0) > 0 or bool(int(row["phantom_reward"] or 0))
+    return int(row["hit_count"] or 0) > 0 or bool(int(row["phantom_reward"] or 0)) or int(dict(row).get("skipped_turns",0)) == 0
 
 
 def grant_victory_rewards(
@@ -73,12 +76,38 @@ def grant_victory_rewards(
     *,
     include_all_registered: bool = False,
     allow_shadow: bool = True,
+    normal_victory: bool = True,
     when: datetime | None = None,
 ) -> dict:
     reward_percent = max(0, min(100, int(boss["reward_percent"])))
-    coins_each = classes.real_reward(dict(boss))
+    from app.mini.boss.team import coin_reward
+
+    coins_each = coin_reward(boss)
     items = reward_items(boss["reward_items_json"])
 
+    values=json.loads(dict(boss).get('team_state_json') or '{}')
+    from app.mini.mythic.policies import normal
+
+    policy=normal(values)
+    blessing=values.get('lunar',{}).get('arcana')==10
+    if blessing:coins_each=0;items=[]
+    star_bonus=False
+    star_level = None
+    individual = policy.get("version", 1) >= 2
+    if (
+        int(dict(boss).get("rules_version", 0)) >= 15
+        and not include_all_registered
+        and normal_victory
+    ):
+        snapshots=[json.loads(r[0]) for r in conn.execute('SELECT hero_snapshot_json FROM mini_boss_participants WHERE boss_id=?',(boss['id'],))]
+        star_levels=[max(0,min(5,int(h.get('stars',1))-1)) for h in snapshots if h.get('passive_key')=='mythic_star']
+        if star_levels and individual and int(boss["current_hp"]) <= 0:
+            star_level = max(star_levels)
+        if star_levels and not individual:
+            if 'star_reward_roll' not in values:
+                values['star_reward_roll']=hero_abilities._roll_success(policy['star_chance'][max(star_levels)])
+                conn.execute('UPDATE mini_bosses SET team_state_json=? WHERE id=?',(json.dumps(values),boss['id']))
+            star_bonus=values['star_reward_roll']
     item_ids = {}
     for item in items:
         row = conn.execute(
@@ -93,7 +122,7 @@ def grant_victory_rewards(
 
     participants = conn.execute(
         """
-        SELECT bp.*, p.coins, h.name AS hero_name
+        SELECT bp.*, p.coins, p.username,p.character_name, h.name AS hero_name
         FROM mini_boss_participants bp
         JOIN mini_players p ON p.id = bp.player_id
         LEFT JOIN mini_heroes h ON h.id = bp.hero_id
@@ -121,6 +150,39 @@ def grant_victory_rewards(
             )
             missed += 1
             continue
+        if blessing:
+            from app.mini.mythic.wallet import change
+            victory_events.append(log_hero_event(conn,boss,row,{'type':'lunar_reward','message':f"🌙 {row['username'] or row['character_name']}: +{policy['blessing_mythic_shards']} мифических осколков вместо награды."},when or utcnow()))
+            change(conn,player_id,policy['blessing_mythic_shards'],'lunar_blessing',f"boss:{boss['id']}:lunar",{'boss_id':boss['id']})
+        if star_level is not None:
+            from app.mini.combat.star_rewards import award
+
+            decision = award(
+                conn,
+                "boss",
+                boss["id"],
+                player_id,
+                star_level + 1,
+                policy,
+                roller=hero_abilities._roll_success,
+            )
+            if decision["success"]:
+                victory_events.append(
+                    log_hero_event(
+                        conn,
+                        boss,
+                        row,
+                        {
+                            "type": "star_reward",
+                            "message": f"✨ +{decision['amount']} обычных осколков.",
+                            **decision,
+                        },
+                        when or utcnow(),
+                    )
+                )
+        if star_bonus:
+            victory_events.append(log_hero_event(conn,boss,row,{'type':'star_reward','message':f"✨ {row['username'] or row['character_name']}: +{policy['star_shards']} обычных осколков."},when or utcnow()))
+            conn.execute('UPDATE mini_players SET shards=shards+? WHERE id=?',(policy['star_shards'],player_id))
         if coins_each > 0:
             change_balance_in_transaction(
                 conn, player_id, coins_each, f"Победа над боссом: {boss['name']}",
@@ -144,7 +206,8 @@ def grant_victory_rewards(
             extraction=extract_in_transaction(conn,boss,row,now=when) if allow_shadow else None
             if extraction: victory_events.append(log_hero_event(conn,boss,row,extraction,when or utcnow()))
             passive = battle_loadout(row["hero_snapshot_json"]).get("passive_key", "none")
-            victory = hero_abilities.resolve_victory(passive)
+            frozen=battle_loadout(row["hero_snapshot_json"])
+            victory = hero_abilities.resolve_victory(passive,ability_definition=frozen.get("passives",{}).get("normal",{}).get("definition"))
             if victory["bonus_shards"]:
                 conn.execute("UPDATE mini_players SET shards = shards + ? WHERE id = ?",
                              (victory["bonus_shards"], player_id))
@@ -175,7 +238,7 @@ def grant_failure_rewards(conn: sqlite3.Connection, boss: sqlite3.Row) -> dict:
     shards_each = max(0, int(boss["reward_coins"]) // 10)
     participants = conn.execute(
         """
-        SELECT bp.player_id, bp.reward_granted, bp.hit_count, bp.phantom_reward
+        SELECT bp.player_id, bp.reward_granted, bp.hit_count, bp.phantom_reward, bp.skipped_turns
         FROM mini_boss_participants bp
         WHERE bp.boss_id = ?
         ORDER BY bp.queue_position
@@ -263,7 +326,7 @@ def finish_admin_victory(
 
 def finish_banishment(conn,boss,when):
     """Living boss leaves treasure; no extraction or death hooks."""
-    rewards=grant_victory_rewards(conn,boss,when=when,allow_shadow=False)
+    rewards=grant_victory_rewards(conn,boss,when=when,allow_shadow=False,normal_victory=False)
     conn.execute("UPDATE mini_bosses SET status='defeated',battle_result='banished',ended_at=?,turn_started_at=NULL WHERE id=?",(db_time(when),boss['id']))
     return rewards
 

@@ -17,10 +17,16 @@ from app.mini.schema import init_mini_db
 class PvpCase(MiniCase):
     def setUp(self):
         super().setUp()
+        import os
+        self.feature_modes=patch.dict(os.environ, {"MINI_PVP_ENABLED":"1","MINI_DUELS_ENABLED":"1"})
+        self.feature_modes.start();self.addCleanup(self.feature_modes.stop)
         self.wid=self.world["id"]
         self.other=create_mini_player(self.wid,900124,"@other","Соперник",self.db)["id"]
         self.third=create_mini_player(self.wid,900125,"@third","Третий",self.db)["id"]
         self.sql("UPDATE mini_players SET coins=100,shards=0")
+    def tearDown(self):
+        self.feature_modes.stop()
+        super().tearDown()
     def create(self,key="create"):
         return pvp.create(self.pid,self.wid,key,self.db,now=1000)
     def published(self,sid):

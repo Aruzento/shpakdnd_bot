@@ -367,7 +367,7 @@ class CreatureBattleTests(CreatureIntegrationFixture):
 
     def test_timeout_does_not_repeat_lifecycle_on_recovery(self):
         self.start("demonic","construct")
-        moment=self.now+timedelta(hours=8)
+        moment=self.now+timedelta(seconds=1800)
         result=combat.advance_expired_turns(self.event["id"],now=moment,db_path=self.db)
         self.assertTrue(result["changed"])
         self.assertEqual(self.boss()["reward_corruption"],10)

@@ -1,0 +1,2397 @@
+{
+  "mini_combat_arise": [
+    "mode",
+    "battle_id",
+    "player_id",
+    "result_json"
+  ],
+  "mini_mythic_ledger": [
+    "id",
+    "player_id",
+    "operation_key",
+    "amount",
+    "balance_after",
+    "source",
+    "payload"
+  ],
+  "mini_mythic_operations": [
+    "player_id",
+    "operation_key",
+    "payload",
+    "result_json"
+  ],
+  "mini_mythic_pet_days": [
+    "player_id",
+    "game_day",
+    "consumed",
+    "claimed"
+  ],
+  "mini_mythic_pets": [
+    "id",
+    "player_id",
+    "element",
+    "stage",
+    "location",
+    "mood",
+    "active_seconds",
+    "stage_seconds",
+    "next_decay",
+    "protect_until",
+    "cooldowns_json",
+    "settled_at",
+    "hero_id",
+    "evolution_pending"
+  ],
+  "mini_mythic_raid_attacks": [
+    "id",
+    "raid_id",
+    "player_id",
+    "hero_id",
+    "game_day",
+    "operation_key",
+    "payload",
+    "hero_json",
+    "events_json",
+    "result_json",
+    "created_at"
+  ],
+  "mini_mythic_raid_audit": [
+    "id",
+    "raid_id",
+    "actor_id",
+    "operation_key",
+    "action",
+    "payload",
+    "created_at"
+  ],
+  "mini_mythic_raid_cancel_requests": [
+    "token",
+    "raid_id",
+    "world_id",
+    "actor_id",
+    "with_reward",
+    "revision",
+    "reason",
+    "input_chat_id",
+    "input_thread_id",
+    "prompt_message_id",
+    "created_at"
+  ],
+  "mini_mythic_raid_damage": [
+    "raid_id",
+    "player_id",
+    "damage"
+  ],
+  "mini_mythic_raid_publications": [
+    "raid_id",
+    "status",
+    "message_id",
+    "media_type"
+  ],
+  "mini_mythic_raid_rewards": [
+    "raid_id",
+    "player_id",
+    "rank",
+    "damage",
+    "amount",
+    "result_json"
+  ],
+  "mini_mythic_raids": [
+    "id",
+    "world_id",
+    "template_code",
+    "snapshot_json",
+    "state_json",
+    "status",
+    "original_max_hp",
+    "max_hp",
+    "current_hp",
+    "created_by",
+    "created_at",
+    "ended_at",
+    "result_json",
+    "revision"
+  ],
+  "mini_star_rewards": [
+    "mode",
+    "battle_id",
+    "player_id",
+    "chance",
+    "success",
+    "amount",
+    "source_stars",
+    "result_json"
+  ],
+  "mini_tower_lunar_choices": [
+    "player_id",
+    "floor",
+    "arcana_json"
+  ],
+  "story_enrollment": [
+    "chat_id",
+    "thread_id",
+    "user_id",
+    "session_id",
+    "mode",
+    "stage",
+    "data_json"
+  ],
+  "story_operations": [
+    "operation_key",
+    "payload",
+    "result_json"
+  ],
+  "story_participants": [
+    "session_id",
+    "user_id",
+    "mode",
+    "entity_json",
+    "active"
+  ],
+  "story_publications": [
+    "session_id",
+    "step",
+    "status",
+    "message_id"
+  ],
+  "story_sessions": [
+    "id",
+    "chat_id",
+    "thread_id",
+    "code",
+    "status",
+    "snapshot_json",
+    "node_id",
+    "step",
+    "creator_id",
+    "created_at",
+    "result_json"
+  ],
+  "story_steps": [
+    "session_id",
+    "step",
+    "node_id",
+    "choice_id",
+    "next_node",
+    "result_json"
+  ],
+  "story_votes": [
+    "session_id",
+    "step",
+    "user_id",
+    "choice_id"
+  ],
+  "_baseline": {
+    "audited_commits": [
+      "d077dd2a2c29ad420b138bf07af23c77f4674d0b",
+      "cef77cc87f6a2286284f5cf8fdb851c775b04dd1",
+      "046f7dc1baee9e08207af72650fb4636b7da2d52"
+    ],
+    "columns": {
+      "character_profiles": [
+        [
+          "chat_id",
+          "thread_id",
+          "username",
+          "level",
+          "class_name",
+          "race"
+        ]
+      ],
+      "characters": [
+        [
+          "chat_id",
+          "thread_id",
+          "username",
+          "name"
+        ]
+      ],
+      "dnd_coin_migrations": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "plan_sha256",
+          "plan",
+          "result",
+          "created_at"
+        ]
+      ],
+      "dnd_currencies": [
+        [
+          "item_id",
+          "chat_id",
+          "thread_id",
+          "base_value",
+          "is_base",
+          "currency_quantity",
+          "created_at"
+        ]
+      ],
+      "dnd_items": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "code",
+          "name",
+          "name_key",
+          "category",
+          "description",
+          "active",
+          "created_at",
+          "updated_at"
+        ]
+      ],
+      "dnd_shop_catalog_entries": [
+        [
+          "source_path",
+          "chat_id",
+          "thread_id",
+          "code",
+          "item_id",
+          "price",
+          "stock",
+          "active",
+          "buy_enabled",
+          "is_currency",
+          "present"
+        ]
+      ],
+      "dnd_shop_catalog_versions": [
+        [
+          "source_path",
+          "digest",
+          "master_sha256",
+          "imported",
+          "updated_at"
+        ]
+      ],
+      "dnd_shop_credit": [
+        [
+          "chat_id",
+          "thread_id",
+          "user_id",
+          "username",
+          "balance"
+        ]
+      ],
+      "dnd_shop_credit_coins": [
+        [
+          "redemption_token",
+          "item_id",
+          "quantity",
+          "denomination"
+        ]
+      ],
+      "dnd_shop_credit_moves": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "user_id",
+          "trade_id",
+          "redemption_token",
+          "direction",
+          "amount",
+          "balance_after",
+          "created_at"
+        ]
+      ],
+      "dnd_shop_credit_redemptions": [
+        [
+          "token",
+          "session_token",
+          "expected",
+          "result",
+          "created_at",
+          "completed_at"
+        ]
+      ],
+      "dnd_shop_money": [
+        [
+          "trade_id",
+          "item_id",
+          "direction",
+          "quantity",
+          "denomination"
+        ]
+      ],
+      "dnd_shop_operations": [
+        [
+          "token",
+          "session_token",
+          "kind",
+          "sku",
+          "item_id",
+          "inventory_id",
+          "price",
+          "created_at",
+          "result",
+          "completed_at",
+          "quote_digest"
+        ]
+      ],
+      "dnd_shop_owners": [
+        [
+          "chat_id",
+          "thread_id",
+          "username",
+          "user_id"
+        ]
+      ],
+      "dnd_shop_publications": [
+        [
+          "source_path",
+          "chat_id",
+          "thread_id",
+          "plan",
+          "candidate",
+          "digest",
+          "created_at"
+        ]
+      ],
+      "dnd_shop_sessions": [
+        [
+          "token",
+          "chat_id",
+          "thread_id",
+          "user_id",
+          "username",
+          "character_key",
+          "expires",
+          "closed"
+        ]
+      ],
+      "dnd_shop_settings": [
+        [
+          "chat_id",
+          "thread_id",
+          "enabled",
+          "pricing_mode",
+          "factor",
+          "base_item_id",
+          "currency_signature",
+          "currency_units",
+          "settings_version",
+          "created_at",
+          "updated_at"
+        ]
+      ],
+      "dnd_shop_skus": [
+        [
+          "chat_id",
+          "thread_id",
+          "code",
+          "item_id",
+          "original_name_key",
+          "sold"
+        ]
+      ],
+      "dnd_shop_test_migrations": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "plan_sha256",
+          "plan",
+          "prepared_fingerprint",
+          "phase",
+          "result",
+          "created_at",
+          "completed_at"
+        ]
+      ],
+      "dnd_shop_trades": [
+        [
+          "id",
+          "operation_token",
+          "kind",
+          "chat_id",
+          "thread_id",
+          "user_id",
+          "username",
+          "character_key",
+          "sku",
+          "item_id",
+          "price",
+          "value",
+          "quantity",
+          "created_at"
+        ]
+      ],
+      "inventory": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "username",
+          "name",
+          "quantity",
+          "description",
+          "item_id"
+        ]
+      ],
+      "mini_boss_actions": [
+        [
+          "id",
+          "boss_id",
+          "player_id",
+          "round_number",
+          "action_type",
+          "damage",
+          "boss_hp_after",
+          "created_at",
+          "event_json"
+        ]
+      ],
+      "mini_boss_admin_audit": [
+        [
+          "id",
+          "boss_id",
+          "world_id",
+          "actor_user_id",
+          "operation_key",
+          "action",
+          "payload",
+          "result_json",
+          "created_at"
+        ]
+      ],
+      "mini_boss_events": [
+        [
+          "id",
+          "boss_id",
+          "round_number",
+          "event_type",
+          "target_player_id",
+          "event_json",
+          "boss_hp_after",
+          "created_at",
+          "legacy_action_id"
+        ]
+      ],
+      "mini_boss_participants": [
+        [
+          "boss_id",
+          "player_id",
+          "queue_position",
+          "joined_at",
+          "hit_count",
+          "total_damage",
+          "skipped_turns",
+          "damage_bonus_percent",
+          "phantom_reward",
+          "reward_granted",
+          "hero_state_json",
+          "hero_snapshot_json",
+          "forced_skip_turns",
+          "banished",
+          "hero_id",
+          "attack"
+        ]
+      ],
+      "mini_boss_timeline": [
+        [
+          "sequence",
+          "boss_id",
+          "source",
+          "source_id"
+        ]
+      ],
+      "mini_bosses": [
+        [
+          "id",
+          "world_id",
+          "template_code",
+          "name",
+          "description",
+          "image_path",
+          "max_hp",
+          "current_hp",
+          "min_players",
+          "status",
+          "signup_opens_at",
+          "signup_closes_at",
+          "signup_message_id",
+          "signup_message_kind",
+          "turn_message_id",
+          "starts_at",
+          "current_round",
+          "current_turn_position",
+          "turn_started_at",
+          "skip_after_hours",
+          "reward_coins",
+          "reward_item_id",
+          "created_by_user_id",
+          "created_at",
+          "ended_at",
+          "trait_rules_version",
+          "feature_state_json",
+          "reward_temp_hp",
+          "reward_corruption",
+          "turn_notice_json",
+          "faction",
+          "ability_key",
+          "ability_text",
+          "features_json",
+          "ability_config_json",
+          "ability_state_json",
+          "turn_message_kind",
+          "reward_items_json",
+          "reward_shields",
+          "reward_shields_max",
+          "reward_percent",
+          "reward_decay_percent",
+          "battle_result",
+          "class_rules_version",
+          "boss_damage",
+          "sneaky_stolen",
+          "content_version",
+          "shadow_extractable",
+          "shadow_hero_code"
+        ],
+        [
+          "id",
+          "world_id",
+          "template_code",
+          "name",
+          "description",
+          "image_path",
+          "max_hp",
+          "current_hp",
+          "min_players",
+          "status",
+          "signup_opens_at",
+          "signup_closes_at",
+          "signup_message_id",
+          "signup_message_kind",
+          "turn_message_id",
+          "starts_at",
+          "current_round",
+          "current_turn_position",
+          "turn_started_at",
+          "skip_after_hours",
+          "reward_coins",
+          "reward_item_id",
+          "created_by_user_id",
+          "created_at",
+          "ended_at",
+          "trait_rules_version",
+          "feature_state_json",
+          "reward_temp_hp",
+          "reward_corruption",
+          "turn_notice_json",
+          "faction",
+          "ability_key",
+          "ability_text",
+          "features_json",
+          "ability_config_json",
+          "ability_state_json",
+          "turn_message_kind",
+          "reward_items_json",
+          "reward_shields",
+          "reward_shields_max",
+          "reward_percent",
+          "reward_decay_percent",
+          "battle_result",
+          "rules_version",
+          "turn_timeout_seconds",
+          "team_state_json",
+          "original_max_hp",
+          "reward_snapshot_version",
+          "original_reward_coins",
+          "class_rules_version",
+          "boss_damage",
+          "sneaky_stolen",
+          "content_version",
+          "shadow_extractable",
+          "shadow_hero_code"
+        ]
+      ],
+      "mini_daily_chests": [
+        [
+          "player_id",
+          "claim_date",
+          "item_code"
+        ]
+      ],
+      "mini_daily_claims": [
+        [
+          "id",
+          "player_id",
+          "claim_date",
+          "encounter_key",
+          "story_text",
+          "coins_earned",
+          "item_id",
+          "created_at",
+          "streak_count",
+          "cycle_day",
+          "chest_code"
+        ]
+      ],
+      "mini_daily_streak": [
+        [
+          "player_id",
+          "last_day",
+          "streak"
+        ]
+      ],
+      "mini_duel_locks": [
+        [
+          "player_id",
+          "duel_id"
+        ]
+      ],
+      "mini_duels": [
+        [
+          "id",
+          "challenger_id",
+          "defender_id",
+          "challenger_hero_id",
+          "defender_hero_id",
+          "challenger_snapshot",
+          "defender_snapshot",
+          "expires_at",
+          "status",
+          "result_json",
+          "operation_key"
+        ]
+      ],
+      "mini_equipment": [
+        [
+          "code",
+          "name",
+          "slot",
+          "attack_bonus"
+        ]
+      ],
+      "mini_equipment_owned": [
+        [
+          "player_id",
+          "code",
+          "quantity"
+        ]
+      ],
+      "mini_equipment_slots": [
+        [
+          "player_id",
+          "slot",
+          "code"
+        ]
+      ],
+      "mini_event_pvp": [
+        [
+          "id",
+          "world_id",
+          "creator_id",
+          "acceptor_id",
+          "operation_key",
+          "stake",
+          "status",
+          "created_at",
+          "accept_until",
+          "choose_until",
+          "winner_id",
+          "outcome",
+          "revision",
+          "publication",
+          "message_id",
+          "published_revision",
+          "editing_until",
+          "last_error",
+          "retry_count",
+          "next_retry_at",
+          "edit_status",
+          "edit_token",
+          "edit_revision",
+          "edit_attempt_at",
+          "send_attempt_at",
+          "send_until",
+          "send_token",
+          "last_error_type",
+          "last_error_at",
+          "delivery_uncertain",
+          "publication_reviewed_at",
+          "publication_review_note",
+          "economy_version",
+          "legacy_shards_reviewed_at",
+          "legacy_shards_review_note"
+        ]
+      ],
+      "mini_event_pvp_control": [
+        [
+          "id",
+          "paused",
+          "blocked_create",
+          "blocked_accept",
+          "updated_at"
+        ]
+      ],
+      "mini_event_pvp_members": [
+        [
+          "session_id",
+          "player_id",
+          "choice",
+          "active"
+        ]
+      ],
+      "mini_event_pvp_shard_awards": [
+        [
+          "session_id",
+          "player_id",
+          "amount",
+          "created_at"
+        ]
+      ],
+      "mini_event_requests": [
+        [
+          "player_id",
+          "operation_key",
+          "session_id"
+        ]
+      ],
+      "mini_event_sessions": [
+        [
+          "id",
+          "player_id",
+          "game_type",
+          "stake",
+          "status",
+          "step",
+          "payload_json",
+          "start_key",
+          "created_at",
+          "resolved_at"
+        ]
+      ],
+      "mini_gacha_batch_pulls": [
+        [
+          "batch_id",
+          "position",
+          "pull_id"
+        ]
+      ],
+      "mini_gacha_batches": [
+        [
+          "id",
+          "player_id",
+          "operation_key",
+          "cost_coins",
+          "result_json",
+          "created_at",
+          "pull_price"
+        ]
+      ],
+      "mini_gacha_guarantees": [
+        [
+          "player_id",
+          "forced_legendary"
+        ]
+      ],
+      "mini_gacha_pity": [
+        [
+          "player_id",
+          "uncommon_count",
+          "rare_count",
+          "legendary_count",
+          "updated_at"
+        ]
+      ],
+      "mini_gacha_pulls": [
+        [
+          "id",
+          "player_id",
+          "hero_id",
+          "cost_coins",
+          "used_ticket",
+          "is_duplicate",
+          "shards_awarded",
+          "created_at",
+          "operation_key",
+          "result_json"
+        ]
+      ],
+      "mini_hero_favorites": [
+        [
+          "player_id",
+          "hero_id",
+          "position"
+        ]
+      ],
+      "mini_heroes": [
+        [
+          "id",
+          "code",
+          "name",
+          "rarity",
+          "race",
+          "class_name",
+          "attack",
+          "passive_key",
+          "passive_text",
+          "description",
+          "image_path",
+          "active",
+          "created_at",
+          "faction",
+          "damage_type",
+          "class_tag",
+          "attack_range",
+          "special_trait"
+        ],
+        [
+          "id",
+          "code",
+          "name",
+          "rarity",
+          "race",
+          "class_name",
+          "attack",
+          "passive_key",
+          "passive_text",
+          "description",
+          "image_path",
+          "active",
+          "created_at",
+          "faction",
+          "damage_type",
+          "class_tag",
+          "attack_range",
+          "special_trait",
+          "passives_json",
+          "mythic_element"
+        ]
+      ],
+      "mini_inventory": [
+        [
+          "player_id",
+          "item_id",
+          "quantity",
+          "updated_at"
+        ]
+      ],
+      "mini_item_uses": [
+        [
+          "id",
+          "player_id",
+          "item_id",
+          "effect_key",
+          "result_json",
+          "operation_key",
+          "created_at"
+        ]
+      ],
+      "mini_items": [
+        [
+          "id",
+          "code",
+          "name",
+          "category",
+          "description",
+          "effect_key",
+          "stackable",
+          "active",
+          "created_at"
+        ]
+      ],
+      "mini_mythic_fragments": [
+        [
+          "player_id",
+          "hero_code",
+          "amount"
+        ]
+      ],
+      "mini_mythic_grants": [
+        [
+          "player_id",
+          "operation_key",
+          "hero_code",
+          "amount",
+          "source"
+        ]
+      ],
+      "mini_onboarding_claims": [
+        [
+          "world_id",
+          "telegram_user_id",
+          "player_id",
+          "tickets",
+          "created_at"
+        ]
+      ],
+      "mini_player_effects": [
+        [
+          "player_id",
+          "effect_key",
+          "charges",
+          "updated_at"
+        ]
+      ],
+      "mini_player_heroes": [
+        [
+          "player_id",
+          "hero_id",
+          "copies",
+          "shards",
+          "stars",
+          "obtained_at"
+        ]
+      ],
+      "mini_players": [
+        [
+          "id",
+          "world_id",
+          "telegram_user_id",
+          "username",
+          "character_name",
+          "coins",
+          "shards",
+          "active_hero_id",
+          "created_at",
+          "last_seen_at"
+        ],
+        [
+          "id",
+          "world_id",
+          "telegram_user_id",
+          "username",
+          "character_name",
+          "coins",
+          "shards",
+          "active_hero_id",
+          "created_at",
+          "last_seen_at",
+          "mythic_shards"
+        ]
+      ],
+      "mini_public_notifications": [
+        [
+          "id",
+          "event_key",
+          "world_id",
+          "player_id",
+          "kind",
+          "payload_json",
+          "status",
+          "message_id",
+          "last_error",
+          "created_at"
+        ]
+      ],
+      "mini_public_shares": [
+        [
+          "player_id",
+          "operation_key"
+        ]
+      ],
+      "mini_purchases": [
+        [
+          "id",
+          "player_id",
+          "offer_id",
+          "quantity",
+          "total_price",
+          "status",
+          "created_at",
+          "redeemed_at",
+          "operation_key",
+          "result_json"
+        ]
+      ],
+      "mini_registration_requests": [
+        [
+          "token",
+          "world_id",
+          "telegram_user_id",
+          "expires_at",
+          "waiting",
+          "player_id"
+        ]
+      ],
+      "mini_registration_sessions": [
+        [
+          "token",
+          "world_id",
+          "telegram_user_id",
+          "expires_at",
+          "active",
+          "completed"
+        ]
+      ],
+      "mini_shadow_rolls": [
+        [
+          "boss_id",
+          "player_id",
+          "hero_id",
+          "chance_percent",
+          "shadow_code",
+          "success"
+        ]
+      ],
+      "mini_shop_offers": [
+        [
+          "id",
+          "world_id",
+          "code",
+          "offer_type",
+          "item_id",
+          "title",
+          "description",
+          "price",
+          "stock",
+          "max_per_player",
+          "active",
+          "starts_at",
+          "ends_at",
+          "metadata_json"
+        ]
+      ],
+      "mini_superadmin_audit": [
+        [
+          "id",
+          "admin_user_id",
+          "action",
+          "world_id",
+          "target_user_id",
+          "player_id",
+          "resource",
+          "entity_code",
+          "amount",
+          "operation_key",
+          "created_at"
+        ]
+      ],
+      "mini_titles": [
+        [
+          "id",
+          "player_id",
+          "text",
+          "expires_at",
+          "status",
+          "granted_by",
+          "operation_key",
+          "created_at"
+        ]
+      ],
+      "mini_tower_attempts": [
+        [
+          "id",
+          "player_id",
+          "floor",
+          "hero_id",
+          "hero_json",
+          "enemy_json",
+          "equipment_bonus",
+          "current_hp",
+          "shields",
+          "turn",
+          "status",
+          "runtime_json",
+          "events_json",
+          "created_at"
+        ]
+      ],
+      "mini_tower_progress": [
+        [
+          "player_id",
+          "highest_cleared"
+        ]
+      ],
+      "mini_tower_retries": [
+        [
+          "previous_attempt_id",
+          "new_attempt_id"
+        ]
+      ],
+      "mini_tower_rewards": [
+        [
+          "player_id",
+          "floor",
+          "attempt_id",
+          "shards",
+          "equipment_code",
+          "created_at"
+        ],
+        [
+          "player_id",
+          "floor",
+          "attempt_id",
+          "shards",
+          "equipment_code",
+          "created_at",
+          "result_json"
+        ]
+      ],
+      "mini_tower_selections": [
+        [
+          "player_id",
+          "hero_id"
+        ]
+      ],
+      "mini_ui_navigation": [
+        [
+          "token",
+          "player_id",
+          "screen",
+          "context_json"
+        ]
+      ],
+      "mini_ui_publications": [
+        [
+          "player_id",
+          "operation_key",
+          "status"
+        ]
+      ],
+      "mini_village_boosts": [
+        [
+          "player_id",
+          "resource",
+          "starts_at",
+          "ends_at"
+        ]
+      ],
+      "mini_village_operations": [
+        [
+          "player_id",
+          "operation_key",
+          "payload",
+          "result_json"
+        ]
+      ],
+      "mini_village_residents": [
+        [
+          "player_id",
+          "hero_id",
+          "building"
+        ]
+      ],
+      "mini_villages": [
+        [
+          "player_id",
+          "houses",
+          "cycle_started",
+          "settled_at",
+          "coins_units",
+          "shards_units",
+          "revision"
+        ]
+      ],
+      "mini_wallet_transactions": [
+        [
+          "id",
+          "player_id",
+          "amount",
+          "balance_after",
+          "reason",
+          "reference_type",
+          "reference_id",
+          "operation_key",
+          "created_at"
+        ]
+      ],
+      "mini_worlds": [
+        [
+          "id",
+          "chat_id",
+          "thread_id",
+          "name",
+          "currency_name",
+          "boss_skip_hours",
+          "launcher_message_id",
+          "enabled",
+          "created_at"
+        ]
+      ],
+      "timers": [
+        [
+          "chat_id",
+          "message_id",
+          "title",
+          "end_time"
+        ]
+      ]
+    },
+    "required_mini": [
+      "mini_daily_chests",
+      "mini_daily_claims",
+      "mini_daily_streak",
+      "mini_duel_locks",
+      "mini_duels",
+      "mini_equipment",
+      "mini_equipment_owned",
+      "mini_equipment_slots",
+      "mini_event_pvp",
+      "mini_event_pvp_control",
+      "mini_event_pvp_members",
+      "mini_event_pvp_shard_awards",
+      "mini_event_requests",
+      "mini_event_sessions",
+      "mini_gacha_batch_pulls",
+      "mini_gacha_batches",
+      "mini_gacha_guarantees",
+      "mini_gacha_pity",
+      "mini_gacha_pulls",
+      "mini_hero_favorites",
+      "mini_heroes",
+      "mini_inventory",
+      "mini_item_uses",
+      "mini_items",
+      "mini_mythic_fragments",
+      "mini_mythic_grants",
+      "mini_onboarding_claims",
+      "mini_player_effects",
+      "mini_player_heroes",
+      "mini_players",
+      "mini_public_notifications",
+      "mini_public_shares",
+      "mini_purchases",
+      "mini_registration_requests",
+      "mini_registration_sessions",
+      "mini_shadow_rolls",
+      "mini_shop_offers",
+      "mini_superadmin_audit",
+      "mini_titles",
+      "mini_tower_attempts",
+      "mini_tower_progress",
+      "mini_tower_retries",
+      "mini_tower_rewards",
+      "mini_tower_selections",
+      "mini_ui_navigation",
+      "mini_ui_publications",
+      "mini_village_boosts",
+      "mini_village_operations",
+      "mini_village_residents",
+      "mini_villages",
+      "mini_wallet_transactions",
+      "mini_worlds"
+    ],
+    "boss_tables": [
+      "mini_boss_actions",
+      "mini_boss_events",
+      "mini_boss_participants",
+      "mini_bosses"
+    ],
+    "legacy_columns": {
+      "mini_bosses": [
+        "id",
+        "world_id",
+        "template_code",
+        "name",
+        "description",
+        "image_path",
+        "max_hp",
+        "current_hp",
+        "min_players",
+        "status",
+        "signup_opens_at",
+        "signup_closes_at",
+        "signup_message_id",
+        "signup_message_kind",
+        "turn_message_id",
+        "starts_at",
+        "current_round",
+        "current_turn_position",
+        "turn_started_at",
+        "skip_after_hours",
+        "reward_coins",
+        "reward_item_id",
+        "created_by_user_id",
+        "created_at",
+        "ended_at",
+        "trait_rules_version",
+        "feature_state_json",
+        "reward_temp_hp",
+        "reward_corruption",
+        "turn_notice_json",
+        "faction",
+        "ability_key",
+        "ability_text",
+        "features_json",
+        "ability_config_json",
+        "ability_state_json",
+        "turn_message_kind",
+        "reward_items_json",
+        "reward_shields",
+        "reward_shields_max",
+        "reward_percent",
+        "reward_decay_percent",
+        "battle_result",
+        "class_rules_version",
+        "boss_damage",
+        "sneaky_stolen",
+        "content_version",
+        "shadow_extractable",
+        "shadow_hero_code"
+      ],
+      "mini_heroes": [
+        "id",
+        "code",
+        "name",
+        "rarity",
+        "race",
+        "class_name",
+        "attack",
+        "passive_key",
+        "passive_text",
+        "description",
+        "image_path",
+        "active",
+        "created_at",
+        "faction",
+        "damage_type",
+        "class_tag",
+        "attack_range",
+        "special_trait"
+      ],
+      "mini_players": [
+        "id",
+        "world_id",
+        "telegram_user_id",
+        "username",
+        "character_name",
+        "coins",
+        "shards",
+        "active_hero_id",
+        "created_at",
+        "last_seen_at"
+      ],
+      "mini_tower_rewards": [
+        "player_id",
+        "floor",
+        "attempt_id",
+        "shards",
+        "equipment_code",
+        "created_at"
+      ]
+    },
+    "v15_columns": {
+      "mini_bosses": [
+        "id",
+        "world_id",
+        "template_code",
+        "name",
+        "description",
+        "image_path",
+        "max_hp",
+        "current_hp",
+        "min_players",
+        "status",
+        "signup_opens_at",
+        "signup_closes_at",
+        "signup_message_id",
+        "signup_message_kind",
+        "turn_message_id",
+        "starts_at",
+        "current_round",
+        "current_turn_position",
+        "turn_started_at",
+        "skip_after_hours",
+        "reward_coins",
+        "reward_item_id",
+        "created_by_user_id",
+        "created_at",
+        "ended_at",
+        "trait_rules_version",
+        "feature_state_json",
+        "reward_temp_hp",
+        "reward_corruption",
+        "turn_notice_json",
+        "faction",
+        "ability_key",
+        "ability_text",
+        "features_json",
+        "ability_config_json",
+        "ability_state_json",
+        "turn_message_kind",
+        "reward_items_json",
+        "reward_shields",
+        "reward_shields_max",
+        "reward_percent",
+        "reward_decay_percent",
+        "battle_result",
+        "rules_version",
+        "turn_timeout_seconds",
+        "team_state_json",
+        "original_max_hp",
+        "reward_snapshot_version",
+        "original_reward_coins",
+        "class_rules_version",
+        "boss_damage",
+        "sneaky_stolen",
+        "content_version",
+        "shadow_extractable",
+        "shadow_hero_code"
+      ],
+      "mini_heroes": [
+        "id",
+        "code",
+        "name",
+        "rarity",
+        "race",
+        "class_name",
+        "attack",
+        "passive_key",
+        "passive_text",
+        "description",
+        "image_path",
+        "active",
+        "created_at",
+        "faction",
+        "damage_type",
+        "class_tag",
+        "attack_range",
+        "special_trait",
+        "passives_json",
+        "mythic_element"
+      ],
+      "mini_players": [
+        "id",
+        "world_id",
+        "telegram_user_id",
+        "username",
+        "character_name",
+        "coins",
+        "shards",
+        "active_hero_id",
+        "created_at",
+        "last_seen_at",
+        "mythic_shards"
+      ],
+      "mini_tower_rewards": [
+        "player_id",
+        "floor",
+        "attempt_id",
+        "shards",
+        "equipment_code",
+        "created_at",
+        "result_json"
+      ]
+    },
+    "objects": {
+      "trigger:dnd_currency_category_insert": [
+        "9ffc8070c4e4db1c14acef34e2d3d0578ed3b5d0680d1e6e9fea9483da13af0f"
+      ],
+      "trigger:dnd_currency_category_update": [
+        "b3a6f47f0e85179531df38ab5264c6643f8d63ef0dcc5fdc5d4fb04d50ef30f2"
+      ],
+      "trigger:dnd_currency_keep_category": [
+        "6d7fddaaf307cfa0869ebe891e9de985470a1e0caa4b535067d914ec84048ac4"
+      ],
+      "trigger:inventory_item_scope_insert": [
+        "979e5aeef2403abfa3ac2176ab5e33a717ddab5c079500360522a6fb3d0d4513"
+      ],
+      "trigger:inventory_item_scope_update": [
+        "2a2a01f37812ff5b5cd9743f17e98c1519483f248ba0e333058b6c037ed88d35"
+      ],
+      "trigger:mini_boss_timeline_actions": [
+        "3b1526f682bf2578e6cc5fe04046d42372c22c4ebd54f22be91753eb0c5c2944"
+      ],
+      "trigger:mini_boss_timeline_events": [
+        "536b76fb87f828d6520925eb1944ca9fc6f545d657cf7394486b3e4fad7a9900"
+      ]
+    },
+    "required_dnd": [
+      "character_profiles",
+      "characters",
+      "dnd_coin_migrations",
+      "dnd_currencies",
+      "dnd_items",
+      "dnd_shop_catalog_entries",
+      "dnd_shop_catalog_versions",
+      "dnd_shop_credit",
+      "dnd_shop_credit_coins",
+      "dnd_shop_credit_moves",
+      "dnd_shop_credit_redemptions",
+      "dnd_shop_money",
+      "dnd_shop_operations",
+      "dnd_shop_owners",
+      "dnd_shop_publications",
+      "dnd_shop_sessions",
+      "dnd_shop_settings",
+      "dnd_shop_skus",
+      "dnd_shop_test_migrations",
+      "dnd_shop_trades",
+      "inventory",
+      "timers"
+    ],
+    "v15_boss_tables": [
+      "mini_boss_actions",
+      "mini_boss_admin_audit",
+      "mini_boss_events",
+      "mini_boss_participants",
+      "mini_boss_timeline",
+      "mini_bosses"
+    ],
+    "table_signatures": {
+      "character_profiles": [
+        "841ed30247d23a589fd8559043a9b7287dacb8b99d05a00ecae40a2caace8225"
+      ],
+      "characters": [
+        "e99679bddd1aa3d443b10b16ed49371f2026abdb6e63d0a90c803a6afbab8aa5"
+      ],
+      "dnd_coin_migrations": [
+        "0fdab72e5ade106db0d24f161ac77000aaecbec3e334711a39b39c4a537376f9"
+      ],
+      "dnd_currencies": [
+        "1b56c7e749a457ccd953b1d47b8522d2856597fe202a6bafde5e2b085e8708d7"
+      ],
+      "dnd_items": [
+        "da8166c415b1c191bb5d31c2da0169383f060d39a061295ede5a79e27716f7f5"
+      ],
+      "dnd_shop_catalog_entries": [
+        "77c24f9d713681ff43b726642a1076ee3340b1fd0e0b6d7b8d290ceebf7449a3"
+      ],
+      "dnd_shop_catalog_versions": [
+        "c3cf44ae6e27e8810413eab7237fc996cff08611fd09b7ebcd7861c6595c5181"
+      ],
+      "dnd_shop_credit": [
+        "afc1b34fd338d3e083e33b2b28a9f6154e230848d8dddee58b06a1e44c944ed0"
+      ],
+      "dnd_shop_credit_coins": [
+        "9f293289fe7a17a936e8d620e9d52e11a30d6ec09853210922573b5d5cf760c5"
+      ],
+      "dnd_shop_credit_moves": [
+        "d573bfb1dcbaac3eb6dc911f20ef4988ecd3689098b22f8d65e4c90c078ed569"
+      ],
+      "dnd_shop_credit_redemptions": [
+        "fd3274a1130c97c4fdf09b6883b3e0e0616e40aabbd1c937254a896bc36ca051"
+      ],
+      "dnd_shop_money": [
+        "0c69c0859656dce0a5adbf8fb5d1a7bb9712c92698422c3448e2c6c3ceca22e8"
+      ],
+      "dnd_shop_operations": [
+        "d12fec587e3d81aa6c39f58e865fef76cd15f7687aacdded60e7d26aa14e0e14"
+      ],
+      "dnd_shop_owners": [
+        "7ce03fbaf862803468b0c2f0ae4ac05b967db303c08e1fa59ec8796681a4a8aa"
+      ],
+      "dnd_shop_publications": [
+        "0274478ad4eb0baa004cf809d1c18e23da523726f2f80485882c7c04a770c54c"
+      ],
+      "dnd_shop_sessions": [
+        "7f838e8f4d4851dd95b3b95e137b18533da0347bf0796caea1d6f9d23d9686df"
+      ],
+      "dnd_shop_settings": [
+        "e8b4d9b26374bf9a58517c8715e928e6ba103b8f10ae9e4c546283092d43e47b"
+      ],
+      "dnd_shop_skus": [
+        "b635fb1e513e47df03d12d46d35aa9bb26c87adf9707860fdbfe9f41562e3a05"
+      ],
+      "dnd_shop_test_migrations": [
+        "0be71471f94f6412eb96f0bb5db0bbc49035b150430b4996b2c5f6dc39f587fc"
+      ],
+      "dnd_shop_trades": [
+        "b4550262889db799528045c2698dadf3857c123a93b039473e5e96410ba7f55a"
+      ],
+      "inventory": [
+        "71396c0c36de7aa3ae6ca3706d6e635efda514aa77a543db5ac3fcc8b1c32ee1"
+      ],
+      "mini_boss_actions": [
+        "de3cf6b5807cfe6fc034f5b4b7474c5b2b6f1ba928f067d25cca1e4927a917aa"
+      ],
+      "mini_boss_events": [
+        "d3d921f3de39583d1a87f8d7af6db37ce125d7e526a719fd18453469dfd4bbf4"
+      ],
+      "mini_boss_participants": [
+        "248f953b27cd23bf8760b2092c914eab16f2d7934760792142afcdf3fa73b8d6",
+        "5ecafb6bcb23a6d858a1cd885a1a0f6764ca16c5cd39aed8ad3422946d289615"
+      ],
+      "mini_bosses": [
+        "307e8d10ff6b94e964d20d99eba7d61ac153fc135e415cbc7f1f41f7234f1dcd",
+        "8330b7fba780154f0acf34e7ebd49de8e223ff3524b03e4011da187011bf1fb0",
+        "a7088957e8d2b6bb0115ea05ef0ac4923a13b45161e6696b614e3cd1a1e77ef5",
+        "c1313148cf9d5b81f9a91a590186d960d99e44de990e7c5bc5e4144010a0c761"
+      ],
+      "mini_daily_chests": [
+        "d75db073bc81fcd5c2da4a54895d95de290a342a46b0ee3ef25092bdd3f3dbfa"
+      ],
+      "mini_daily_claims": [
+        "4edb17fe6e6944f56a860166606814b7a8a03f960530999cc7f29980739780ab"
+      ],
+      "mini_daily_streak": [
+        "ee29fd6abf4ea9897e7248d9de034c936d86c91431a2fb8113dc5003b2609b3b"
+      ],
+      "mini_duel_locks": [
+        "cdf82bf02763dbb1e49fb807211cbe20ac8e4ecc453a7c490c266f88c281804b"
+      ],
+      "mini_duels": [
+        "b7e42a945a26c9b48f70fd2c9215dbc55165c4f5b77b27379ec326c6a839c7ae"
+      ],
+      "mini_equipment": [
+        "6d3ffe0c17ca00bc236142575eec47c5fa4284baafb0912b09155d86e66de9e1"
+      ],
+      "mini_equipment_owned": [
+        "98cf91b736f2c9eec710bc68827ae5c91d7bf809465b82c0003d15c78870a1b9"
+      ],
+      "mini_equipment_slots": [
+        "9526c04506fc7d05f5a52cfb82aa5217b3ac21155a3c7071aed861021a77c870"
+      ],
+      "mini_event_pvp": [
+        "3e2ffca401684b353b29f634558204cd010099aa5e79d7dc29aed2b9fe8fe1d8"
+      ],
+      "mini_event_pvp_control": [
+        "81766828e599ff0a3d232e3fa9c31441ce73e6115446c5c83b99a342d506ede0"
+      ],
+      "mini_event_pvp_members": [
+        "3eba5c02421d6227641dc0a3cc8cc90b525db829934074bfde64eca1b23ed80a"
+      ],
+      "mini_event_pvp_shard_awards": [
+        "7382a763d547b6c723dbbbe0dd40936813bf61ce6526e9ff7f0a3f75b14c036e"
+      ],
+      "mini_event_requests": [
+        "7e4ccd836fd8264674dbb18ea18feaa92f82574175d3609b7bc8e271b514cc51"
+      ],
+      "mini_event_sessions": [
+        "24c02462e5dbdef69c8e25fcfc24d270323eae5996d5883a1a588e628ef7abda",
+        "4f654a09b722303828756c20fb192af6619776af503c52de21a7b87226933ec9"
+      ],
+      "mini_gacha_batch_pulls": [
+        "cc6ade5bb397d44b2167d947d4cc3fcbdf457c6a3c32c757ad58a6d8a5b45a75"
+      ],
+      "mini_gacha_batches": [
+        "05aec92cd67d0a038f235aa64486b6b979d155196e1cfeea6d391a296fd82a04"
+      ],
+      "mini_gacha_guarantees": [
+        "69a4146db4624bbaca911b7c0ec0a02c63c79ea401dc93c2639ff4a8b3a59937"
+      ],
+      "mini_gacha_pity": [
+        "b18d118ae2a186d6b688a06cf26717614f18748e33e0f5ac9485f399f3d01785"
+      ],
+      "mini_gacha_pulls": [
+        "aa9d3afd67a05caaad332185d8c4815b572d871868b2c2bad7eab912fef59035"
+      ],
+      "mini_hero_favorites": [
+        "b704d30367aaaf3279cea78d89f60beb45310d755ea11d368cce268a5a03bf35"
+      ],
+      "mini_heroes": [
+        "522e7f381f2eac03c5c177d30530e5deea7c3d10573e64a360d27de48f2d8532",
+        "953a88027201879e1727515ab439b10124fdc1760d4880fdabf5cda74209f761",
+        "da0808302f1118bf7c3799353cb6556753134f37e667254e10d0deb39435057c",
+        "e8452f52986e377eff136bc0758c5cda6ccd061ed6486be3c42f2c8b8d13b038"
+      ],
+      "mini_inventory": [
+        "0924c5e84640962515e6fcac550835ac72e899ba1502bb480e78bb31d7ed3437"
+      ],
+      "mini_item_uses": [
+        "a4ecf0789947041ce0c41c410dfe9dfc791b4f1d9e2c1f83e18e407a9f5cd991",
+        "ebdfcab52cac2912e32d70bd491369c157f6034b347c57f5ebdbc8346e4af793"
+      ],
+      "mini_items": [
+        "086bf944bba686dde19377e383cd1f04862c61a1420faa03f2de4f6e29ba0ab1"
+      ],
+      "mini_mythic_fragments": [
+        "85ddc4ecc3a7c4cf494deee819b30b5f486dea1613f66a7c2da23498778eb019"
+      ],
+      "mini_mythic_grants": [
+        "e411e0e900c7e668be56e4c15ed4c3d6d90d32623dce474f8279aa0c67f44b48"
+      ],
+      "mini_onboarding_claims": [
+        "30e04ccda36bff5ceb5ad583f5cfa71535236e345356ab20775ac01ae681e4fd"
+      ],
+      "mini_player_effects": [
+        "23d88cb8f907505acc98a5f9ac259d84bc17d360b2b171c4638ef86e08626ef2"
+      ],
+      "mini_player_heroes": [
+        "5f0be881e3f43c4cdc3ab9078307eba5537011b4a853caea9b685a2171e7d655",
+        "73ddf9b659f38048624f7e9637917f9a0f56ee1dfbe7120c57489e06cb322514"
+      ],
+      "mini_players": [
+        "38a6df4637255f5ab57d0c180def12fd27c65f561d9ccbf563a878ed17cd4a1c",
+        "89c906760d217354e16f6cb633460ee4f75b60470d27c8e3792ae5e8f609841a",
+        "a37ed85099f2d75d6d7bec22a3d057c5e81252a1652fb96d240bec4ca35aa166",
+        "c005cad572e9e03ed2919746e798fcc1240268fb8168e1bfa3fa6c019d811839"
+      ],
+      "mini_public_notifications": [
+        "f510217114550e27731e620f0faf1cb1138dfb7901353d8cfa583bb78e6b48b1"
+      ],
+      "mini_public_shares": [
+        "a01e9ebfb19bf788e454ad072a9adcee3a10701d8890954e9fb4fb8a08c0ab92"
+      ],
+      "mini_purchases": [
+        "bd6d83d026e4f80f0e4df4397a5aed9ca3761c9bc8fd8df2270b7bab6fb4dfa0"
+      ],
+      "mini_registration_requests": [
+        "b96843270cf536b6f62385bd97b501d3f547d83f785b7ca33ef3a1698453337e"
+      ],
+      "mini_registration_sessions": [
+        "e1c9799e00be1ef7a09bb60c6ddcfca4ce113ec658f59acb68b084a166c98747"
+      ],
+      "mini_shadow_rolls": [
+        "599e1693b6f5db8e2c964f2d84e3fcdb07e7f1d90dac3e24d47c1be70b611fe2"
+      ],
+      "mini_shop_offers": [
+        "3b53b1951900528f2f3918796b7d6ed4a15d33476ff6e5ce153aa44cdafc7f2c"
+      ],
+      "mini_superadmin_audit": [
+        "4ddb2bafb382bce00273c3ab366de678a8d51dd053acaf158bbcc3fe4c73e77c"
+      ],
+      "mini_titles": [
+        "4b1f156469e13fd75ed6393ad915b5ac7fba7d4ec6eef283052708e5f4d94ca4"
+      ],
+      "mini_tower_attempts": [
+        "21a2cc0cafb00dd7ab87dc73e1288304c3e3ba1ad67ac63ac433d61fba96d369"
+      ],
+      "mini_tower_progress": [
+        "d77659126c85a8a0892d1f404b69013d7028ae21d4cedc0a0fd9f46f0a3f25e4"
+      ],
+      "mini_tower_retries": [
+        "15d3889aab77a311c1c6caf9b474903597d5b8f7e9fd0751cd9c05d5b18aa4de"
+      ],
+      "mini_tower_rewards": [
+        "6cf46a30eba654ae09bc3dd5086d38746fc13b51ccc78f0d605ac196cbf85568",
+        "6e2209aa86d56a13c4332e797b0ac84cd9b01fbfe680731eee7de7409066f677"
+      ],
+      "mini_tower_selections": [
+        "87e20d9d81f148dedbda6b02bebe808deba1a2128d2bf7c8a10168b52bc4cf28"
+      ],
+      "mini_ui_navigation": [
+        "e03808d2a23a984a5ee24c7b6fb34ad4ecd41af18b46c6d2b2ee5af65d68a9db"
+      ],
+      "mini_ui_publications": [
+        "cd3eb491135a8d83188843f4be529078a0097bdb24418d2e5769b4bb1ea4a680"
+      ],
+      "mini_village_boosts": [
+        "e561f2695940eb3c007ce2a9dbed3019eb0bd87436f07d7ab01488d615fcedef"
+      ],
+      "mini_village_operations": [
+        "d1cffdda2b6cf6bfed1ef89cc76274df6214ce2461ab6b67c7412fa8b16b421c"
+      ],
+      "mini_village_residents": [
+        "b99bf4579bfa2c17fe60315f258ed92f62e65bb8a0c4f75460f2ec6ad65b62b9"
+      ],
+      "mini_villages": [
+        "caffccb4c916fcf9e44ec5cda4722a297ecc3396abe4d52a1203444a7e166bcf"
+      ],
+      "mini_wallet_transactions": [
+        "4b7185ae002ae5e6e3224a222853ba09e20968167ee827c97c8afe1b723d2e0a",
+        "f23b899961d3b5ced80ff1a42c003cbc7ec79add876def0b9e15df71359b9fa0"
+      ],
+      "mini_worlds": [
+        "bd81a86cad1286b5296c73eba845af756fc1e4fffefdaf3c68e886f00d0f00d1",
+        "e39b8ec996d4f8995a6ce0fa9648faac90acc03798ad49099fdbf8cad1e1dc91"
+      ],
+      "timers": [
+        "af302f4df78eb38ed7daafe8a45af6b44091ffa5bf576550352dbf609f081e24"
+      ],
+      "mini_boss_admin_audit": [
+        "ec5b4ec57a464c5f9049239a0cb94a0ab96d6dc8fbd4f314a67c2b61afd7c97f"
+      ],
+      "mini_boss_timeline": [
+        "0fda0a8fdbe7431cd70c5bcd28d53692e605c978f6073b73403585e1371a9035"
+      ],
+      "mini_combat_arise": [
+        "189e7585bf6b2b80409ef0fdcafd5932c62370c1f00cea5bc53054aa5ba73f87"
+      ],
+      "mini_mythic_ledger": [
+        "3549fa881db220d03e3eadb6f62dda75b1c8eae02caeec76512751705c5c0e29"
+      ],
+      "mini_mythic_operations": [
+        "ccd73f0aca8faa446c956c6f8129b52d63ff8e2a631721d95cda74b5ecf04fb4"
+      ],
+      "mini_mythic_pet_days": [
+        "e7f33f2f436b103718019cd2462f8d2973663cd0666e59b2b1431396c59dfe70"
+      ],
+      "mini_mythic_pets": [
+        "7fca2aaaf35c88f46a1d5f000d9cd07355789ffea479b7df24a6e2a1ba33a894"
+      ],
+      "mini_mythic_raid_attacks": [
+        "619b21dfda85ff233080af75e2e1353a8cdcd79a6ea0fe0903202bdc4a146d27"
+      ],
+      "mini_mythic_raid_audit": [
+        "2396b70abd3eb39b4b52cae0b2e377da4be57d35fb0741dc6023032d3fe2978c"
+      ],
+      "mini_mythic_raid_cancel_requests": [
+        "1352622c5904cde6890d8ac10af45e3fe79d3a9d66dd9253cf0fbdbef45ae6cf"
+      ],
+      "mini_mythic_raid_damage": [
+        "0c1dcf9500708e95476128d5688fe810d57677834e03d07c360b72948d7f7098"
+      ],
+      "mini_mythic_raid_publications": [
+        "0d5c74281fffcd05b334c9d2ecbbdb1ff3c86dafcea80aa3491b6678d908f9c1"
+      ],
+      "mini_mythic_raid_rewards": [
+        "a13b38bda2d02555874743a660a83bd18195e8f3bc94a00b37ce940509c9ce26"
+      ],
+      "mini_mythic_raids": [
+        "b4e5ff54aae90c348dcda211b2b210e07a4932a67a7301b86b1622d9a71274c9"
+      ],
+      "mini_star_rewards": [
+        "ff0b094ee2f4ed9687a2564f453fc266b74c022b2d4dcc1402230980bca6577c"
+      ],
+      "mini_tower_lunar_choices": [
+        "dde47f78b71621479bb7174b82832bad799be108d39b5bedd21cc9a2ad712f0e"
+      ],
+      "story_enrollment": [
+        "55cb65cc79abc71bb3d8357f76af56a10848b77b5f255ee38825dc0b75e3d7a9"
+      ],
+      "story_operations": [
+        "7c8f7574eb8ee88c0cd34850c22fe583912d5d1b5f6953f726f577585aa1e8ed"
+      ],
+      "story_participants": [
+        "5ecfbe1c62166819e0ca030f071af4ff4b5b7f0328485ceecb040c017dd326a2"
+      ],
+      "story_publications": [
+        "6d801255247b0e6d0bcf932b7e47c8eb00050d2f550c39741f36541a5bd346cf"
+      ],
+      "story_sessions": [
+        "ecce3dfc63665c5d7fce1024df53f00c523df74b262923c3213373c97c39c5cd"
+      ],
+      "story_steps": [
+        "cba3b471bd9faa1d638cf89b9c42525b2cc90103ffeed4d28de9d085ee8153ba"
+      ],
+      "story_votes": [
+        "211830a67e21adabd1d9b130ba61b641d2d0132c7ef6848256ca6dbe192400d4"
+      ],
+      "mini_private_windows": [
+        "23cd1fe90f2811861ef47a8fd3c072d6591fe0141c07cc900824477be52513c2"
+      ],
+      "story_achievements": [
+        "3851b457705743e99763d0da45acb2a7584fac663e6b25d5862bab40ac41cf7b"
+      ],
+      "story_publication_parts": [
+        "85e4deaf0ab344bde6ba500587d88dc1bf62cfb19986598ce18b91efc041b1a0"
+      ],
+      "story_reminders": [
+        "7f6116b2732a52468b1f0e844efef038a94df38ac6ece0ea1b492c69bc9dc14e"
+      ]
+    },
+    "hero_codes": {
+      "legacy": [
+        "ApprenticeMage",
+        "Asrael",
+        "BugbearAmbusher",
+        "CityBlacksmith",
+        "DwarfMiner",
+        "ElfLibrarian",
+        "GnomeMushroomCollector",
+        "GoblinCook",
+        "HalflingCourier",
+        "InexperiencedMercenary",
+        "Kirito",
+        "KoboldTorchbearer",
+        "Lasar",
+        "SonDzhi",
+        "TavernBouncer",
+        "TieflingFortuneTeller",
+        "TortleHarpooner",
+        "TownGuard",
+        "Villager",
+        "abyssal_gatekeeper",
+        "battle_mage_apprentice",
+        "bone_hyena",
+        "caravan_guard",
+        "cursed_bombardier_construct",
+        "drow_shadow_necromancer",
+        "dwarf_sapper",
+        "elf_scout",
+        "frog_man_spearman",
+        "goblin_tinkerer",
+        "gromm_bloody_thunder",
+        "half_orc_pit_fighter",
+        "halfling_smuggler",
+        "hobgoblin_grave_shaman",
+        "mummy_tomb_spearman",
+        "olaf_taliy",
+        "panic_dungeon_engineer",
+        "rebel_archer",
+        "reborn_crypt_keeper",
+        "renkai",
+        "shadow_Vov4ik",
+        "shadow_crimson_vampire",
+        "shadow_doppelganger",
+        "shadow_fallen_sun_champion",
+        "shadow_flying_schoolboy",
+        "shadow_mister_inversion",
+        "shadow_one_punch_mob",
+        "shadow_simple_village_guy",
+        "shadow_swamp_hydra",
+        "shadow_wild_berserker",
+        "temple_exorcist",
+        "village_hunter",
+        "wandering_relic_hunter",
+        "winged_rune_fox",
+        "witcher_isekai"
+      ],
+      "v15": [
+        "ApprenticeMage",
+        "Asrael",
+        "BugbearAmbusher",
+        "CityBlacksmith",
+        "DwarfMiner",
+        "ElfLibrarian",
+        "GnomeMushroomCollector",
+        "GoblinCook",
+        "HalflingCourier",
+        "InexperiencedMercenary",
+        "Kirito",
+        "KoboldTorchbearer",
+        "Lasar",
+        "SonDzhi",
+        "TavernBouncer",
+        "TieflingFortuneTeller",
+        "TortleHarpooner",
+        "TownGuard",
+        "Villager",
+        "abyssal_gatekeeper",
+        "azark_storm_spear",
+        "battle_mage_apprentice",
+        "bone_hyena",
+        "caravan_guard",
+        "cursed_bombardier_construct",
+        "daenerys_dragonflame",
+        "draghar_black_cleaver",
+        "drow_shadow_necromancer",
+        "dwarf_sapper",
+        "elf_scout",
+        "ezio_auditore_isekai",
+        "frog_man_spearman",
+        "goblin_tinkerer",
+        "gromm_bloody_thunder",
+        "half_orc_pit_fighter",
+        "halfling_smuggler",
+        "hobgoblin_grave_shaman",
+        "kaeron_shadow_reaver",
+        "kaiden_void_magus",
+        "master_puppeteer",
+        "mummy_tomb_spearman",
+        "mythic_dark_night_raven",
+        "mythic_earth_morax_dragon",
+        "mythic_fire_flame_hind",
+        "mythic_ice_fenrir",
+        "mythic_lightning_daenerys_griffin",
+        "mythic_moon_fate_rabbit",
+        "mythic_star_unity_bear",
+        "mythic_sun_lion",
+        "olaf_taliy",
+        "ordo_vallis_commander",
+        "ordo_vallis_inquisitor",
+        "ordo_vallis_legionary",
+        "ordo_vallis_secretary",
+        "ordo_vallis_soul_lord",
+        "panic_dungeon_engineer",
+        "rebel_archer",
+        "reborn_crypt_keeper",
+        "renkai",
+        "sairen_red_needle",
+        "shaar_ashen_palm",
+        "shadow_Vov4ik",
+        "shadow_crimson_vampire",
+        "shadow_doppelganger",
+        "shadow_fallen_sun_champion",
+        "shadow_flying_schoolboy",
+        "shadow_mister_inversion",
+        "shadow_one_punch_mob",
+        "shadow_simple_village_guy",
+        "shadow_swamp_hydra",
+        "shadow_wild_berserker",
+        "talvira_blackroot",
+        "temple_exorcist",
+        "varzek_ash_fury",
+        "veirissa_darkarrow",
+        "village_hunter",
+        "wandering_relic_hunter",
+        "winged_rune_fox",
+        "witcher_isekai"
+      ]
+    },
+    "exact_table_contracts": {
+      "character_profiles": [
+        "3639ee285aace7f421e77ce9f0075392107cc28ceed1ab154f89049ddb2fdeb6"
+      ],
+      "characters": [
+        "d00d35e6c341b38ce962dad3ff92e3faed2676b25dbf1a1c9d40130a2e38e673"
+      ],
+      "dnd_coin_migrations": [
+        "6852ca98b3940c15e04f081b310dddc5bbefb9fe9f1806e0b3847b776b525bbf"
+      ],
+      "dnd_currencies": [
+        "20e3d606dcb438479d0aee73536fab7cf8e8c6d6d4033d932d7ef56d0d6751f1"
+      ],
+      "dnd_items": [
+        "94f244edc29e9d5808085bf7048ceca27e723a9fe5c5f1cbb1fe8e26f60989c1"
+      ],
+      "dnd_shop_catalog_entries": [
+        "639a6440986f81fda9f63d63501a998971b9e9de47d322302b0a7145497fd8a6"
+      ],
+      "dnd_shop_catalog_versions": [
+        "3e079573942b7de3dc986663ef8df77f6b02f38a85e51f39de2ec730971c92a9"
+      ],
+      "dnd_shop_credit": [
+        "8aaab660e7d9596c714e5b3e99a227b65c0ec02e408b77ae860dc1ba8e677f3d"
+      ],
+      "dnd_shop_credit_coins": [
+        "c68836e2e825db2c4492512a981d0d6dd3cc087b18f3ca4abad0bca9f68281b1"
+      ],
+      "dnd_shop_credit_moves": [
+        "417634d9420fbcc77e3efc90df7586cf0215c87e23553457016f6da23f5ba6c8"
+      ],
+      "dnd_shop_credit_redemptions": [
+        "854f555e98d54d526c6c375684c461080fd6d4ce3174856d87963273076b923f"
+      ],
+      "dnd_shop_money": [
+        "559a32223514b4c78c210429d6501e3906509dd765e422f06a064ea2ad62546e"
+      ],
+      "dnd_shop_operations": [
+        "3e235b86d53d365f5e7df05e8dbe71caa9543f482363cc461e0d036cb5844e73"
+      ],
+      "dnd_shop_owners": [
+        "031e7888f38138f8a24af8969821843052f8718cbc45aa068f18ea18ccfb4071"
+      ],
+      "dnd_shop_publications": [
+        "81a8043f838165b50f355e13f593511d4441894576989be03d19a85d7e56771a"
+      ],
+      "dnd_shop_sessions": [
+        "cb808ea3c53b4632341657e224d9188ab90796f348f3221ae1977ecbfad400ba"
+      ],
+      "dnd_shop_settings": [
+        "c322490cfe22522402de463a4f9094a31b20f27887ed7ecf5f01afd49b395ef0"
+      ],
+      "dnd_shop_skus": [
+        "7f6862401858f4d392eb70695974bf8accbb06a34b27e5a2f9ed7f1b99ad066f"
+      ],
+      "dnd_shop_test_migrations": [
+        "25993198ba797bf404750a06925c6be535bc6681f428f8c26857a18c93d2693b"
+      ],
+      "dnd_shop_trades": [
+        "d21a5d1d76c731034fed0b840ba3c258561797bf3f17b44df76a70247ddf1ffd"
+      ],
+      "inventory": [
+        "fa105a164cbcbef6bfab7e9568d4b34dd4eced72889a8154c612076acbee04b0"
+      ],
+      "mini_boss_actions": [
+        "4642ddb2ea8c082aeea7b6e4d0af642006cb4be7738fa4f1a2b88f1e063c1b31"
+      ],
+      "mini_boss_admin_audit": [
+        "5d35d30910290c3d55fe0769a4e6f15a1e10f9302cc5fb81dab27c2e1a9ba523"
+      ],
+      "mini_boss_events": [
+        "a128de7628437f2b429a031b92301a9ae180924228e92079574a6efeb027d308"
+      ],
+      "mini_boss_participants": [
+        "37d64c027aaa3b43ed6f05abc833003d96f85b18f47de3d1aed6b8a9837ef7ed",
+        "89f0929705aea3e90541ef9caadc3bddec621b2d03dcb1bea83468f69af85438"
+      ],
+      "mini_boss_timeline": [
+        "18e0ef06ab66f341bf7bdad1894c60747fddc7617dd657b0b6dda4a6c12a25eb"
+      ],
+      "mini_bosses": [
+        "53217e7796cd44842890bbd7cd218d38b5b4e8646b9f18e2a119cd42255188eb",
+        "828c04ceb0cbcea315876073e38bd660d56439174ac3ec071f3cb22a2a3703b7",
+        "86a7621b22c434cc28f25b7e8af363b53d6f5d66fc5ac644cb067ed022e373ae",
+        "d3e8d2a569b409f53a8d8a1979c994d032346c3709c8d4268375d31c6b6e3d8c"
+      ],
+      "mini_combat_arise": [
+        "397100de89d761ca570053ad9bde581594571969b8de6a716594322e77b93ed6"
+      ],
+      "mini_daily_chests": [
+        "8b416b1f5ae46050bcdaf6f357e4e0c3f5e61f0abdff9563450f739d1b5e28e3"
+      ],
+      "mini_daily_claims": [
+        "4b286481395c0ff772c44ae49bc545980a1eec17441932de8d4397f3cb9f76fe",
+        "ae0fcecbb0d89e37ee1548a8c5d72b3e9c04c017de14a1c286337de00d2e27cf"
+      ],
+      "mini_daily_streak": [
+        "931b363627627195fefc7cb6db8b5d8de9b8761d93e6f3bb8c8c7bba35b9f8e7"
+      ],
+      "mini_duel_locks": [
+        "43118de48d0fbfb72df6142da64e58f9352947653d64fff03de06c152fac1ddf"
+      ],
+      "mini_duels": [
+        "417689f1c9125b7bcf6abcf3d6ba8a468dce4b2ed8d2d6b40ab6ba6dc04a64d9"
+      ],
+      "mini_equipment": [
+        "770f89831e15a8270e3684a58efb6d27af7ed9a829c0513118e7c412f270b479"
+      ],
+      "mini_equipment_owned": [
+        "035fbe952750f11af9f6829bceb00156595bff22da2fb3e9ef166d80832df63f"
+      ],
+      "mini_equipment_slots": [
+        "78cc8ce9b3ebc3a4a8c6904ca35f31ab5274b746b2afdcefcf5183dac33ea429"
+      ],
+      "mini_event_pvp": [
+        "b745cdcfa19d1927cb21057ffe4470da7984dda563c2c0a06813ca28710f1414"
+      ],
+      "mini_event_pvp_control": [
+        "99cd8ceabd486a8050d2142bb146582f5f286172245a0d94a0e6d1096cddeabd"
+      ],
+      "mini_event_pvp_members": [
+        "c1b0396959d0670c4b18f62a932e33b2c72d8d266b8f14c701cd31a57ec8b899"
+      ],
+      "mini_event_pvp_shard_awards": [
+        "d581f819b9d8c64f4195663b6af1c31e54cd2367207de08b934d8c90b455df8e"
+      ],
+      "mini_event_requests": [
+        "d4372f1619ca420179ecb3445ccc3747a401f1d9db5cb8b01ab55de789070711",
+        "ec97a48163c2927f8fccbbf903c8c038b339ace5eeaa4e2c32f5510f53dae88f"
+      ],
+      "mini_event_sessions": [
+        "c7834aa37dde1aebd71ef30d3ac369063dac5dc4804f57fde5c15b8b48b7960d",
+        "ed269f54c8a8b56a400cc2cd11b119712770c3aabc870c31fa499e70dbf89ce2"
+      ],
+      "mini_gacha_batch_pulls": [
+        "75e5126ec4124720d999dfc37179aba356354d5585edb6f602ad50a54a3364d0"
+      ],
+      "mini_gacha_batches": [
+        "49ca29686ec64aa86d7cc99de2333abe6243693b49c14cfecf22caf196c090de"
+      ],
+      "mini_gacha_guarantees": [
+        "f29c7a8c5ef86a8fa7439de6d998c05788e7246e42b55c0464c581ac7e800d4a"
+      ],
+      "mini_gacha_pity": [
+        "776c57cf6e050725babe33e50a435002bb19e1c4dff09d4df435c1de06fe626f"
+      ],
+      "mini_gacha_pulls": [
+        "20c081699f4a11831ccb02fd43eb7cd8149116e12f6c64945276f89013a47b33",
+        "ccee4d58ce0c4cb350e0405f40c0bf178bcea61b97bb73e3735320b0a616e979"
+      ],
+      "mini_hero_favorites": [
+        "2a9b73f04138c56365d48f54c22c30ffadcbd8f9f9676bc7486b0f8d801031df"
+      ],
+      "mini_heroes": [
+        "1bc7c4482a18c1184da8051c113b845913153793acc25b5845d9a27315da90dd",
+        "276a2cdc7585ac2694f08a1fbb40b027568a0150872eb2e9bf6b3606d493f982",
+        "449a580daf9eb7d798f5c1a4a7a07f1bc6d26177671885ed8da1e115774fb90a",
+        "7c631c04acb5122a2dc20ddaaaf8b5f89e6338511507dd8b77848d1634cc12a2"
+      ],
+      "mini_inventory": [
+        "f08c965f50c928724eb63e434cb270e54440fc5ab68e455706f8d8aea450cb87",
+        "ff84db186fd0ace023156ed8d69b826b3e4850136050f51bd2798119bf00d213"
+      ],
+      "mini_item_uses": [
+        "9479bbbf6580b0f1410772340e0e3052234e179d07b98e06e3ea9739a2f1ce90",
+        "b1ff411770be5a32322624b5e4b834c1441a244395838649594be2e4fa033ed5"
+      ],
+      "mini_items": [
+        "0e178e6bc6983420bb919f6e68be213e5cef3ca27ecf1c050ed6a9ac3223effa",
+        "316e2b1439157cff877c9eed6da9f64d480037735b64267e8d28f2a8a934a922"
+      ],
+      "mini_mythic_fragments": [
+        "5bc2e0db8b4ef1d3e3f378858fef4b5d9538d0d516ca456e0ff185f6cc365a1b"
+      ],
+      "mini_mythic_grants": [
+        "97fbade09255c29a817de51f4053581834aa7d0c9d5d2e2d1d175dd535509fd3"
+      ],
+      "mini_mythic_ledger": [
+        "35b5579c10c027bad33a4eaf2e6dacf1a3f00d09205c15ca51719ae3c38d25e5"
+      ],
+      "mini_mythic_operations": [
+        "fe984c435061fec256a66c36b32eaa6c1b100371223f72ccc5441683c107663e"
+      ],
+      "mini_mythic_pet_days": [
+        "3e95c3b902f45c7c9d2e93d089f3cbfb4f91547262911462ac48742c46c67539"
+      ],
+      "mini_mythic_pets": [
+        "b124df162ed71aba6402cb464b62d45f974f0ec97c7e3f86ee293d50d0f52955"
+      ],
+      "mini_mythic_raid_attacks": [
+        "9905ba88d5bf47a7c82556b2a712ec0c0ca3c8b8e3c879c11a7b3d7dc72a0a09"
+      ],
+      "mini_mythic_raid_audit": [
+        "664abaef8682cb2f800cd0ab12ec59d8e3fdbd548f098ab9e5d8304447861262"
+      ],
+      "mini_mythic_raid_cancel_requests": [
+        "05c6b5f69629cf38b44dff58456a478263b1ffc795ac411be05689e1416f1ec1"
+      ],
+      "mini_mythic_raid_damage": [
+        "3b7250da7f1c91301ef483d54573f23516920861c37194af7703b46605c567d7"
+      ],
+      "mini_mythic_raid_publications": [
+        "6ba2be0a979c0e5ff3d57772f3dc840446bc9bbca4f0eaf37e5906b12f62ce0f"
+      ],
+      "mini_mythic_raid_rewards": [
+        "1f81579219a8801d45bf1a02fe363161a39324711ad53d70cdb42f521abfdbf8"
+      ],
+      "mini_mythic_raids": [
+        "c47c3fd0dd61b67b378741c4dc29d4e25bcccaacdce58de1e873f4bd0704f1af"
+      ],
+      "mini_onboarding_claims": [
+        "d74270fda9ca90f9b6234b8bab583e1dc7da3c6841f5a9c272194f3f327f8293"
+      ],
+      "mini_player_effects": [
+        "019a97db99eadba52f9bb9cb5a60e0594f5fe24c679ea6a4bc4b87835edfe611",
+        "629eca66d1f53cd46d514cd77abfd8074d3d36e9ad1aecd8b747c80f6f16e7ed"
+      ],
+      "mini_player_heroes": [
+        "a2dedab9020777fe9de7b02b39de1686439eb20226d44b41f15887d07b5a9237",
+        "a70faefc1e6f606721f48c32c99e36c58bcfe30acee659bf06c0a58b25919995"
+      ],
+      "mini_players": [
+        "12910055566aebbad274db5aaf912fac475a4e4383daf29312507366c275c2fc",
+        "36e467e83d2814f3f119cc162331774c67eeabe4d8bda823f3c42848138aee83",
+        "5bbf35580eca6da5818cc41ea19f8acdb3cb7843758bebd4b97f8eb8b9f48dc7",
+        "853eb4459b54c61edfdf1a4e77f883a8f252e6cff26f8e7bf0a1c481b8bd6568"
+      ],
+      "mini_private_windows": [
+        "b860be25f987e0c3973b58f92cede19e0359eda1d8798c7f62b9394917bdbeb4"
+      ],
+      "mini_public_notifications": [
+        "c6ae1c3aea3dc5c017f87788145a695de9a0321ab5c0ab69ab3e5e33fd9b7770"
+      ],
+      "mini_public_shares": [
+        "1ba3c70620540830f94b2bdaedd69db0bb3c26f8c5b6f249bd9b414b78f4f0b2"
+      ],
+      "mini_purchases": [
+        "62dc42b4739cf33202514316fe2c6a9dff80bb22f124fb8d5dee6252de72d7fe",
+        "e1634eafdf5ee5e890d9ea9674e2ea581dec3203ff3d61c8dded1df18294d16e"
+      ],
+      "mini_registration_requests": [
+        "0623a4489b0a4ebf01f44cc73d05b2eed88f3fe4c2d0f4d2fa459959d42e6fea"
+      ],
+      "mini_registration_sessions": [
+        "fab16df011a3f678e4e3766375bb9fd3839c48a900c124d399f0d073e0793688"
+      ],
+      "mini_shadow_rolls": [
+        "2638c49618cf1f397df0d87dbdea4fe8c4a0c47d70a35fefa84aecb3c8cd1b4b"
+      ],
+      "mini_shop_offers": [
+        "1ecab9bafa1498957864a6cffccd8020b7f2355845f876eadacf108bbf89b4ff",
+        "b35ee5cecb462eaa1517ace028add561a7147f4fb6edd4c69e6d2baaee97af5c"
+      ],
+      "mini_star_rewards": [
+        "dc2903c111eb5d90a4aa246d57fe9824ffa55da92d937050d7a423ed559965b3"
+      ],
+      "mini_superadmin_audit": [
+        "f6263647f5ef7f4b4563b6223693c194bc30e41dadb82858ac452408a7655faf"
+      ],
+      "mini_titles": [
+        "74132123a9584843a1fca93f84d29e815b9fb4b63e60e2b46e85374677af434b"
+      ],
+      "mini_tower_attempts": [
+        "ac2f6939912feb9ac9871525ab6f63d175d2f0710fecb98562bc092646932862"
+      ],
+      "mini_tower_lunar_choices": [
+        "1df4a62f89c931234d2503c497255b7324231c0c531d4ff27af1f5305ea9904b"
+      ],
+      "mini_tower_progress": [
+        "38fd89147cb6e52ee41385c802b87b465b86f6cb8d24f860c6ba9387e969f2f1"
+      ],
+      "mini_tower_retries": [
+        "b3064ae3ed61998cf805f1b1c51f58e69bc39d0419e1d39d8e9c0186c6204403"
+      ],
+      "mini_tower_rewards": [
+        "be2b53b9fa81d656d385dfdcd9053c835914df479ae8944683383ecef6e52b54",
+        "c920ee66d33dca2bf90e906d29f1ba4c584b31caa3944d89e9ab07ebd3bef4b8"
+      ],
+      "mini_tower_selections": [
+        "9e7fe837de9f3341ad9fd70f36f3812bb419d7967e05aba0580cbd86305a3a1c"
+      ],
+      "mini_ui_navigation": [
+        "f4ef0596b78152e31c439fd92ea3dd7d0d1e8408db3167bafe1b018035774230"
+      ],
+      "mini_ui_publications": [
+        "281ac10262492d4743445f194b33446e2c5499dd2de1db5b3db3182878a30d3c"
+      ],
+      "mini_village_boosts": [
+        "54c536cdf0c400c9bb57919f3758cd31c13dbe5d003559a12104746b5a2bfb6c"
+      ],
+      "mini_village_operations": [
+        "b81483720ed1abfa95a3bca738689043547e66209ce77262c6862858e4bb6f61"
+      ],
+      "mini_village_residents": [
+        "db828cdaa0b8c5700bbd6b152bb3caf618ced4694acb5073a231dd9195b4d8b0"
+      ],
+      "mini_villages": [
+        "0d692810c7f6425e6601e03b435328df7260192386ed54ea9c61f149a6938aee"
+      ],
+      "mini_wallet_transactions": [
+        "d9d28f81519cf6cd7c04875892a63dc36eff1b4a045af2eaeaffc2f9cc7dfc21",
+        "e2fa260e29ffbc03b94d7ff344d8fdd99d4bb3dc838488c7e03ee84d1aedd065"
+      ],
+      "mini_worlds": [
+        "c14d3f8ff499054f82bacef67b82329f9fcfcef0f6622f479a51db210bdfa17d",
+        "c417a23a0894dbf73d5532d74e4d82e7548ba31d21bc8ff0ced66469c7aca6f4"
+      ],
+      "story_achievements": [
+        "d972115b37444a62810345899a1fdfb641ec3076fcbfc82c5b1dcb67b764dbeb"
+      ],
+      "story_enrollment": [
+        "ae5b16a34fb55f28cb9bdd64e00473bc098dab1bd4e57b382704b9ac1e910ebc"
+      ],
+      "story_operations": [
+        "7c15bd97a445bd962c00892a0996643b5a4a26453adca1c56a971cba3171033c"
+      ],
+      "story_participants": [
+        "20641fdc1d99337bb8abca0d0c74c922b5e23e6c20b395e3b97f23924d67bd02"
+      ],
+      "story_publication_parts": [
+        "02d760618f15668db13d5326f9717aec5d6add1c0bbdf4c533a8f0f1ba98678f"
+      ],
+      "story_publications": [
+        "eb11cd39e8bc279f6ef8fa2ffe830ebba6493f72778ca86b56aab6edc0e9c2c7"
+      ],
+      "story_reminders": [
+        "d53a2d14ac0461d0effbf90b959364630f105aa9bf28603aa35f7eb151654cb1"
+      ],
+      "story_sessions": [
+        "0ccd08ab86431678583d7f2fad376f9dce9abcdf35758dcc058103a72d334f6a"
+      ],
+      "story_steps": [
+        "be7816ecdfbb859458be7ead74f7d5793adb64ae1c8a9178638710d5e3e8a5eb"
+      ],
+      "story_votes": [
+        "8575d8db0b32f7fa5cbfcb8fe8044d80f4d1d7b1d8ea267014004b2886bb2bc6"
+      ],
+      "timers": [
+        "60ec90ca27de869825126680345ebfbbd75bf3b3c7c2c63ed27ed0d2cea37ded"
+      ]
+    },
+    "historical_contract_provenance": {
+      "source": "Owner-supplied DDL, not direct production-backup access",
+      "backup_sha256": "acb2620a631f790cce82e4d4f1339a2a601c2e30dd5756cd1d2d31cfc8977b51",
+      "fixture": "tests/v1_5/fixtures/historical_v14_nine_tables.json",
+      "migration_sources": [
+        "d077dd2a2c29ad420b138bf07af23c77f4674d0b",
+        "cef77cc87f6a2286284f5cf8fdb851c775b04dd1",
+        "046f7dc1baee9e08207af72650fb4636b7da2d52"
+      ],
+      "approval": "Exact historical variants plus read-only NULL/noninteger/negative shards/stars checks; no runtime/database edits"
+    },
+    "object_requirements": {
+      "trigger:dnd_currency_category_insert": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:dnd_currency_category_update": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:dnd_currency_keep_category": [
+        "dnd_currencies",
+        "dnd_items"
+      ],
+      "trigger:inventory_item_scope_insert": [
+        "inventory",
+        "dnd_items"
+      ],
+      "trigger:inventory_item_scope_update": [
+        "inventory",
+        "dnd_items"
+      ],
+      "trigger:mini_boss_timeline_actions": [
+        "mini_boss_timeline",
+        "mini_boss_actions",
+        "mini_bosses"
+      ],
+      "trigger:mini_boss_timeline_events": [
+        "mini_boss_timeline",
+        "mini_boss_events",
+        "mini_bosses"
+      ]
+    },
+    "complete_contract_provenance": {
+      "owner_metadata_sha256": "e95fb119b9cd6b5593b00a2e38ceed43c6559405b71102092a76b1193cc90b0f",
+      "owner_original_db_sha256": "acb2620a631f790cce82e4d4f1339a2a601c2e30dd5756cd1d2d31cfc8977b51",
+      "owner_migrated_db_sha256": "db5eccf7b8c1d7dd88b4aa63be0c493ff54acf081da09cc9bf496bde9ef953e4",
+      "fixture": "tests/v1_5/fixtures/reviewed_schema_metadata.json",
+      "clean_source_commits": [
+        "d077dd2a2c29ad420b138bf07af23c77f4674d0b",
+        "cef77cc87f6a2286284f5cf8fdb851c775b04dd1",
+        "8e89473563e42fdd30c2aa15c04bd816a1f97ced"
+      ],
+      "review": "All table/old signature and owner index_xinfo verified; exact SQL retained; only previously approved player CHECK/ALTER differences"
+    }
+  }
+}

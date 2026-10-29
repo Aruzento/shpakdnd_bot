@@ -48,7 +48,10 @@ class ShadowHitTests(unittest.TestCase):
         self.assertTrue(expected.items()<={h['code']:h['passive_key'] for h in shadows}.items())
         self.assertTrue(all(h['passive_key'] in ability_catalog.configured_ability_keys() for h in shadows))
         self.assertEqual(set(expected.values()),keys)
-        self.assertEqual(json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes'],[])
+        mythics=json.loads((HERO_CATALOG_DIR/'mythic.json').read_text(encoding='utf-8'))['heroes']
+        self.assertEqual(len(mythics),8)
+        self.assertTrue({h['code'] for h in mythics}.isdisjoint(h['code'] for h in shadows))
+        self.assertTrue(all(h['passive_key'].startswith('mythic_') for h in mythics))
 
     def test_collapse_first_two_normal_third_base_times_two_and_sixth_repeats(self):
         self.assertEqual([self.hit('shadow_collapse',n)['damage'] for n in range(1,7)], [70,70,28,70,70,28])
@@ -304,7 +307,7 @@ class ShadowBattleTests(MiniCase):
                 result['effects']=[*result['effects'],dict(trigger='attack',type='every_n_extra_hits',every=3,extra_attacks=1,damage_percent=100,message='fixture')]
             return result
         with patch.object(heroes,'get_ability',side_effect=ability):third=self.hit(b,2)
-        self.assertEqual((third['damage'],third['extra_damage']),(28,14))
+        self.assertEqual((third['damage'],third['extra_damage']),(28,0))
         self.assertEqual(self.participant(b)['hit_count'],3)
         self.hit(b,3);self.hit(b,4);self.assertEqual(self.hit(b,5)['damage'],28)
 
@@ -325,7 +328,7 @@ class ShadowBattleTests(MiniCase):
         h=json.loads(self.participant(b)['hero_snapshot_json']);h.update(class_tag='beast',attack_range='melee')
         self.sql('UPDATE mini_boss_participants SET hero_snapshot_json=? WHERE boss_id=?',(json.dumps(h),b))
         result=self.hit(b)
-        self.assertEqual(result['damage'],result['extra_damage']);self.assertEqual(result['damage'],4)
+        self.assertEqual(result['damage'],result['extra_damage']);self.assertEqual(result['damage'],3)
 
     def test_waste_stops_extra_when_first_double_hit_kills_boss(self):
         b=self.battle('shadow_waste_of_time')
